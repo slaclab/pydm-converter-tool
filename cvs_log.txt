@@ -1,0 +1,117 @@
+RCS file: /afs/slac/g/lcls/cvs/tools/script/edm_to_pydm.py,v
+Working file: edm_to_pydm.py
+head: 1.26
+branch:
+locks: strict
+access list:
+symbolic names:
+keyword substitution: kv
+total revisions: 26;	selected revisions: 26
+description:
+Added edm to pydm conversion tool
+----------------------------
+revision 1.26
+date: 2023/08/02 21:15:26;  author: rpm;  state: Exp;  lines: +8 -8
+corrected several typos that caused visibility rules to be added to widgets without a visMax or a visMin
+----------------------------
+revision 1.25
+date: 2023/07/21 21:41:58;  author: cmyers;  state: Exp;  lines: +10 -0
+Added toggle button conversion functionality
+----------------------------
+revision 1.24
+date: 2023/07/07 23:38:43;  author: rpm;  state: Exp;  lines: +2 -2
+lowered the limit for macro strings for changing edm buttons to shell commands 150->72
+----------------------------
+revision 1.23
+date: 2023/05/18 20:59:20;  author: rpm;  state: Exp;  lines: +17 -14
+error handling and extra output for the destination of created files
+----------------------------
+revision 1.22
+date: 2023/05/18 19:07:40;  author: rpm;  state: Exp;  lines: +41 -45
+added optional arguments to geometry_converter to increse the width and height of widgets, made --destination possitional rather than an optional, fixed destination so it handles relitive and absolute paths
+----------------------------
+revision 1.21
+date: 2023/05/17 23:11:00;  author: rpm;  state: Exp;  lines: +283 -4
+added title bar and background widget, canged a message to write to cvs file
+----------------------------
+revision 1.20
+date: 2023/05/17 21:00:57;  author: rpm;  state: Exp;  lines: +1 -2
+removed condition where program was exiting when destination was set to .
+----------------------------
+revision 1.19
+date: 2023/05/17 20:55:48;  author: rpm;  state: Exp;  lines: +29 -2
+invisible buttons in edm are now invisible when converted to pydm.  added two optional commands to override
+----------------------------
+revision 1.18
+date: 2023/05/12 23:09:36;  author: rpm;  state: Exp;  lines: +67 -16
+quality of life fixes, program will no longer create .ui or .py directories when -d option is a file ending in .ui or .py, confirmation required for any directories with '.' at the tail.  removal of subsystem names from output file name is now an option (--remove-subsyt).  added radio buttons and embedded displays
+----------------------------
+revision 1.17
+date: 2023/02/09 23:20:14;  author: rpm;  state: Exp;  lines: +130 -26
+added and changed options, added basic slider conversion
+----------------------------
+revision 1.16
+date: 2023/02/07 22:06:48;  author: rpm;  state: Exp;  lines: +330 -141
+various features added and bugs fixed :)
+----------------------------
+revision 1.15
+date: 2023/02/03 17:56:10;  author: rpm;  state: Exp;  lines: +1 -1
+fixed typo
+----------------------------
+revision 1.14
+date: 2023/02/03 17:29:25;  author: rpm;  state: Exp;  lines: +4 -4
+fixed bug where script breaks if there is a line with only one point.  These get left out of csv and ui files because they are belived to be mistakes
+----------------------------
+revision 1.13
+date: 2023/02/03 17:10:34;  author: rpm;  state: Exp;  lines: +11 -4
+added -o option to not add _autogen into resulting file name
+----------------------------
+revision 1.12
+date: 2023/02/01 00:35:59;  author: rpm;  state: Exp;  lines: +4 -3
+fixed bug when converting visibility rules with no PV
+----------------------------
+revision 1.11
+date: 2023/02/01 00:05:14;  author: rpm;  state: Exp;  lines: +343 -22
+added line widgets, added font size option, added related display widgets
+----------------------------
+revision 1.10
+date: 2023/01/27 18:54:50;  author: rpm;  state: Exp;  lines: +1 -1
+resolved conflicts
+----------------------------
+revision 1.9
+date: 2023/01/27 18:48:44;  author: rpm;  state: Exp;  lines: +288 -34
+added options an help, added new widgets, cleaned up comments, made the bash script obsolete
+----------------------------
+revision 1.8
+date: 2023/01/25 18:19:52;  author: rpm;  state: Exp;  lines: +696 -69
+added conversion for buttons, updated rectangle widget conversion with color, added circle widget conversion
+----------------------------
+revision 1.7
+date: 2023/01/13 19:36:23;  author: rpm;  state: Exp;  lines: +96 -40
+added group handling.  edm groups now get converted to PyDMFrames
+----------------------------
+revision 1.6
+date: 2023/01/12 17:17:46;  author: rpm;  state: Exp;  lines: +10 -12
+removed some print statements used for bug fixing, made comments align
+----------------------------
+revision 1.5
+date: 2023/01/12 17:07:52;  author: rpm;  state: Exp;  lines: +543 -494
+Added font_converter function and implemented it in all relevant widgets ; Added pv_converter function and implemented it in all relevant widgets ; Added geometry_converter function and implemented it in all relevant widgets; Added alignment_converter function and implemented it in all relevant widgets; Added display_mode_converter function and implemented it in all relevant widgets; Added button_label_converter function and implemented it in all relevant widgets; Added alarm_sensitive_converter function and implemented it in all relevant widgets; Added a shell script converter ; Added instructions to add new widget to edm_to_pydm ; Added unconvertable to the main function so convertible widgets don't have to be removed ; Cleaned up comments; Fixed font size bug casing error messages to terminal when loading a display made by the converter; Fixed macro_trans function to only transform macros (was transforming all () to {}) ; Updated PyDMLabels to handle multiple lines of text; Updated all widgets convert to strings then convert to list then convert to pydm; Removed deprecated widget_flag functionality
+----------------------------
+revision 1.4
+date: 2023/01/05 20:56:05;  author: rpm;  state: Exp;  lines: +142 -105
+fixed bug with alignment, added functionality to convert uneditable text control widgets to pydmlabels
+----------------------------
+revision 1.3
+date: 2022/11/23 00:11:03;  author: rpm;  state: Exp;  lines: +2 -2
+changed text monitor widget to convert to a PyDMLabel, was converting to PyDMLineEdit
+----------------------------
+revision 1.2
+date: 2022/10/20 18:16:49;  author: rpm;  state: Exp;  lines: +1 -1
+changed rectangle conversion from PyDMFrame to PyDMDrawingRectangel
+----------------------------
+revision 1.1
+date: 2022/08/25 16:41:58;  author: rpm;  state: Exp;
+Added tool for edm to pydm conversion
+=============================================================================
+
