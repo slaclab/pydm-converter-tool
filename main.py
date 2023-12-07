@@ -2587,50 +2587,18 @@ if __name__ == "__main__":
         print(destination_head)
         args.destination = os.path.join(destination_head, destination_tail)
 
-    if args.recursive:
-        for file in locate(['*.edl'], root=args.input):
-            print("\nConverting: " + file)
-        
-            pydm_file = name_pydm_file(file)
-            head, tail = os.path.split(pydm_file)
-            head=args.destination
-            if not os.path.exists(head):
-                os.mkdir(head)
-            pydm_file = os.path.join(head, tail)
-            csv_file = pydm_file[:-3] + ".csv"
-            if not args.force:
-                if os.path.exists(pydm_file):
-                    overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
-                    if overwrite == "y":
-                        run = Converters(file)
-                        run.main_converter()
-                else:
-                    run = Converters(file)
-                    run.main_converter()
-            else:
-                run = Converters(file)
-                run.main_converter()
-    else:
-        print("Converting: " + args.input)
-        head, tail = os.path.split(args.input)
-        pydm_file=name_pydm_file(args.input)
-        head, tail = os.path.split(pydm_file)
-        head=args.destination
+    file_iterator = locate(['*.edl'], root=args.input) if args.recursive else [args.input]
+    for edm_file in file_iterator:
+        print("\nConverting: " + edm_file)
+
+        pydm_file = name_pydm_file(edm_file)
+        _, tail = os.path.split(pydm_file)
+        head = args.destination
         if not os.path.exists(head):
             os.mkdir(head)
         pydm_file = os.path.join(head, tail)
         csv_file = pydm_file[:-3] + ".csv"
-        if not args.force:
-            if os.path.exists(pydm_file):
-                overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
-                if overwrite == "y":
-                    run = Converters(args.input)
-                    run.main_converter()
-                
-            else:
-                run = Converters(args.input)
-                run.main_converter()
-        else:
-            run = Converters(args.input)
+        if args.force or not os.path.exists(pydm_file) or input(f"Overwrite regular file '{pydm_file}'? (y/n)") == 'y':
+            run = Converters(edm_file)
             run.main_converter()
     print ("Success!")
