@@ -21,117 +21,6 @@ from csv import writer
 import textwrap
 import fnmatch
 
-parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    description=textwrap.dedent('''
-        converts an edm {file}.edl file to a pydm {file}_autogen.ui file and a .csv file for widgets that do not yet have a conversion function
-
-        conversion guide with solutions to common conversion problems
-        -----------------------------------------------
-        PyDMFrame
-        
-        All widgets in an EDM group are placed into a PyDMFrame, this works for many layers of goups
-        -----------------------------------------------
-        QLabel
-
-        "Static Text" without a Visibility PV
-        -----------------------------------------------
-        PyDMLabel
-        If nothing is showing in the label or it is different form Edm change the displayFormat property
-
-        "Static Text" with a Visibility PV
-        "Text Update"
-        "Text Control" with editable not selected
-        "Text Monitor"
-        -----------------------------------------------
-        PyDMLineEdit
-        If nothing is showing in the label or it is different form Edm change the displayFormat property
-
-        "Text Entry"
-        "Text Control" with editable selected
-        -----------------------------------------------
-        PyDMDrawingRectangle
-
-        "Rectangle"
-        -----------------------------------------------
-        PyDMDrawingEllipse
-
-        "Circle"
-        -----------------------------------------------
-        PyDMShellCommand
-
-        "Shell Command"
-        "Related Display" when the -e option is chosen, and the macros are too long for PyDM to handle
-        -----------------------------------------------
-        PyDMPushButton
-
-        "Message Button" with Button Type = Push
-        -----------------------------------------------
-        PyDMEnumComboBox
-
-        "Message Button" with Button Type = Toggle
-        -----------------------------------------------
-        PyDMEnumButton
-
-        "Choice Button"
-        -----------------------------------------------
-        PyDMRelatedDisplayButton
-
-        "Related Display" with no options used
-        -----------------------------------------------
-        PyDMEDMDisplayButton
-
-        "Related Display" with -e or --edm-related option used
-        -----------------------------------------------
-        PyDMDrawingLine
-
-        "Lines" with only two points (one line)
-        -----------------------------------------------
-        PyDMDrawingPolyLine
-
-        "Lines" with more than two points (two or more lines)
-        -----------------------------------------------
-        ''')
-)
-
-parser.add_argument("-o", "--original-file-name", action='store_true', 
-                    help="If chosen the resulting file will be named {file}.ui rather than {file}_autogen.ui (over rides -t option)")
-
-parser.add_argument("-r", "--recursive", action='store_true',
-                    help="Converts all .edl files in a given directory tree to pydm .ui files, input argument must be a directory when this option is used")
-parser.add_argument("-s", "--smaller-font", type=int, default=5, help="EDM font is larger than PyDM font, ammount to decrease the font by, defaults to 5. Larger numbers decrease font more")
-parser.add_argument("-e", "--edm-related", action='store_true', 
-                    help="If chosen all related displays buttons will convert to PyDMEDMRelatedDisplay widgets, converts to PyDMRelatedDisplay widgets by default")
-parser.add_argument("-n", "--no-csv", action='store_true', help="No csv file with overflow widgets is created")
-
-parser.add_argument("-f", "--force", action='store_true', help="Overrides files of the same name without asking")
-
-parser.add_argument("-t", "--tag", type=str, default="autogen", help="Changes the tag added to the output PyDM file {file}_{tag}.ui.  Defaults to _autogen")
-
-parser.add_argument("--remove-subsys", action='store_true', help='removes the subsystem name from created files e.g. pps_{file}.edl -> {file}.ui')
-parser.add_argument("--hide_related", action='store_true', 
-                    help='''
-                    All related display buttons will be invisible if chosen\n
-                    Related display buttons that are invisible in edm will be invisible in pydm by default\n
-                    ''')
-parser.add_argument("--show_related", action='store_true',
-                    help='''
-                    All related display buttons will be visible if chosen\n
-                    Related display buttons that are invisible in edm will be invisible in pydm by default\n
-                    ''')
-parser.add_argument("input", help="Target file to convert, needs to be .edl. If -r option is used all .edl files in given directory tree will be converted")
-parser.add_argument("destination", type=str, default="default", help="Destination directory for output file(s).  Use '.' or 'current' to get output to the directory the you are running the script in.  Works with absolute and relitive paths")
-
-args = parser.parse_intermixed_args()
-
-#make sure file argument is a .edl file
-if not args.recursive:
-    if not args.input.endswith('.edl'):
-        print ("ERROR: input has the incorrect file type, .edl file type required. Exiting")
-        sys.exit(1)
-if args.show_related == True and args.hide_related == True:
-    print("ERROR: --hide_related and --show_related are mutualy exclusive.  Exiting")
-    sys.exit(1)
 class Converters(object):
     def __init__(self, input):
         with open(input, 'r') as edm:
@@ -2552,37 +2441,171 @@ def subsys_remove(pydm_file):
         return pydm_file
 
 
-#main function actualy running!
-#don't want users accidentaly creating directories with .ui or .py
-destination_head, destination_tail = os.path.split(args.destination)
-if destination_tail.__contains__(".ui") or destination_tail.__contains__(".py"):
-    print("\nERROR: (-d, -destination) option expects a directory, not a file, exiting program\n")
-    sys.exit()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent('''
+            converts an edm {file}.edl file to a pydm {file}_autogen.ui file and a .csv file for widgets that do not yet have a conversion function
 
-if args.destination == '.' or args.destination == 'current':
-    args.destination = os.getcwd()
-elif destination_tail == '..':
-    pass
-elif destination_tail.__contains__("."):
-    save = input(f"WARNING: (-d, -destination) option expects a directory, not a file.  Save output file(s) to directory '{args.destination}'? (y/n)")
-    if save != "y":
-        print("\nexiting program\n")
+            conversion guide with solutions to common conversion problems
+            -----------------------------------------------
+            PyDMFrame
+        
+            All widgets in an EDM group are placed into a PyDMFrame, this works for many layers of goups
+            -----------------------------------------------
+            QLabel
+
+            "Static Text" without a Visibility PV
+            -----------------------------------------------
+            PyDMLabel
+            If nothing is showing in the label or it is different form Edm change the displayFormat property
+
+            "Static Text" with a Visibility PV
+            "Text Update"
+            "Text Control" with editable not selected
+            "Text Monitor"
+            -----------------------------------------------
+            PyDMLineEdit
+            If nothing is showing in the label or it is different form Edm change the displayFormat property
+
+            "Text Entry"
+            "Text Control" with editable selected
+            -----------------------------------------------
+            PyDMDrawingRectangle
+
+            "Rectangle"
+            -----------------------------------------------
+            PyDMDrawingEllipse
+
+            "Circle"
+            -----------------------------------------------
+            PyDMShellCommand
+
+            "Shell Command"
+            "Related Display" when the -e option is chosen, and the macros are too long for PyDM to handle
+            -----------------------------------------------
+            PyDMPushButton
+
+            "Message Button" with Button Type = Push
+            -----------------------------------------------
+            PyDMEnumComboBox
+
+            "Message Button" with Button Type = Toggle
+            -----------------------------------------------
+            PyDMEnumButton
+
+            "Choice Button"
+            -----------------------------------------------
+            PyDMRelatedDisplayButton
+
+            "Related Display" with no options used
+            -----------------------------------------------
+            PyDMEDMDisplayButton
+
+            "Related Display" with -e or --edm-related option used
+            -----------------------------------------------
+            PyDMDrawingLine
+
+            "Lines" with only two points (one line)
+            -----------------------------------------------
+            PyDMDrawingPolyLine
+
+            "Lines" with more than two points (two or more lines)
+            -----------------------------------------------
+            ''')
+    )
+
+    parser.add_argument("-o", "--original-file-name", action='store_true', 
+                        help="If chosen the resulting file will be named {file}.ui rather than {file}_autogen.ui (over rides -t option)")
+
+    parser.add_argument("-r", "--recursive", action='store_true',
+                        help="Converts all .edl files in a given directory tree to pydm .ui files, input argument must be a directory when this option is used")
+    parser.add_argument("-s", "--smaller-font", type=int, default=5, help="EDM font is larger than PyDM font, ammount to decrease the font by, defaults to 5. Larger numbers decrease font more")
+    parser.add_argument("-e", "--edm-related", action='store_true', 
+                        help="If chosen all related displays buttons will convert to PyDMEDMRelatedDisplay widgets, converts to PyDMRelatedDisplay widgets by default")
+    parser.add_argument("-n", "--no-csv", action='store_true', help="No csv file with overflow widgets is created")
+
+    parser.add_argument("-f", "--force", action='store_true', help="Overrides files of the same name without asking")
+
+    parser.add_argument("-t", "--tag", type=str, default="autogen", help="Changes the tag added to the output PyDM file {file}_{tag}.ui.  Defaults to _autogen")
+
+    parser.add_argument("--remove-subsys", action='store_true', help='removes the subsystem name from created files e.g. pps_{file}.edl -> {file}.ui')
+    parser.add_argument("--hide_related", action='store_true', 
+                        help='''
+                        All related display buttons will be invisible if chosen\n
+                        Related display buttons that are invisible in edm will be invisible in pydm by default\n
+                        ''')
+    parser.add_argument("--show_related", action='store_true',
+                        help='''
+                        All related display buttons will be visible if chosen\n
+                        Related display buttons that are invisible in edm will be invisible in pydm by default\n
+                        ''')
+    parser.add_argument("input", help="Target file to convert, needs to be .edl. If -r option is used all .edl files in given directory tree will be converted")
+    parser.add_argument("destination", type=str, default="default", help="Destination directory for output file(s).  Use '.' or 'current' to get output to the directory the you are running the script in.  Works with absolute and relitive paths")
+
+    args = parser.parse_intermixed_args()
+
+    #make sure file argument is a .edl file
+    if not args.recursive:
+        if not args.input.endswith('.edl'):
+            print ("ERROR: input has the incorrect file type, .edl file type required. Exiting")
+            sys.exit(1)
+    if args.show_related == True and args.hide_related == True:
+        print("ERROR: --hide_related and --show_related are mutualy exclusive.  Exiting")
+        sys.exit(1)
+
+    #don't want users accidentally creating directories with .ui or .py
+    destination_head, destination_tail = os.path.split(args.destination)
+    if destination_tail.__contains__(".ui") or destination_tail.__contains__(".py"):
+        print("\nERROR: (-d, -destination) option expects a directory, not a file, exiting program\n")
         sys.exit()
 
-if destination_head == "":
-    destination_head = os.getcwd()
-    args.destination = os.path.join(destination_head, destination_tail)
+    if args.destination == '.' or args.destination == 'current':
+        args.destination = os.getcwd()
+    elif destination_tail == '..':
+        pass
+    elif destination_tail.__contains__("."):
+        save = input(f"WARNING: (-d, -destination) option expects a directory, not a file.  Save output file(s) to directory '{args.destination}'? (y/n)")
+        if save != "y":
+            print("\nexiting program\n")
+            sys.exit()
 
-if not destination_head.startswith("/"):
-    destination_head = os.getcwd() + "/" + destination_head
-    print(destination_head)
-    args.destination = os.path.join(destination_head, destination_tail)
+    if destination_head == "":
+        destination_head = os.getcwd()
+        args.destination = os.path.join(destination_head, destination_tail)
 
-if args.recursive:
-    for file in locate(['*.edl'], root=args.input):
-        print("\nConverting: " + file)
+    if not destination_head.startswith("/"):
+        destination_head = os.getcwd() + "/" + destination_head
+        print(destination_head)
+        args.destination = os.path.join(destination_head, destination_tail)
+
+    if args.recursive:
+        for file in locate(['*.edl'], root=args.input):
+            print("\nConverting: " + file)
         
-        pydm_file = name_pydm_file(file)
+            pydm_file = name_pydm_file(file)
+            head, tail = os.path.split(pydm_file)
+            head=args.destination
+            if not os.path.exists(head):
+                os.mkdir(head)
+            pydm_file = os.path.join(head, tail)
+            csv_file = pydm_file[:-3] + ".csv"
+            if not args.force:
+                if os.path.exists(pydm_file):
+                    overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
+                    if overwrite == "y":
+                        run = Converters(file)
+                        run.main_converter()
+                else:
+                    run = Converters(file)
+                    run.main_converter()
+            else:
+                run = Converters(file)
+                run.main_converter()
+    else:
+        print("Converting: " + args.input)
+        head, tail = os.path.split(args.input)
+        pydm_file=name_pydm_file(args.input)
         head, tail = os.path.split(pydm_file)
         head=args.destination
         if not os.path.exists(head):
@@ -2593,35 +2616,13 @@ if args.recursive:
             if os.path.exists(pydm_file):
                 overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
                 if overwrite == "y":
-                    run = Converters(file)
+                    run = Converters(args.input)
                     run.main_converter()
+                
             else:
-                run = Converters(file)
-                run.main_converter()
-        else:
-            run = Converters(file)
-            run.main_converter()
-else:
-    print("Converting: " + args.input)
-    head, tail = os.path.split(args.input)
-    pydm_file=name_pydm_file(args.input)
-    head, tail = os.path.split(pydm_file)
-    head=args.destination
-    if not os.path.exists(head):
-        os.mkdir(head)
-    pydm_file = os.path.join(head, tail)
-    csv_file = pydm_file[:-3] + ".csv"
-    if not args.force:
-        if os.path.exists(pydm_file):
-            overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
-            if overwrite == "y":
                 run = Converters(args.input)
                 run.main_converter()
-                
         else:
             run = Converters(args.input)
             run.main_converter()
-    else:
-        run = Converters(args.input)
-        run.main_converter()
-print ("Success!")
+    print ("Success!")
