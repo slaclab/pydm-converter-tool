@@ -21,715 +21,8 @@ from csv import writer
 import textwrap
 import fnmatch
 
-parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    description=textwrap.dedent('''
-        converts an edm {file}.edl file to a pydm {file}_autogen.ui file and a .csv file for widgets that do not yet have a conversion function
-
-        conversion guide with solutions to common conversion problems
-        -----------------------------------------------
-        PyDMFrame
-        
-        All widgets in an EDM group are placed into a PyDMFrame, this works for many layers of goups
-        -----------------------------------------------
-        QLabel
-
-        "Static Text" without a Visibility PV
-        -----------------------------------------------
-        PyDMLabel
-        If nothing is showing in the label or it is different form Edm change the displayFormat property
-
-        "Static Text" with a Visibility PV
-        "Text Update"
-        "Text Control" with editable not selected
-        "Text Monitor"
-        -----------------------------------------------
-        PyDMLineEdit
-        If nothing is showing in the label or it is different form Edm change the displayFormat property
-
-        "Text Entry"
-        "Text Control" with editable selected
-        -----------------------------------------------
-        PyDMDrawingRectangle
-
-        "Rectangle"
-        -----------------------------------------------
-        PyDMDrawingEllipse
-
-        "Circle"
-        -----------------------------------------------
-        PyDMShellCommand
-
-        "Shell Command"
-        "Related Display" when the -e option is chosen, and the macros are too long for PyDM to handle
-        -----------------------------------------------
-        PyDMPushButton
-
-        "Message Button" with Button Type = Push
-        -----------------------------------------------
-        PyDMEnumComboBox
-
-        "Message Button" with Button Type = Toggle
-        -----------------------------------------------
-        PyDMEnumButton
-
-        "Choice Button"
-        -----------------------------------------------
-        PyDMRelatedDisplayButton
-
-        "Related Display" with no options used
-        -----------------------------------------------
-        PyDMEDMDisplayButton
-
-        "Related Display" with -e or --edm-related option used
-        -----------------------------------------------
-        PyDMDrawingLine
-
-        "Lines" with only two points (one line)
-        -----------------------------------------------
-        PyDMDrawingPolyLine
-
-        "Lines" with more than two points (two or more lines)
-        -----------------------------------------------
-        ''')
-)
-
-parser.add_argument("-o", "--original-file-name", action='store_true', 
-                    help="If chosen the resulting file will be named {file}.ui rather than {file}_autogen.ui (over rides -t option)")
-
-parser.add_argument("-r", "--recursive", action='store_true',
-                    help="Converts all .edl files in a given directory tree to pydm .ui files, input argument must be a directory when this option is used")
-parser.add_argument("-s", "--smaller-font", type=int, default=5, help="EDM font is larger than PyDM font, ammount to decrease the font by, defaults to 5. Larger numbers decrease font more")
-parser.add_argument("-e", "--edm-related", action='store_true', 
-                    help="If chosen all related displays buttons will convert to PyDMEDMRelatedDisplay widgets, converts to PyDMRelatedDisplay widgets by default")
-parser.add_argument("-n", "--no-csv", action='store_true', help="No csv file with overflow widgets is created")
-
-parser.add_argument("-f", "--force", action='store_true', help="Overrides files of the same name without asking")
-
-parser.add_argument("-t", "--tag", type=str, default="autogen", help="Changes the tag added to the output PyDM file {file}_{tag}.ui.  Defaults to _autogen")
-
-parser.add_argument("--remove-subsys", action='store_true', help='removes the subsystem name from created files e.g. pps_{file}.edl -> {file}.ui')
-parser.add_argument("--hide_related", action='store_true', 
-                    help='''
-                    All related display buttons will be invisible if chosen\n
-                    Related display buttons that are invisible in edm will be invisible in pydm by default\n
-                    ''')
-parser.add_argument("--show_related", action='store_true',
-                    help='''
-                    All related display buttons will be visible if chosen\n
-                    Related display buttons that are invisible in edm will be invisible in pydm by default\n
-                    ''')
-parser.add_argument("input", help="Target file to convert, needs to be .edl. If -r option is used all .edl files in given directory tree will be converted")
-parser.add_argument("destination", type=str, default="default", help="Destination directory for output file(s).  Use '.' or 'current' to get output to the directory the you are running the script in.  Works with absolute and relitive paths")
-
-args = parser.parse_intermixed_args()
-
-#make sure file argument is a .edl file
-if not args.recursive:
-    if not args.input.endswith('.edl'):
-        print ("ERROR: input has the incorrect file type, .edl file type required. Exiting")
-        sys.exit(1)
-if args.show_related == True and args.hide_related == True:
-    print("ERROR: --hide_related and --show_related are mutualy exclusive.  Exiting")
-    sys.exit(1)
-class Converters(object):
-    def __init__(self, input):
-        with open(input, 'r') as edm:
-            self.edmfile = edm.readlines()
-
-
-
-        self.PydmLabel_count=0
-        self.LineEdit_count=0
-        self.Label_count=0
-        self.Rectangle_count=0
-        self.Circle_count =0
-        self.Shell_Command_count=0
-        self.Group_count=0
-        self.Push_Button_count = 0
-        self.Enum_Combo_Box_count = 0
-        self.Pydm_Related_count = 0
-        self.Edm_Related_count = 0
-        self.Widget_Line_count=0
-        self.Poly_Line_count=0
-        self.Enum_Button_count=0
-        self.Slider_count=0
-        self.group_positions = ['0,0']
-
-        #should probably find a way to not hard code this file, but have it stick, so other labs can use it?  Works on prod and mcc
-        try:
-            self.edm_color_in_xml = self.color_dic_gen("/afs/slac/g/lcls/tools/edm/config/colors.list")
-            on_mcc = True
-        except:
-            print("not on mcclogin")
-            on_mcc = False
-        
-        if not on_mcc:
-            try:
-                self.edm_color_in_xml = self.color_dic_gen("/usr/local/lcls/tools/edm/config/colors.list")
-            except:
-                print("ERROR, could not find colors.list, exiting\n")
-                sys.exit(1)
-
-    def macro_trans(self, string):
-        """"
-        Transphorm the macro signature in a string from $(macro) to ${macro}
-
-        Parameters
-        ----------
-        string : string
-            string that will have it's macro signature converted
-
-        Returns
-        -------
-        result : string
-            parameter string that has converted macro signature
-
-        ex: string = "text $(macro) text (note)"
-            result = "text ${macro} text (note)"
-        """
-        macro = r"\$(\()(.+?)(\))"
-        result = re.sub(macro, r"${\2}", string)
-        return result
-
-    def color_dic_gen(self, color_file):
-        """
-        Input colors.list file from edm.  This file is used for defining colors in edm.
-        used once to generate the dictionary wich is then used to convert the colors to xml
-        This will probably have to be configured for different labs
-
-        Parameters
-        ----------
-        color_file : string
-            file path to color.list file used by edm to define colors by number, it's basicaly a dictionary that needs some cleaning
-
-        Returns
-        -------
-        color_dictionary : dictionary
-            dictionary that holds the xml rgb for the related color code in edm
-            ex:
-            "0" = "<red>255</red>
-                   <green>255</green>
-                   <blue>255</blue>"
-        """
-        color_dictionary = {}
-        with open (color_file, "r") as edmColorsFile:
-            for line in edmColorsFile:
-                if line.startswith("static"):
-                    splitComment = line.split("#")
-                    splitColorTitle = splitComment[0].split("\"")
-                    reconverged = splitColorTitle[0]+splitColorTitle[2]
-                    cleanLine = re.sub("[^0-9| ]", "", reconverged)
-                    color_list = cleanLine.split()
-
-                    for i in range(1,color_list.__len__()):
-                        color_list[i] = int(int(color_list[i])/257)
-
-                    color_dictionary.update({f"{color_list[0]}" : f"<red>{color_list[1]}</red>\n<green>{color_list[2]}</green>\n<blue>{color_list[3]}</blue>\n"})
-        return color_dictionary
-
-    def alignment_converter(self, edmline, pydm):
-        """
-        converts the alignment properties in edm to pydm
-        AlignVCenter is default in pydm, not explicitly adding it introduces a bug though, so it is included here
-        
-        """
-
-        pydm.writelines('<property name="alignment">\n')
-
-        if edmline.__contains__('center'):
-            pydm.writelines('<set>Qt::AlignCenter|Qt::AlignVCenter</set>\n</property>\n')
-
-        if edmline.__contains__('left'):
-            pydm.writelines('<set>Qt::AlignLeft|Qt::AlignVCenter</set>\n</property>\n')
-
-        if edmline.__contains__('right'):
-            pydm.writelines('<set>Qt::AlignRight|Qt::AlignVCenter</set>\n</property>\n')
-
-    def geometry_converter(self, edmline, pydm, width_increase=0, height_increase=0):
-        """
-        Adds the x position, y position, height, and width of a widget from edm to the geometry property in pydm
-        width_increase and height_increase are for widgets that need more space in pydm, ie polylines
-        """
-        
-        prop = edmline.strip().split()
-        if prop[0] == 'x':
-            pydm.writelines('<property name="geometry">\n<rect>\n')
-            group_position = self.group_positions[len(self.group_positions)-1].split(',')
-            prop[1] = int(prop[1]) - int(group_position[0])
-
-        if prop[0] == 'y':
-            group_position = self.group_positions[len(self.group_positions)-1].split(',')
-            prop[1] = int(prop[1]) - int(group_position[1])
-
-
-        if prop[0] == 'w':
-            prop[0] = 'width'
-            #some pydm drawings don't render for height or width less than 5
-            if float(prop[1])<5:
-                prop[1]=5
-            prop[1] = int(prop[1]) + width_increase
-        elif prop[0] == 'h':
-            prop[0] = 'height'
-            #some pydm drawings don't render for height or width less than 5
-            if float(prop[1])<5:
-                prop[1]=5
-            prop[1] = int(prop[1]) + height_increase
-        lines = [f"<{prop[0]}>{prop[1]}</{prop[0]}>\n"]
-        if prop[0] == 'height':
-            lines.append("</rect>\n")
-            lines.append("</property>\n")
-        pydm.writelines(lines)
-
-    def str_to_list(self, str1):
-        """
-        Turn a string into a list broken apart by the new line character
-        """
-        list1 = list(str1.split("\n"))
-        return list1
-
-    def xml_escape_characters(self, string):
-        """
-        Converts litterals to escape characters in xml
-        '&' -> '&amp;'
-        '<' -> '&lt;'
-        '>' -> '&gt;'
-        '"' -> '&quot;'
-        ''' -> '&apos;'
-        Parameters
-        ----------
-        string : string
-            The string that needs it's literal characters converted to xml escape characters
-
-        Returns
-        -------
-        string : string
-            The input string with it's literal characters converted to xml escape characters
-
-        example
-        -------
-        string = self.xml_escape_characters(string)
-        """
-        string = string.replace("&", "&amp;")
-        string = string.replace("<", "&lt;")
-        string = string.replace(">", "&gt;")
-        string = string.replace("\\\"", "&quot;")
-        string = string.replace("'", "&apos;")
-        return string
-
-    def font_converter(self, edmline, pydm):
-        """
-        Adds the font size, italics, and bold
-        """
-
-        fontline = edmline
-        fontlist = fontline.strip("\"").split("-")
-        fontsize_str = fontlist[3]
-        fontsize_str = fontsize_str.replace(".0","")
-        #subtract from fontsize(pydm font is larger than edm)
-        fontsize = int(fontsize_str) - args.smaller_font
-        pydm.writelines('<property name="font">\n<font>\n')
-        pydm.writelines('<pointsize>' + str(fontsize) + '</pointsize>\n')
-
-        italic_search = '-'.join(fontline.split('-')[2:])
-
-        # method to search for italic and bold
-        if italic_search.__contains__('i') and fontline.__contains__('bold'):
-            pydm.writelines(["<italic>true</italic>\n",
-                             "<weight>75</weight>\n",
-                             "<bold>true</bold>\n",
-                             "</font>\n",
-                             "</property>\n"])
-        # method to search for only italic
-        elif italic_search.__contains__('i'):
-            pydm.writelines('<italic>true</italic>\n</font>\n</property>\n')
-
-        # method to search for only bold
-        elif fontline.__contains__('bold'):
-            pydm.writelines('<weight>75</weight>\n<bold>true</bold>\n</font>\n</property>\n')
-
-        elif italic_search.__contains__('r'):
-            pydm.writelines('</font>\n</property>\n')
-
-    def pv_converter(self, edmline, pydm):
-        """
-        Adds the control pv into the control pv in pydm, could be expanded for none control pvs
-        """
-        prop = edmline.strip().split()
-        pv = prop[1].strip('"')
-        cleaned_pv = self.macro_trans(pv)
-        lines = ["<property name=\"channel\" stdset=\"0\">\n",
-                 f"<string>{cleaned_pv}</string>\n",
-                 "</property>\n"]
-        pydm.writelines(lines)
-
-    def alarm_sensitive_content_converter(self, widget_string, pydm):
-        """
-        Adds the alarmSensitiveContent property to a pydm widget
-        """
-        if widget_string.__contains__("fillAlarm") or widget_string.__contains__("fgAlarm"):
-            pydm.writelines(["<property name=\"alarmSensitiveContent\" stdset=\"0\">\n",
-                            "<bool>true</bool>\n",
-                            "</property>\n"])
-        else:
-            pydm.writelines(["<property name=\"alarmSensitiveContent\" stdset=\"0\">\n",
-                            "<bool>false</bool>\n",
-                            "</property>\n"])
-
-    def alarm_sensitive_border_converter(self, widget_string, pydm):
-        """
-        Adds the alarmSensitiveBorder property to a pydm widget
-        """
-        if widget_string.__contains__("lineAlarm") or widget_string.__contains__("fgAlarm"):
-            pydm.writelines(["<property name=\"alarmSensitiveBorder\" stdset=\"0\">\n",
-                             "<bool>true</bool>\n",
-                             "</property>\n"]) 
-        else:
-            pydm.writelines(["<property name=\"alarmSensitiveBorder\" stdset=\"0\">\n",
-                             "<bool>false</bool>\n",
-                             "</property>\n"]) 
-    
-    def forground_color_converter(self, edmline, pydm):
-        """
-        Writes the forground color property for the widget
-        for a lot of widgets the "forground color" is the "penColor" (boarder color)
-
-        Parameters
-        ----------
-        edmline : string
-            The current line the widget converter is looking at in the edm file
-        pydm : file
-            pydm file the widget gets writen to
-
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        if edmline.startswith("lineColor"):
-            line_list = edmline.split()
-            color_index = line_list[2]
-            pydm.writelines(["<property name=\"penStyle\" stdset=\"0\">\n",
-                             "<enum>Qt::SolidLine</enum>\n"
-                             "</property>\n"
-                             "<property name=\"penColor\" stdset=\"0\">"
-                             "<color>\n",
-                            f"{self.edm_color_in_xml.get(color_index)}",
-                             "</color>\n</property>\n"])
-
-
-
-    def background_color_converter(self, edmline, pydm, widget_string):
-        """
-        Writes the background color property for the widget
-
-        Parameters
-        ----------
-        edmline : string
-            The current line the widget converter is looking at in the edm file
-        pydm : file
-            pydm file the widget gets writen to
-        widget_string : string
-            All of the widget properites from the edm file in string form, separated by \n
-            needed as not all of the fill and fillColor properties are not on the same line
-            in the edm file
-
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-
-        if widget_string.__contains__("fill\n") and edmline.startswith("fillColor"):
-            #brush = fill
-            line_list = edmline.split()
-            color_index = line_list[2]
-            pydm.writelines(["<property name=\"brush\" stdset=\"0\">\n",
-                             "<brush brushstyle=\"SolidPattern\">\n",
-                             "<color alpha=\"255\">\n",
-                            f"{self.edm_color_in_xml.get(color_index)}",
-                             "</color>\n</brush>\n</property>\n"])
-        elif edmline.startswith("fillColor"):
-            #brush != fill
-            line_list = edmline.split()
-            color_index = line_list[2]
-            pydm.writelines(["<property name=\"brush\" stdset=\"0\">\n",
-                             "<brush brushstyle=\"NoBrush\">\n",
-                             "<color alpha=\"255\">\n",
-                            f"{self.edm_color_in_xml.get(color_index)}",
-                             "</color>\n</brush>\n</property>\n"])
-
-    def line_width_converter(self, edmline, pydm):
-        """
-        Writes the penWidth (PYDM) property for the widget from the lineWidth (EDM) property
-
-        Parameters
-        ----------
-        edmline : string
-            All of the display mode properites from the edm widget in string form
-        pydm : pydm file the widget gets writen to
-        
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        temp = edmline.split(" ")
-        pydm.writelines(["<property name=\"penWidth\" stdset=\"0\">\n",
-                        f"<double>{temp[1]}</double>\n"
-                         "</property>\n"])
-
-    def line_style_converter(self, edmline, pydm):
-        """
-        Converts the line style
-        """
-        if edmline.__contains__("dash"):
-            pydm.writelines(["<property name=\"penStyle\" stdset=\"0\">\n",
-                            "<enum>Qt::DashLine</enum>\n"
-                            "</property>\n"])
-
-    def button_label_converter(self, edmline, pydm):
-        """
-        Writes the button label property for the widget
-
-        Parameters
-        ----------
-        edmline : string
-            All of the display mode properites from the edm widget in string form
-        pydm : pydm file the widget gets writen to
-        
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        label_line = str(edmline)
-        label_list = label_line.split("\"")
-
-        #removes the quotes from the button label
-        label = label_list[1]
-        label = label.replace("...","")
-        label = self.xml_escape_characters(label)
-        label = self.macro_trans(label)
-        lines = ["<property name=\"text\">\n",
-                 f"<string>{label}</string>\n",
-                 "</property>\n"]
-        pydm.writelines(lines)
-
-    def display_mode_converter(self, edmline, pydm):
-        """
-        Writes the display mode property for the widget
-
-        Parameters
-        ----------
-        edmline : string
-            All of the display mode properites from the edm widget in string form
-        pydm : pydm file the widget gets writen to
-        
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        pydm.writelines('<property name="displayFormat" stdset="0">\n')
-
-        # deafault, decimal, hex, engineer, exp
-        if edmline.__contains__('decimal'):
-            pydm.writelines('<enum>PyDMLabel::Decimal</enum>\n</property>\n')
-        elif edmline.__contains__('hex'):
-            pydm.writelines('<enum>PyDMLabel::Hex</enum>\n</property>\n')
-        elif edmline.__contains__('engineer') or edmline.__contains__('exp'):
-            pydm.writelines('<enum>PyDMLabel::Exponential</enum>\n</property>\n')
-        elif edmline.__contains__('string'):
-            pydm.writelines('<enum>PyDMLabel::String</enum>\n</property>\n')
-        else:
-            pydm.writelines('<enum>PyDMLabel::Default</enum>\n</property>\n')
-
-    def display_mode_edit_converter(self, edmline, pydm):
-        """
-        Writes the display mode property for the widget
-
-        Parameters
-        ----------
-        edmline : string
-            All of the display mode properites from the edm widget in string form
-        pydm : pydm file the widget gets writen to
-        
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        pydm.writelines('<property name="displayFormat" stdset="0">\n')
-
-        # deafault, decimal, hex, engineer, exp
-        if edmline.__contains__('decimal'):
-            pydm.writelines('<enum>PyDMLineEdit::Decimal</enum>\n</property>\n')
-        elif edmline.__contains__('hex'):
-            pydm.writelines('<enum>PyDMLineEdit::Hex</enum>\n</property>\n')
-        elif edmline.__contains__('engineer') or edmline.__contains__('exp'):
-            pydm.writelines('<enum>PyDMLineEdit::Exponential</enum>\n</property>\n')
-        elif edmline.__contains__('string'):
-            pydm.writelines('<enum>PyDMLineEdit::String</enum>\n</property>\n')
-        else:
-            pydm.writelines('<enum>PyDMLineEdit::Default</enum>\n</property>\n')
-
-    def visibility_converter(self, visibility_string, pydm):
-        """
-        Writes the visiblity rules for the widget
-
-        Parameters
-        ----------
-        visibility_string : string
-            All of the visibility properites from the edm widget in string form, separated by \n
-        pydm : pydm file the widget gets writen to
-
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-
-        if visibility_string.__contains__("visMax"):
-            has_vis_max = True
-        else:
-            has_vis_max = False
-
-        if visibility_string.__contains__("visMin"):
-            has_vis_min = True
-        else:
-            has_vis_min = False
-
-        if visibility_string.__contains__("visInvert"):
-            vis_invert = 'not '
-        else:
-            vis_invert = ''
-
-        visibility_list = self.str_to_list(visibility_string)
-        for edmline in visibility_list:
-            if edmline.startswith("visMax"):
-                temp_max = edmline.strip().split()
-                vis_max = temp_max[1].strip('"')
-
-            if edmline.startswith("visMin"):
-                temp_min = edmline.strip().split()
-                vis_min = temp_min[1].strip('"')
-
-            if edmline.startswith('visPv'):
-                temp_pv = edmline.strip().split()
-                clean_temp_pv = temp_pv[1].strip('"')
-                vis_pv = self.macro_trans(clean_temp_pv)
-        
-        else:
-            pydm.writelines(["<property name=\"rules\" stdset=\"0\">\n<string>[{",
-                                "&quot;name&quot;: &quot;visibility_from_edm&quot;, ",
-                                "&quot;property&quot;: &quot;Visible&quot;, ",
-                                "&quot;initial_value&quot;: &quot;True&quot;, "])
-            if has_vis_min and has_vis_max:
-                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &gt;={vis_min} and ch[0] &lt; {vis_max}&quot;, ")
-            elif has_vis_min and not has_vis_max:
-                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &gt;={vis_min}&quot;, ")
-            elif not has_vis_min and has_vis_max:
-                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &lt; {vis_max}&quot;, ")
-            elif not has_vis_min and not has_vis_max:
-                pydm.writelines(f"&quot;expression&quot;: &quot;ch[0]&quot;, ")
-
-
-            pydm.writelines(["&quot;channels&quot;: [{",
-                                f"&quot;channel&quot;: &quot;{vis_pv}&quot;, ",
-                                "&quot;trigger&quot;: true, "
-                                "&quot;use_enum&quot;: false}]}]</string>\n</property>\n"])
-
-    def main_converter(self):
-        """
-        Main conversion function, all conversion occures in this function
-        Converts all properties to do with the from
-        Reads in one widget at a time, converting it to a string
-        Uses the widget string to identify the which widget it should be converted into, and calls appropriate conversion function
-        If the widget is unconvertable converts it adds it to a csv file
-
-        Parameters
-        ----------
-        none : uses the global variable edm_file
-
-        Returns
-        -------
-        none : writes to the pydm_file
-        """
-        print(f'Output: {pydm_file}')
-        print(f'Output: {csv_file}')
-        in_screen_prop = False #True if reading in screen properties from edm, False otherwise
-
-        #counters for each widget type
-        #necissary for unique widget names in pydm
-        #Step 1
-
-        line_count=0
-
-
-        with open(pydm_file, 'w') as pydm:
-            for i, edmline in enumerate(self.edmfile):
-
-                if edmline.startswith('4 0 1'):
-                    in_screen_prop = True
-                    pydm.writelines(["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
-                                     "<ui version=\"4.0\">\n",
-                                     "<class>Form</class>\n",
-                                     "<widget class=\"QWidget\" name=\"Form\">\n"
-                                     "<property name=\"geometry\">\n"
-                                     "<rect>\n<x>0</x>\n<y>0</y>\n"])
-
-                #convert screen width
-                if edmline.startswith('w ') and in_screen_prop:
-                    w_position = edmline[2:]
-                    w_position = w_position.replace("\n", "")
-                    pydm.writelines("<width>" + w_position + "</width>\n")
-
-                #convert screen height
-                elif edmline.startswith('h ') and in_screen_prop:
-                    h_position = edmline[2:]
-                    h_position = h_position.replace("\n", "")
-                    pydm.writelines("<height>" + h_position + "</height>\n")
-                    pydm.writelines('</rect>\n</property>\n')
-                    #make it bigger to account for title bar :)
-                    h_position = int(h_position) + 65
-                    pydm.writelines(["<property name=\"minimumSize\">\n",
-                                    "<size>\n",
-                                    f"<width>{w_position}</width>\n",
-                                    f"<height>{h_position}</height>\n",
-                                    "</size>\n",
-                                    "</property>\n"])
-
-                #convert screen title
-                elif edmline.startswith('title') and in_screen_prop:
-                    screen_title = edmline[7:-2]
-                    screen_title = screen_title.replace("\n", "")
-                    pydm.writelines('<property name="windowTitle">\n')
-
-                    # method to change it into macro w ${}
-                    macro = r"\$(\()(.+?)(\))"
-                    result = re.sub(macro, r"${\2}", screen_title)
-
-                    pydm.writelines("<string>" + str(result) + "</string>\n")
-                    pydm.writelines('</property>\n')
-
-                #end of screen properties
-                #set in_screen_prop to false so non-screen properties are not converted
-                if edmline.startswith('endScreenProperties'):
-                    in_screen_prop = False
-                    line_count = i
-
-        self.widgets_converter(line_count)
-
-        self.end_xml()
-
-    def widgets_converter(self, line_count):
-        """
-        Parameters
-        ----------
-        line_count : int
-            The line of the edm file that the screen properties ends at
-
-        Returns
-        -------
-        none : writes to pydm (.ui) file
-        """
-        
-        pydm = open(pydm_file, 'a')
-        #add layout to display
+def set_form_layout(filepath):
+    with open(filepath, 'a') as pydm:
         pydm.writelines(["<layout class=\"QVBoxLayout\" name=\"verticalLayout_3\">\n",
                         "<property name=\"spacing\">\n",
                         "<number>0</number>\n",
@@ -746,7 +39,9 @@ class Converters(object):
                         "<property name=\"bottomMargin\">\n",
                         "<number>9</number>\n",
                         "</property>\n"])
-        #add fancy title bar
+
+def create_title_bar(filepath):
+    with open(filepath, 'a') as pydm:
         pydm.writelines(["<item>\n",
                         "<widget class=\"QFrame\" name=\"TitleBox\">\n",
                         "<property name=\"sizePolicy\">\n",
@@ -979,19 +274,621 @@ class Converters(object):
                         "</layout>\n",
                         "</widget>\n",
                         "</item>\n",])
-        #add background widget
+
+def create_background_widget(filepath):
+    with open(filepath, 'a') as pydm:
         pydm.writelines(["<item>\n"
-                        "<widget class=\"QFrame\" name=\"background\">\n",
+                        "<widget class=\"QFrame\" name=\"Background\">\n",
                         "<property name=\"toolTip\">\n"
                         "<string/>\n"
                         "</property>\n"
                         "<property name=\"styleSheet\">\n"
-                        "<string notr=\"true\">QWidget #background {\n"
-	                    "background-color: rgb(193, 193, 193);\n"
-	                    "border-radius: 0px;\n"
+                        "<string notr=\"true\">QWidget #Background {\n"
+                        "background-color: rgb(193, 193, 193);\n"
+                        "border-radius: 0px;\n"
                         "}</string>\n"
                         "</property>\n"])
-        pydm.close()
+
+def write_display_template(filepath):
+    set_form_layout(filepath)
+    create_title_bar(filepath)
+    create_background_widget(filepath)
+
+class Converters(object):
+    def __init__(self, input):
+        with open(input, 'r') as edm:
+            self.edmfile = edm.readlines()
+
+        self.PydmLabel_count=0
+        self.LineEdit_count=0
+        self.Label_count=0
+        self.Rectangle_count=0
+        self.Circle_count =0
+        self.Shell_Command_count=0
+        self.Group_count=0
+        self.Push_Button_count = 0
+        self.Enum_Combo_Box_count = 0
+        self.Pydm_Related_count = 0
+        self.Edm_Related_count = 0
+        self.Widget_Line_count=0
+        self.Poly_Line_count=0
+        self.Enum_Button_count=0
+        self.Slider_count=0
+        self.group_positions = ['0,0']
+
+        #TODO: should probably find a way to not hard code this file, but have it stick, so other labs can use it?  Works on prod and mcc
+        try:
+            self.edm_color_in_xml = self.color_dic_gen("/afs/slac/g/lcls/tools/edm/config/colors.list")
+            on_mcc = True
+        except:
+            print("not on mcclogin")
+            on_mcc = False
+
+        if not on_mcc:
+            try:
+                self.edm_color_in_xml = self.color_dic_gen("/usr/local/lcls/tools/edm/config/colors.list")
+            except:
+                print("ERROR, could not find colors.list, exiting\n")
+                sys.exit(1)
+
+    def macro_trans(self, string):
+        """"
+        Transphorm the macro signature in a string from $(macro) to ${macro}
+
+        Parameters
+        ----------
+        string : string
+            string that will have it's macro signature converted
+
+        Returns
+        -------
+        result : string
+            parameter string that has converted macro signature
+
+        ex: string = "text $(macro) text (note)"
+            result = "text ${macro} text (note)"
+        """
+        macro = r"\$(\()(.+?)(\))"
+        result = re.sub(macro, r"${\2}", string)
+        return result
+
+    def color_dic_gen(self, color_file):
+        """
+        Input colors.list file from edm.  This file is used for defining colors in edm.
+        used once to generate the dictionary wich is then used to convert the colors to xml
+        This will probably have to be configured for different labs
+
+        Parameters
+        ----------
+        color_file : string
+            file path to color.list file used by edm to define colors by number, it's basicaly a dictionary that needs some cleaning
+
+        Returns
+        -------
+        color_dictionary : dictionary
+            dictionary that holds the xml rgb for the related color code in edm
+            ex:
+            "0" = "<red>255</red>
+                   <green>255</green>
+                   <blue>255</blue>"
+        """
+        color_dictionary = {}
+        with open (color_file, "r") as edmColorsFile:
+            for line in edmColorsFile:
+                if line.startswith("static"):
+                    splitComment = line.split("#")
+                    splitColorTitle = splitComment[0].split("\"")
+                    reconverged = splitColorTitle[0]+splitColorTitle[2]
+                    cleanLine = re.sub("[^0-9| ]", "", reconverged)
+                    color_list = cleanLine.split()
+
+                    for i in range(1,color_list.__len__()):
+                        color_list[i] = int(int(color_list[i])/257)
+
+                    color_dictionary.update({f"{color_list[0]}" : f"<red>{color_list[1]}</red>\n<green>{color_list[2]}</green>\n<blue>{color_list[3]}</blue>\n"})
+        return color_dictionary
+
+    def alignment_converter(self, edmline, pydm):
+        """
+        converts the alignment properties in edm to pydm
+        AlignVCenter is default in pydm, not explicitly adding it introduces a bug though, so it is included here
+
+        """
+
+        pydm.writelines('<property name="alignment">\n')
+
+        if edmline.__contains__('center'):
+            pydm.writelines('<set>Qt::AlignCenter|Qt::AlignVCenter</set>\n</property>\n')
+
+        if edmline.__contains__('left'):
+            pydm.writelines('<set>Qt::AlignLeft|Qt::AlignVCenter</set>\n</property>\n')
+
+        if edmline.__contains__('right'):
+            pydm.writelines('<set>Qt::AlignRight|Qt::AlignVCenter</set>\n</property>\n')
+
+    def geometry_converter(self, edmline, pydm, width_increase=0, height_increase=0):
+        """
+        Adds the x position, y position, height, and width of a widget from edm to the geometry property in pydm
+        width_increase and height_increase are for widgets that need more space in pydm, ie polylines
+        """
+
+        prop = edmline.strip().split()
+        if prop[0] == 'x':
+            pydm.writelines('<property name="geometry">\n<rect>\n')
+            group_position = self.group_positions[len(self.group_positions)-1].split(',')
+            prop[1] = int(prop[1]) - int(group_position[0])
+
+        if prop[0] == 'y':
+            group_position = self.group_positions[len(self.group_positions)-1].split(',')
+            prop[1] = int(prop[1]) - int(group_position[1])
+
+
+        if prop[0] == 'w':
+            prop[0] = 'width'
+            #some pydm drawings don't render for height or width less than 5
+            if float(prop[1])<5:
+                prop[1]=5
+            prop[1] = int(prop[1]) + width_increase
+        elif prop[0] == 'h':
+            prop[0] = 'height'
+            #some pydm drawings don't render for height or width less than 5
+            if float(prop[1])<5:
+                prop[1]=5
+            prop[1] = int(prop[1]) + height_increase
+        lines = [f"<{prop[0]}>{prop[1]}</{prop[0]}>\n"]
+        if prop[0] == 'height':
+            lines.append("</rect>\n")
+            lines.append("</property>\n")
+        pydm.writelines(lines)
+
+    def str_to_list(self, str1):
+        """
+        Turn a string into a list broken apart by the new line character
+        """
+        list1 = list(str1.split("\n"))
+        return list1
+
+    def xml_escape_characters(self, string):
+        """
+        Converts literals to escape characters in xml
+        '&' -> '&amp;'
+        '<' -> '&lt;'
+        '>' -> '&gt;'
+        '"' -> '&quot;'
+        ''' -> '&apos;'
+        Parameters
+        ----------
+        string : string
+            The string that needs it's literal characters converted to xml escape characters
+
+        Returns
+        -------
+        string : string
+            The input string with it's literal characters converted to xml escape characters
+
+        example
+        -------
+        string = self.xml_escape_characters(string)
+        """
+        string = string.replace("&", "&amp;")
+        string = string.replace("<", "&lt;")
+        string = string.replace(">", "&gt;")
+        string = string.replace("\\\"", "&quot;")
+        string = string.replace("'", "&apos;")
+        return string
+
+    def font_converter(self, edmline, pydm):
+        """
+        Adds the font size, italics, and bold
+        """
+
+        fontline = edmline
+        fontlist = fontline.strip("\"").split("-")
+        fontsize_str = fontlist[3]
+        fontsize_str = fontsize_str.replace(".0","")
+        #subtract from fontsize(pydm font is larger than edm)
+        fontsize = int(fontsize_str) - args.smaller_font
+        pydm.writelines('<property name="font">\n<font>\n')
+        pydm.writelines('<pointsize>' + str(fontsize) + '</pointsize>\n')
+
+        italic_search = '-'.join(fontline.split('-')[2:])
+
+        # method to search for italic and bold
+        if italic_search.__contains__('i') and fontline.__contains__('bold'):
+            pydm.writelines(["<italic>true</italic>\n",
+                             "<weight>75</weight>\n",
+                             "<bold>true</bold>\n",
+                             "</font>\n",
+                             "</property>\n"])
+        # method to search for only italic
+        elif italic_search.__contains__('i'):
+            pydm.writelines('<italic>true</italic>\n</font>\n</property>\n')
+
+        # method to search for only bold
+        elif fontline.__contains__('bold'):
+            pydm.writelines('<weight>75</weight>\n<bold>true</bold>\n</font>\n</property>\n')
+
+        elif italic_search.__contains__('r'):
+            pydm.writelines('</font>\n</property>\n')
+
+    def pv_converter(self, edmline, pydm):
+        """
+        Adds the control pv into the control pv in pydm, could be expanded for none control pvs
+        """
+        prop = edmline.strip().split()
+        pv = prop[1].strip('"')
+        cleaned_pv = self.macro_trans(pv)
+        lines = ["<property name=\"channel\" stdset=\"0\">\n",
+                 f"<string>{cleaned_pv}</string>\n",
+                 "</property>\n"]
+        pydm.writelines(lines)
+
+    def alarm_sensitive_content_converter(self, widget_string, pydm):
+        """
+        Adds the alarmSensitiveContent property to a pydm widget
+        """
+        if widget_string.__contains__("fillAlarm") or widget_string.__contains__("fgAlarm"):
+            pydm.writelines(["<property name=\"alarmSensitiveContent\" stdset=\"0\">\n",
+                            "<bool>true</bool>\n",
+                            "</property>\n"])
+        else:
+            pydm.writelines(["<property name=\"alarmSensitiveContent\" stdset=\"0\">\n",
+                            "<bool>false</bool>\n",
+                            "</property>\n"])
+
+    def alarm_sensitive_border_converter(self, widget_string, pydm):
+        """
+        Adds the alarmSensitiveBorder property to a pydm widget
+        """
+        if widget_string.__contains__("lineAlarm") or widget_string.__contains__("fgAlarm"):
+            pydm.writelines(["<property name=\"alarmSensitiveBorder\" stdset=\"0\">\n",
+                             "<bool>true</bool>\n",
+                             "</property>\n"])
+        else:
+            pydm.writelines(["<property name=\"alarmSensitiveBorder\" stdset=\"0\">\n",
+                             "<bool>false</bool>\n",
+                             "</property>\n"])
+
+    def forground_color_converter(self, edmline, pydm):
+        """
+        Writes the forground color property for the widget
+        for a lot of widgets the "forground color" is the "penColor" (boarder color)
+
+        Parameters
+        ----------
+        edmline : string
+            The current line the widget converter is looking at in the edm file
+        pydm : file
+            pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+        if edmline.startswith("lineColor"):
+            line_list = edmline.split()
+            color_index = line_list[2]
+            pydm.writelines(["<property name=\"penStyle\" stdset=\"0\">\n",
+                             "<enum>Qt::SolidLine</enum>\n"
+                             "</property>\n"
+                             "<property name=\"penColor\" stdset=\"0\">"
+                             "<color>\n",
+                            f"{self.edm_color_in_xml.get(color_index)}",
+                             "</color>\n</property>\n"])
+
+
+
+    def background_color_converter(self, edmline, pydm, widget_string):
+        """
+        Writes the background color property for the widget
+
+        Parameters
+        ----------
+        edmline : string
+            The current line the widget converter is looking at in the edm file
+        pydm : file
+            pydm file the widget gets writen to
+        widget_string : string
+            All of the widget properites from the edm file in string form, separated by \n
+            needed as not all of the fill and fillColor properties are not on the same line
+            in the edm file
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+
+        if widget_string.__contains__("fill\n") and edmline.startswith("fillColor"):
+            #brush = fill
+            line_list = edmline.split()
+            color_index = line_list[2]
+            pydm.writelines(["<property name=\"brush\" stdset=\"0\">\n",
+                             "<brush brushstyle=\"SolidPattern\">\n",
+                             "<color alpha=\"255\">\n",
+                            f"{self.edm_color_in_xml.get(color_index)}",
+                             "</color>\n</brush>\n</property>\n"])
+        elif edmline.startswith("fillColor"):
+            #brush != fill
+            line_list = edmline.split()
+            color_index = line_list[2]
+            pydm.writelines(["<property name=\"brush\" stdset=\"0\">\n",
+                             "<brush brushstyle=\"NoBrush\">\n",
+                             "<color alpha=\"255\">\n",
+                            f"{self.edm_color_in_xml.get(color_index)}",
+                             "</color>\n</brush>\n</property>\n"])
+
+    def line_width_converter(self, edmline, pydm):
+        """
+        Writes the penWidth (PYDM) property for the widget from the lineWidth (EDM) property
+
+        Parameters
+        ----------
+        edmline : string
+            All of the display mode properites from the edm widget in string form
+        pydm : pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+        temp = edmline.split(" ")
+        pydm.writelines(["<property name=\"penWidth\" stdset=\"0\">\n",
+                        f"<double>{temp[1]}</double>\n"
+                         "</property>\n"])
+
+    def line_style_converter(self, edmline, pydm):
+        """
+        Converts the line style
+        """
+        if edmline.__contains__("dash"):
+            pydm.writelines(["<property name=\"penStyle\" stdset=\"0\">\n",
+                            "<enum>Qt::DashLine</enum>\n"
+                            "</property>\n"])
+
+    def button_label_converter(self, edmline, pydm):
+        """
+        Writes the button label property for the widget
+
+        Parameters
+        ----------
+        edmline : string
+            All of the display mode properites from the edm widget in string form
+        pydm : pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+        label_line = str(edmline)
+        label_list = label_line.split("\"")
+
+        #removes the quotes from the button label
+        label = label_list[1]
+        label = label.replace("...","")
+        label = self.xml_escape_characters(label)
+        label = self.macro_trans(label)
+        lines = ["<property name=\"text\">\n",
+                 f"<string>{label}</string>\n",
+                 "</property>\n"]
+        pydm.writelines(lines)
+
+    def display_mode_converter(self, edmline, pydm):
+        """
+        Writes the display mode property for the widget
+
+        Parameters
+        ----------
+        edmline : string
+            All of the display mode properites from the edm widget in string form
+        pydm : pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+        pydm.writelines('<property name="displayFormat" stdset="0">\n')
+
+        # deafault, decimal, hex, engineer, exp
+        if edmline.__contains__('decimal'):
+            pydm.writelines('<enum>PyDMLabel::Decimal</enum>\n</property>\n')
+        elif edmline.__contains__('hex'):
+            pydm.writelines('<enum>PyDMLabel::Hex</enum>\n</property>\n')
+        elif edmline.__contains__('engineer') or edmline.__contains__('exp'):
+            pydm.writelines('<enum>PyDMLabel::Exponential</enum>\n</property>\n')
+        elif edmline.__contains__('string'):
+            pydm.writelines('<enum>PyDMLabel::String</enum>\n</property>\n')
+        else:
+            pydm.writelines('<enum>PyDMLabel::Default</enum>\n</property>\n')
+
+    def display_mode_edit_converter(self, edmline, pydm):
+        """
+        Writes the display mode property for the widget
+
+        Parameters
+        ----------
+        edmline : string
+            All of the display mode properites from the edm widget in string form
+        pydm : pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+        pydm.writelines('<property name="displayFormat" stdset="0">\n')
+
+        # deafault, decimal, hex, engineer, exp
+        if edmline.__contains__('decimal'):
+            pydm.writelines('<enum>PyDMLineEdit::Decimal</enum>\n</property>\n')
+        elif edmline.__contains__('hex'):
+            pydm.writelines('<enum>PyDMLineEdit::Hex</enum>\n</property>\n')
+        elif edmline.__contains__('engineer') or edmline.__contains__('exp'):
+            pydm.writelines('<enum>PyDMLineEdit::Exponential</enum>\n</property>\n')
+        elif edmline.__contains__('string'):
+            pydm.writelines('<enum>PyDMLineEdit::String</enum>\n</property>\n')
+        else:
+            pydm.writelines('<enum>PyDMLineEdit::Default</enum>\n</property>\n')
+
+    def visibility_converter(self, visibility_string, pydm):
+        """
+        Writes the visiblity rules for the widget
+
+        Parameters
+        ----------
+        visibility_string : string
+            All of the visibility properites from the edm widget in string form, separated by \n
+        pydm : pydm file the widget gets writen to
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+
+        if visibility_string.__contains__("visMax"):
+            has_vis_max = True
+        else:
+            has_vis_max = False
+
+        if visibility_string.__contains__("visMin"):
+            has_vis_min = True
+        else:
+            has_vis_min = False
+
+        if visibility_string.__contains__("visInvert"):
+            vis_invert = 'not '
+        else:
+            vis_invert = ''
+
+        visibility_list = self.str_to_list(visibility_string)
+        for edmline in visibility_list:
+            if edmline.startswith("visMax"):
+                temp_max = edmline.strip().split()
+                vis_max = temp_max[1].strip('"')
+
+            if edmline.startswith("visMin"):
+                temp_min = edmline.strip().split()
+                vis_min = temp_min[1].strip('"')
+
+            if edmline.startswith('visPv'):
+                temp_pv = edmline.strip().split()
+                clean_temp_pv = temp_pv[1].strip('"')
+                vis_pv = self.macro_trans(clean_temp_pv)
+
+        else:
+            pydm.writelines(["<property name=\"rules\" stdset=\"0\">\n<string>[{",
+                                "&quot;name&quot;: &quot;visibility_from_edm&quot;, ",
+                                "&quot;property&quot;: &quot;Visible&quot;, ",
+                                "&quot;initial_value&quot;: &quot;True&quot;, "])
+            if has_vis_min and has_vis_max:
+                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &gt;={vis_min} and ch[0] &lt; {vis_max}&quot;, ")
+            elif has_vis_min and not has_vis_max:
+                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &gt;={vis_min}&quot;, ")
+            elif not has_vis_min and has_vis_max:
+                pydm.writelines(f"&quot;expression&quot;: &quot;{vis_invert}ch[0] &lt; {vis_max}&quot;, ")
+            elif not has_vis_min and not has_vis_max:
+                pydm.writelines(f"&quot;expression&quot;: &quot;ch[0]&quot;, ")
+
+
+            pydm.writelines(["&quot;channels&quot;: [{",
+                                f"&quot;channel&quot;: &quot;{vis_pv}&quot;, ",
+                                "&quot;trigger&quot;: true, "
+                                "&quot;use_enum&quot;: false}]}]</string>\n</property>\n"])
+
+    def main_converter(self):
+        """
+        Main conversion function, all conversion occures in this function
+        Converts all properties to do with the from
+        Reads in one widget at a time, converting it to a string
+        Uses the widget string to identify the which widget it should be converted into, and calls appropriate conversion function
+        If the widget is unconvertable converts it adds it to a csv file
+
+        Parameters
+        ----------
+        none : uses the global variable edm_file
+
+        Returns
+        -------
+        none : writes to the pydm_file
+        """
+        print(f'Output: {pydm_file}')
+        print(f'Output: {csv_file}')
+        in_screen_prop = False #True if reading in screen properties from edm, False otherwise
+
+        #counters for each widget type
+        #necissary for unique widget names in pydm
+        #Step 1
+
+        line_count=0
+
+
+        with open(pydm_file, 'w') as pydm:
+            for i, edmline in enumerate(self.edmfile):
+
+                if edmline.startswith('4 0 1'):
+                    in_screen_prop = True
+                    pydm.writelines(["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+                                     "<ui version=\"4.0\">\n",
+                                     "<class>Form</class>\n",
+                                     "<widget class=\"QWidget\" name=\"Form\">\n"
+                                     "<property name=\"geometry\">\n"
+                                     "<rect>\n<x>0</x>\n<y>0</y>\n"])
+
+                #convert screen width
+                if edmline.startswith('w ') and in_screen_prop:
+                    w_position = edmline[2:]
+                    w_position = w_position.replace("\n", "")
+                    pydm.writelines("<width>" + w_position + "</width>\n")
+
+                #convert screen height
+                elif edmline.startswith('h ') and in_screen_prop:
+                    h_position = edmline[2:]
+                    h_position = h_position.replace("\n", "")
+                    pydm.writelines("<height>" + h_position + "</height>\n")
+                    pydm.writelines('</rect>\n</property>\n')
+                    #make it bigger to account for title bar :)
+                    h_position = int(h_position) + 65
+                    pydm.writelines(["<property name=\"minimumSize\">\n",
+                                    "<size>\n",
+                                    f"<width>{w_position}</width>\n",
+                                    f"<height>{h_position}</height>\n",
+                                    "</size>\n",
+                                    "</property>\n"])
+
+                #convert screen title
+                elif edmline.startswith('title') and in_screen_prop:
+                    screen_title = edmline[7:-2]
+                    screen_title = screen_title.replace("\n", "")
+                    pydm.writelines('<property name="windowTitle">\n')
+
+                    # method to change it into macro w ${}
+                    macro = r"\$(\()(.+?)(\))"
+                    result = re.sub(macro, r"${\2}", screen_title)
+
+                    pydm.writelines("<string>" + str(result) + "</string>\n")
+                    pydm.writelines('</property>\n')
+
+                #end of screen properties
+                #set in_screen_prop to false so non-screen properties are not converted
+                if edmline.startswith('endScreenProperties'):
+                    in_screen_prop = False
+                    line_count = i
+
+        write_display_template(pydm_file)
+        self.widgets_converter(line_count)
+
+        self.end_xml()
+
+    def widgets_converter(self, line_count):
+        """
+        Parameters
+        ----------
+        line_count : int
+            The line of the edm file that the screen properties ends at
+
+        Returns
+        -------
+        none : writes to pydm (.ui) file
+        """
+
         is_in_widget = False
         is_first_unconvertable = True
         is_in_group = False
@@ -1088,8 +985,8 @@ class Converters(object):
                     self.Enum_Combo_Box_count = self.Enum_Combo_Box_count + 1
                     self.enum_combo_box_converter(widget_string)
 
-                    #The active button class is intentionally different than the other ButtonClass variants because its default state is "toggle", which does not appear in the .edl file. 
-                    #Therefore, this portion looks for the opposite, "push" descriptor and assigns it to the correct count 
+                    #The active button class is intentionally different than the other ButtonClass variants because its default state is "toggle", which does not appear in the .edl file.
+                    #Therefore, this portion looks for the opposite, "push" descriptor and assigns it to the correct count
                 elif widget_string.__contains__('object activeButtonClass') and widget_string.__contains__('push'):
                     self.Push_Button_count = self.Push_Button_count + 1
                     self.button_converter(widget_string)
@@ -1101,7 +998,7 @@ class Converters(object):
                 elif widget_string.__contains__("object relatedDisplayClass") and not args.edm_related:
                     self.Pydm_Related_count = self.Pydm_Related_count + 1
                     self.pydm_related_converter(widget_string)
-                
+
                 elif widget_string.__contains__("object relatedDisplayClass"):
                     #no count increment becuase it could also be converted to shell command
                     self.edm_related_converter(widget_string)
@@ -1109,11 +1006,11 @@ class Converters(object):
                 elif widget_string.__contains__("object activeLineClass"):
                     #no count increment because it could be converted into PyDMDrawingLine or PyDMDrawingPolyLine
                     self.line_converter(widget_string)
-                
+
                 elif widget_string.__contains__("object activeChoiceButtonClass"):
                     self.Enum_Button_count = self.Enum_Button_count + 1
                     self.enum_button_converter(widget_string)
-                
+
                 elif widget_string.__contains__("object activeRadioButtonClass"):
                     self.Enum_Button_count = self.Enum_Button_count + 1
                     self.enum_button_converter(widget_string)
@@ -1135,7 +1032,7 @@ class Converters(object):
         pydm.writelines("</widget>\n")
         pydm.writelines("</item>\n")
         pydm.writelines("</layout>\n")
-        
+
         pydm.close()
     def group_converter(self, group_string):
 
@@ -1164,7 +1061,7 @@ class Converters(object):
     def static_text_converter(self, widget_string):
         """
         Converts the widget given to it into a QLabel
-                
+
         Parameters
         ----------
         widget_string : string
@@ -1212,20 +1109,20 @@ class Converters(object):
             elif edmline.startswith('font "'):
                 self.font_converter(edmline, pydm)
 
-            # assign the differnt boader
+            # assign the different border
             elif edmline.startswith('border'):
                 pydm.writelines('<property name="frameShape">\n<enum>QFrame::Box</enum>\n</property>\n')
-          
+
             elif edmline.startswith('fontAlign'):
                 self.alignment_converter(edmline, pydm)
 
-            # close this properties w the ending lines
+            # close this properties w/ the ending lines
             elif edmline.startswith('endObjectProperties'):
                 pydm.writelines("</widget>\n")
 
         pydm.close()
 
-    # Text Update to PydmLabel Convert function
+    # Text Update to PyDMLabel Convert function
     def pydm_label_converter(self, widget_string):
         """
         Converts the widget given to it into a PyDMLabel
@@ -1245,7 +1142,7 @@ class Converters(object):
         widget_list = self.str_to_list(widget_string)
         pydm = open(pydm_file, 'a')
 
-        pydm.writelines([f"<widget class=\"PyDMLabel\" name=\"PyDMLabel_{self.PydmLabel_count}\">\n"])  
+        pydm.writelines([f"<widget class=\"PyDMLabel\" name=\"PyDMLabel_{self.PydmLabel_count}\">\n"])
 
         self.alarm_sensitive_content_converter(widget_string, pydm)
 
@@ -1267,11 +1164,11 @@ class Converters(object):
             # take out the font size and cut off extra string to use same font size in pydm file
             elif edmline.startswith('font "'):
                 self.font_converter(edmline, pydm)
-            
+
             elif edmline.startswith('fontAlign'):
                 self.alignment_converter(edmline, pydm)
 
-            # assign the linewidth and boarder
+            # assign the linewidth and border
             elif edmline.startswith('lineWidth'):
                 l_w = edmline.split(" ")
                 pydm.writelines('<property name="lineWidth">\n<number>' + l_w[1] + '</number>\n</property>\n')
@@ -1306,7 +1203,7 @@ class Converters(object):
             elif edmline.startswith('vis'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget and add visibility rules if they exist    
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -1317,7 +1214,7 @@ class Converters(object):
         pydm.close()
 
 
-    # Text Control to PydmLineEdit Convert function
+    # Text Control to PyDMLineEdit Convert function
     def pydm_line_edit_converter(self, widget_string):
         """
         Converts the widget given to it into a PyDMLineEdit
@@ -1366,7 +1263,7 @@ class Converters(object):
             elif edmline.startswith('vis'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget and add visibility rules if they exist    
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -1409,7 +1306,7 @@ class Converters(object):
             # take out the controlPV value and put it into channel
             elif edmline.startswith('alarmPv '):
                 self.pv_converter(edmline, pydm)
-            
+
             elif edmline.startswith('lineColor'):
                 self.forground_color_converter(edmline, pydm)
 
@@ -1425,7 +1322,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            # close this properties w the ending lines    
+            # close this properties w the ending lines
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -1440,7 +1337,7 @@ class Converters(object):
     def circle_converter(self, widget_string):
         """
         Converts the widget given to it into a PyDMDrawingEllipse
-        
+
         Parameters
         ----------
         widget_string : string
@@ -1469,7 +1366,7 @@ class Converters(object):
             # take out the controlPV value and put it into channel
             elif edmline.startswith('alarmPv '):
                 self.pv_converter(edmline, pydm)
-            
+
             elif edmline.startswith('lineColor'):
                 self.forground_color_converter(edmline, pydm)
 
@@ -1485,7 +1382,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            # close this properties w the ending lines    
+            # close this properties w the ending lines
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -1582,7 +1479,7 @@ class Converters(object):
                     with open(csv_file, 'a') as csvfile:
                         csvfile.writelines(edmline + ":  Contains a command to launch a pydm screen, advised to change this to a PyDMRelatedDisplayButton\n")
                     csvfile.close()
-            #Close the widget at the end of the edm properites  
+            #Close the widget at the end of the edm properites
             elif edmline.startswith('endObjectProperties'):
                 pydm.writelines("</widget>\n")
 
@@ -1629,7 +1526,7 @@ class Converters(object):
                                 f"<string>{release_value}</string>\n",
                                  "</property>\n"])
 
-            #use onLabel, offLabel, 
+            #use onLabel, offLabel
 
             elif edmline.startswith("onLabel"):
                 #get onLabel
@@ -1648,7 +1545,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget at the end of the edm properites  
+            #Close the widget at the end of the edm properites
             elif edmline.startswith('endObjectProperties'):
                 #if the widget has visibility pvs convert them
                 if widget_string.__contains__('visPv'):
@@ -1656,7 +1553,7 @@ class Converters(object):
                 pydm.writelines("</widget>\n")
 
         pydm.close()
-    
+
     def enum_combo_box_converter(self, widget_string):
         """
         Converts the widget given to it into a PyDMEnumComboBox
@@ -1745,14 +1642,14 @@ class Converters(object):
                 elif not edmline.startswith('displayFileName {'):
                     prop = edmline[5:-1]
                     prop = self.xml_escape_characters(prop)
-                    
+
                     prop_list=prop.split('.')
                     if prop_list != '':
                         files.append(prop_list[0])
                 #if at the beginnign of the command block set the in_commandLabel flag to True
                 if edmline.startswith('displayFileName {'):
                     in_files = True
-            
+
             elif edmline.startswith('menuLabel {') or in_labels:
 
                 #write to pydm file at the end of the command block, otherwise collect the command from the edm file
@@ -1774,8 +1671,8 @@ class Converters(object):
                     prop = self.macro_trans(prop)
                     if prop != '':
                         labels.append(prop)
-                    
-                #if at the beginnign of the command block set the in_commandLabel flag to True
+
+                #if at the beginning of the command block set the in_commandLabel flag to True
                 if edmline.startswith('menuLabel {'):
                     in_labels = True
 
@@ -1807,11 +1704,11 @@ class Converters(object):
                 pydm.writelines(["<property name=\"openInNewWindow\" stdset=\"0\">\n",
                                 "<bool>true</bool>\n",
                                 "</property>\n"])
-                
+
                 pydm.writelines("</widget>\n")
 
         pydm.close()
-        
+
     def edm_related_converter(self, widget_string):
         """
         Converts the widget given to it into a PyDMEnumComboBox
@@ -1843,7 +1740,7 @@ class Converters(object):
                     in_macros = False
                 elif len(edmline)>72:
                     macros_are_too_long = True
-                
+
         if not macros_are_too_long:
             pydm = open(pydm_file, 'a')
             self.Edm_Related_count = self.Edm_Related_count + 1
@@ -1873,18 +1770,18 @@ class Converters(object):
                             pydm.writelines("<string>"+display_file+"</string>\n")
                         pydm.writelines("</stringlist>\n</property>\n")
 
-                    #if not at the begining of or end of the command block, add the command to commands
+                    #if not at the beginning of or end of the command block, add the command to commands
                     elif not edmline.startswith('displayFileName {'):
                         prop = edmline[5:-1]
                         prop = self.xml_escape_characters(prop)
-                        
+
                         prop_list=prop.split('.')
                         if prop_list[0] != '':
                             files.append(prop_list[0])
-                    #if at the beginnign of the command block set the in_commandLabel flag to True
+                    #if at the beginning of the command block set the in_commandLabel flag to True
                     if edmline.startswith('displayFileName {'):
                         in_files = True
-                
+
                 elif edmline.startswith('menuLabel {') or in_labels:
 
                     #write to pydm file at the end of the command block, otherwise collect the command from the edm file
@@ -1899,13 +1796,13 @@ class Converters(object):
                             pydm.writelines("<string>"+display_label+"</string>\n")
                         pydm.writelines("</stringlist>\n</property>\n")
 
-                    #if not at the begining of or end of the command block, add the command to commands
+                    #if not at the beginning of or end of the command block, add the command to commands
                     elif not edmline.startswith('menuLabel {'):
                         prop = edmline[5:-1]
                         prop = self.xml_escape_characters(prop)
                         if prop != '':
                             labels.append(prop)
-                    #if at the beginnign of the command block set the in_commandLabel flag to True
+                    #if at the beginning of the command block set the in_commandLabel flag to True
                     if edmline.startswith('menuLabel {'):
                         in_labels = True
 
@@ -1923,19 +1820,19 @@ class Converters(object):
                             pydm.writelines("<string>"+macro+"</string>\n")
                         pydm.writelines("</stringlist>\n</property>\n")
 
-                    #if not at the begining of or end of the command block, add the command to commands
+                    #if not at the beginning of or end of the command block, add the command to commands
                     elif not edmline.startswith('symbols {'):
                         prop = edmline[5:-1]
                         prop = self.xml_escape_characters(prop)
                         macros.append(prop)
-                    #if at the beginnign of the command block set the in_commandLabel flag to True
+                    #if at the beginning of the command block set the in_commandLabel flag to True
                     if edmline.startswith('symbols {'):
                         in_macros = True
                 elif edmline.startswith('buttonLabel'):
                     self.button_label_converter(edmline, pydm)
 
                 elif edmline.startswith('endObjectProperties'):
-                    
+
 
                     pydm.writelines("</widget>\n")
 
@@ -1944,7 +1841,7 @@ class Converters(object):
 
         else:
             #make a shell command
-            #will be a bit more intensive than making a normal shell command or a related display 
+            #will be a bit more intensive than making a normal shell command or a related display
             #as the macros and the file names will need to be added togetehr
             #edm -x -m "macros=macros" filename.edl
             self.Shell_Command_count = self.Shell_Command_count + 1
@@ -1960,31 +1857,31 @@ class Converters(object):
                     if edmline.startswith('}'):
                         in_files = False
 
-                    #if not at the begining of or end of the file name block, add the file name to files
+                    #if not at the beginning of or end of the file name block, add the file name to files
                     elif not edmline.startswith('displayFileName {'):
                         display_file = edmline[5:-1]
                         display_file = self.xml_escape_characters(display_file)
                         display_file = str(self.macro_trans(display_file))
-                        
+
                         files.append(display_file)
-                    #if at the beginnign of the file name block set the in_files flag to True
+                    #if at the beginning of the file name block set the in_files flag to True
                     if edmline.startswith('displayFileName {'):
                         in_files = True
-                
+
                 elif edmline.startswith('menuLabel {') or in_labels:
 
                     #write to pydm file at the end of the label block, otherwise collect the label from the edm file
                     if edmline.startswith('}'):
                         in_labels = False
 
-                    #if not at the begining of or end of the label block, add the label to labels
+                    #if not at the beginning of or end of the label block, add the label to labels
                     elif not edmline.startswith('menuLabel {'):
                         display_label = edmline[5:-1]
                         display_label = self.xml_escape_characters(display_label)
                         display_label = str(self.macro_trans(display_label))
                         labels.append(display_label)
 
-                    #if at the beginnign of the labels block set the in_label flag to True
+                    #if at the beginning of the labels block set the in_label flag to True
                     if edmline.startswith('menuLabel {'):
                         in_labels = True
 
@@ -1994,14 +1891,14 @@ class Converters(object):
                     if edmline.startswith('}'):
                         in_macros = False
 
-                    #if not at the begining of or end of the macros block, add the macros to macros
+                    #if not at the beginning of or end of the macros block, add the macros to macros
                     elif not edmline.startswith('symbols {'):
                         macro = edmline[5:-1]
                         macro = self.xml_escape_characters(macro)
                         macro = str(self.macro_trans(macro))
                         macros.append(macro)
 
-                    #if at the beginnign of the macros block set the in_macros flag to True
+                    #if at the beginning of the macros block set the in_macros flag to True
                     if edmline.startswith('symbols {'):
                         in_macros = True
 
@@ -2020,7 +1917,7 @@ class Converters(object):
                         command = "edm -x -m &quot;" + str(macros[x]) + "&quot; " + str(display_file)
                         pydm.writelines("<string>"+command+"</string>\n")
                     pydm.writelines("</stringlist>\n</property>\n")
-                    
+
                     pydm.writelines("</widget>\n")
 
             pydm.close()
@@ -2040,7 +1937,7 @@ class Converters(object):
         for point in x_points_temp2:
             x_points.append(point[4:])
 
-        
+
         y_points_temp2=self.str_to_list(y_points_temp[1])
         y_points_temp2 = y_points_temp2[1:-1]
         for point in y_points_temp2:
@@ -2070,7 +1967,7 @@ class Converters(object):
         for edmline in widget_list:
             if edmline.startswith(("x ", "y ", "w ", "h ")):
                 self.geometry_converter(edmline, pydm)
-            
+
             elif edmline.startswith("numPoints 2"):
                 pydm.writelines(["<property name=\"rotation\" stdset=\"0\">\n",
                                 f"<double>{angle}</double>\n",
@@ -2084,9 +1981,9 @@ class Converters(object):
                 self.pv_converter(edmline, pydm)
 
             elif edmline.startswith("arrows"):
-                
-                #edm and pydm define arrows in different ways, so need to figure out where the first edm point is 
-                #and define the arrowStartPoint and arrowEndPoint acordingly
+
+                #edm and pydm define arrows in different ways, so need to figure out where the first edm point is
+                #and define the arrowStartPoint and arrowEndPoint accordingly
                 if edmline.__contains__("\"from\""):
 
                     if int(x_points[1])>int(x_points[0]):
@@ -2125,7 +2022,7 @@ class Converters(object):
                         pydm.writelines(["<property name=\"arrowEndPoint\" stdset=\"0\">\n",
                                         "<bool>true</bool>\n",
                                         "</property>\n"])
-                    
+
                 elif edmline.__contains__("\"both\""):
                     pydm.writelines(["<property name=\"arrowEndPoint\" stdset=\"0\">\n",
                                     "<bool>true</bool>\n",
@@ -2142,9 +2039,9 @@ class Converters(object):
                 visibility_string = edmline
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
-                
 
-            #Close the widget and add visibility rules if they exist    
+
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -2152,7 +2049,7 @@ class Converters(object):
                     self.visibility_converter(visibility_string, pydm)
                 pydm.writelines("</widget>\n")
         pydm.close
-            
+
 
     def poly_line_converter(self, widget_string, x_points, y_points):
         """
@@ -2184,7 +2081,7 @@ class Converters(object):
 
             elif edmline.startswith('lineWidth'):
                 self.line_width_converter(edmline, pydm)
-            
+
             # take out the controlPV value and put it into channel
             elif edmline.startswith('alarmPv '):
                 self.pv_converter(edmline, pydm)
@@ -2198,7 +2095,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget and add visibility rules if they exist    
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -2210,7 +2107,7 @@ class Converters(object):
 
     def enum_button_converter(self, widget_string):
         """
-        
+
         """
         widget_list = self.str_to_list(widget_string)
         pydm = open(pydm_file, 'a')
@@ -2249,7 +2146,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget and add visibility rules if they exist    
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -2260,7 +2157,7 @@ class Converters(object):
 
     def slider_converter(self, widget_string):
         """
-        
+
         """
         widget_list = self.str_to_list(widget_string)
         pydm = open(pydm_file, 'a')
@@ -2283,7 +2180,7 @@ class Converters(object):
             elif edmline.startswith('vis') and widget_string.__contains__('visPv'):
                 visibility_string = visibility_string +'\n'+ edmline
 
-            #Close the widget and add visibility rules if they exist    
+            #Close the widget and add visibility rules if they exist
             elif edmline.startswith('endObjectProperties'):
 
                 #if the widget has visibility pvs convert them
@@ -2311,7 +2208,7 @@ class Converters(object):
         """
 
         widget_list = self.str_to_list(widget_string)
-        
+
         widget_name = ()
         pv = ""
         x = ()
@@ -2346,7 +2243,7 @@ class Converters(object):
 
                 elif edmline.startswith('controlPv'):
                     pv = edmline[11:-2]
-                
+
                 # use flag to print file, macros and shell command
                 elif edmline.startswith('displayFileName'):
                     file_flag = True
@@ -2354,14 +2251,14 @@ class Converters(object):
                 elif file_flag:
                     widget_file = edmline[5:-2]
                     file_flag = False
-                
+
                 elif edmline.startswith('symbols'):
                     macros_flag = True
                     continue
                 elif macros_flag:
                     macros = edmline[5:-2]
                     macros_flag = False
-                    
+
                 # to avoid writing file repeated method
                 elif edmline.startswith("endObjectProperties"):
                     csv_writer.writerow([widget_name] + [pv] + [x] + [y] + [widget_file] + [macros])
@@ -2373,7 +2270,7 @@ class Converters(object):
 
     #Add the closing XML lines, and custom widget declarations
     #Not necessary to only add these if and only if your widget is in the edm screen being converted
-    #Probably cleaner to add these if and only if the widget is in the edm screen 
+    #TODO: Probably cleaner to add these if and only if the widget is in the edm screen
     def end_xml(self):
 
         """
@@ -2435,12 +2332,12 @@ class Converters(object):
                             "<class>PyDMEnumComboBox</class>\n",
                             "<extends>QComboBox</extends>\n",
                             "<header>pydm.widgets.enum_combo_box</header>\n",
-                            "</customwidget>\n"]) 
+                            "</customwidget>\n"])
             pydm.writelines(["<customwidget>\n",
                             "<class>PyDMRelatedDisplayButton</class>\n",
                             "<extends>QPushButton</extends>\n",
                             "<header>pydm.widgets.related_display_button</header>\n",
-                            "</customwidget>\n"])    
+                            "</customwidget>\n"])
             pydm.writelines(["<customwidget>\n",
                             "<class>PyDMEDMDisplayButton</class>\n",
                             "<extends>PyDMRelatedDisplayButton</extends>\n",
@@ -2472,7 +2369,7 @@ class Converters(object):
                             "<extends>QFrame</extends>\n",
                             "<header>pydm.widgets.embedded_display</header>\n",
                             "</customwidget>\n"])
-                            
+
             #Step 3
             #add the custom widget properties directly above this comment
             pydm.writelines("</customwidgets>\n")
@@ -2490,7 +2387,7 @@ def locate(patterns, root=os.curdir, recursive=True):
     Parameters
     ----------
     patterns : list
-        patterns to search for recursivly in a file tree 
+        patterns to search for recursivly in a file tree
     root : string
         directory used as root for searc of files that have any of the provided patterns
     recursive : bool
@@ -2531,14 +2428,14 @@ def name_pydm_file(edl_file):
             pydm_file = edl_file[:-4] + ".ui"
     else:
         pydm_file = edl_file[:-4] + "_" + args.tag + ".ui"
-    pydm_file=subsys_remove(pydm_file)
+    pydm_file = subsys_remove(pydm_file)
     return pydm_file
 
 def subsys_remove(pydm_file):
     if args.remove_subsys:
         head, tail = os.path.split(pydm_file)
         pydm_list = tail.split("_")
-        tail=''
+        tail = ''
         for n, tail_fragment in enumerate(pydm_list):
             if n == 0:
                 pass
@@ -2546,82 +2443,162 @@ def subsys_remove(pydm_file):
                 tail = tail_fragment
             else:
                 tail = tail + "_" + tail_fragment
-        pydm_file = os.path.join(head,tail)
+        pydm_file = os.path.join(head, tail)
         return pydm_file
     else:
         return pydm_file
 
 
-#main function actualy running!
-#don't want users accidentaly creating directories with .ui or .py
-destination_head, destination_tail = os.path.split(args.destination)
-if destination_tail.__contains__(".ui") or destination_tail.__contains__(".py"):
-    print("\nERROR: (-d, -destination) option expects a directory, not a file, exiting program\n")
-    sys.exit()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent('''
+            converts an edm {file}.edl file to a pydm {file}_autogen.ui file and a .csv file for widgets that do not yet have a conversion function
 
-if args.destination == '.' or args.destination == 'current':
-    args.destination = os.getcwd()
-elif destination_tail == '..':
-    pass
-elif destination_tail.__contains__("."):
-    save = input(f"WARNING: (-d, -destination) option expects a directory, not a file.  Save output file(s) to directory '{args.destination}'? (y/n)")
-    if save != "y":
-        print("\nexiting program\n")
+            conversion guide with solutions to common conversion problems
+            -----------------------------------------------
+            PyDMFrame
+
+            All widgets in an EDM group are placed into a PyDMFrame, this works for many layers of groups
+            -----------------------------------------------
+            QLabel
+
+            "Static Text" without a Visibility PV
+            -----------------------------------------------
+            PyDMLabel
+            If nothing is showing in the label or it is different from EDM change the displayFormat property
+
+            "Static Text" with a Visibility PV
+            "Text Update"
+            "Text Control" with editable not selected
+            "Text Monitor"
+            -----------------------------------------------
+            PyDMLineEdit
+            If nothing is showing in the label or it is different from EDM change the displayFormat property
+
+            "Text Entry"
+            "Text Control" with editable selected
+            -----------------------------------------------
+            PyDMDrawingRectangle
+
+            "Rectangle"
+            -----------------------------------------------
+            PyDMDrawingEllipse
+
+            "Circle"
+            -----------------------------------------------
+            PyDMShellCommand
+
+            "Shell Command"
+            "Related Display" when the -e option is chosen, and the macros are too long for PyDM to handle
+            -----------------------------------------------
+            PyDMPushButton
+
+            "Message Button" with Button Type = Push
+            -----------------------------------------------
+            PyDMEnumComboBox
+
+            "Message Button" with Button Type = Toggle
+            -----------------------------------------------
+            PyDMEnumButton
+
+            "Choice Button"
+            -----------------------------------------------
+            PyDMRelatedDisplayButton
+
+            "Related Display" with no options used
+            -----------------------------------------------
+            PyDMEDMDisplayButton
+
+            "Related Display" with -e or --edm-related option used
+            -----------------------------------------------
+            PyDMDrawingLine
+
+            "Lines" with only two points (one line)
+            -----------------------------------------------
+            PyDMDrawingPolyLine
+
+            "Lines" with more than two points (two or more lines)
+            -----------------------------------------------
+            ''')
+    )
+
+    parser.add_argument("-o", "--original-file-name", action='store_true',
+                        help="If chosen the resulting file will be named {file}.ui rather than {file}_autogen.ui (over rides -t option)")
+
+    parser.add_argument("-r", "--recursive", action='store_true',
+                        help="Converts all .edl files in a given directory tree to pydm .ui files, input argument must be a directory when this option is used")
+    parser.add_argument("-s", "--smaller-font", type=int, default=5, help="EDM font is larger than PyDM font, amount to decrease the font by, defaults to 5. Larger numbers decrease font more")
+    parser.add_argument("-e", "--edm-related", action='store_true',
+                        help="If chosen all related displays buttons will convert to PyDMEDMRelatedDisplay widgets, converts to PyDMRelatedDisplay widgets by default")
+    parser.add_argument("-n", "--no-csv", action='store_true', help="No csv file with overflow widgets is created")
+
+    parser.add_argument("-f", "--force", action='store_true', help="Overrides files of the same name without asking")
+
+    parser.add_argument("-t", "--tag", type=str, default="autogen", help="Changes the tag added to the output PyDM file {file}_{tag}.ui.  Defaults to _autogen")
+
+    parser.add_argument("--remove-subsys", action='store_true', help='removes the subsystem name from created files e.g. pps_{file}.edl -> {file}.ui')
+    parser.add_argument("--hide_related", action='store_true',
+                        help='''
+                        All related display buttons will be invisible if chosen\n
+                        Related display buttons that are invisible in edm will be invisible in pydm by default\n
+                        ''')
+    parser.add_argument("--show_related", action='store_true',
+                        help='''
+                        All related display buttons will be visible if chosen\n
+                        Related display buttons that are invisible in edm will be invisible in pydm by default\n
+                        ''')
+    parser.add_argument("input", help="Target file to convert, needs to be .edl. If -r option is used all .edl files in given directory tree will be converted")
+    parser.add_argument("destination", type=str, default="default", help="Destination directory for output file(s).  Use '.' or 'current' to get output to the directory you are running the script in.  Works with absolute and relative paths")
+
+    args = parser.parse_intermixed_args()
+
+    #make sure file argument is a .edl file
+    if not args.recursive:
+        if not args.input.endswith('.edl'):
+            print ("ERROR: input has the incorrect file type, .edl file type required. Exiting")
+            sys.exit(1)
+    if args.show_related == True and args.hide_related == True:
+        print("ERROR: --hide_related and --show_related are mutualy exclusive.  Exiting")
+        sys.exit(1)
+
+    #don't want users accidentally creating directories with .ui or .py
+    destination_head, destination_tail = os.path.split(args.destination)
+    if destination_tail.__contains__(".ui") or destination_tail.__contains__(".py"):
+        print("\nERROR: (-d, -destination) option expects a directory, not a file, exiting program\n")
         sys.exit()
 
-if destination_head == "":
-    destination_head = os.getcwd()
-    args.destination = os.path.join(destination_head, destination_tail)
+    if args.destination == '.' or args.destination == 'current':
+        args.destination = os.getcwd()
+    elif destination_tail == '..':
+        pass
+    elif destination_tail.__contains__("."):
+        save = input(f"WARNING: (-d, -destination) option expects a directory, not a file.  Save output file(s) to directory '{args.destination}'? (y/n)")
+        if save != "y":
+            print("\nexiting program\n")
+            sys.exit()
 
-if not destination_head.startswith("/"):
-    destination_head = os.getcwd() + "/" + destination_head
-    print(destination_head)
-    args.destination = os.path.join(destination_head, destination_tail)
+    if destination_head == "":
+        destination_head = os.getcwd()
+        args.destination = os.path.join(destination_head, destination_tail)
 
-if args.recursive:
-    for file in locate(['*.edl'], root=args.input):
-        print("\nConverting: " + file)
-        
-        pydm_file = name_pydm_file(file)
-        head, tail = os.path.split(pydm_file)
-        head=args.destination
+    if not destination_head.startswith("/"):
+        destination_head = os.getcwd() + "/" + destination_head
+        print(destination_head)
+        args.destination = os.path.join(destination_head, destination_tail)
+
+    file_iterator = locate(['*.edl'], root=args.input) if args.recursive else [args.input]
+    for edm_file in file_iterator:
+        print("\nConverting: " + edm_file)
+
+        pydm_file = name_pydm_file(edm_file)
+        _, tail = os.path.split(pydm_file)
+        head = args.destination
         if not os.path.exists(head):
             os.mkdir(head)
         pydm_file = os.path.join(head, tail)
         csv_file = pydm_file[:-3] + ".csv"
-        if not args.force:
-            if os.path.exists(pydm_file):
-                overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
-                if overwrite == "y":
-                    run = Converters(file)
-                    run.main_converter()
-            else:
-                run = Converters(file)
-                run.main_converter()
-        else:
-            run = Converters(file)
+        if args.force or not os.path.exists(pydm_file) or input(f"Overwrite regular file '{pydm_file}'? (y/n)") == 'y':
+            run = Converters(edm_file)
             run.main_converter()
-else:
-    print("Converting: " + args.input)
-    head, tail = os.path.split(args.input)
-    pydm_file=name_pydm_file(args.input)
-    head, tail = os.path.split(pydm_file)
-    head=args.destination
-    if not os.path.exists(head):
-        os.mkdir(head)
-    pydm_file = os.path.join(head, tail)
-    csv_file = pydm_file[:-3] + ".csv"
-    if not args.force:
-        if os.path.exists(pydm_file):
-            overwrite = input(f"Overwrite regular file '{pydm_file}'? (y/n)")
-            if overwrite == "y":
-                run = Converters(args.input)
-                run.main_converter()
-                
-        else:
-            run = Converters(args.input)
-            run.main_converter()
-    else:
-        run = Converters(args.input)
-        run.main_converter()
-print ("Success!")
+    print ("Success!")
