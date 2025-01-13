@@ -18,9 +18,11 @@ import re
 import sys
 import os
 import argparse
-from csv import writer
 import textwrap
 import fnmatch
+import xml.etree.ElementTree as etree
+
+from csv import writer
 
 
 def set_form_layout(filepath):
