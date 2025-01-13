@@ -25,29 +25,20 @@ import xml.etree.ElementTree as etree
 from csv import writer
 
 
-def set_form_layout(filepath):
-    with open(filepath, "a") as pydm:
-        pydm.writelines(
-            [
-                '<layout class="QVBoxLayout" name="verticalLayout_3">\n',
-                '<property name="spacing">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="leftMargin">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="topMargin">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="rightMargin">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="bottomMargin">\n',
-                "<number>9</number>\n",
-                "</property>\n",
-            ]
-        )
-
+def set_form_layout(tree):
+    top_widget = tree.find("widget")
+    layout = etree.SubElement(top_widget, "layout", attrib={
+        "class": "QVBoxLayout",
+        "name": "verticalLayout_3",
+    })
+    spacing = etree.SubElement(layout, "property", attrib={"name": "spacing"})
+    number = etree.SubElement(margin, "number")
+    number.text = 0
+    for name in ["leftMargin", "topMargin", "rightMargin", "bottomMargin"]:
+        margin = etree.SubElement(layout, "property", attrib={"name": name})
+        number = etree.SubElement(margin, "number")
+        number.text = 9 if name == "bottomMargin" else 0
+    return layout
 
 
 def create_title_bar(filepath):
