@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydm-converter-tool"
+description = "converter to generate pydm .ui files from other display managers."
+readme = "README.md"
+authors = [
+  { name = "Devan Agrawal"},
+  { name = "Zach Domke"},
+  { name = "Ryan McClanahan"},
+  { name = "Alexander Ng"},
+  { name = "Yekta Yazar", email = "yazar@slac.stanford.edu"}
+]
+keywords = ["PyDM", "converter", "GUI"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pydm",
+    'pyqt5',
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-qt",
+    "pytest-mock"
+]
+
+[project.urls]
+Homepage = "https://github.com/slaclab/pydm-converter-tool"
+# Documentation = ""
+"Bug Tracker" = "https://github.com/slaclab/pydm-converter-tool/issues"
+
+[project.license]
+file = "LICENSE"
+
+[options]
+zip_safe = false
+include_package_data = true
+
+[tool.ruff.lint]
+extend-select = ["TID252"] # Defaults + check imports
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+addopts = "--cov=."
+log_cli_level = "info"
+log_level = "debug"
+testpaths = ["tests"]
