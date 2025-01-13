@@ -47,6 +47,7 @@ def set_form_layout(filepath):
         )
 
 
+
 def create_title_bar(filepath):
     with open(filepath, "a") as pydm:
         pydm.writelines(
@@ -287,6 +288,7 @@ def create_title_bar(filepath):
         )
 
 
+
 def create_background_widget(filepath):
     with open(filepath, "a") as pydm:
         pydm.writelines(
@@ -303,6 +305,7 @@ def create_background_widget(filepath):
                 "</property>\n",
             ]
         )
+
 
 
 def write_display_template(filepath):
