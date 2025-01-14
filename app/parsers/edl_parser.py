@@ -34,14 +34,14 @@ class EDLObject(EDLAbstractObject):
 
 
 class EDLFileParser:
-    screen_prop_pattern = re.compile(r'beginScreenProperties(.*)endScreenProperties', re.DOTALL)
-    group_pattern = re.compile(r'# \(Group\)(.*?)endGroup', re.DOTALL)
-    object_pattern = re.compile(r'# \(([^)]+)\)(.*?)endObjectProperties', re.DOTALL)
+    screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
+    group_pattern = re.compile(r"# \(Group\)(.*?)endGroup", re.DOTALL)
+    object_pattern = re.compile(r"# \(([^)]+)\)(.*?)endObjectProperties", re.DOTALL)
 
     def __init__(self, file_path):
         self.file_path = file_path
 
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             self.text = file.read()
 
         self.groups = []
