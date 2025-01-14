@@ -10,7 +10,6 @@ Instructions to add a new widget (ctrl + f Step n)
 4. write a converter function for your widget taking in the arguments {Your_Widget}_counter and widget_string
    Add the definition for this at the end of the widget converter functions
    Many converter functions exist, many are applicable to your widget
-
 """
 
 import math
@@ -23,6 +22,80 @@ import fnmatch
 import xml.etree.ElementTree as etree
 
 from csv import writer
+
+
+class XMLGenerator:
+    @staticmethod
+    def sizePolicy(h, v) -> etree.Element:
+        sizePolicy_property = etree.Element("property", attrib={
+            "name": "sizePolicy",
+        })
+        sizePolicy = etree.SubElement(sizePolicy_property, "sizepolicy", attrib={
+            "hsizetype": h,
+            "vsizetype": v,
+        })
+        horstretch = etree.SubElement(sizePolicy, "horstretch")
+        horstretch.text = "0"
+        verstretch = etree.SubElement(sizePolicy, "verstretch")
+        verstretch.text = "0"
+        return sizePolicy_property
+
+    @staticmethod
+    def styleSheet(strings) -> etree.Element:
+        styleSheet_property = etree.Element("property", attrib={
+            "name": "styleSheet",
+        })
+        styleSheet_string = etree.SubElement(styleSheet_property, "string", attrib={
+            "notr": "true",
+        })
+        styleSheet_string.text = "\n".join(strings)
+        return styleSheet_property
+
+    @staticmethod
+    def size(name, width, height) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": name})
+        size = etree.SubElement(prop, "size")
+        width_tag = etree.SubElement(size, "width")
+        width_tag.text = width
+        height_tag = etree.SubElement(size, "height")
+        height_tag.text = height
+        return prop
+
+    @staticmethod
+    def font(**kwargs) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": "font"})
+        font = etree.SubElement(prop, "font")
+        for kw, arg in kwargs.items():
+            tag = etree.SubElement(font, kw)
+            tag.text = arg
+        return prop
+
+    @staticmethod
+    def text(string) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": "text"})
+        string_tag = etree.SubElement(prop, "string")
+        string_tag.text = string
+        return prop
+
+    @staticmethod
+    def bool(name, value) -> etree.Element:
+        prop = etree.Element("property", attrib={
+            "name": name,
+            "stdset": "0",
+        })
+        bool_tag = etree.SubElement(prop, "bool")
+        bool_tag.text = "true" if value else "false"
+        return prop
+
+    @staticmethod
+    def channel(value) -> etree.Element:
+        prop = etree.Element("property", attrib={
+            "name": "channel",
+            "stdset": "0",
+        })
+        string = etree.SubElement(prop, "string")
+        string.text = value
+        return prop
 
 
 def set_form_layout(tree):
