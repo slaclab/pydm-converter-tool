@@ -41,245 +41,187 @@ def set_form_layout(tree):
     return layout
 
 
-def create_title_bar(filepath):
-    with open(filepath, "a") as pydm:
-        pydm.writelines(
-            [
-                "<item>\n",
-                '<widget class="QFrame" name="TitleBox">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Preferred" vsizetype="Fixed">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">background-color: rgb(230, 230, 230);</string>\n',
-                "</property>\n",
-                '<property name="frameShape">\n',
-                "<enum>QFrame::NoFrame</enum>\n",
-                "</property>\n",
-                '<property name="frameShadow">\n',
-                "<enum>QFrame::Raised</enum>\n",
-                "</property>\n",
-                '<layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,0,0,0,0">\n',
-                "<item>\n",
-                '<widget class="QLabel" name="LCLS">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Fixed" vsizetype="Preferred">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="font">\n',
-                "<font>\n",
-                "<pointsize>22</pointsize>\n",
-                "<weight>75</weight>\n",
-                "<bold>true</bold>\n",
-                "</font>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">color: rgb(140, 21, 21);\n',
-                "background-color: rgba(255, 255, 255, 0);</string>\n",
-                "</property>\n",
-                '<property name="text">\n',
-                "<string>LCLS</string>\n",
-                "</property>\n",
-                "</widget>\n",
-                "</item>\n",
-                "<item>\n",
-                '<widget class="QLabel" name="System">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Fixed" vsizetype="Preferred">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="minimumSize">\n',
-                "<size>\n",
-                "<width>85</width>\n",
-                "<height>0</height>\n",
-                "</size>\n",
-                "</property>\n",
-                '<property name="font">\n',
-                "<font>\n",
-                "<pointsize>8</pointsize>\n",
-                "<weight>50</weight>\n",
-                "<bold>false</bold>\n",
-                "</font>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">color: rgb(79, 79, 79);\n',
-                "background-color: rgba(255, 255, 255, 0);</string>\n",
-                "</property>\n",
-                '<property name="text">\n',
-                "<string>GLOBAL\n",
-                "&lt;SUBSYSTEM&gt;</string>\n",
-                "</property>\n",
-                "</widget>\n",
-                "</item>\n",
-                "<item>\n",
-                '<widget class="QLabel" name="Title">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Expanding" vsizetype="Preferred">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="font">\n',
-                "<font>\n",
-                "<pointsize>18</pointsize>\n",
-                "<weight>75</weight>\n",
-                "<bold>true</bold>\n",
-                "</font>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">background-color: rgba(120, 120, 120, 0);\n',
-                "color: rgb(55, 55, 55);</string>\n",
-                "</property>\n",
-                '<property name="text">\n',
-                "<string>&lt;GLOBAL PAGE TITLE&gt;</string>\n",
-                "</property>\n",
-                '<property name="alignment">\n',
-                "<set>Qt::AlignCenter</set>\n",
-                "</property>\n",
-                "</widget>\n",
-                "</item>\n",
-                "<item>\n",
-                '<spacer name="horizontalSpacer_3">\n',
-                '<property name="orientation">\n',
-                "<enum>Qt::Horizontal</enum>\n",
-                "</property>\n",
-                '<property name="sizeType">\n',
-                "<enum>QSizePolicy::Fixed</enum>\n",
-                "</property>\n",
-                '<property name="sizeHint" stdset="0">\n',
-                "<size>\n",
-                "<width>85</width>\n",
-                "<height>20</height>\n",
-                "</size>\n",
-                "</property>\n",
-                "</spacer>\n",
-                "</item>\n",
-                "<item>\n",
-                '<layout class="QVBoxLayout" name="verticalLayout_7">\n',
-                "<item>\n",
-                '<widget class="PyDMLabel" name="Clock">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Fixed" vsizetype="Preferred">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="minimumSize">\n',
-                "<size>\n",
-                "<width>80</width>\n",
-                "<height>0</height>\n",
-                "</size>\n",
-                "</property>\n",
-                '<property name="font">\n',
-                "<font>\n",
-                "<pointsize>8</pointsize>\n",
-                "<italic>true</italic>\n",
-                "</font>\n",
-                "</property>\n",
-                '<property name="toolTip">\n',
-                "<string/>\n",
-                "</property>\n",
-                '<property name="whatsThis">\n',
-                "<string/>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">color: rgb(79, 79, 79);\n',
-                "background-color: rgba(255, 255, 255, 0);</string>\n",
-                "</property>\n",
-                '<property name="text">\n',
-                "<string>Clock</string>\n",
-                "</property>\n",
-                '<property name="alignment">\n',
-                "<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>\n",
-                "</property>\n",
-                '<property name="precision" stdset="0">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="showUnits" stdset="0">\n',
-                "<bool>false</bool>\n",
-                "</property>\n",
-                '<property name="precisionFromPV" stdset="0">\n',
-                "<bool>true</bool>\n",
-                "</property>\n",
-                '<property name="alarmSensitiveContent" stdset="0">\n',
-                "<bool>false</bool>\n",
-                "</property>\n",
-                '<property name="alarmSensitiveBorder" stdset="0">\n',
-                "<bool>true</bool>\n",
-                "</property>\n",
-                '<property name="channel" stdset="0">\n',
-                "<string>SIOC:SYS0:AL00:TOD</string>\n",
-                "</property>\n",
-                "</widget>\n",
-                "</item>\n",
-                "<item>\n",
-                '<widget class="PyDMLabel" name="Location">\n',
-                '<property name="sizePolicy">\n',
-                '<sizepolicy hsizetype="Fixed" vsizetype="Preferred">\n',
-                "<horstretch>0</horstretch>\n",
-                "<verstretch>0</verstretch>\n",
-                "</sizepolicy>\n",
-                "</property>\n",
-                '<property name="minimumSize">\n',
-                "<size>\n",
-                "<width>80</width>\n",
-                "<height>0</height>\n",
-                "</size>\n",
-                "</property>\n",
-                '<property name="font">\n',
-                "<font>\n",
-                "<pointsize>8</pointsize>\n",
-                "<italic>true</italic>\n",
-                "</font>\n",
-                "</property>\n",
-                '<property name="toolTip">\n',
-                "<string/>\n",
-                "</property>\n",
-                '<property name="styleSheet">\n',
-                '<string notr="true">color: rgb(79, 79, 79);\n',
-                "background-color: rgba(255, 255, 255, 0);</string>\n",
-                "</property>\n",
-                '<property name="text">\n',
-                "<string>PROD/DEV</string>\n",
-                "</property>\n",
-                '<property name="alignment">\n',
-                "<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>\n",
-                "</property>\n",
-                '<property name="precision" stdset="0">\n',
-                "<number>0</number>\n",
-                "</property>\n",
-                '<property name="showUnits" stdset="0">\n',
-                "<bool>false</bool>\n",
-                "</property>\n",
-                '<property name="precisionFromPV" stdset="0">\n',
-                "<bool>true</bool>\n",
-                "</property>\n",
-                '<property name="alarmSensitiveContent" stdset="0">\n',
-                "<bool>false</bool>\n",
-                "</property>\n",
-                '<property name="alarmSensitiveBorder" stdset="0">\n',
-                "<bool>true</bool>\n",
-                "</property>\n",
-                '<property name="channel" stdset="0">\n',
-                "<string>SIOC:SYS0:AL00:MODE</string>\n",
-                "</property>\n",
-                "</widget>\n",
-                "</item>\n",
-                "</layout>\n",
-                "</item>\n",
-                "</layout>\n",
-                "</widget>\n",
-                "</item>\n",
-            ]
-        )
+def create_title_bar(tree):
+    main_layout = tree.find("layout")
+    titlebox_item = etree.SubElement(main_layout, "item")
+    titlebox_frame = etree.SubElement(titlebox_item, "widget", attrib={
+        "class": "QFrame",
+        "name": "TitleBox",
+    })
 
+    sizePolicy = XMLGenerator.sizePolicy("Preferred", "Fixed")
+    titlebox_frame.append(sizePolicy)
+
+    titlebox_frame_styleSheet = XMLGenerator.styleSheet([
+        "background-color: rgb(230, 230, 230);"
+    ])
+    titlebox_frame.append(titlebox_frame_styleSheet)
+
+    frameShape_property = etree.SubElement(titlebox_frame, "property", attrib={
+        "name": "frameShape",
+    })
+    frameShape = etree.SubElement(frameShape_property, "enum")
+    frameShape.text = "QFrame::NoFrame"
+
+    frameShadow_property = etree.SubElement(titlebox_frame, "property", attrib={
+        "name": "frameShadow",
+    })
+    frameShadow = etree.SubElement(frameShadow_property, "enum")
+    frameShadow.text = "QFrame::Raised"
+
+    hlayout = etree.SubElement(titlebox_frame, "layout", attrib={
+        "class": "QHBoxLayout",
+        "name": "horizontalLayout_5",
+        "stretch": "0,0,0,0,0",
+    })
+    hlayout_item1 = etree.SubElement(hlayout, "item")
+    lcls_label = etree.SubElement(hlayout_item1, "widget", attrib={
+        "class": "QLabel",
+        "name": "LCLS",
+    })
+    sizePolicy = XMLGenerator.sizePolicy("Fixed", "Preferred")
+    lcls_label.append(sizePolicy)
+    font = XMLGenerator.font({
+        "pointsize": 22,
+        "weight": 75,
+        "bold": True,
+    })
+    lcls_label.append(font)
+    lcls_label_styleSheet = XMLGenerator.styleSheet([
+        "color: rgb(140, 21, 21);",
+        "background-color: rgba(255, 255, 255, 0)",
+    ])
+    lcls_label.append(lcls_label_styleSheet)
+    text = XMLGenerator.text("LCLS")
+    lcls_label.append(text)
+
+    hlayout_item2 = etree.SubElement(hlayout, "item")
+    system_label = etree.SubElement(hlayout_item2, "widget", attrib={
+        "class": "QLabel",
+        "name": "System",
+    })
+    sizePolicy = XMLGenerator.sizePolicy("Fixed", "Preferred")
+    system_label.append(sizePolicy)
+    minimumSize = XMLGenerator.size("minimumSize", 85, 0)
+    system_label.append(minimumSize)
+    font = XMLGenerator.font({
+        "pointsize": 8,
+        "weight": 50,
+        "bold": False,
+    })
+    system_label.append(font)
+    styleSheet = XMLGenerator.styleSheet([
+        "color: rgb(79, 79, 79);",
+        "background-color: rgba(255, 255, 255, 0);",
+    ])
+    system_label.append(styleSheet)
+    text = XMLGenerator.text("GLOBAL\n&lt;SUBSYSTEM&gt;")
+    system_label.append(text)
+
+    hlayout_item3 = etree.SubElement(hlayout, "item")
+    title_label = etree.SubElement(hlayout_item3, "widget", attrib={
+        "class": "QLabel",
+        "name": "Title",
+    })
+    title_label.append(XMLGenerator.sizePolicy("Expanding", "Preferred"))
+    title_label.append(XMLGenerator.font({
+        "pointsize": 18,
+        "weight": 75,
+        "bold": True,
+    }))
+    title_label.append(XMLGenerator.styleSheet([
+        "color: rgb(55, 55, 55);",
+        "background-color: rgba(120, 120, 120, 0);",
+    ]))
+    title_label.append(XMLGenerator.text("&lt;GLOBAL PAGE TITLE&gt;"))
+    alignment = etree.SubElement(title_label, "property", attrib={"name": "alignment"})
+    set_tag = etree.SubElement(alignment, "set")
+    set_tag.text = "Qt::AlignCenter"
+
+    hlayout_item4 = etree.SubElement(hlayout, "item")
+    spacer = etree.SubElement(hlayout_item4, "spacer", attrib={"name": "horizontalSpacer_3"})
+    orientation = etree.SubElement(spacer, "property", attrib={"name": "orientation"})
+    enum = etree.SubElement(orientation, "enum")
+    enum.text = "Qt::Horizontal"
+    sizeType = etree.SubElement(spacer, "property", attrib={"name": "sizeType"})
+    enum = etree.SubElement(sizeType, "enum")
+    enum.text = "QSizePolicy::Fixed"
+    size = XMLGenerator.size("sizeHint", 85, 20)
+    size.set("stdset", "0")
+    spacer.append(size)
+
+    hlayout_item5 = etree.SubElement(hlayout, "item")
+    env_layout = etree.SubElement(hlayout_item5, "layout", attrib={
+        "class": "QVBoxLayout",
+        "name": "ClockLayout",
+    })
+    clock_item = etree.SubElement(env_layout, "item")
+    clock_label = etree.SubElement(clock_item, "widget", attrib={
+        "class": "PyDMLabel",
+        "name": "Clock",
+    })
+    clock_label.append(XMLGenerator.sizePolicy("Fixed", "Preferred"))
+    clock_label.append(XMLGenerator.size("minimumSize", 80, 0))
+    clock_label.append(XMLGenerator.font({
+        "pointsize": 8,
+        "italic": True,
+    }))
+    tooltip = etree.SubElement(clock_label, "property", attrib={"name": "toolTip"})
+    string = etree.SubElement(tooltip, "string")
+    whatsThis = etree.SubElement(clock_label, "property", attrib={"name": "whatsThis"})
+    string = etree.SubElement(whatsThis, "string")
+    clock_label.append(XMLGenerator.styleSheet([
+        "color: rgb(79, 79, 79);",
+        "background-color: rgba(255, 255, 255, 0);",
+    ]))
+    clock_label.append(XMLGenerator.text("Clock"))
+    alignment = etree.SubElement(clock_label, "property", attrib={"name": "alignment"})
+    set_tag = etree.SubElement(alignment, "set")
+    set_tag.text = "Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter"
+    precision = etree.SubElement(clock_label, "property", attrib={
+        "name": "precision",
+        "stdset": "0",
+    })
+    number = etree.SubElement(precision, "number")
+    number.text = 0
+    clock_label.append(XMLGenerator.bool("showUnits", False))
+    clock_label.append(XMLGenerator.bool("precisionFromPV", True))
+    clock_label.append(XMLGenerator.bool("alarmSensitiveContent", False))
+    clock_label.append(XMLGenerator.bool("alarmSensitiveBorder", True))
+    clock_label.append(XMLGenerator.channel("SIOC:SYS0:AL00:TOD"))
+    location_item = etree.SubElement(env_layout, "item")
+    location_label = etree.SubElement(location_item, "widget", attrib={
+        "class": "PyDMLabel",
+        "name": "Location",
+    })
+    location_label.append(XMLGenerator.sizePolicy("Fixed", "Preferred"))
+    location_label.append(XMLGenerator.size("minimumSize", 80, 0))
+    location_label.append(XMLGenerator.font({
+        "pointsize": 8,
+        "italic": True,
+    }))
+    tooltip = etree.SubElement(location_label, "property", attrib={"name": "toolTip"})
+    string = etree.SubElement(tooltip, "string")
+    location_label.append(XMLGenerator.styleSheet([
+        "color: rgb(79, 79, 79);",
+        "background-color: rgba(255, 255, 255, 0);",
+    ]))
+    location_label.append(XMLGenerator.text("PROD/DEV"))
+    alignment = etree.SubElement(location_label, "property", attrib={"name": "alignment"})
+    set_tag = etree.SubElement(alignment, "set")
+    set_tag.text = "Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter"
+    precision = etree.SubElement(location_label, "property", attrib={
+        "name": "precision",
+        "stdset": "0",
+    })
+    number = etree.SubElement(precision, "number")
+    number.text = 0
+    location_label.append(XMLGenerator.bool("showUnits", False))
+    location_label.append(XMLGenerator.bool("precisionFromPV", True))
+    location_label.append(XMLGenerator.bool("alarmSensitiveContent", False))
+    location_label.append(XMLGenerator.bool("alarmSensitiveBorder", True))
+    location_label.append(XMLGenerator.channel("SIOC:SYS0:AL00:MODE"))
+    return tree
 
 
 def create_background_widget(filepath):
