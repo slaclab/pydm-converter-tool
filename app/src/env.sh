@@ -4,4 +4,4 @@
 current_directory=$(pwd)
 
 # Set up the Python path
-export PYTHONPATH="$PYTHONPATH:$current_directory"
+export PYTHONPATH="$current_directory:$PYTHONPATH"
