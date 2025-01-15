@@ -3,6 +3,7 @@ import re
 
 class EDLAbstractObject:
     """EDL Abstract Object class represents an abstract object in .edl files"""
+
     def __init__(self, x: int = None, y: int = None, width: int = None, height: int = None):
         self.x = x
         self.y = y
@@ -13,12 +14,14 @@ class EDLAbstractObject:
 
 class EDLScreenProperties(EDLAbstractObject):
     """EDL Screen Properties class represents the screen properties in .edl files"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
 class EDLGroup(EDLAbstractObject):
     """EDL Group class represents a group in .edl files"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.objects = []
@@ -32,6 +35,7 @@ class EDLGroup(EDLAbstractObject):
 
 class EDLObject(EDLAbstractObject):
     """EDL Object class represents an object in .edl files"""
+
     def __init__(self, name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -54,7 +58,7 @@ class EDLFileParser:
         self.objects = []
 
         self.parse_screen_properties()
-        self.parse_objects_and_groups(self.text[self.screen_properties_end:])
+        self.parse_objects_and_groups(self.text[self.screen_properties_end :])
 
     def parse_screen_properties(self):
         match = self.screen_prop_pattern.search(self.text)
