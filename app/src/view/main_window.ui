@@ -227,12 +227,15 @@ color: rgb(255,255,255);
         <number>5</number>
        </property>
        <item>
-        <widget class="QTableWidget" name="tableWidget">
+        <widget class="QTableWidget" name="table_widget">
          <property name="horizontalScrollBarPolicy">
           <enum>Qt::ScrollBarAlwaysOff</enum>
          </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SingleSelection</enum>
          </property>
          <property name="selectionBehavior">
           <enum>QAbstractItemView::SelectRows</enum>
@@ -241,10 +244,10 @@ color: rgb(255,255,255);
           <bool>false</bool>
          </property>
          <property name="rowCount">
-          <number>20</number>
+          <number>0</number>
          </property>
          <property name="columnCount">
-          <number>6</number>
+          <number>3</number>
          </property>
          <attribute name="horizontalHeaderMinimumSectionSize">
           <number>200</number>
@@ -261,26 +264,6 @@ color: rgb(255,255,255);
          <attribute name="verticalHeaderVisible">
           <bool>false</bool>
          </attribute>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
-         <row/>
          <column>
           <property name="text">
            <string>Source</string>
@@ -293,12 +276,9 @@ color: rgb(255,255,255);
          </column>
          <column>
           <property name="text">
-           <string>Options</string>
+           <string>Status</string>
           </property>
          </column>
-         <column/>
-         <column/>
-         <column/>
         </widget>
        </item>
       </layout>
