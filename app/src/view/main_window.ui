@@ -81,11 +81,28 @@ color: rgb(255,255,255);
         <number>5</number>
        </property>
        <property name="rightMargin">
-        <number>100</number>
+        <number>5</number>
        </property>
        <property name="bottomMargin">
         <number>5</number>
        </property>
+       <item>
+        <widget class="QPushButton" name="add_item_button">
+         <property name="text">
+          <string>Add</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../../resources/file_plus.png</normaloff>../../resources/file_plus.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QPushButton" name="output_folder_button">
          <property name="text">
@@ -182,6 +199,19 @@ color: rgb(255,255,255);
           <bool>false</bool>
          </property>
         </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </item>
