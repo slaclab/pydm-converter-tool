@@ -97,5 +97,22 @@ class StyleSheet:
     pass
 
 
-class CustomWidget:
-    pass
+@dataclass
+class CustomWidget(XMLConvertible):
+    cls: str
+    base: str
+    header: str
+    container: str = ""
+
+    def to_xml(self):
+        top = etree.Element("customwidget")
+        cls = etree.SubElement(top, "class")
+        cls.text = self.cls
+        extends = etree.SubElement(top, "extends")
+        extends.text = self.base
+        header = etree.SubElement(top, "header")
+        header.text = self.header
+        if self.container:
+            container = etree.SubElement(top, "container")
+            container.text = self.container
+        return top

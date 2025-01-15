@@ -1,0 +1,28 @@
+from pydmconverter.dataclasses import CustomWidget
+
+
+def testCustomWidget():
+    target = (
+        "<customwidget>"
+        "<class>PyDMEnumButton</class>"
+        "<extends>QWidget</extends>"
+        "<header>pydm.widgets.enum_button</header>"
+        "</customwidget>"
+    )
+    widget = CustomWidget(
+        "PyDMEnumButton",
+        "QWidget",
+        "pydm.widgets.enum_button",
+    )
+    assert target == widget.to_string()
+
+    target = (
+        "<customwidget>"
+        "<class>PyDMEDMDisplayButton</class>"
+        "<extends>PyDMRelatedDisplayButton</extends>"
+        "<header>edmbutton.edm_button</header>"
+        "<container>1</container>"
+        "</customwidget>"
+    )
+    widget = CustomWidget("PyDMEDMDisplayButton", "PyDMRelatedDisplayButton", "edmbutton.edm_button", container="1")
+    assert target == widget.to_string()
