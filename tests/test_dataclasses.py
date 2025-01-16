@@ -1,4 +1,4 @@
-from pydmconverter.dataclasses import Bool, CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydmconverter.dataclasses import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet
 
 
 def testBool():
@@ -11,6 +11,18 @@ def testBool():
     )
     generated = Bool("showUnits", False)
     assert target == generated.to_string()
+
+
+def testChannel():
+    target = "".join(
+        [
+            '<property name="channel" stdset="0">',
+            "<string>SIOC:SYS0:AL00:TOD</string>",
+            "</property>",
+        ]
+    )
+    channel = Channel("SIOC:SYS0:AL00:TOD")
+    assert target == channel.to_string()
 
 
 def testCustomWidget():

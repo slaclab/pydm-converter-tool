@@ -151,6 +151,23 @@ class Layout:
 
 
 @dataclass
+class Channel(XMLConvertible):
+    channel: str
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "channel",
+                "stdset": "0",
+            },
+        )
+        string = etree.SubElement(prop, "string")
+        string.text = self.channel
+        return prop
+
+
+@dataclass
 class StyleSheet(XMLConvertible):
     lines: list[str]
 
