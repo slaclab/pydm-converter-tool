@@ -93,8 +93,26 @@ class Layout:
     pass
 
 
-class StyleSheet:
-    pass
+@dataclass
+class StyleSheet(XMLConvertible):
+    lines: list[str]
+
+    def to_xml(self):
+        top = etree.Element(
+            "property",
+            attrib={
+                "name": "styleSheet",
+            },
+        )
+        string = etree.SubElement(
+            top,
+            "string",
+            attrib={
+                "notr": "true",
+            },
+        )
+        string.text = "\n".join(self.lines)
+        return top
 
 
 @dataclass
