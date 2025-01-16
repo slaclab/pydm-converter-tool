@@ -1,4 +1,16 @@
-from pydmconverter.dataclasses import CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydmconverter.dataclasses import Bool, CustomWidget, Font, Size, SizePolicy, StyleSheet
+
+
+def testBool():
+    target = "".join(
+        [
+            '<property name="showUnits" stdset="0">',
+            "<bool>false</bool>",
+            "</property>",
+        ]
+    )
+    generated = Bool("showUnits", False)
+    assert target == generated.to_string()
 
 
 def testCustomWidget():

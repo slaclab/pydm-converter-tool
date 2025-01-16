@@ -128,8 +128,22 @@ class SizePolicy(XMLConvertible):
         return top
 
 
-class Bool:
-    pass
+@dataclass
+class Bool(XMLConvertible):
+    name: str
+    value: bool
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": self.name,
+                "stdset": "0",
+            },
+        )
+        bool_tag = etree.SubElement(prop, "bool")
+        bool_tag.text = "true" if self.value else "false"
+        return prop
 
 
 class Layout:
