@@ -16,17 +16,6 @@ class TestXMLGenerator:
         xml = etree.tostring(generated, encoding='unicode')
         assert target == xml
 
-    @staticmethod
-    def testChannel():
-        target = (
-            '<property name="channel" stdset="0">'
-            "<string>SIOC:SYS0:AL00:TOD</string>"
-            "</property>"
-        )
-        generated = XMLGenerator.channel("SIOC:SYS0:AL00:TOD")
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
 
 class TestMain:
     @staticmethod

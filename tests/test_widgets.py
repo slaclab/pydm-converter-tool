@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import Bool, CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydm_converter_tool.src.widgets import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet
 
 
 def testBool():
@@ -12,6 +12,16 @@ def testBool():
     )
     generated = Bool("showUnits", False)
     assert target == generated.to_string()
+
+
+def testChannel():
+    target = (
+        '<property name="channel" stdset="0">'
+        "<string>SIOC:SYS0:AL00:TOD</string>"
+        "</property>"
+    )
+    channel = Channel("SIOC:SYS0:AL00:TOD")
+    assert target == channel.to_string()
 
 
 def testCustomWidget():

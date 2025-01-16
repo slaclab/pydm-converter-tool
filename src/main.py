@@ -23,7 +23,7 @@ import xml.etree.ElementTree as etree
 
 from csv import writer
 
-from pydm_converter_tool.src.widgets import Bool, Font, StyleSheet
+from pydm_converter_tool.src.widgets import Bool, Channel, Font, StyleSheet
 
 
 class XMLGenerator:
@@ -32,16 +32,6 @@ class XMLGenerator:
         prop = etree.Element("property", attrib={"name": "text"})
         string_tag = etree.SubElement(prop, "string")
         string_tag.text = string
-        return prop
-
-    @staticmethod
-    def channel(value) -> etree.Element:
-        prop = etree.Element("property", attrib={
-            "name": "channel",
-            "stdset": "0",
-        })
-        string = etree.SubElement(prop, "string")
-        string.text = value
         return prop
 
 
@@ -208,7 +198,7 @@ class XMLGenerator:
         clock_label.append(Bool("precisionFromPV", True))
         clock_label.append(Bool("alarmSensitiveContent", False))
         clock_label.append(Bool("alarmSensitiveBorder", True))
-        clock_label.append(XMLGenerator.channel("SIOC:SYS0:AL00:TOD"))
+        clock_label.append(Channel("SIOC:SYS0:AL00:TOD"))
         location_item = etree.SubElement(env_layout, "item")
         location_label = etree.SubElement(location_item, "widget", attrib={
             "class": "PyDMLabel",
@@ -240,7 +230,7 @@ class XMLGenerator:
         location_label.append(XMLGenerator.bool("precisionFromPV", True))
         location_label.append(XMLGenerator.bool("alarmSensitiveContent", False))
         location_label.append(XMLGenerator.bool("alarmSensitiveBorder", True))
-        location_label.append(XMLGenerator.channel("SIOC:SYS0:AL00:MODE"))
+        location_label.append(Channel("SIOC:SYS0:AL00:MODE"))
         return titlebox_item
 
     @staticmethod
