@@ -23,19 +23,10 @@ import xml.etree.ElementTree as etree
 
 from csv import writer
 
-from pydm_converter_tool.src.widgets import StyleSheet
+from pydm_converter_tool.src.widgets import Font, StyleSheet
 
 
 class XMLGenerator:
-    @staticmethod
-    def font(**kwargs) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": "font"})
-        font = etree.SubElement(prop, "font")
-        for kw, arg in kwargs.items():
-            tag = etree.SubElement(font, kw)
-            tag.text = arg
-        return prop
-
     @staticmethod
     def text(string) -> etree.Element:
         prop = etree.Element("property", attrib={"name": "text"})
@@ -120,7 +111,7 @@ class XMLGenerator:
         })
         sizePolicy = XMLGenerator.sizePolicy("Fixed", "Preferred")
         lcls_label.append(sizePolicy)
-        font = XMLGenerator.font(
+        font = Font(
             pointsize="22",
             weight="75",
             bold="true",
@@ -143,7 +134,7 @@ class XMLGenerator:
         system_label.append(sizePolicy)
         minimumSize = XMLGenerator.size("minimumSize", "85", "0")
         system_label.append(minimumSize)
-        font = XMLGenerator.font(
+        font = Font(
             pointsize="8",
             weight="50",
             bold="false",
@@ -163,7 +154,7 @@ class XMLGenerator:
             "name": "Title",
         })
         title_label.append(XMLGenerator.sizePolicy("Expanding", "Preferred"))
-        title_label.append(XMLGenerator.font(
+        title_label.append(Font(
             pointsize="18",
             weight="75",
             bold="true",
@@ -201,7 +192,7 @@ class XMLGenerator:
         })
         clock_label.append(XMLGenerator.sizePolicy("Fixed", "Preferred"))
         clock_label.append(XMLGenerator.size("minimumSize", "80", "0"))
-        clock_label.append(XMLGenerator.font(
+        clock_label.append(Font(
             pointsize="8",
             italic="true",
         ))
@@ -235,7 +226,7 @@ class XMLGenerator:
         })
         location_label.append(XMLGenerator.sizePolicy("Fixed", "Preferred"))
         location_label.append(XMLGenerator.size("minimumSize", "80", "0"))
-        location_label.append(XMLGenerator.font(
+        location_label.append(Font(
             pointsize="8",
             italic="true",
         ))

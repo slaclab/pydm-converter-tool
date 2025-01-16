@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import CustomWidget, Size, SizePolicy, StyleSheet
+from pydm_converter_tool.src.widgets import CustomWidget, Font, Size, SizePolicy, StyleSheet
 
 
 def testCustomWidget():
@@ -34,6 +34,24 @@ def testCustomWidget():
         container="1"
     )
     assert target == widget.to_string()
+
+
+def testFont():
+    target = (
+        '<property name="font">'
+        "<font>"
+        "<pointsize>8</pointsize>"
+        "<weight>50</weight>"
+        "<bold>false</bold>"
+        "</font>"
+        "</property>"
+    )
+    font = Font(
+        pointsize="8",
+        weight="50",
+        bold="false",
+    )
+    assert target == font.to_string()
 
 
 def testSize():
