@@ -1,8 +1,8 @@
 import re
 
 
-class EDLAbstractObject:
-    """EDL Abstract Object class represents an abstract object in .edl files"""
+class EDMAbstractObject:
+    """EDM Abstract Object class represents an abstract object in .edl files"""
 
     def __init__(self, x: int = None, y: int = None, width: int = None, height: int = None):
         self.x = x
@@ -12,15 +12,15 @@ class EDLAbstractObject:
         self.properties = {}
 
 
-class EDLScreenProperties(EDLAbstractObject):
-    """EDL Screen Properties class represents the screen properties in .edl files"""
+class EDMScreenProperties(EDMAbstractObject):
+    """EDM Screen Properties class represents the screen properties in .edl files"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
-class EDLGroup(EDLAbstractObject):
-    """EDL Group class represents a group in .edl files"""
+class EDMGroup(EDMAbstractObject):
+    """EDM Group class represents a group in .edl files"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,15 +33,15 @@ class EDLGroup(EDLAbstractObject):
         return self.objects
 
 
-class EDLObject(EDLAbstractObject):
-    """EDL Object class represents an object in .edl files"""
+class EDMObject(EDMAbstractObject):
+    """EDM Object class represents an object in .edl files"""
 
     def __init__(self, name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
 
 
-class EDLFileParser:
+class EDMFileParser:
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
     group_pattern = re.compile(r"# \(Group\)(.*?)endGroup", re.DOTALL)
     object_pattern = re.compile(r"# \(([^)]+)\)(.*?)endObjectProperties", re.DOTALL)
@@ -65,13 +65,31 @@ class EDLFileParser:
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
+            size_properties = self.get_size_properties(screen_prop_text)
 
-            x = int(re.search(r"x (\d+)", screen_prop_text).group(1))
-            y = int(re.search(r"y (\d+)", screen_prop_text).group(1))
-            width = int(re.search(r"w (\d+)", screen_prop_text).group(1))
-            height = int(re.search(r"h (\d+)", screen_prop_text).group(1))
-
-            self.screen_properties = EDLScreenProperties(x, y, width, height)
+            self.screen_properties = EDMScreenProperties(**size_properties)
 
     def parse_objects_and_groups(self, text):
-        pass
+        pos = 0
+        while pos < len(text):
+            group_match = self.group_pattern.search(text, pos)
+            object_match = self.object_pattern.search(text, pos)
+
+            if object_match and (not group_match or object_match.start() < group_match.start()):
+                object_text = object_match.group(2)
+                size_properties = self.get_size_properties(object_text)
+                name = object_match.group(1)
+
+                obj = EDMObject(name, **size_properties)
+                self.objects.append(obj)
+
+                pos = object_match.end()
+
+    def get_size_properties(self, text):
+        size_properties = {}
+        size_properties["x"] = int(re.search(r"x (\d+)", text).group(1))
+        size_properties["y"] = int(re.search(r"y (\d+)", text).group(1))
+        size_properties["width"] = int(re.search(r"w (\d+)", text).group(1))
+        size_properties["height"] = int(re.search(r"h (\d+)", text).group(1))
+
+        return size_properties
