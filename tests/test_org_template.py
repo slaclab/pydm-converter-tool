@@ -1,10 +1,10 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.main import XMLGenerator
+from pydm_converter_tool.src.org_template import OrgTemplate
 
 
-class TestMain:
+class TestOrgTemplate:
     @staticmethod
     def test_form_layout():
         """A temparary test that always passes."""
@@ -27,7 +27,7 @@ class TestMain:
             "</property>"
             "</layout>"
         )
-        generated = XMLGenerator.form_layout()
+        generated = OrgTemplate.form_layout()
         xml = etree.tostring(generated, encoding='unicode')
         assert target == xml
 
@@ -48,6 +48,6 @@ class TestMain:
             "</widget>"
             "</item>"
         )
-        generated = XMLGenerator.background_widget()
+        generated = OrgTemplate.background_widget()
         xml = etree.tostring(generated, encoding="unicode")
         assert target == xml
