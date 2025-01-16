@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import CustomWidget
+from pydm_converter_tool.src.widgets import CustomWidget, StyleSheet
 
 
 def testCustomWidget():
@@ -34,3 +34,17 @@ def testCustomWidget():
         container="1"
     )
     assert target == widget.to_string()
+
+
+def testStyleSheet():
+    target = (
+        '<property name="styleSheet">'
+        '<string notr="true">color: rgb(1402121);\n'
+        "background-color: rgba(2552552550);</string>"
+        "</property>"
+    )
+    styleSheet = StyleSheet([
+        "color: rgb(1402121);",
+        "background-color: rgba(2552552550);",
+    ])
+    assert target == styleSheet.to_string()

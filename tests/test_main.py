@@ -20,21 +20,6 @@ class TestXMLGenerator:
         assert target == xml
 
     @staticmethod
-    def testStyleSheet():
-        target = (
-            '<property name="styleSheet">'
-            '<string notr="true">color: rgb(1402121);\n'
-            "background-color: rgba(2552552550);</string>"
-            "</property>"
-        )
-        generated = XMLGenerator.styleSheet([
-            "color: rgb(1402121);",
-            "background-color: rgba(2552552550);",
-        ])
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
-    @staticmethod
     def testSize():
         target = (
             '<property name="minimumSize">'

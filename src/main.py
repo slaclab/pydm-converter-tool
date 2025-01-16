@@ -23,6 +23,8 @@ import xml.etree.ElementTree as etree
 
 from csv import writer
 
+from pydm_converter_tool.src.widgets import StyleSheet
+
 
 class XMLGenerator:
     @staticmethod
@@ -39,17 +41,6 @@ class XMLGenerator:
         verstretch = etree.SubElement(sizePolicy, "verstretch")
         verstretch.text = "0"
         return sizePolicy_property
-
-    @staticmethod
-    def styleSheet(strings) -> etree.Element:
-        styleSheet_property = etree.Element("property", attrib={
-            "name": "styleSheet",
-        })
-        styleSheet_string = etree.SubElement(styleSheet_property, "string", attrib={
-            "notr": "true",
-        })
-        styleSheet_string.text = "\n".join(strings)
-        return styleSheet_property
 
     @staticmethod
     def size(name, width, height) -> etree.Element:
@@ -305,13 +296,13 @@ class XMLGenerator:
         })
         tooltip_property = etree.SubElement(frame_widget, "property", attrib={"name": "toolTip"})
         string = etree.SubElement(tooltip_property, "string")
-        styleSheet = XMLGenerator.styleSheet([
+        styleSheet = StyleSheet([
             "QWidget #Background {",
             "background-color: rgb(193, 193, 193);",
             "border-radius: 0px;",
             "}",
         ])
-        frame_widget.append(styleSheet)
+        frame_widget.append(styleSheet.to_xml())
         return background_item
 
 def write_display_template(filepath):
