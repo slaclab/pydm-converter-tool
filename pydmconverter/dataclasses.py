@@ -77,12 +77,30 @@ class Size:
 
 
 @dataclass
-class SizePolicy:
+class SizePolicy(XMLConvertible):
     hsizetype: str
     vsizetype: str
 
-    def xml(self):
-        pass
+    def to_xml(self):
+        top = etree.Element(
+            "property",
+            attrib={
+                "name": "sizePolicy",
+            },
+        )
+        sizePolicy = etree.SubElement(
+            top,
+            "sizepolicy",
+            attrib={
+                "hsizetype": self.hsizetype,
+                "vsizetype": self.vsizetype,
+            },
+        )
+        horstretch = etree.SubElement(sizePolicy, "horstretch")
+        horstretch.text = "0"
+        verstretch = etree.SubElement(sizePolicy, "verstretch")
+        verstretch.text = "0"
+        return top
 
 
 class Bool:
