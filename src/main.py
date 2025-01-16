@@ -23,18 +23,10 @@ import xml.etree.ElementTree as etree
 
 from csv import writer
 
-from pydm_converter_tool.src.widgets import Bool, Channel, Font, StyleSheet
+from pydm_converter_tool.src.widgets import Bool, Channel, Font, StyleSheet, Text
 
 
 class XMLGenerator:
-    @staticmethod
-    def text(string) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": "text"})
-        string_tag = etree.SubElement(prop, "string")
-        string_tag.text = string
-        return prop
-
-
     @staticmethod
     def form_layout() -> etree.Element:
         layout = etree.Element("layout", attrib={
@@ -102,7 +94,7 @@ class XMLGenerator:
             "background-color: rgba(255, 255, 255, 0)",
         ])
         lcls_label.append(lcls_label_styleSheet)
-        text = XMLGenerator.text("LCLS")
+        text = Text("LCLS")
         lcls_label.append(text)
 
         hlayout_item2 = etree.SubElement(hlayout, "item")
@@ -125,7 +117,7 @@ class XMLGenerator:
             "background-color: rgba(255, 255, 255, 0);",
         ])
         system_label.append(styleSheet)
-        text = XMLGenerator.text("GLOBAL\n&lt;SUBSYSTEM&gt;")
+        text = Text("GLOBAL\n&lt;SUBSYSTEM&gt;")
         system_label.append(text)
 
         hlayout_item3 = etree.SubElement(hlayout, "item")
@@ -143,7 +135,7 @@ class XMLGenerator:
             "color: rgb(55, 55, 55);",
             "background-color: rgba(120, 120, 120, 0);",
         ]))
-        title_label.append(XMLGenerator.text("&lt;GLOBAL PAGE TITLE&gt;"))
+        title_label.append(Text("&lt;GLOBAL PAGE TITLE&gt;"))
         alignment = etree.SubElement(title_label, "property", attrib={"name": "alignment"})
         set_tag = etree.SubElement(alignment, "set")
         set_tag.text = "Qt::AlignCenter"
@@ -184,7 +176,7 @@ class XMLGenerator:
             "color: rgb(79, 79, 79);",
             "background-color: rgba(255, 255, 255, 0);",
         ]))
-        clock_label.append(XMLGenerator.text("Clock"))
+        clock_label.append(Text("Clock"))
         alignment = etree.SubElement(clock_label, "property", attrib={"name": "alignment"})
         set_tag = etree.SubElement(alignment, "set")
         set_tag.text = "Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter"
@@ -216,7 +208,7 @@ class XMLGenerator:
             "color: rgb(79, 79, 79);",
             "background-color: rgba(255, 255, 255, 0);",
         ]))
-        location_label.append(XMLGenerator.text("PROD/DEV"))
+        location_label.append(Text("PROD/DEV"))
         alignment = etree.SubElement(location_label, "property", attrib={"name": "alignment"})
         set_tag = etree.SubElement(alignment, "set")
         set_tag.text = "Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter"

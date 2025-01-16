@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydm_converter_tool.src.widgets import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet, Text
 
 
 def testBool():
@@ -112,3 +112,13 @@ def testStyleSheet():
         "background-color: rgba(2552552550);",
     ])
     assert target == styleSheet.to_string()
+
+
+def testText():
+    target = (
+        '<property name="text">'
+        "<string>LCLS</string>"
+        "</property>"
+    )
+    text = Text("LCLS")
+    assert target == text.to_string()

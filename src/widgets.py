@@ -155,6 +155,16 @@ class Channel(XMLConvertible):
 
 
 @dataclass
+class Text(XMLConvertible):
+    string: str
+
+    def to_xml(self):
+        prop = etree.Element("property", attrib={"name": "text"})
+        string_tag = etree.SubElement(prop, "string")
+        string_tag.text = self.string
+        return prop
+
+@dataclass
 class StyleSheet(XMLConvertible):
     lines: list[str]
 

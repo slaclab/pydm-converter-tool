@@ -4,19 +4,6 @@ import pytest
 from pydm_converter_tool.src.main import XMLGenerator
 
 
-class TestXMLGenerator:
-    @staticmethod
-    def testText():
-        target = (
-            '<property name="text">'
-            "<string>LCLS</string>"
-            "</property>"
-        )
-        generated = XMLGenerator.text("LCLS")
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
-
 class TestMain:
     @staticmethod
     def test_form_layout():
