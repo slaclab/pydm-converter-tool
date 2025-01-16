@@ -6,20 +6,6 @@ from pydm_converter_tool.src.main import XMLGenerator
 
 class TestXMLGenerator:
     @staticmethod
-    def testSize():
-        target = (
-            '<property name="minimumSize">'
-            "<size>"
-            "<width>85</width>"
-            "<height>0</height>"
-            "</size>"
-            "</property>"
-        )
-        generated = XMLGenerator.size("minimumSize", "85", "0")
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
-    @staticmethod
     def testFont():
         target = (
                 '<property name="font">'

@@ -28,16 +28,6 @@ from pydm_converter_tool.src.widgets import StyleSheet
 
 class XMLGenerator:
     @staticmethod
-    def size(name, width, height) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": name})
-        size = etree.SubElement(prop, "size")
-        width_tag = etree.SubElement(size, "width")
-        width_tag.text = width
-        height_tag = etree.SubElement(size, "height")
-        height_tag.text = height
-        return prop
-
-    @staticmethod
     def font(**kwargs) -> etree.Element:
         prop = etree.Element("property", attrib={"name": "font"})
         font = etree.SubElement(prop, "font")

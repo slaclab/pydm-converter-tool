@@ -72,8 +72,20 @@ class Font:
     pass
 
 
-class Size:
-    pass
+@dataclass
+class Size(XMLConvertible):
+    name: str
+    width: str
+    height: str
+
+    def to_xml(self):
+        top = etree.Element("property", attrib={"name": self.name})
+        size = etree.SubElement(top, "size")
+        width = etree.SubElement(size, "width")
+        width.text = self.width
+        height = etree.SubElement(size, "height")
+        height.text = self.height
+        return top
 
 
 @dataclass
