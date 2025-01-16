@@ -1,4 +1,4 @@
-from pydmconverter.dataclasses import CustomWidget, SizePolicy, StyleSheet
+from pydmconverter.dataclasses import CustomWidget, Size, SizePolicy, StyleSheet
 
 
 def testCustomWidget():
@@ -26,6 +26,21 @@ def testCustomWidget():
     )
     widget = CustomWidget("PyDMEDMDisplayButton", "PyDMRelatedDisplayButton", "edmbutton.edm_button", container="1")
     assert target == widget.to_string()
+
+
+def testSize():
+    target = "".join(
+        [
+            '<property name="minimumSize">',
+            "<size>",
+            "<width>85</width>",
+            "<height>0</height>",
+            "</size>",
+            "</property>",
+        ]
+    )
+    size = Size("minimumSize", "85", "0")
+    assert target == size.to_string()
 
 
 def testSizePolicy():
