@@ -1,4 +1,4 @@
-from pydmconverter.dataclasses import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydmconverter.dataclasses import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet, Text
 
 
 def testBool():
@@ -114,3 +114,15 @@ def testStyleSheet():
         ]
     )
     assert target == styleSheet.to_string()
+
+
+def testText():
+    target = "".join(
+        [
+            '<property name="text">',
+            "<string>LCLS</string>",
+            "</property>",
+        ]
+    )
+    text = Text("LCLS")
+    assert target == text.to_string()
