@@ -1,7 +1,17 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import CustomWidget, Font, Size, SizePolicy, StyleSheet
+from pydm_converter_tool.src.widgets import Bool, CustomWidget, Font, Size, SizePolicy, StyleSheet
+
+
+def testBool():
+    target = (
+        '<property name="showUnits" stdset="0">'
+        "<bool>false</bool>"
+        "</property>"
+    )
+    generated = Bool("showUnits", False)
+    assert target == generated.to_string()
 
 
 def testCustomWidget():

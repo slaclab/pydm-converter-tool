@@ -17,17 +17,6 @@ class TestXMLGenerator:
         assert target == xml
 
     @staticmethod
-    def testBool():
-        target = (
-            '<property name="showUnits" stdset="0">'
-            "<bool>false</bool>"
-            "</property>"
-        )
-        generated = XMLGenerator.bool("showUnits", False)
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
-    @staticmethod
     def testChannel():
         target = (
             '<property name="channel" stdset="0">'
