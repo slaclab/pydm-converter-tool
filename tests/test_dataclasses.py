@@ -1,4 +1,4 @@
-from pydmconverter.dataclasses import CustomWidget, Size, SizePolicy, StyleSheet
+from pydmconverter.dataclasses import CustomWidget, Font, Size, SizePolicy, StyleSheet
 
 
 def testCustomWidget():
@@ -26,6 +26,26 @@ def testCustomWidget():
     )
     widget = CustomWidget("PyDMEDMDisplayButton", "PyDMRelatedDisplayButton", "edmbutton.edm_button", container="1")
     assert target == widget.to_string()
+
+
+def testFont():
+    target = "".join(
+        [
+            '<property name="font">',
+            "<font>",
+            "<pointsize>8</pointsize>",
+            "<weight>50</weight>",
+            "<bold>false</bold>",
+            "</font>",
+            "</property>",
+        ]
+    )
+    font = Font(
+        pointsize="8",
+        weight="50",
+        bold="false",
+    )
+    assert target == font.to_string()
 
 
 def testSize():

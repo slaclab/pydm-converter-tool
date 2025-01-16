@@ -68,8 +68,21 @@ class PyDMDrawingPolyLine:
     pass
 
 
-class Font:
-    pass
+@dataclass
+class Font(XMLConvertible):
+    pointsize: str = None
+    weight: str = None
+    bold: str = None
+    italic: str = None
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": "font"})
+        font = etree.SubElement(prop, "font")
+        for attr, value in self.__dict__.items():
+            if value is not None:
+                tag = etree.SubElement(font, attr)
+                tag.text = value
+        return prop
 
 
 @dataclass
