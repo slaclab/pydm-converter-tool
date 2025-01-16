@@ -28,21 +28,6 @@ from pydm_converter_tool.src.widgets import StyleSheet
 
 class XMLGenerator:
     @staticmethod
-    def sizePolicy(h, v) -> etree.Element:
-        sizePolicy_property = etree.Element("property", attrib={
-            "name": "sizePolicy",
-        })
-        sizePolicy = etree.SubElement(sizePolicy_property, "sizepolicy", attrib={
-            "hsizetype": h,
-            "vsizetype": v,
-        })
-        horstretch = etree.SubElement(sizePolicy, "horstretch")
-        horstretch.text = "0"
-        verstretch = etree.SubElement(sizePolicy, "verstretch")
-        verstretch.text = "0"
-        return sizePolicy_property
-
-    @staticmethod
     def size(name, width, height) -> etree.Element:
         prop = etree.Element("property", attrib={"name": name})
         size = etree.SubElement(prop, "size")

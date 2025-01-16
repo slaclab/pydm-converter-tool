@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 import pytest
 
-from pydm_converter_tool.src.widgets import CustomWidget, StyleSheet
+from pydm_converter_tool.src.widgets import CustomWidget, SizePolicy, StyleSheet
 
 
 def testCustomWidget():
@@ -34,6 +34,19 @@ def testCustomWidget():
         container="1"
     )
     assert target == widget.to_string()
+
+
+def testSizePolicy():
+    target = (
+        '<property name="sizePolicy">'
+        '<sizepolicy hsizetype="Preferred" vsizetype="Fixed">'
+        "<horstretch>0</horstretch>"
+        "<verstretch>0</verstretch>"
+        "</sizepolicy>"
+        "</property>"
+    )
+    sizePolicy = SizePolicy("Preferred", "Fixed")
+    assert target == sizePolicy.to_string()
 
 
 def testStyleSheet():

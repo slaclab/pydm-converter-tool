@@ -6,20 +6,6 @@ from pydm_converter_tool.src.main import XMLGenerator
 
 class TestXMLGenerator:
     @staticmethod
-    def testSizePolicy():
-        target = (
-            '<property name="sizePolicy">'
-            '<sizepolicy hsizetype="Preferred" vsizetype="Fixed">'
-            "<horstretch>0</horstretch>"
-            "<verstretch>0</verstretch>"
-            "</sizepolicy>"
-            "</property>"
-        )
-        generated = XMLGenerator.sizePolicy("Preferred", "Fixed")
-        xml = etree.tostring(generated, encoding='unicode')
-        assert target == xml
-
-    @staticmethod
     def testSize():
         target = (
             '<property name="minimumSize">'
