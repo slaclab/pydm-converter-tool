@@ -1,4 +1,6 @@
 from pydm_converter_tool.src.main import Converters
+from pydm_converter_tool.src.widgets import Alignment, Geometry
+
 
 def test_end_xml():
     target = (
@@ -88,3 +90,28 @@ def test_end_xml():
     )
     end = Converters.end_xml()
     assert target == end
+
+
+def test_alignment():
+    target = (
+        "<property name=\"alignment\">"
+        "<set>Qt::AlignLeft|Qt::AlignVCenter</set>"
+        "</property>"
+    )
+    alignment = Alignment("left")
+    assert target == alignment.to_string()
+
+
+def test_geometry():
+    target = (
+        "<property name=\"geometry\">"
+        "<rect>"
+        "<x>5</x>"
+        "<y>10</y>"
+        "<width>15</width>"
+        "<height>20</height>"
+        "</rect>"
+        "</property>"
+    )
+    geometry = Geometry("5", "10", "15", "20")
+    assert target == geometry.to_string()
