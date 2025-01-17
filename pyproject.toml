@@ -30,6 +30,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[tool.setuptools.packages.find]
+include = ["pydmconverter"]
+
 [project.optional-dependencies]
 dev = [
     "pytest",
