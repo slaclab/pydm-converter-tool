@@ -1,7 +1,7 @@
 """
-options_window.py
+output_select_dialog.py
 
-Attaches additional functionality to the options window view
+Modal prompting user to select output folder.
 """
 
 import os

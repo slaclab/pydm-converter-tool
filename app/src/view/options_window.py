@@ -1,7 +1,7 @@
 """
 options_window.py
 
-Attaches additional functionality to the options window view
+The options window view
 """
 
 from qtpy.QtWidgets import QWidget
@@ -15,7 +15,7 @@ class OptionsWindow(QWidget):
         options_model: OptionsModel,
         parent=None,
     ):
-        super().__init__()
+        super().__init__(parent)
         self.options_model = options_model
         self.setup_ui()
 
