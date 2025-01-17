@@ -314,7 +314,8 @@ def write_display_template(filepath):
     create_background_widget(filepath)
 
 
-class Converters(object):
+
+class Converters:
     def __init__(self, input):
         with open(input, "r") as edm:
             self.edmfile = edm.readlines()
