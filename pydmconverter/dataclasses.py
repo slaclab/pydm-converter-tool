@@ -219,3 +219,30 @@ class CustomWidget(XMLConvertible):
             container = etree.SubElement(top, "container")
             container.text = self.container
         return top
+
+
+@dataclass
+class Alignment(XMLConvertible):
+    alignment: str
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": "alignment"})
+        set_tag = etree.SubElement(prop, "set")
+        set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
+        return prop
+
+
+@dataclass
+class Geometry(XMLConvertible):
+    x: str
+    y: str
+    width: str
+    height: str
+
+    def to_xml(self):
+        prop = etree.Element("property", attrib={"name": "geometry"})
+        rect = etree.SubElement(prop, "rect")
+        for attr, value in self.__dict__.items():
+            elem = etree.SubElement(rect, attr)
+            elem.text = value
+        return prop

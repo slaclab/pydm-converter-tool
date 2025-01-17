@@ -1,4 +1,15 @@
-from pydmconverter.dataclasses import Bool, Channel, CustomWidget, Font, Size, SizePolicy, StyleSheet, Text
+from pydmconverter.dataclasses import (
+    Alignment,
+    Bool,
+    Channel,
+    CustomWidget,
+    Geometry,
+    Font,
+    Size,
+    SizePolicy,
+    StyleSheet,
+    Text,
+)
 
 
 def testBool():
@@ -126,3 +137,32 @@ def testText():
     )
     text = Text("LCLS")
     assert target == text.to_string()
+
+
+def testAlignment():
+    target = "".join(
+        [
+            '<property name="alignment">',
+            "<set>Qt::AlignLeft|Qt::AlignVCenter</set>",
+            "</property>",
+        ]
+    )
+    alignment = Alignment("left")
+    assert target == alignment.to_string()
+
+
+def testGeometry():
+    target = "".join(
+        [
+            '<property name="geometry">',
+            "<rect>",
+            "<x>5</x>",
+            "<y>10</y>",
+            "<width>15</width>",
+            "<height>20</height>",
+            "</rect>",
+            "</property>",
+        ]
+    )
+    geometry = Geometry("5", "10", "15", "20")
+    assert target == geometry.to_string()
