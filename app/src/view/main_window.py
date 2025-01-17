@@ -7,14 +7,13 @@ Attaches additional functionality to the main window view
 import os
 from time import sleep
 from pydm import Display
-from qtpy.QtCore import Slot, Signal
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import (
     QFileDialog,
     QTableWidget,
     QTableWidgetItem,
     QDialog,
     QMessageBox,
-    QApplication,
 )
 
 from model.app_model import AppModel
@@ -50,10 +49,12 @@ class MainWindow(Display):
         else:
             return
 
+        # Eventually will support adding folders; data processing is already set up to
+        # add multiple rows at a time.
         data = [
             [
                 selected_path,
-                f"{self.options_model.output_folder}/{os.path.basename(selected_path)}",
+                f"{self.options_model.output_folder}/{os.path.splitext(os.path.basename(selected_path))[0]}.ui",
                 "Not converted",
             ]
         ]
@@ -78,8 +79,8 @@ class MainWindow(Display):
     @Slot()
     def on_options_button_clicked(self):
         """Opens options window to allow user to configure options"""
-        options_window = OptionsWindow(self.options_model, self)
-        options_window.show()
+        self.options_window = OptionsWindow(self.options_model, self)
+        self.options_window.show()
 
     @Slot()
     def on_remove_item_button_clicked(self):
