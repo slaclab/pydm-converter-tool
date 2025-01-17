@@ -1,4 +1,5 @@
 import re
+from pprint import pprint, pformat
 
 
 class EDMAbstractObject:
@@ -9,7 +10,9 @@ class EDMAbstractObject:
         self.y = y
         self.width = width
         self.height = height
-        self.properties = {}
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.x}, {self.y}, {self.width}, {self.height})"
 
 
 class EDMScreenProperties(EDMAbstractObject):
@@ -32,6 +35,11 @@ class EDMGroup(EDMAbstractObject):
     def get_objects(self):
         return self.objects
 
+    def __repr__(self):
+        repr_str = super().__repr__()[:-1]
+        repr_str += f", objects: {pformat(self.objects, indent=2)})"
+        return repr_str
+
 
 class EDMObject(EDMAbstractObject):
     """EDM Object class represents an object in .edl files"""
@@ -39,6 +47,15 @@ class EDMObject(EDMAbstractObject):
     def __init__(self, name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
+        self.properties = {}
+
+    def add_property(self, key, value=True):
+        self.properties[key] = value
+
+    def __repr__(self):
+        repr_str = super().__repr__()[:-1]
+        repr_str += f", name: {self.name}, properties: {pformat(self.properties, indent=2)})"
+        return repr_str
 
 
 class EDMFileParser:
@@ -110,3 +127,8 @@ class EDMFileParser:
         size_properties["height"] = int(re.search(r"h (\d+)", text).group(1))
 
         return size_properties
+
+
+if __name__ == "__main__":
+    parser = EDMFileParser("../../../examples/all_bsy0_main.edl")
+    pprint(parser.ui, indent=2, width=1)
