@@ -2,11 +2,9 @@
 
 # Get the canonicalized absolute path of the script
 script_dir="$(readlink -f "$(dirname "$0")")"
-# echo "$script_dir"
 
 # Get the canonicalized absolute path of the current working directory
 current_dir="$(readlink -f "$PWD")"
-# echo "$current_dir"
 
 # Check if the current working directory is different from the script directory
 if [ "$current_dir" != "$script_dir" ]; then
