@@ -6,11 +6,9 @@ Attaches additional functionality to the options window view
 
 import os
 import sys
-from os import path
 from model.options_model import OptionsModel
 from qtpy.QtWidgets import (
     QDialogButtonBox,
-    QApplication,
     QDialog,
     QVBoxLayout,
     QLabel,
@@ -38,7 +36,6 @@ class OutputSelectDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        self.setWindowFlag(Qt.Window)
         self.setWindowModality(Qt.ApplicationModal)
         self.setFixedWidth(400)
         self.setFixedHeight(150)
@@ -66,9 +63,7 @@ class OutputSelectDialog(QDialog):
         self.save_checkbox = QCheckBox("Remember my preference", self)
         self.main_layout.addWidget(self.save_checkbox)
 
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.setLayoutDirection(Qt.LeftToRight)
         self.button_box.accepted.connect(self.validate_and_accept)
         if self.close_app_on_cancel:
@@ -80,11 +75,13 @@ class OutputSelectDialog(QDialog):
         self.setLayout(self.main_layout)
 
     def file_dialog_button_clicked(self):
+        """Opens file dialog for path selection, sets lineedit to selected path"""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_path:
             self.path_lineedit.setText(folder_path)
 
     def validate_and_accept(self):
+        """Checks if the supplied path is valid, accepting if it is"""
         path = self.path_lineedit.text()
         if os.path.exists(path):
             self.options_model.output_folder = path
