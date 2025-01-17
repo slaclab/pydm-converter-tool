@@ -22,6 +22,8 @@ import fnmatch
 
 from csv import writer
 
+from pydmconverter.dataclasses import CustomWidget
+
 
 class Converters:
     def __init__(self, input):
@@ -658,7 +660,8 @@ class Converters:
         write_display_template(pydm_file)
         self.widgets_converter(line_count)
 
-        self.end_xml()
+        with open(pydm_file, "a") as pydm:
+            pydm.write(self.end_xml())
 
     def widgets_converter(self, line_count):
         """
@@ -2076,7 +2079,8 @@ class Converters:
     # Add the closing XML lines, and custom widget declarations
     # Not necessary to only add these if and only if your widget is in the edm screen being converted
     # TODO: Probably cleaner to add these if and only if the widget is in the edm screen
-    def end_xml(self):
+    @staticmethod
+    def end_xml() -> str:
         """
         Adds the lines that declares custom widgets
 
@@ -2090,153 +2094,120 @@ class Converters:
         -------
         none : writes to pydm (.ui) file
         """
+        custom_widgets = []
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMLabel",
+                "QLabel",
+                "pydm.widgets.label",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMLineEdit",
+                "QLineEdit",
+                "pydm.widgets.line_edit",
+            )
+        )
+        custom_widgets.append(CustomWidget("PyDMFrame", "QFrame", "pydm.widgets.frame", container="1"))
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMDrawingRectangle",
+                "QWidget",
+                "pydm.widgets.drawing",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMDrawingEllipse",
+                "QWidget",
+                "pydm.widgets.drawing",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMShellCommand",
+                "QPushButton",
+                "pydm.widgets.shell_command",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMPushButton",
+                "QPushButton",
+                "pydm.widgets.pushbutton",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMEnumComboBox",
+                "QComboBox",
+                "pydm.widgets.enum_combo_box",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMRelatedDisplayButton",
+                "QPushButton",
+                "pydm.widgets.related_display_button",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMEDMDisplayButton",
+                "PyDMRelatedDisplayButton",
+                "edmbutton.edm_button",
+                container="1",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMDrawingLine",
+                "QWidget",
+                "pydm.widgets.drawing",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMDrawingPolyline",
+                "QWidget",
+                "pydm.widgets.drawing",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMEnumButton",
+                "QWidget",
+                "pydm.widgets.enum_button",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMSlider",
+                "QFrame",
+                "pydm.widgets.slider",
+            )
+        )
+        custom_widgets.append(
+            CustomWidget(
+                "PyDMEmbeddedDisplay",
+                "QFrame",
+                "pydm.widgets.embedded_display",
+            )
+        )
 
-        with open(pydm_file, "a") as pydm:
-            pydm.writelines("</widget>\n")
-            pydm.writelines("<customwidgets>\n")
+        lines = []
+        lines.append("</widget>")
+        lines.append("<customwidgets>")
 
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMLabel</class>\n",
-                    "<extends>QLabel</extends>\n",
-                    "<header>pydm.widgets.label</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMLineEdit</class>\n",
-                    "<extends>QLineEdit</extends>\n",
-                    "<header>pydm.widgets.line_edit</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMFrame</class>\n",
-                    "<extends>QFrame</extends>\n",
-                    "<header>pydm.widgets.frame</header>\n",
-                    "<container>1</container>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMDrawingRectangle</class>\n",
-                    "<extends>QWidget</extends>\n",
-                    "<header>pydm.widgets.drawing</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMDrawingEllipse</class>\n",
-                    "<extends>QWidget</extends>\n",
-                    "<header>pydm.widgets.drawing</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMShellCommand</class>\n",
-                    "<extends>QPushButton</extends>\n",
-                    "<header>pydm.widgets.shell_command</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMPushButton</class>\n",
-                    "<extends>QPushButton</extends>\n",
-                    "<header>pydm.widgets.pushbutton</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMEnumComboBox</class>\n",
-                    "<extends>QComboBox</extends>\n",
-                    "<header>pydm.widgets.enum_combo_box</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMRelatedDisplayButton</class>\n",
-                    "<extends>QPushButton</extends>\n",
-                    "<header>pydm.widgets.related_display_button</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMEDMDisplayButton</class>\n",
-                    "<extends>PyDMRelatedDisplayButton</extends>\n",
-                    "<header>edmbutton.edm_button</header>\n",
-                    "<container>1</container>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMDrawingLine</class>\n",
-                    "<extends>QWidget</extends>\n",
-                    "<header>pydm.widgets.drawing</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMDrawingPolyline</class>\n",
-                    "<extends>QWidget</extends>\n",
-                    "<header>pydm.widgets.drawing</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMEnumButton</class>\n",
-                    "<extends>QWidget</extends>\n",
-                    "<header>pydm.widgets.enum_button</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMSlider</class>\n",
-                    "<extends>QFrame</extends>\n",
-                    "<header>pydm.widgets.slider</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
-            pydm.writelines(
-                [
-                    "<customwidget>\n",
-                    "<class>PyDMEmbeddedDisplay</class>\n",
-                    "<extends>QFrame</extends>\n",
-                    "<header>pydm.widgets.embedded_display</header>\n",
-                    "</customwidget>\n",
-                ]
-            )
+        for widget in custom_widgets:
+            lines.append(widget.to_string())
 
-            # Step 3
-            # add the custom widget properties directly above this comment
-            pydm.writelines("</customwidgets>\n")
-            pydm.writelines(["<resources/>\n", "<connections/>\n", "</ui>\n"])
+        lines.append("</customwidgets>")
+        lines.append("<resources/>")
+        lines.append("<connections/>")
+        lines.append("</ui>")
+        return "".join(lines)
 
 
 # not sure exactly how this works but it does: :)
