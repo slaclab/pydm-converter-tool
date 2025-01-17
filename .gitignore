@@ -117,3 +117,5 @@ ENV/
 
 # Microsoft Visual Studio Code editor
 .vscode/
+
+*.json
