@@ -15,13 +15,6 @@ class EDMAbstractObject:
         return f"{self.__class__.__name__}({self.x}, {self.y}, {self.width}, {self.height})"
 
 
-class EDMScreenProperties(EDMAbstractObject):
-    """EDM Screen Properties class represents the screen properties in .edl files"""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
 class EDMGroup(EDMAbstractObject):
     """EDM Group class represents a group in .edl files"""
 
