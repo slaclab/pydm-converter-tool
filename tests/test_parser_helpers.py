@@ -2,6 +2,7 @@ import os
 import pytest
 import tempfile
 import textwrap
+from unittest.mock import patch
 
 from src.edm.parser_helpers import (
     search_calc_list,
@@ -10,6 +11,7 @@ from src.edm.parser_helpers import (
     apply_rewrite_rule,
     translate_calc_pv_to_pydm,
     loc_conversion,
+    replace_calc_and_loc_in_edm_content,
 )
 
 
@@ -166,3 +168,101 @@ def test_loc_conversion():
     edm_string_missing_colon = "LOC\\noColon=i"
     with pytest.raises(ValueError):
         loc_conversion(edm_string_missing_colon)
+
+
+@pytest.mark.parametrize(
+    "edm_content",
+    [
+        r"""
+    object activeXTextClass {
+      controlPv "CALC\sum(pv1, pv2)"
+    }
+    object activeXTextClass {
+      controlPv "CALC\sum(pv1, pv2)"
+    }
+    object activeXTextClass {
+      controlPv "CALC\{A-B}(anotherPv, 10.5)"
+    }
+    object activeXTextClass {
+      controlPv "LOC\myLocal=d:3.14"
+    }
+    object activeXTextClass {
+      controlPv "LOC\myLocal=d:3.14"
+    }
+    object activeXTextClass {
+      controlPv "LOC\myLocalInt=i:42"
+    }
+    """
+    ],
+)
+@patch("src.edm.parser_helpers.loc_conversion")
+@patch("src.edm.parser_helpers.translate_calc_pv_to_pydm")
+@patch("src.edm.parser_helpers.parse_calc_list")
+@patch("src.edm.parser_helpers.search_calc_list")
+def test_replace_calc_and_loc_in_edm_content(
+    mock_search_calc_list, mock_parse_calc_list, mock_translate_calc_pv_to_pydm, mock_loc_conversion, edm_content
+):
+    """
+    Tests that replace_calc_and_loc_in_edm_content correctly:
+      - Finds and replaces CALC\ and LOC\ references.
+      - Uses full PyDM strings on first occurrence, short references subsequently.
+      - Returns dictionaries for encountered references.
+    """
+    mock_search_calc_list.return_value = "/fake/path/calc.list"
+    mock_parse_calc_list.return_value = {
+        "sum": (None, "A+B"),
+        "avg": (None, "(A+B)/2"),
+    }
+
+    def mock_calc_translate(edm_pv, calc_dict=None):
+        if "sum" in edm_pv:
+            return "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B"
+        elif "{A-B}" in edm_pv:
+            return "calc://inline_expr?A=channel://anotherPv&B=channel://10.5&expr=A-B"
+        return "calc://unknown_calc"
+
+    mock_translate_calc_pv_to_pydm.side_effect = mock_calc_translate
+
+    def mock_loc_conv(edm_pv):
+        if "LOC\\myLocal=d:3.14" in edm_pv:
+            return "loc://myLocal?type=float&init=3.14"
+        elif "LOC\\myLocalInt=i:42" in edm_pv:
+            return "loc://myLocalInt?type=int&init=42"
+        return "loc://unknown_local"
+
+    mock_loc_conversion.side_effect = mock_loc_conv
+
+    new_content, encountered_calcs, encountered_locs = replace_calc_and_loc_in_edm_content(
+        edm_content, filepath="/some/fake/edm_file.edl"
+    )
+
+    mock_search_calc_list.assert_called_once_with("/some/fake/edm_file.edl")
+    mock_parse_calc_list.assert_called_once_with("/fake/path/calc.list")
+
+    assert "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B" in new_content
+    assert "calc://sum" in new_content
+    assert "calc://inline_expr?A=channel://anotherPv&B=channel://10.5&expr=A-B" in new_content
+
+    assert "loc://myLocal?type=float&init=3.14" in new_content
+    assert "loc://myLocal" in new_content
+    assert "loc://myLocalInt?type=int&init=42" in new_content
+
+    assert r"CALC\sum(pv1, pv2)" in encountered_calcs
+    sum_entry = encountered_calcs[r"CALC\sum(pv1, pv2)"]
+    assert sum_entry["full"] == "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B"
+    assert sum_entry["short"] == "calc://sum"
+
+    assert r"CALC\{A-B}(anotherPv, 10.5)" in encountered_calcs
+    inline_entry = encountered_calcs[r"CALC\{A-B}(anotherPv, 10.5)"]
+    assert inline_entry["full"] == "calc://inline_expr?A=channel://anotherPv&B=channel://10.5&expr=A-B"
+    assert inline_entry["short"] == "calc://inline_expr"
+
+    assert r"LOC\myLocal=d:3.14" in encountered_locs
+    myLocal_entry = encountered_locs[r"LOC\myLocal=d:3.14"]
+    assert myLocal_entry["full"] == "loc://myLocal?type=float&init=3.14"
+    assert myLocal_entry["short"] == "loc://myLocal"
+
+    assert r"LOC\myLocalInt=i:42" in encountered_locs
+    myLocalInt_entry = encountered_locs[r"LOC\myLocalInt=i:42"]
+    assert myLocalInt_entry["full"] == "loc://myLocalInt?type=int&init=42"
+    assert myLocalInt_entry["short"] == "loc://myLocalInt"

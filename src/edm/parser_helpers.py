@@ -346,3 +346,66 @@ def loc_conversion(edm_string: str) -> str:
         pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
 
     return pydm_string
+
+
+def replace_calc_and_loc_in_edm_content(
+    edm_content: str, filepath: str
+) -> Tuple[str, Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+    """
+    Replace both CALC\\...(...) and LOC\\...=... references in the EDM file content
+    with PyDM equivalents. The first time each unique reference appears, the
+    replacement is the full PyDM string; subsequent appearances use the short form.
+
+    Parameters
+    ----------
+    edm_content : str
+        The full text of the EDM file, as a single string.
+    filepath : str
+        path of the given edm file
+
+    Returns
+    -------
+    new_content : str
+        The EDM content after all CALC and LOC references have been replaced.
+    encountered_calcs : Dict[str, Dict[str, str]]
+        A dictionary of all encountered CALC references, mapping the original
+        EDM reference to {"full": ..., "short": ...}.
+    encountered_locs : Dict[str, Dict[str, str]]
+        A dictionary of all encountered LOC references, similarly mapping each
+        unique original LOC reference to "full" and "short" addresses.
+    """
+    calc_list_path = search_calc_list(filepath)
+    calc_dict = parse_calc_list(calc_list_path)
+
+    encountered_calcs: Dict[str, Dict[str, str]] = {}
+    encountered_locs: Dict[str, Dict[str, str]] = {}
+
+    calc_pattern = re.compile(r"CALC\\[^(\s]+\([^)]*\)")
+
+    def replace_calc_match(match: re.Match) -> str:
+        edm_pv = match.group(0)
+        if edm_pv not in encountered_calcs:
+            full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
+            short_url = full_url.split("?", 1)[0]
+            encountered_calcs[edm_pv] = {"full": full_url, "short": short_url}
+            return full_url
+        else:
+            return encountered_calcs[edm_pv]["short"]
+
+    new_content = calc_pattern.sub(replace_calc_match, edm_content)
+
+    loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
+
+    def replace_loc_match(match: re.Match) -> str:
+        edm_pv = match.group(0)
+        if edm_pv not in encountered_locs:
+            full_url = loc_conversion(edm_pv)
+            short_url = full_url.split("?", 1)[0]
+            encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
+            return full_url
+        else:
+            return encountered_locs[edm_pv]["short"]
+
+    new_content = loc_pattern.sub(replace_loc_match, new_content)
+
+    return new_content, encountered_calcs, encountered_locs
