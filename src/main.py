@@ -291,7 +291,7 @@ def create_background_widget(filepath):
     with open(filepath, "a") as pydm:
         pydm.writelines(
             [
-                "<item>\n" '<widget class="QFrame" name="Background">\n',
+                '<item>\n<widget class="QFrame" name="Background">\n',
                 '<property name="toolTip">\n'
                 "<string/>\n"
                 "</property>\n"
@@ -613,7 +613,7 @@ class Converters(object):
             pydm.writelines(
                 [
                     '<property name="penStyle" stdset="0">\n',
-                    "<enum>Qt::SolidLine</enum>\n" "</property>\n" '<property name="penColor" stdset="0">' "<color>\n",
+                    '<enum>Qt::SolidLine</enum>\n</property>\n<property name="penColor" stdset="0"><color>\n',
                     f"{self.edm_color_in_xml.get(color_index)}",
                     "</color>\n</property>\n",
                 ]
@@ -684,7 +684,7 @@ class Converters(object):
         pydm.writelines(
             [
                 '<property name="penWidth" stdset="0">\n',
-                f"<double>{temp[1]}</double>\n" "</property>\n",
+                f"<double>{temp[1]}</double>\n</property>\n",
             ]
         )
 
@@ -696,7 +696,7 @@ class Converters(object):
             pydm.writelines(
                 [
                     '<property name="penStyle" stdset="0">\n',
-                    "<enum>Qt::DashLine</enum>\n" "</property>\n",
+                    "<enum>Qt::DashLine</enum>\n</property>\n",
                 ]
             )
 
@@ -854,7 +854,7 @@ class Converters(object):
                 [
                     "&quot;channels&quot;: [{",
                     f"&quot;channel&quot;: &quot;{vis_pv}&quot;, ",
-                    "&quot;trigger&quot;: true, " "&quot;use_enum&quot;: false}]}]</string>\n</property>\n",
+                    "&quot;trigger&quot;: true, &quot;use_enum&quot;: false}]}]</string>\n</property>\n",
                 ]
             )
 
@@ -1689,8 +1689,8 @@ class Converters(object):
             [f'<widget class="PyDMRelatedDisplayButton" name="PyDMRelatedDisplayButton_{self.Pydm_Related_count}">\n']
         )
         if (widget_string.__contains__("invisible") and not args.show_related) or (args.hide_related):
-            pydm.writelines(['<property name="showIcon" stdset="0">\n' "<bool>false</bool>\n" "</property>)\n"])
-            pydm.writelines(['<property name="flat">\n' "<bool>true</bool>\n" "</property>\n"])
+            pydm.writelines(['<property name="showIcon" stdset="0">\n<bool>false</bool>\n</property>)\n'])
+            pydm.writelines(['<property name="flat">\n<bool>true</bool>\n</property>\n'])
         for edmline in widget_list:
             if edmline.startswith(("x ", "y ", "w ", "h ")):
                 self.geometry_converter(edmline, pydm)
@@ -1820,8 +1820,8 @@ class Converters(object):
                 [f'<widget class="PyDMEDMDisplayButton" name="PyDMEDMDisplayButton_{self.Edm_Related_count}">\n']
             )
             if (widget_string.__contains__("invisible") and not args.show_related) or (args.hide_related):
-                pydm.writelines(['<property name="showIcon" stdset="0">\n' "<bool>false</bool>\n" "</property>)\n"])
-                pydm.writelines(['<property name="flat">\n' "<bool>true</bool>\n" "</property>\n"])
+                pydm.writelines(['<property name="showIcon" stdset="0">\n<bool>false</bool>\n</property>)\n'])
+                pydm.writelines(['<property name="flat">\n<bool>true</bool>\n</property>\n'])
             for edmline in widget_list:
                 if edmline.startswith(("x ", "y ", "w ", "h ")):
                     self.geometry_converter(edmline, pydm)
