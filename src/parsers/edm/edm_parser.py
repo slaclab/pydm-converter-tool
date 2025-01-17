@@ -54,11 +54,11 @@ class EDMFileParser:
 
         self.screen_properties = None
         self.screen_properties_end = 0
-        self.groups = []
         self.objects = []
+        self.ui = EDMGroup(x=0, y=0)
 
         self.parse_screen_properties()
-        self.parse_objects_and_groups(self.text[self.screen_properties_end :])
+        self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def parse_screen_properties(self):
         match = self.screen_prop_pattern.search(self.text)
@@ -67,9 +67,11 @@ class EDMFileParser:
             self.screen_properties_end = match.end()
             size_properties = self.get_size_properties(screen_prop_text)
 
-            self.screen_properties = EDMScreenProperties(**size_properties)
+            self.ui.height = size_properties["height"]
+            self.ui.width = size_properties["width"]
 
-    def parse_objects_and_groups(self, text):
+    def parse_objects_and_groups(self, text, parent_group: EDMGroup):
+        edm_item = None
         pos = 0
         while pos < len(text):
             group_match = self.group_pattern.search(text, pos)
@@ -81,9 +83,24 @@ class EDMFileParser:
                 name = object_match.group(1)
 
                 obj = EDMObject(name, **size_properties)
-                self.objects.append(obj)
+                edm_item = obj
 
                 pos = object_match.end()
+            elif group_match:
+                group_text = group_match.group(1)
+                size_properties = self.get_size_properties(group_text)
+
+                group = EDMGroup(**size_properties)
+                group.add_object(self.parse_objects_and_groups(group_text, group))
+                edm_item = group
+
+                pos = group_match.end()
+            else:
+                break
+
+            if edm_item is not None and edm_item not in self.objects:
+                parent_group.add_object(edm_item)
+                self.objects.append(edm_item)
 
     def get_size_properties(self, text):
         size_properties = {}
