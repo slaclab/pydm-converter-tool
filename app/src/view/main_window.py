@@ -73,8 +73,7 @@ class MainWindow(Display):
     def on_output_folder_button_clicked(self) -> None:
         """Opens file dialog to allow user to select output folder."""
         dialog = OutputSelectDialog(self.options_model, self)
-        if dialog.exec_() == QDialog.Accepted:
-            print("Set")
+        dialog.exec_()
 
     @Slot()
     def on_options_button_clicked(self):
@@ -100,3 +99,4 @@ class MainWindow(Display):
         table_widget: QTableWidget = self.ui.table_widget
         for row in range(table_widget.rowCount()):
             print(row)
+            # Converter goes here
