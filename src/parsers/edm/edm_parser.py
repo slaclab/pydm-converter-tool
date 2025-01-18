@@ -36,7 +36,7 @@ class EDMObject(EDMObjectBase):
 
 class EDMFileParser:
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
-    group_pattern = re.compile(r"# \(Group\)(.*?)endGroup", re.DOTALL)
+    group_pattern = re.compile(r"# \(Group\)(.*)endGroup", re.DOTALL)
     object_pattern = re.compile(r"# \(([^)]+)\)(.*?)endObjectProperties", re.DOTALL)
 
     def __init__(self, file_path):
@@ -47,8 +47,7 @@ class EDMFileParser:
 
         self.screen_properties = None
         self.screen_properties_end = 0
-        self.objects = []
-        self.ui = EDMGroup(x=0, y=0)
+        self.ui = EDMGroup()
 
         self.parse_screen_properties()
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
@@ -64,19 +63,18 @@ class EDMFileParser:
             self.ui.width = size_properties["width"]
 
     def parse_objects_and_groups(self, text, parent_group: EDMGroup):
-        edm_item = None
         pos = 0
         while pos < len(text):
             group_match = self.group_pattern.search(text, pos)
             object_match = self.object_pattern.search(text, pos)
 
             if object_match and (not group_match or object_match.start() < group_match.start()):
+                name = object_match.group(1)
                 object_text = object_match.group(2)
                 size_properties = self.get_size_properties(object_text)
-                name = object_match.group(1)
 
-                obj = EDMObject(name, **size_properties)
-                edm_item = obj
+                obj = EDMObject(name=name, **size_properties)
+                parent_group.add_object(obj)
 
                 pos = object_match.end()
             elif group_match:
@@ -84,16 +82,12 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(group_text)
 
                 group = EDMGroup(**size_properties)
-                group.add_object(self.parse_objects_and_groups(group_text, group))
-                edm_item = group
+                self.parse_objects_and_groups(group_text, group)
+                parent_group.add_object(group)
 
                 pos = group_match.end()
             else:
                 break
-
-            if edm_item is not None and edm_item not in self.objects:
-                parent_group.add_object(edm_item)
-                self.objects.append(edm_item)
 
     def get_size_properties(self, text):
         size_properties = {}
