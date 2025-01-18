@@ -1,54 +1,37 @@
 import re
-from pprint import pprint, pformat
+from pprint import pprint
+from dataclasses import dataclass, field
 
 
-class EDMAbstractObject:
+@dataclass
+class EDMObjectBase:
     """EDM Abstract Object class represents an abstract object in .edl files"""
 
-    def __init__(self, x: int = None, y: int = None, width: int = None, height: int = None):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.x}, {self.y}, {self.width}, {self.height})"
+    x: int = 0
+    y: int = 0
+    width: int = 0
+    height: int = 0
 
 
-class EDMGroup(EDMAbstractObject):
+@dataclass
+class EDMGroup(EDMObjectBase):
     """EDM Group class represents a group in .edl files"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.objects = []
+    objects: list[EDMObjectBase] = field(default_factory=list)
 
     def add_object(self, obj):
         self.objects.append(obj)
 
-    def get_objects(self):
-        return self.objects
 
-    def __repr__(self):
-        repr_str = super().__repr__()[:-1]
-        repr_str += f", objects: {pformat(self.objects, indent=2)})"
-        return repr_str
-
-
-class EDMObject(EDMAbstractObject):
+@dataclass
+class EDMObject(EDMObjectBase):
     """EDM Object class represents an object in .edl files"""
 
-    def __init__(self, name: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = name
-        self.properties = {}
+    name: str = ""
+    properties: dict = field(default_factory=dict)
 
     def add_property(self, key, value=True):
         self.properties[key] = value
-
-    def __repr__(self):
-        repr_str = super().__repr__()[:-1]
-        repr_str += f", name: {self.name}, properties: {pformat(self.properties, indent=2)})"
-        return repr_str
 
 
 class EDMFileParser:
@@ -124,4 +107,4 @@ class EDMFileParser:
 
 if __name__ == "__main__":
     parser = EDMFileParser("../../../examples/all_bsy0_main.edl")
-    pprint(parser.ui, indent=2, width=1)
+    pprint(parser.ui, indent=2)
