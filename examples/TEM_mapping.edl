@@ -1,0 +1,74 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 2247
+y 259
+w 248
+h 280
+font "helvetica-medium-r-18.0"
+ctlFont "helvetica-medium-r-18.0"
+btnFont "helvetica-medium-r-18.0"
+fgColor index 14
+bgColor index 3
+textColor index 14
+ctlFgColor1 index 14
+ctlFgColor2 index 0
+ctlBgColor1 index 0
+ctlBgColor2 index 14
+topShadowColor index 0
+botShadowColor index 14
+endScreenProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 6
+y 11
+w 210
+h 247
+lineColor index 14
+fill
+fillColor index 4
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 9
+y 9
+w 216
+h 256
+font "courier-medium-r-12.0"
+fgColor index 44
+bgColor index 0
+useDisplayBg
+value {
+  "Sensor    Out  ADC   Mon  ADC"
+  ""
+  "1          16  018    16  017"
+  "2           9  032     9  031"
+  "3          15  020    15  019"
+  "4           8  002     8  001"
+  "5 center   14  022    14  021"
+  "5 up left  12  026    12  025"
+  "5 up rght  13  024    13  023"
+  "5 lo left  11  028    11  027"
+  "5 lo rght  10  030    10  029"
+  "6           7  004     7  003"
+  "7           6  006     6  005"
+  "8 center    5  008     5  007"
+  "8 up left   4  010     4  009"
+  "8 up rght   3  012     3  011"
+  "8 lo left   1  016     1  015"
+  "8 lo rght   2  014     2  013"
+}
+endObjectProperties
+
