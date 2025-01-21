@@ -57,7 +57,7 @@ extend-select = ["TID252"] # Defaults + check imports
 line-length = 120
 
 [tool.pytest.ini_options]
-# addopts = "--cov=src"
+addopts = "--cov=."
 log_cli_level = "info"
 log_level = "debug"
 testpaths = ["tests"]

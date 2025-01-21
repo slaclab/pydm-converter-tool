@@ -4,7 +4,7 @@ import tempfile
 import textwrap
 from unittest.mock import patch
 
-from src.edm.parser_helpers import (
+from pydmconverter.edm.parser_helpers import (
     search_calc_list,
     parse_calc_list,
     parse_calc_pv,
@@ -195,10 +195,10 @@ def test_loc_conversion():
     """
     ],
 )
-@patch("src.edm.parser_helpers.loc_conversion")
-@patch("src.edm.parser_helpers.translate_calc_pv_to_pydm")
-@patch("src.edm.parser_helpers.parse_calc_list")
-@patch("src.edm.parser_helpers.search_calc_list")
+@patch("pydmconverter.edm.parser_helpers.loc_conversion")
+@patch("pydmconverter.edm.parser_helpers.translate_calc_pv_to_pydm")
+@patch("pydmconverter.edm.parser_helpers.parse_calc_list")
+@patch("pydmconverter.edm.parser_helpers.search_calc_list")
 def test_replace_calc_and_loc_in_edm_content(
     mock_search_calc_list, mock_parse_calc_list, mock_translate_calc_pv_to_pydm, mock_loc_conversion, edm_content
 ):
