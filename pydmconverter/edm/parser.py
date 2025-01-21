@@ -34,9 +34,6 @@ class EDMObject(EDMObjectBase):
     name: str = ""
     properties: dict = field(default_factory=dict)
 
-    def add_property(self, key, value=True):
-        self.properties[key] = value
-
 
 class EDMFileParser:
     """EDMFileParser class parses .edl files and creates a tree of
@@ -59,7 +56,6 @@ class EDMFileParser:
         with open(file_path, "r") as file:
             self.text = file.read()
 
-        self.screen_properties = None
         self.screen_properties_end = 0
         self.ui = EDMGroup()
 
