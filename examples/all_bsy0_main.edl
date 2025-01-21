@@ -1,0 +1,111 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 2846
+y 161
+w 800
+h 488
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+fgColor index 14
+bgColor index 5
+textColor index 14
+ctlFgColor1 index 14
+ctlFgColor2 index 14
+ctlBgColor1 index 4
+ctlBgColor2 index 4
+topShadowColor index 1
+botShadowColor index 11
+showGrid
+gridSize 8
+endScreenProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 16
+y 12
+w 632
+h 136
+lineColor index 3
+fill
+fillColor index 3
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 292
+y 20
+w 98
+h 14
+font "helvetica-bold-r-12.0"
+fgColor index 14
+bgColor index 4
+useDisplayBg
+value {
+  "D2 Dump Status"
+}
+autoSize
+lineWidth 0
+endObjectProperties
+
+# (Lines)
+object activeLineClass
+beginObjectProperties
+major 4
+minor 0
+release 1
+x 40
+y 64
+w 560
+h 40
+lineColor index 14
+fillColor index 4
+lineWidth 3
+numPoints 6
+xPoints {
+  0 40
+  1 112
+  2 128
+  3 136
+  4 144
+  5 600
+}
+yPoints {
+  0 104
+  1 104
+  2 64
+  3 64
+  4 104
+  5 104
+}
+endObjectProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 336
+y 72
+w 16
+h 64
+lineColor index 15
+lineAlarm
+fill
+fillColor index 15
+fillAlarm
+alarmPv "STPR:BSYH:847:IN"
+endObjectProperties
+
