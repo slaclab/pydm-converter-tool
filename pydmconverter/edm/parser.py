@@ -4,6 +4,9 @@ from pprint import pprint
 from dataclasses import dataclass, field
 
 
+IGNORED_PROPERTIES = ("x", "y", "w", "h", "major", "minor", "release")
+
+
 @dataclass
 class EDMObjectBase:
     """EDM Abstract Object class represents an abstract object in .edl files"""
@@ -97,8 +100,9 @@ class EDMFileParser:
                 name = object_match.group(1)
                 object_text = object_match.group(2)
                 size_properties = self.get_size_properties(object_text)
+                properties = self.get_object_properties(object_text)
 
-                obj = EDMObject(name=name, **size_properties)
+                obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
@@ -135,6 +139,36 @@ class EDMFileParser:
         size_properties["height"] = int(re.search(r"h (\d+)", text).group(1))
 
         return size_properties
+
+    @staticmethod
+    def get_object_properties(text: str) -> dict:
+        """Get the object properties from the given text. This can be any
+        property that an EDM Object may use (e.g. fillColor, value, editable).
+        Size properties and version information are ignored.
+
+        Parameters
+        ----------
+        text : str
+            Text to extract properties from
+
+        Returns
+        -------
+        dict
+            A dictionary containing the properties of an object
+        """
+        properties = {}
+        for line in text.splitlines():
+            if not line or line.startswith(IGNORED_PROPERTIES):
+                continue
+
+            # TODO: Parse out multiline properties: value { \n ... \n ... \n }
+            try:
+                k, v = line.split(maxsplit=1)
+            except ValueError:
+                k, v = line, True
+            properties[k] = v
+
+        return properties
 
 
 if __name__ == "__main__":
