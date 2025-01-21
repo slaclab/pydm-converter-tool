@@ -139,5 +139,5 @@ class EDMFileParser:
 
 if __name__ == "__main__":
     """Startup code to test the EDMFileParser class"""
-    parser = EDMFileParser(Path("../examples/all_bsy0_main_with_groups.edl"))
+    parser = EDMFileParser(Path("../../examples/all_bsy0_main_with_groups.edl"))
     pprint(parser.ui, indent=2)
