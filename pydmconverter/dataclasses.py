@@ -4,6 +4,11 @@ from dataclasses import dataclass
 
 
 class XMLConvertible:
+    def __init__(self):
+        super().__init__()
+        self.name = f"{type(self).__name__}_{type(self).count}"
+        type(self).count += 1
+
     def to_xml(self):
         raise NotImplementedError
 
