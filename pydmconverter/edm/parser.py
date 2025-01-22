@@ -4,6 +4,9 @@ from pprint import pprint
 from dataclasses import dataclass, field
 
 
+IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
+
+
 @dataclass
 class EDMObjectBase:
     """EDM Abstract Object class represents an abstract object in .edl files"""
@@ -31,17 +34,14 @@ class EDMObject(EDMObjectBase):
     name: str = ""
     properties: dict = field(default_factory=dict)
 
-    def add_property(self, key, value=True):
-        self.properties[key] = value
-
 
 class EDMFileParser:
     """EDMFileParser class parses .edl files and creates a tree of
     EDMObjects and EDMGroups"""
 
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
-    group_pattern = re.compile(r"# \(Group\)(.*)endGroup", re.DOTALL)
-    object_pattern = re.compile(r"# \(([^)]+)\)(.*?)endObjectProperties", re.DOTALL)
+    group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
+    object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
 
     def __init__(self, file_path: str | Path):
         """Creates an instance of EDMFileParser for the given file_path
@@ -51,12 +51,12 @@ class EDMFileParser:
         file_path : str | Path
             EDM file to parse
         """
-        self.file_path = file_path
+        if not Path(file_path).exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
 
         with open(file_path, "r") as file:
             self.text = file.read()
 
-        self.screen_properties = None
         self.screen_properties_end = 0
         self.ui = EDMGroup()
 
@@ -97,8 +97,9 @@ class EDMFileParser:
                 name = object_match.group(1)
                 object_text = object_match.group(2)
                 size_properties = self.get_size_properties(object_text)
+                properties = self.get_object_properties(object_text)
 
-                obj = EDMObject(name=name, **size_properties)
+                obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
@@ -115,7 +116,7 @@ class EDMFileParser:
                 break
 
     @staticmethod
-    def get_size_properties(text: str) -> dict:
+    def get_size_properties(text: str) -> dict[str, int]:
         """Get the size properties from the given text (x, y, width, height)
 
         Parameters
@@ -125,16 +126,99 @@ class EDMFileParser:
 
         Returns
         -------
-        dict
+        dict : str, int
             A dictionary containing the size properties from the text
         """
         size_properties = {}
-        size_properties["x"] = int(re.search(r"x (\d+)", text).group(1))
-        size_properties["y"] = int(re.search(r"y (\d+)", text).group(1))
-        size_properties["width"] = int(re.search(r"w (\d+)", text).group(1))
-        size_properties["height"] = int(re.search(r"h (\d+)", text).group(1))
+        for prop in ["x", "y", "width", "height"]:
+            match = re.search(rf"{prop[0]} (\d+)", text)
+            if not match:
+                continue
+            size_properties[prop] = int(match.group(1))
 
         return size_properties
+
+    @classmethod
+    def get_object_properties(cls, text: str) -> dict[str, bool | str | list[str]]:
+        """Get the object properties from the given text. This can be any
+        property that an EDM Object may use (e.g. fillColor, value, editable).
+        Size properties and version information are ignored.
+
+        Parameters
+        ----------
+        text : str
+            Text to extract properties from
+
+        Returns
+        -------
+        dict : str, bool | str | list[str]
+            A dictionary containing the properties of an object
+        """
+        in_multi_line = False
+        multi_line_key = None
+        multi_line_prop = []
+        properties = {}
+
+        for line in text.splitlines():
+            if not line or line.startswith(IGNORED_PROPERTIES):
+                continue
+
+            if in_multi_line:
+                if line == "}":
+                    in_multi_line = False
+                    cleaned_prop = cls.remove_prepended_index(multi_line_prop)
+                    properties[multi_line_key] = cleaned_prop
+                    multi_line_prop = []
+                else:
+                    multi_line_prop.append(line.strip(' "'))
+                continue
+
+            try:
+                k, v = line.split(maxsplit=1)
+                v = v.strip(' "')
+            except ValueError:
+                k, v = line, True
+
+            if v == "{":
+                in_multi_line = True
+                multi_line_key = k
+            else:
+                properties[k] = v
+
+        return properties
+
+    @staticmethod
+    def remove_prepended_index(lines: list[str]) -> list[str]:
+        """Removes the prepended indices from the given multi-line property value
+
+        Parameters
+        ----------
+        lines : list[str]
+            List of lines in a multi-line property value to remove the prepended indices from
+
+        Returns
+        -------
+        list[str]
+            Lines of the multi-line property value with the prepended indices removed
+        """
+        indices = []
+        values = []
+
+        def check_sequential(indices):
+            """Check if the list of indices is sequential starting from 0"""
+            return indices == list(range(len(indices)))
+
+        for line in lines:
+            try:
+                k, v = line.split(maxsplit=1)
+                indices.append(int(k))
+                values.append(v.strip(' "'))
+            except ValueError:
+                return lines
+
+        if not check_sequential(indices):
+            return lines
+        return values
 
 
 if __name__ == "__main__":
