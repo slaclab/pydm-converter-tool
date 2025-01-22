@@ -4,9 +4,8 @@ options_window.py
 The options window view
 """
 
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLabel, QListWidget, QVBoxLayout, QStackedWidget
 from model.options_model import OptionsModel
-from qtpy.QtWidgets import QHBoxLayout, QLabel, QListWidget, QVBoxLayout, QStackedWidget
 
 
 class OptionsWindow(QWidget):
