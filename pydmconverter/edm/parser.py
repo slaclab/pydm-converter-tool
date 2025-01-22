@@ -51,7 +51,8 @@ class EDMFileParser:
         file_path : str | Path
             EDM file to parse
         """
-        self.file_path = file_path
+        if not Path(file_path).exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
 
         with open(file_path, "r") as file:
             self.text = file.read()
@@ -129,14 +130,16 @@ class EDMFileParser:
             A dictionary containing the size properties from the text
         """
         size_properties = {}
-        size_properties["x"] = int(re.search(r"x (\d+)", text).group(1))
-        size_properties["y"] = int(re.search(r"y (\d+)", text).group(1))
-        size_properties["width"] = int(re.search(r"w (\d+)", text).group(1))
-        size_properties["height"] = int(re.search(r"h (\d+)", text).group(1))
+        for prop in ["x", "y", "width", "height"]:
+            match = re.search(rf"{prop[0]} (\d+)", text)
+            if not match:
+                continue
+            size_properties[prop] = int(match.group(1))
 
         return size_properties
 
-    def get_object_properties(self, text: str) -> dict[str, bool | str | list[str]]:
+    @classmethod
+    def get_object_properties(cls, text: str) -> dict[str, bool | str | list[str]]:
         """Get the object properties from the given text. This can be any
         property that an EDM Object may use (e.g. fillColor, value, editable).
         Size properties and version information are ignored.
@@ -163,7 +166,7 @@ class EDMFileParser:
             if in_multi_line:
                 if line == "}":
                     in_multi_line = False
-                    cleaned_prop = self.remove_prepended_index(multi_line_prop)
+                    cleaned_prop = cls.remove_prepended_index(multi_line_prop)
                     properties[multi_line_key] = cleaned_prop
                     multi_line_prop = []
                 else:
@@ -184,7 +187,8 @@ class EDMFileParser:
 
         return properties
 
-    def remove_prepended_index(self, lines: list[str]) -> list[str]:
+    @staticmethod
+    def remove_prepended_index(lines: list[str]) -> list[str]:
         """Removes the prepended indices from the given multi-line property value
 
         Parameters
