@@ -12,7 +12,12 @@ class OptionsModel:
     def __init__(self):
         self.output_folder = None
 
-    def get_options_from_file(self, filepath="./options.json"):
+    def get_options_from_file(self, filepath: str = "./app/src/options.json") -> None:
+        """Retrieves GUI options from file, if it exists. Otherwise creates options file.
+
+        Args:
+            filepath (str, optional): Path to file. Defaults to "./app/src/options.json".
+        """
         # Make the file if it doesn't exist
         if not os.path.exists(filepath):
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -30,7 +35,13 @@ class OptionsModel:
             except json.JSONDecodeError:
                 print(f"Invalid JSON in file: {filepath}.")
 
-    def write_options_to_file(self, filepath="./options.json"):
+    def write_options_to_file(self, filepath: str = "./app/src/options.json") -> None:
+        """Writes GUI options to file.
+
+        Args:
+            filepath (str, optional): Path to file. Defaults to "./app/src/options.json".
+        """
+
         data = {}
         if self.output_folder is not None:
             data["output_folder"] = self.output_folder

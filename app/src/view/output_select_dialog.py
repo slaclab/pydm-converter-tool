@@ -6,7 +6,6 @@ Modal prompting user to select output folder.
 
 import os
 import sys
-from model.options_model import OptionsModel
 from qtpy.QtWidgets import (
     QDialogButtonBox,
     QDialog,
@@ -21,6 +20,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 from qtpy.QtCore import Qt
+from model.options_model import OptionsModel
 
 
 class OutputSelectDialog(QDialog):
