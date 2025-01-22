@@ -16,10 +16,10 @@ else
 fi
 
 # Sets correct envs
-source env.sh
+export PYTHONPATH="$script_dir:$script_dir/app/src:$script_dir/pydmconverter"
 
 # Launch GUI
-pydm --hide-nav-bar --hide-menu-bar view/main_window.py
+pydm --hide-nav-bar --hide-menu-bar app/src/view/main_window.py
 
 # Return to the original directory
 cd "$current_dir" || exit 1
