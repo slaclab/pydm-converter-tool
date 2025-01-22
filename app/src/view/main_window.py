@@ -5,6 +5,7 @@ Attaches additional functionality to the main window view
 """
 
 import os
+from pprint import pprint
 from time import sleep
 from pydm import Display
 from qtpy.QtCore import Slot
@@ -15,7 +16,6 @@ from qtpy.QtWidgets import (
     QDialog,
     QMessageBox,
 )
-
 from model.app_model import AppModel
 from model.options_model import OptionsModel
 from view.options_window import OptionsWindow
@@ -31,7 +31,8 @@ class MainWindow(Display):
         sleep(1)  # Needed so the window resizes correctly
 
     @Slot()
-    def on_add_item_button_clicked(self):
+    def on_add_file_button_clicked(self) -> None:
+        """Button action to allow user to add a file to be added to the list"""
         # Require user to set output folder before adding items
         if self.options_model.output_folder is None:
             self.on_output_folder_button_clicked()
@@ -43,7 +44,11 @@ class MainWindow(Display):
                 )
                 return
 
+        # Create file dialog, filtering on valid file types
         dialog = QFileDialog()
+        filter_string = f"Files ({' '.join(self.app_model.valid_file_types)})"
+        dialog.setNameFilter(filter_string)
+        dialog.setFileMode(QFileDialog.ExistingFile)
         if dialog.exec_() == QDialog.Accepted:
             selected_path = dialog.selectedFiles()[0]
         else:
@@ -76,27 +81,32 @@ class MainWindow(Display):
         dialog.exec_()
 
     @Slot()
-    def on_options_button_clicked(self):
+    def on_options_button_clicked(self) -> None:
         """Opens options window to allow user to configure options"""
         self.options_window = OptionsWindow(self.options_model, self)
         self.options_window.show()
 
     @Slot()
-    def on_remove_item_button_clicked(self):
+    def on_remove_item_button_clicked(self) -> None:
         """Removes the currently selected row from table"""
         table_widget: QTableWidget = self.ui.table_widget
         table_widget.removeRow(table_widget.currentRow())
 
     @Slot()
-    def on_clear_list_button_clicked(self):
+    def on_clear_list_button_clicked(self) -> None:
         """Removes all rows from table"""
         table_widget: QTableWidget = self.ui.table_widget
         table_widget.setRowCount(0)
 
     @Slot()
-    def on_convert_button_clicked(self):
-        print("convert")
+    def on_convert_button_clicked(self) -> None:
         table_widget: QTableWidget = self.ui.table_widget
         for row in range(table_widget.rowCount()):
-            print(row)
-            # Converter goes here
+            input_file = table_widget.item(row, 0).text()
+            file_type = os.path.splitext(input_file)[1].lower()
+            parser = self.app_model.parsers[file_type](input_file)
+            if parser.ui:
+                # TODO: instead of printing, pass the object to the xml writer
+                # This would also be the place to report checks on converter success
+                pprint(parser.ui, indent=2)
+                table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
