@@ -4,7 +4,7 @@ from pprint import pprint
 from dataclasses import dataclass, field
 
 
-IGNORED_PROPERTIES = ("x", "y", "w", "h", "major", "minor", "release")
+IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
 
 
 @dataclass
@@ -115,7 +115,7 @@ class EDMFileParser:
                 break
 
     @staticmethod
-    def get_size_properties(text: str) -> dict:
+    def get_size_properties(text: str) -> dict[str, int]:
         """Get the size properties from the given text (x, y, width, height)
 
         Parameters
@@ -125,7 +125,7 @@ class EDMFileParser:
 
         Returns
         -------
-        dict
+        dict : str, int
             A dictionary containing the size properties from the text
         """
         size_properties = {}
@@ -136,8 +136,7 @@ class EDMFileParser:
 
         return size_properties
 
-    @staticmethod
-    def get_object_properties(text: str) -> dict:
+    def get_object_properties(self, text: str) -> dict[str, bool | str | list[str]]:
         """Get the object properties from the given text. This can be any
         property that an EDM Object may use (e.g. fillColor, value, editable).
         Size properties and version information are ignored.
@@ -149,22 +148,73 @@ class EDMFileParser:
 
         Returns
         -------
-        dict
+        dict : str, bool | str | list[str]
             A dictionary containing the properties of an object
         """
+        in_multi_line = False
+        multi_line_key = None
+        multi_line_prop = []
         properties = {}
+
         for line in text.splitlines():
             if not line or line.startswith(IGNORED_PROPERTIES):
                 continue
 
-            # TODO: Parse out multiline properties: value { \n ... \n ... \n }
+            if in_multi_line:
+                if line == "}":
+                    in_multi_line = False
+                    cleaned_prop = self.remove_prepended_index(multi_line_prop)
+                    properties[multi_line_key] = cleaned_prop
+                    multi_line_prop = []
+                else:
+                    multi_line_prop.append(line.strip(' "'))
+                continue
+
             try:
                 k, v = line.split(maxsplit=1)
+                v = v.strip(' "')
             except ValueError:
                 k, v = line, True
-            properties[k] = v
+
+            if v == "{":
+                in_multi_line = True
+                multi_line_key = k
+            else:
+                properties[k] = v
 
         return properties
+
+    def remove_prepended_index(self, lines: list[str]) -> list[str]:
+        """Removes the prepended indices from the given multi-line property value
+
+        Parameters
+        ----------
+        lines : list[str]
+            List of lines in a multi-line property value to remove the prepended indices from
+
+        Returns
+        -------
+        list[str]
+            Lines of the multi-line property value with the prepended indices removed
+        """
+        indices = []
+        values = []
+
+        def check_sequential(indices):
+            """Check if the list of indices is sequential starting from 0"""
+            return indices == list(range(len(indices)))
+
+        for line in lines:
+            try:
+                k, v = line.split(maxsplit=1)
+                indices.append(int(k))
+                values.append(v.strip(' "'))
+            except ValueError:
+                return lines
+
+        if not check_sequential(indices):
+            return lines
+        return values
 
 
 if __name__ == "__main__":
