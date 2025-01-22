@@ -246,3 +246,48 @@ class Geometry(XMLConvertible):
             elem = etree.SubElement(rect, attr)
             elem.text = value
         return prop
+
+
+@dataclass
+class Color(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        color = etree.Element("color", attrib={"alpha": str(self.alpha)})
+        red = etree.SubElement(color, "red")
+        red.text = str(self.red)
+        green = etree.SubElement(color, "green")
+        green.text = str(self.green)
+        blue = etree.SubElement(color, "blue")
+        blue.text = str(self.blue)
+        return color
+
+
+@dataclass
+class Brush(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    fill: bool = True
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "brush",
+                "stdset": "0",
+            }
+        )
+        brush = etree.SubElement(
+            prop,
+            "brush",
+            attrib={
+                "brushstyle": "SolidPattern" if self.fill else "NoBrush",
+            }
+        )
+        color = Color(self.red, self.green, self.blue)
+        brush.append(color.to_xml())
+        return prop

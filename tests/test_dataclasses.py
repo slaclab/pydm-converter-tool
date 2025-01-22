@@ -1,6 +1,7 @@
 from pydmconverter.dataclasses import (
     Alignment,
     Bool,
+    Brush,
     Channel,
     CustomWidget,
     Geometry,
@@ -166,3 +167,37 @@ def testGeometry():
     )
     geometry = Geometry("5", "10", "15", "20")
     assert target == geometry.to_string()
+
+
+def testBrush():
+    target = "".join(
+        [
+            '<property name="brush" stdset="0">',
+            '<brush brushstyle="SolidPattern">',
+            '<color alpha="255">',
+            '<red>50</red>',
+            '<green>100</green>',
+            '<blue>150</blue>',
+            '</color>',
+            '</brush>',
+            '</property>',
+        ]
+    )
+    brush = Brush(50, 100, 150)
+    assert target == brush.to_string()
+
+    target = "".join(
+        [
+            '<property name="brush" stdset="0">',
+            '<brush brushstyle="NoBrush">',
+            '<color alpha="255">',
+            '<red>50</red>',
+            '<green>100</green>',
+            '<blue>150</blue>',
+            '</color>',
+            '</brush>',
+            '</property>',
+        ]
+    )
+    brush = Brush(50, 100, 150, fill=False)
+    assert target == brush.to_string()
