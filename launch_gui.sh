@@ -16,7 +16,7 @@ else
 fi
 
 # Sets correct envs
-export PYTHONPATH="$script_dir:$script_dir/app/src:$script_dir/pydmconverter"
+export PYTHONPATH="$script_dir:$script_dir/app/src:$script_dir/pydmconverter:$PYTHONPATH"
 
 # Launch GUI
 pydm --hide-nav-bar --hide-menu-bar app/src/view/main_window.py
