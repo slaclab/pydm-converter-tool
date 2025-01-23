@@ -12,6 +12,8 @@ from pydmconverter.edm.parser_helpers import (
     translate_calc_pv_to_pydm,
     loc_conversion,
     replace_calc_and_loc_in_edm_content,
+    parse_colors_list,
+    search_color_list,
 )
 
 
@@ -266,3 +268,226 @@ def test_replace_calc_and_loc_in_edm_content(
     myLocalInt_entry = encountered_locs[r"LOC\myLocalInt=i:42"]
     assert myLocalInt_entry["full"] == "loc://myLocalInt?type=int&init=42"
     assert myLocalInt_entry["short"] == "loc://myLocalInt"
+
+
+@pytest.fixture
+def colors_list_file():
+    """
+    Pytest fixture that creates a temporary file with mock EDM color file content,
+    then yields the file path, and finally cleans up the file.
+    """
+    mock_content = """\
+4 0 0
+
+# Global settings
+blinkms=750
+max=0x10000
+columns=5
+
+# Aliases
+alias trace0 red
+alias trace1 green
+
+# Static colors
+static 25 Controller { 0 0 65535 }
+static 26 "blinking red" { 65535 0 0 41120 0 0 }
+
+# Another static color with hex values
+static 27 "dark green" { 0xafff 0xafff 0 }
+
+# Rule definition
+rule 100 exampleRule {
+ =100 || =200 : strange
+ >=20         : invisible
+ >0 && <10    : red
+ >=10 && <20  : "blinking red"
+ default      : green
+}
+
+# Menumap
+menumap {
+  "blinking red"
+  Controller
+  "dark green"
+}
+
+# Alarm
+alarm {
+  disconnected : "dark green"
+  invalid      : "blinking red"
+  minor        : Controller
+  major        : red
+  noalarm      : *
+}
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
+        filepath = tmp_file.name
+        tmp_file.write(mock_content)
+        tmp_file.flush()
+
+    yield filepath
+
+    os.remove(filepath)
+
+
+def test_parse_colors_list_complex(colors_list_file):
+    """
+    Test that parse_colors_list correctly parses a complex EDM colors.list file.
+    """
+    parsed = parse_colors_list(colors_list_file)
+
+    print(parsed)
+    assert parsed["version"]["major"] == 4
+    assert parsed["version"]["minor"] == 0
+    assert parsed["version"]["release"] == 0
+
+    assert parsed["blinkms"] == 750
+    assert parsed["columns"] == 5
+    assert parsed["max"] == 0x10000
+
+    assert "trace0" in parsed["alias"]
+    assert parsed["alias"]["trace0"] == "red"
+    assert "trace1" in parsed["alias"]
+    assert parsed["alias"]["trace1"] == "green"
+
+    assert 25 in parsed["static"]
+    assert parsed["static"][25]["name"] == "Controller"
+    assert parsed["static"][25]["rgb"] == [0, 0, 65535]
+
+    assert 26 in parsed["static"]
+    assert parsed["static"][26]["name"] == "blinking red"
+    assert parsed["static"][26]["rgb"] == [65535, 0, 0, 41120, 0, 0]
+
+    assert 27 in parsed["static"]
+    assert parsed["static"][27]["name"] == "dark green"
+    assert parsed["static"][27]["rgb"] == [45055, 45055, 0]
+
+    assert 100 in parsed["rules"]
+    rule_data = parsed["rules"][100]
+    assert rule_data["name"] == "exampleRule"
+    conditions = rule_data["conditions"]
+
+    assert len(conditions) == 5
+    assert conditions[0]["condition"] == "=100 || =200"
+    assert conditions[0]["color"] == "strange"
+    assert conditions[-1]["condition"] == "default"
+    assert conditions[-1]["color"] == "green"
+
+    assert parsed["menumap"] == ["blinking red", "Controller", "dark green"]
+
+    assert parsed["alarm"]["disconnected"] == "dark green"
+    assert parsed["alarm"]["invalid"] == "blinking red"
+    assert parsed["alarm"]["minor"] == "Controller"
+    assert parsed["alarm"]["major"] == "red"
+    assert parsed["alarm"]["noalarm"] == "*"
+
+
+@pytest.fixture
+def clear_env(monkeypatch):
+    """
+    Fixture to clear relevant environment variables before each test
+    so they don't interfere with each other.
+    """
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    monkeypatch.delenv("EDMFILES", raising=False)
+
+
+def test_cli_argument_valid(monkeypatch, clear_env):
+    """
+    If cli_color_file is provided and the file exists, it should return immediately.
+    """
+    test_path = "/some/cli/path/colors.list"
+    monkeypatch.setattr(os.path, "isfile", lambda path: path == test_path)
+
+    result = search_color_list(cli_color_file=test_path)
+    assert result == test_path, "Should return the CLI path if it exists"
+
+
+def test_cli_argument_invalid(monkeypatch, clear_env):
+    """
+    If cli_color_file is provided but the file doesn't exist,
+    it should ignore and proceed to check environment variables or defaults.
+    """
+    test_path = "/some/cli/path/does_not_exist.list"
+    monkeypatch.setattr(os.path, "isfile", lambda path: False)
+
+    result = search_color_list(cli_color_file=test_path)
+    assert result is None, "Should return None if CLI file is invalid and no other fallback exists"
+
+
+def test_env_edmcolorfile_valid(monkeypatch, clear_env):
+    """
+    If EDMCOLORFILE is set and points to an existing file, it should be used.
+    """
+    env_path = "/env/path/edm_color_file.list"
+
+    monkeypatch.setenv("EDMCOLORFILE", env_path)
+    monkeypatch.setattr(os.path, "isfile", lambda path: path == env_path)
+
+    result = search_color_list()
+    assert result == env_path, "Should return the EDMCOLORFILE path if it exists"
+
+
+def test_env_edmcolorfile_invalid(monkeypatch, clear_env):
+    """
+    If EDMCOLORFILE is set but the file doesn't exist,
+    it should ignore it and check EDMFILES or default next.
+    """
+    env_path = "/env/path/does_not_exist.list"
+    monkeypatch.setenv("EDMCOLORFILE", env_path)
+    monkeypatch.setattr(os.path, "isfile", lambda path: False)
+
+    result = search_color_list()
+    assert result is None, "Should return None if EDMCOLORFILE is invalid and no fallback exists"
+
+
+def test_env_edmfiles_valid(monkeypatch, clear_env):
+    """
+    If EDMFILES is set, we look for `colors.list` in that directory.
+    """
+    env_dir = "/some/env/directory"
+    candidate_path = os.path.join(env_dir, "colors.list")
+
+    monkeypatch.setenv("EDMFILES", env_dir)
+    monkeypatch.setattr(os.path, "isfile", lambda path: path == candidate_path)
+
+    result = search_color_list()
+    assert result == candidate_path, "Should return /some/env/directory/colors.list if it exists"
+
+
+def test_env_edmfiles_invalid(monkeypatch, clear_env):
+    """
+    If EDMFILES is set but `colors.list` doesn't exist in that directory,
+    it should ignore it and check the default path.
+    """
+    env_dir = "/some/env/directory"
+
+    monkeypatch.setenv("EDMFILES", env_dir)
+    monkeypatch.setattr(os.path, "isfile", lambda path: False)
+
+    result = search_color_list()
+    assert result is None, "Should return None if EDMFILES and EDMCOLORFILE are invalid and no default exists"
+
+
+def test_default_valid(monkeypatch, clear_env):
+    """
+    If no CLI argument and no valid environment variables exist,
+    the function checks /etc/edm/colors.list by default.
+    """
+    default_path = "/etc/edm/colors.list"
+    monkeypatch.setattr(os.path, "isfile", lambda path: path == default_path)
+
+    result = search_color_list()
+    assert result == default_path, "Should return the default path if it exists"
+
+
+def test_default_invalid(monkeypatch, clear_env):
+    """
+    If there's no CLI argument, no valid environment variables, and the default doesn't exist,
+    the function should return None.
+    """
+    monkeypatch.setattr(os.path, "isfile", lambda path: False)
+
+    result = search_color_list()
+    assert result is None, "Should return None if nothing else is found"
