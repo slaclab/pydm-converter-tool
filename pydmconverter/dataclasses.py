@@ -1,20 +1,55 @@
 import xml.etree.ElementTree as etree
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import ClassVar
+
+
 
 
 class XMLConvertible:
-    def __init__(self):
-        super().__init__()
-        self.name = f"{type(self).__name__}_{type(self).count}"
-        type(self).count += 1
-
     def to_xml(self):
         raise NotImplementedError
 
     def to_string(self):
         element = self.to_xml()
         return etree.tostring(element, encoding="unicode")
+
+
+@dataclass
+class Tangible:
+    """Defines a widget that takes up space on a screen"""
+
+    x: int = None
+    y: int = None
+    w: int = None
+    h: int = None
+    count: ClassVar[int] = 1
+
+    def __post_init__(self):
+        self.name = f"{type(self).__name__}_{type(self).count}"
+
+
+@dataclass
+class Legible:
+    """Defines a widget that displays text"""
+
+    font: dict = field(default_factory=dict)
+    fontAlign: str = None
+
+
+@dataclass
+class Controllable:
+    """Defines a widget that uses an EPICS PV"""
+
+    channel: str = None
+
+
+@dataclass
+class Alarmable(Controllable):
+    """Defines a widget that changes color based on an EPICS PV"""
+
+    alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
+    alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
 
 
 class PyDMFrame:
