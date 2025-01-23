@@ -9,6 +9,7 @@ from pydmconverter.dataclasses import (
     PenColor,
     PenStyle,
     PenWidth,
+    PyDMDrawingRectangle,
     Size,
     SizePolicy,
     StyleSheet,
@@ -240,13 +241,64 @@ def testBrush():
             '<property name="brush" stdset="0">',
             '<brush brushstyle="NoBrush">',
             '<color alpha="255">',
-            '<red>50</red>',
-            '<green>100</green>',
-            '<blue>150</blue>',
-            '</color>',
-            '</brush>',
-            '</property>',
+            "<red>50</red>",
+            "<green>100</green>",
+            "<blue>150</blue>",
+            "</color>",
+            "</brush>",
+            "</property>",
         ]
     )
     brush = Brush(50, 100, 150, fill=False)
     assert target == brush.to_string()
+
+
+def testDrawingRectangle():
+    target = "".join(
+        [
+            '<widget class="PyDMDrawingRectangle" name="PyDMDrawingRectangle_1">',
+            '<property name="alarmSensitiveContent" stdset="0">',
+            '<bool>false</bool>',
+            '</property>',
+            '<property name="alarmSensitiveBorder" stdset="0">',
+            '<bool>false</bool>',
+            '</property>',
+            '<property name="geometry">',
+            '<rect>',
+            '<x>8</x>',
+            '<y>56</y>',
+            '<width>720</width>',
+            '<height>48</height>',
+            '</rect>',
+            '</property>',
+            '<property name="penStyle" stdset="0">',
+            '<enum>Qt::SolidLine</enum>',
+            '</property>',
+            '<property name="penColor" stdset="0"><color>',
+            '<red>200</red>',
+            '<green>200</green>',
+            '<blue>200</blue>',
+            '</color>',
+            '</property>',
+            '<property name="brush" stdset="0">',
+            '<brush brushstyle="SolidPattern">',
+            '<color alpha="255">',
+            '<red>200</red>',
+            '<green>200</green>',
+            '<blue>200</blue>',
+            '</color>',
+            '</brush>',
+            '</property>',
+            '</widget>',
+        ]
+    )
+    drawing = PyDMDrawingRectangle(
+        x=8,
+        y=56,
+        w=720,
+        h=48,
+        alarm_sensitive_border=False,
+        penColor=(200, 200, 200),
+        brushColor=(200, 200, 200, 255),
+    )
+    assert target == drawing.to_string()
