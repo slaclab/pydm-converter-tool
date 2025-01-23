@@ -272,6 +272,54 @@ class Color(XMLConvertible):
 
 
 @dataclass
+class PenColor(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "penColor",
+                "stdset": "0",
+            },
+        )
+        color = Color(self.red, self.green, self.blue, alpha=self.alpha)
+        prop.append(color.to_xml())
+        return prop
+
+
+@dataclass
+class PenStyle(XMLConvertible):
+    style: str = None
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "penStyle",
+                "stdset": "0",
+            },
+        )
+        enum = etree.SubElement(prop, "enum")
+        enum.text = "Qt::DashLine" if self.style == "dash" else "Qt::SolidLine"
+        return prop
+
+
+@dataclass
+class PenWidth(XMLConvertible):
+    width: int = None
+
+    def to_xml(self):
+        prop = etree.Element("property", attrib={"name": "penWidth", "stdset": "0"})
+        double = etree.SubElement(prop, "double")
+        double.text = str(self.width)
+        return prop
+
+
+@dataclass
 class Brush(XMLConvertible):
     red: int
     green: int
@@ -284,14 +332,14 @@ class Brush(XMLConvertible):
             attrib={
                 "name": "brush",
                 "stdset": "0",
-            }
+            },
         )
         brush = etree.SubElement(
             prop,
             "brush",
             attrib={
                 "brushstyle": "SolidPattern" if self.fill else "NoBrush",
-            }
+            },
         )
         color = Color(self.red, self.green, self.blue)
         brush.append(color.to_xml())

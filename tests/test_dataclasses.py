@@ -6,6 +6,9 @@ from pydmconverter.dataclasses import (
     CustomWidget,
     Geometry,
     Font,
+    PenColor,
+    PenStyle,
+    PenWidth,
     Size,
     SizePolicy,
     StyleSheet,
@@ -169,18 +172,64 @@ def testGeometry():
     assert target == geometry.to_string()
 
 
+def testPen():
+    target = "".join(
+        [
+            '<property name="penStyle" stdset="0">',
+            "<enum>Qt::SolidLine</enum>",
+            "</property>",
+        ]
+    )
+    style = PenStyle()
+    assert target == style.to_string()
+
+    target = "".join(
+        [
+            '<property name="penStyle" stdset="0">',
+            "<enum>Qt::DashLine</enum>",
+            "</property>",
+        ]
+    )
+    style = PenStyle("dash")
+    assert target == style.to_string()
+
+    target = "".join(
+        [
+            '<property name="penColor" stdset="0">',
+            '<color alpha="255">',
+            "<red>50</red>",
+            "<green>100</green>",
+            "<blue>150</blue>",
+            "</color>",
+            "</property>",
+        ]
+    )
+    color = PenColor(50, 100, 150)
+    assert target == color.to_string()
+
+    target = "".join(
+        [
+            '<property name="penWidth" stdset="0">',
+            "<double>9</double>",
+            "</property>",
+        ]
+    )
+    width = PenWidth(9)
+    assert target == width.to_string()
+
+
 def testBrush():
     target = "".join(
         [
             '<property name="brush" stdset="0">',
             '<brush brushstyle="SolidPattern">',
             '<color alpha="255">',
-            '<red>50</red>',
-            '<green>100</green>',
-            '<blue>150</blue>',
-            '</color>',
-            '</brush>',
-            '</property>',
+            "<red>50</red>",
+            "<green>100</green>",
+            "<blue>150</blue>",
+            "</color>",
+            "</brush>",
+            "</property>",
         ]
     )
     brush = Brush(50, 100, 150)
