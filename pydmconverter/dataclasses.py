@@ -1,6 +1,11 @@
 import xml.etree.ElementTree as etree
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import ClassVar
+
+
+ALARM_CONTENT_DEFAULT = False
+ALARM_BORDER_DEFAULT = True
 
 
 class XMLConvertible:
@@ -10,6 +15,43 @@ class XMLConvertible:
     def to_string(self):
         element = self.to_xml()
         return etree.tostring(element, encoding="unicode")
+
+
+@dataclass
+class Tangible:
+    """Defines a widget that takes up space on a screen"""
+
+    x: int = None
+    y: int = None
+    w: int = None
+    h: int = None
+    count: ClassVar[int] = 1
+
+    def __post_init__(self):
+        self.name = f"{type(self).__name__}_{type(self).count}"
+
+
+@dataclass
+class Legible:
+    """Defines a widget that displays text"""
+
+    font: dict = field(default_factory=dict)
+    fontAlign: str = None
+
+
+@dataclass
+class Controllable:
+    """Defines a widget that uses an EPICS PV"""
+
+    channel: str = None
+
+
+@dataclass
+class Alarmable(Controllable):
+    """Defines a widget that changes color based on an EPICS PV"""
+
+    alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
+    alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
 
 
 class PyDMFrame:
@@ -28,8 +70,40 @@ class PyDMLineEdit:
     pass
 
 
-class PyDMDrawingRectangle:
-    pass
+@dataclass
+class PyDMDrawingRectangle(XMLConvertible, Alarmable, Tangible):
+    count: ClassVar[int] = 0
+
+    penStyle: str = None
+    penColor: tuple[int] = None
+    penWidth: int = None
+    brushColor: tuple[int] = None
+    brushFill: bool = False
+
+    # TODO: __init__ with .components? widget.append([c.to_xml() for c in components])
+
+    def to_xml(self):
+        widget = etree.Element(
+            "widget",
+            attrib={
+                "class": type(self).__name__,
+                "name": self.name,
+            },
+        )
+        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
+        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        if self.channel is not None:
+            widget.append(Channel(self.channel).to_xml())
+        if self.penColor is not None:
+            widget.append(PenColor(*self.penColor).to_xml())
+        if self.penStyle is not None:
+            widget.append(PenStyle(style=self.penStyle).to_xml())
+        if self.penWidth is not None:
+            widget.append(PenWidth(width=self.penWidth).to_xml())
+        if self.brushColor is not None:
+            widget.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
+        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+        return widget
 
 
 class PyDMDrawingEllipse:
@@ -234,15 +308,109 @@ class Alignment(XMLConvertible):
 
 @dataclass
 class Geometry(XMLConvertible):
-    x: str
-    y: str
-    width: str
-    height: str
+    x: int
+    y: int
+    width: int
+    height: int
 
     def to_xml(self):
         prop = etree.Element("property", attrib={"name": "geometry"})
         rect = etree.SubElement(prop, "rect")
         for attr, value in self.__dict__.items():
             elem = etree.SubElement(rect, attr)
-            elem.text = value
+            elem.text = str(value)
+        return prop
+
+
+@dataclass
+class Color(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        color = etree.Element("color", attrib={"alpha": str(self.alpha)})
+        red = etree.SubElement(color, "red")
+        red.text = str(self.red)
+        green = etree.SubElement(color, "green")
+        green.text = str(self.green)
+        blue = etree.SubElement(color, "blue")
+        blue.text = str(self.blue)
+        return color
+
+
+@dataclass
+class PenColor(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "penColor",
+                "stdset": "0",
+            },
+        )
+        color = Color(self.red, self.green, self.blue, alpha=self.alpha)
+        prop.append(color.to_xml())
+        return prop
+
+
+@dataclass
+class PenStyle(XMLConvertible):
+    style: str = None
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "penStyle",
+                "stdset": "0",
+            },
+        )
+        enum = etree.SubElement(prop, "enum")
+        enum.text = "Qt::DashLine" if self.style == "dash" else "Qt::SolidLine"
+        return prop
+
+
+@dataclass
+class PenWidth(XMLConvertible):
+    width: int = None
+
+    def to_xml(self):
+        prop = etree.Element("property", attrib={"name": "penWidth", "stdset": "0"})
+        double = etree.SubElement(prop, "double")
+        double.text = str(self.width)
+        return prop
+
+
+@dataclass
+class Brush(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+    fill: bool = True
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "brush",
+                "stdset": "0",
+            },
+        )
+        brush = etree.SubElement(
+            prop,
+            "brush",
+            attrib={
+                "brushstyle": "SolidPattern" if self.fill else "NoBrush",
+            },
+        )
+        color = Color(self.red, self.green, self.blue)
+        brush.append(color.to_xml())
         return prop
