@@ -137,7 +137,7 @@ class MainWindow(Display):
     @Slot()
     def on_options_button_clicked(self) -> None:
         """Opens options window to allow user to configure options"""
-        self.options_window = OptionsWindow(self.options_model, self)
+        self.options_window = OptionsWindow(self.options_model)
         self.options_window.show()
 
     @Slot()
