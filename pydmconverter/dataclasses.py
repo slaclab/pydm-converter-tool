@@ -308,17 +308,17 @@ class Alignment(XMLConvertible):
 
 @dataclass
 class Geometry(XMLConvertible):
-    x: str
-    y: str
-    width: str
-    height: str
+    x: int
+    y: int
+    width: int
+    height: int
 
     def to_xml(self):
         prop = etree.Element("property", attrib={"name": "geometry"})
         rect = etree.SubElement(prop, "rect")
         for attr, value in self.__dict__.items():
             elem = etree.SubElement(rect, attr)
-            elem.text = value
+            elem.text = str(value)
         return prop
 
 
