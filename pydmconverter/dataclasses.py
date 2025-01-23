@@ -393,6 +393,7 @@ class Brush(XMLConvertible):
     red: int
     green: int
     blue: int
+    alpha: int = 255
     fill: bool = True
 
     def to_xml(self):
