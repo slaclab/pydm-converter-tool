@@ -1,6 +1,8 @@
 from pydmconverter.dataclasses import (
     Alignment,
     Bool,
+    Int,
+    Str,
     Brush,
     Channel,
     CustomWidget,
@@ -26,6 +28,30 @@ def testBool():
         ]
     )
     generated = Bool("showUnits", False)
+    assert target == generated.to_string()
+
+
+def testInt():
+    target = "\n".join(
+        [
+            '<property name="precision" stdset="0">',
+            "  <number>8</number>",
+            "</property>",
+        ]
+    )
+    generated = Int("precision", 8)
+    assert target == generated.to_string()
+
+
+def testStr():
+    target = "\n".join(
+        [
+            '<property name="toolTip" stdset="0">',
+            "  <string>foo</string>",
+            "</property>",
+        ]
+    )
+    generated = Str("toolTip", "foo")
     assert target == generated.to_string()
 
 

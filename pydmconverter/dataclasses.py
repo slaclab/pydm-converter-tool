@@ -64,7 +64,7 @@ class Drawable(Tangible):
     penColor: tuple[int] = None
     penWidth: int = None
     brushColor: tuple[int] = None
-    brushFill: bool = False
+    brushFill: bool = None
 
     def generate_properties(self):
         props = []
@@ -75,6 +75,8 @@ class Drawable(Tangible):
         if self.penWidth is not None:
             props.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
+            if self.brushFill is None:
+                self.brushFill = True
             props.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
 
         return props
@@ -170,7 +172,7 @@ class PyDMDrawingRectangle(XMLConvertible, Alarmable):
     penColor: tuple[int] = None
     penWidth: int = None
     brushColor: tuple[int] = None
-    brushFill: bool = False
+    brushFill: bool = None
 
     # TODO: __init__ with .components? widget.append([c.to_xml() for c in components])
 
@@ -192,6 +194,8 @@ class PyDMDrawingRectangle(XMLConvertible, Alarmable):
         if self.penWidth is not None:
             widget.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
+            if self.brushFill is None:
+                self.brushFill = True
             widget.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
         widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
         return widget
@@ -343,7 +347,13 @@ class Str(XMLConvertible):
     string: str
 
     def to_xml(self):
-        prop = etree.Element("property", attrib={"name": self.name})
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": self.name,
+                "stdset": "0",
+            },
+        )
         string_tag = etree.SubElement(prop, "string")
         string_tag.text = self.string
         return prop
