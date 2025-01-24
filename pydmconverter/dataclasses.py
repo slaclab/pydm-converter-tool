@@ -84,12 +84,54 @@ class PyDMFrame:
     pass
 
 
-class QLabel:
-    pass
+@dataclass
+class QLabel(XMLConvertible, Legible):
+    count: ClassVar[int] = 1
+
+    precision: int = 0
+    show_units: bool = False
+    tool_tip: str = None
+
+    def to_xml(self) -> etree.Element:
+        widget = etree.Element(
+            "widget",
+            attrib={
+                "class": type(self).__name__,
+                "name": self.name,
+            },
+        )
+        if self.text is not None:
+            widget.append(Text(self.text).to_xml())
+        if self.tool_tip is not None:
+            widget.append(Str("toolTip", self.tool_tip).to_xml())
+        if self.font:
+            widget.append(Font(**self.font).to_xml())
+        if self.alignment is not None:
+            widget.append(Alignment(self.alignment).to_xml())
+        widget.append(Int("precision", self.precision).to_xml())
+        widget.append(Bool("showUnits", self.show_units).to_xml())
+        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+        return widget
 
 
-class PyDMLabel:
-    pass
+@dataclass
+class PyDMLabel(QLabel, Alarmable):
+    count: ClassVar[int] = 1
+
+    precision_from_pv: bool = False
+    pydm_tool_tip: str = None
+    enable_rich_text: bool = False
+
+    def to_xml(self) -> etree.Element:
+        widget = super().to_xml()
+        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
+        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        widget.append(Channel(self.channel).to_xml())
+        widget.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
+        if self.pydm_tool_tip is not None:
+            widget.append(Text("PyDMToolTip", self.pydm_tool_tip).to_xml())
+        widget.append(Bool("enableRichText", self.enable_rich_text).to_xml())
+        return widget
 
 
 class PyDMLineEdit:
@@ -277,6 +319,36 @@ class Bool(XMLConvertible):
         return prop
 
 
+@dataclass
+class Int(XMLConvertible):
+    name: str
+    value: int = 0
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": self.name,
+                "stdset": "0",
+            },
+        )
+        int_tag = etree.SubElement(prop, "number")
+        int_tag.text = str(self.value)
+        return prop
+
+
+@dataclass
+class Str(XMLConvertible):
+    name: str
+    string: str
+
+    def to_xml(self):
+        prop = etree.Element("property", attrib={"name": self.name})
+        string_tag = etree.SubElement(prop, "string")
+        string_tag.text = self.string
+        return prop
+
+
 class Layout:
     pass
 
@@ -360,6 +432,17 @@ class Alignment(XMLConvertible):
         prop = etree.Element("property", attrib={"name": "alignment"})
         set_tag = etree.SubElement(prop, "set")
         set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
+        return prop
+
+
+@dataclass
+class TextFormat(XMLConvertible):
+    text_format: str
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": "textFormat"})
+        set_tag = etree.SubElement(prop, "enum")
+        set_tag.text = f"Qt::{self.text_format.capitalize()}"
         return prop
 
 
