@@ -22,26 +22,29 @@ class XMLConvertible:
 class Tangible:
     """Defines a widget that takes up space on a screen"""
 
+    count: ClassVar[int] = 1
     x: int = None
     y: int = None
     w: int = None
     h: int = None
-    count: ClassVar[int] = 1
 
     def __post_init__(self):
         self.name = f"{type(self).__name__}_{type(self).count}"
+        (type(self)).count += 1
 
 
 @dataclass
-class Legible:
+class Legible(Tangible):
     """Defines a widget that displays text"""
 
+    text: str = None
+    text_format: str = None
     font: dict = field(default_factory=dict)
-    fontAlign: str = None
+    alignment: str = None
 
 
 @dataclass
-class Controllable:
+class Controllable(Tangible):
     """Defines a widget that uses an EPICS PV"""
 
     channel: str = None
@@ -53,6 +56,28 @@ class Alarmable(Controllable):
 
     alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
     alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
+
+
+@dataclass
+class Drawable(Tangible):
+    penStyle: str = None
+    penColor: tuple[int] = None
+    penWidth: int = None
+    brushColor: tuple[int] = None
+    brushFill: bool = False
+
+    def generate_properties(self):
+        props = []
+        if self.penColor is not None:
+            props.append(PenColor(*self.penColor).to_xml())
+        if self.penStyle is not None:
+            props.append(PenStyle(style=self.penStyle).to_xml())
+        if self.penWidth is not None:
+            props.append(PenWidth(width=self.penWidth).to_xml())
+        if self.brushColor is not None:
+            props.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
+
+        return props
 
 
 class PyDMFrame:
@@ -72,8 +97,32 @@ class PyDMLineEdit:
 
 
 @dataclass
-class PyDMDrawingRectangle(XMLConvertible, Alarmable, Tangible):
-    count: ClassVar[int] = 0
+class test_PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
+    count: ClassVar[int] = 1
+
+    # TODO: __init__ with .components? widget.append([c.to_xml() for c in components])
+
+    def to_xml(self):
+        widget = etree.Element(
+            "widget",
+            attrib={
+                "class": type(self).__name__,
+                "name": self.name,
+            },
+        )
+        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
+        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        widget.append(Channel(self.channel).to_xml())
+        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+        properties = self.generate_properties()
+        for prop in properties:
+            widget.append(prop)
+        return widget
+
+
+@dataclass
+class PyDMDrawingRectangle(XMLConvertible, Alarmable):
+    count: ClassVar[int] = 1
 
     penStyle: str = None
     penColor: tuple[int] = None
@@ -93,8 +142,7 @@ class PyDMDrawingRectangle(XMLConvertible, Alarmable, Tangible):
         )
         widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
-        if self.channel is not None:
-            widget.append(Channel(self.channel).to_xml())
+        widget.append(Channel(self.channel).to_xml())
         if self.penColor is not None:
             widget.append(PenColor(*self.penColor).to_xml())
         if self.penStyle is not None:
@@ -145,18 +193,26 @@ class PyDMDrawingPolyLine:
 
 @dataclass
 class Font(XMLConvertible):
-    pointsize: str = None
-    weight: str = None
-    bold: str = None
-    italic: str = None
+    pointsize: int = None
+    weight: int = None
+    bold: bool = None
+    italic: bool = None
 
     def to_xml(self) -> etree.Element:
         prop = etree.Element("property", attrib={"name": "font"})
         font = etree.SubElement(prop, "font")
-        for attr, value in self.__dict__.items():
-            if value is not None:
-                tag = etree.SubElement(font, attr)
-                tag.text = value
+        if self.pointsize is not None:
+            pointsize_tag = etree.SubElement(font, "pointsize")
+            pointsize_tag.text = str(self.pointsize)
+        if self.weight is not None:
+            weight_tag = etree.SubElement(font, "weight")
+            weight_tag.text = str(self.weight)
+        if self.bold is not None:
+            bold_tag = etree.SubElement(font, "bold")
+            bold_tag.text = "true" if self.bold else "false"
+        if self.italic is not None:
+            italic_tag = etree.SubElement(font, "italic")
+            italic_tag.text = "true" if self.italic else "false"
         return prop
 
 
@@ -412,6 +468,6 @@ class Brush(XMLConvertible):
                 "brushstyle": "SolidPattern" if self.fill else "NoBrush",
             },
         )
-        color = Color(self.red, self.green, self.blue)
+        color = Color(self.red, self.green, self.blue, self.alpha)
         brush.append(color.to_xml())
         return prop
