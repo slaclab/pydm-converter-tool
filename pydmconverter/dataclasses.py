@@ -14,6 +14,7 @@ class XMLConvertible:
 
     def to_string(self):
         element = self.to_xml()
+        etree.indent(element)
         return etree.tostring(element, encoding="unicode")
 
 
