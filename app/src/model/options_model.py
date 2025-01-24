@@ -16,7 +16,7 @@ class OptionsModel:
 
         # EDM options
         self.edm_override_def_colors = False
-        self.edm_custom_colors_path = "/colors.list"
+        self.edm_custom_colors_path = None
 
     def get_options_from_file(self, filepath: str = "./app/src/options.json") -> None:
         """Retrieves GUI options from file, if it exists. Otherwise creates options file.
