@@ -11,16 +11,12 @@ from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QLabel,
-    QHBoxLayout,
-    QPushButton,
     QCheckBox,
-    QLineEdit,
-    QWidget,
-    QFileDialog,
     QMessageBox,
 )
 from qtpy.QtCore import Qt
 from model.options_model import OptionsModel
+from view.file_select_widget import FileSelectWidget
 
 
 class OutputSelectDialog(QDialog):
@@ -47,18 +43,8 @@ class OutputSelectDialog(QDialog):
 
         self.main_layout.addWidget(QLabel("Select Output Folder"))
 
-        row_widget = QWidget()
-        row_layout = QHBoxLayout()
-        row_layout.setSpacing(0)
-        self.path_lineedit = QLineEdit(self)
-        if self.options_model.output_folder is not None:
-            self.path_lineedit.setText(self.options_model.output_folder)
-        row_layout.addWidget(self.path_lineedit)
-        self.file_dialog_button = QPushButton("...", self)
-        self.file_dialog_button.clicked.connect(self.file_dialog_button_clicked)
-        row_layout.addWidget(self.file_dialog_button)
-        row_widget.setLayout(row_layout)
-        self.main_layout.addWidget(row_widget)
+        self.folder_select = FileSelectWidget(path=self.options_model.output_folder, select_dir=True)
+        self.main_layout.addWidget(self.folder_select)
 
         self.save_checkbox = QCheckBox("Remember my preference", self)
         self.main_layout.addWidget(self.save_checkbox)
@@ -74,15 +60,9 @@ class OutputSelectDialog(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def file_dialog_button_clicked(self):
-        """Opens file dialog for path selection, sets lineedit to selected path"""
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
-        if folder_path:
-            self.path_lineedit.setText(folder_path)
-
     def validate_and_accept(self):
         """Checks if the supplied path is valid, accepting if it is"""
-        path = self.path_lineedit.text()
+        path = self.folder_select.get_path()
         if os.path.exists(path):
             self.options_model.output_folder = path
             if self.save_checkbox.isChecked():
