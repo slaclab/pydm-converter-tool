@@ -5,6 +5,7 @@ Contains the data model for the options of the GUI
 """
 
 import json
+import logging
 import os
 
 
@@ -23,7 +24,7 @@ class OptionsModel:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
             with open(filepath, "w") as json_file:
                 json.dump({}, json_file)
-            print(f"Created a new options file at: {filepath}")
+            logging.info(f"Created a new options file at: {filepath}")
 
         # Read the file
         with open(filepath, "r") as json_file:
@@ -33,7 +34,7 @@ class OptionsModel:
                 if output_folder is not None and os.path.exists(output_folder):
                     self.output_folder = output_folder
             except json.JSONDecodeError:
-                print(f"Invalid JSON in file: {filepath}.")
+                logging.error(f"Invalid JSON in file: {filepath}.")
 
     def write_options_to_file(self, filepath: str = "./app/src/options.json") -> None:
         """Writes GUI options to file.
