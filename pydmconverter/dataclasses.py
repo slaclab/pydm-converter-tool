@@ -23,14 +23,26 @@ class Tangible:
     """Defines a widget that takes up space on a screen"""
 
     count: ClassVar[int] = 1
-    x: int = None
-    y: int = None
-    w: int = None
-    h: int = None
+    x: int = 0
+    y: int = 0
+    w: int = 0
+    h: int = 0
 
     def __post_init__(self):
         self.name = f"{type(self).__name__}_{type(self).count}"
         (type(self)).count += 1
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a tangible object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all size properties of the tangible object
+        """
+        properties = []
+        properties.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+        return properties
 
 
 @dataclass
@@ -38,9 +50,25 @@ class Legible(Tangible):
     """Defines a widget that displays text"""
 
     text: str = None
-    text_format: str = None
     font: dict = field(default_factory=dict)
     alignment: str = None
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a legible object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the legible object
+        """
+        properties = super(Legible, self).generate_properties()
+        if self.text is not None:
+            properties.append(Text(self.text).to_xml())
+        if self.font:
+            properties.append(Font(**self.font).to_xml())
+        if self.alignment is not None:
+            properties.append(Alignment(self.alignment).to_xml())
+        return properties
 
 
 @dataclass
@@ -48,6 +76,18 @@ class Controllable(Tangible):
     """Defines a widget that uses an EPICS PV"""
 
     channel: str = None
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a controllable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the controllable object
+        """
+        properties = super(Controllable, self).generate_properties()
+        properties.append(Channel(self.channel).to_xml())
+        return properties
 
 
 @dataclass
@@ -57,9 +97,24 @@ class Alarmable(Controllable):
     alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
     alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
 
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of an alarmable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the alarmable object
+        """
+        properties = super(Alarmable, self).generate_properties()
+        properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
+        properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        return properties
+
 
 @dataclass
 class Drawable(Tangible):
+    """Defines a widget that can be drawn"""
+
     penStyle: str = None
     penColor: tuple[int] = None
     penWidth: int = None
@@ -67,19 +122,26 @@ class Drawable(Tangible):
     brushFill: bool = None
 
     def generate_properties(self):
-        props = []
+        """Generate a list of defined properties of a drawable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the drawable object
+        """
+        properties = super(Drawable, self).generate_properties()
         if self.penColor is not None:
-            props.append(PenColor(*self.penColor).to_xml())
+            properties.append(PenColor(*self.penColor).to_xml())
         if self.penStyle is not None:
-            props.append(PenStyle(style=self.penStyle).to_xml())
+            properties.append(PenStyle(style=self.penStyle).to_xml())
         if self.penWidth is not None:
-            props.append(PenWidth(width=self.penWidth).to_xml())
+            properties.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
             if self.brushFill is None:
                 self.brushFill = True
-            props.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
+            properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
 
-        return props
+        return properties
 
 
 class PyDMFrame:
@@ -90,11 +152,20 @@ class PyDMFrame:
 class QLabel(XMLConvertible, Legible):
     count: ClassVar[int] = 1
 
-    precision: int = 0
-    show_units: bool = False
+    precision: int = None
+    show_units: bool = None
     tool_tip: str = None
+    frame_shape: str = None
 
     def to_xml(self) -> etree.Element:
+        """Generate an XML representation of the QLabel object
+
+        Returns
+        -------
+        etree.Element
+            The XML representation of the QLabel
+        """
+        # Create the base of the etree, the widget element
         widget = etree.Element(
             "widget",
             attrib={
@@ -102,17 +173,21 @@ class QLabel(XMLConvertible, Legible):
                 "name": self.name,
             },
         )
-        if self.text is not None:
-            widget.append(Text(self.text).to_xml())
+
+        # Get XML representation of all defined properties of the QLabel
+        properties = self.generate_properties()
+        if self.precision is not None:
+            properties.append(Int("precision", self.precision).to_xml())
+        if self.show_units is not None:
+            properties.append(Bool("showUnits", self.show_units).to_xml())
         if self.tool_tip is not None:
-            widget.append(Str("toolTip", self.tool_tip).to_xml())
-        if self.font:
-            widget.append(Font(**self.font).to_xml())
-        if self.alignment is not None:
-            widget.append(Alignment(self.alignment).to_xml())
-        widget.append(Int("precision", self.precision).to_xml())
-        widget.append(Bool("showUnits", self.show_units).to_xml())
-        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+            properties.append(Str("toolTip", self.tool_tip).to_xml())
+        if self.frame_shape is not None:
+            properties.append(Str("frameShape", self.frame_shape).to_xml())
+
+        # Append all properties to the widget
+        for prop in properties:
+            widget.append(prop)
         return widget
 
 
@@ -120,19 +195,31 @@ class QLabel(XMLConvertible, Legible):
 class PyDMLabel(QLabel, Alarmable):
     count: ClassVar[int] = 1
 
-    precision_from_pv: bool = False
+    precision_from_pv: bool = None
     pydm_tool_tip: str = None
-    enable_rich_text: bool = False
 
     def to_xml(self) -> etree.Element:
-        widget = super().to_xml()
-        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
-        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
-        widget.append(Channel(self.channel).to_xml())
-        widget.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
+        """Generate an XML representation of the PyDMLabel object
+
+        Returns
+        -------
+        etree.Element
+            The XML representation of the PyDMLabel
+        """
+        widget = super(PyDMLabel, self).to_xml()
+
+        # Get XML representation of all defined properties of the QLabel
+        properties = self.generate_properties()
+        if self.precision_from_pv is not None:
+            widget.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
         if self.pydm_tool_tip is not None:
             widget.append(Text("PyDMToolTip", self.pydm_tool_tip).to_xml())
-        widget.append(Bool("enableRichText", self.enable_rich_text).to_xml())
+
+        # Append all properties to the widget if they are already defined
+        for prop in properties:
+            if widget.find(prop.tag):
+                continue
+            widget.append(prop)
         return widget
 
 
@@ -141,12 +228,18 @@ class PyDMLineEdit:
 
 
 @dataclass
-class test_PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
+class PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
     count: ClassVar[int] = 1
 
-    # TODO: __init__ with .components? widget.append([c.to_xml() for c in components])
-
     def to_xml(self):
+        """Generate an XML representation of the PyDMDrawingRectangle object
+
+        Returns
+        -------
+        etree.Element
+            The XML representation of the PyDMDrawingRectangle
+        """
+        # Create the base of the etree, the widget element
         widget = etree.Element(
             "widget",
             attrib={
@@ -154,18 +247,17 @@ class test_PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
                 "name": self.name,
             },
         )
-        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
-        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
-        widget.append(Channel(self.channel).to_xml())
-        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+
+        # Get XML representations of all properties and append them to the widget
         properties = self.generate_properties()
+
         for prop in properties:
             widget.append(prop)
         return widget
 
 
 @dataclass
-class PyDMDrawingRectangle(XMLConvertible, Alarmable):
+class PyDMDrawingEllipse(XMLConvertible, Alarmable, Drawable):
     count: ClassVar[int] = 1
 
     penStyle: str = None
@@ -199,10 +291,6 @@ class PyDMDrawingRectangle(XMLConvertible, Alarmable):
             widget.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
         widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
         return widget
-
-
-class PyDMDrawingEllipse:
-    pass
 
 
 class PyDMShellCommand:
