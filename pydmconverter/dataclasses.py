@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as etree
 
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Any
 
 
 ALARM_CONTENT_DEFAULT = False
@@ -109,6 +109,16 @@ class Alarmable(Controllable):
         properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
         return properties
+
+
+@dataclass
+class Hidable(Tangible):
+    """Defines a widget that can be hidden"""
+
+    visibility_pv: str = None
+    visibility_max: str = None
+    visibility_min: str = None
+    visibility_invert: bool = False
 
 
 @dataclass
@@ -436,6 +446,60 @@ class Str(XMLConvertible):
         )
         string_tag = etree.SubElement(prop, "string")
         string_tag.text = self.string
+        return prop
+
+
+@dataclass
+class Enum(XMLConvertible):
+    name: str
+    value: str
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": self.name,
+                "stdset": "0",
+            },
+        )
+        enum = etree.SubElement(prop, "enum")
+        enum.text = self.value
+        return prop
+
+
+@dataclass
+class PyDMRule:
+    name: str
+    rule_property: str
+    initial_value: Any = None
+    expression: str
+    channel: str
+
+    def to_xml(self):
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "rules",
+                "stdset": "0",
+            },
+        )
+        rules_struct = [
+            {
+                "name": self.name,
+                "property": self.rule_property,
+                "initialValue": self.initial_value,
+                "expression": self.expression,
+                "channel": [
+                    {
+                        "channel": self.channel,
+                        "trigger": True,
+                        "use_enum": False,
+                    },
+                ],
+            },
+        ]
+        rules = etree.SubElement(prop, "rules")
+        rules.text = str(rules_struct)
         return prop
 
 
