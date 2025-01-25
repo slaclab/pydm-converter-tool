@@ -260,15 +260,15 @@ class PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
 class PyDMDrawingEllipse(XMLConvertible, Alarmable, Drawable):
     count: ClassVar[int] = 1
 
-    penStyle: str = None
-    penColor: tuple[int] = None
-    penWidth: int = None
-    brushColor: tuple[int] = None
-    brushFill: bool = None
-
-    # TODO: __init__ with .components? widget.append([c.to_xml() for c in components])
-
     def to_xml(self):
+        """Generate an XML representation of the PyDMDrawingEllipse object
+
+        Returns
+        -------
+        etree.Element
+            The XML representation of the PyDMDrawingEllipse
+        """
+        # Create the base of the etree, the widget element
         widget = etree.Element(
             "widget",
             attrib={
@@ -276,20 +276,12 @@ class PyDMDrawingEllipse(XMLConvertible, Alarmable, Drawable):
                 "name": self.name,
             },
         )
-        widget.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
-        widget.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
-        widget.append(Channel(self.channel).to_xml())
-        if self.penColor is not None:
-            widget.append(PenColor(*self.penColor).to_xml())
-        if self.penStyle is not None:
-            widget.append(PenStyle(style=self.penStyle).to_xml())
-        if self.penWidth is not None:
-            widget.append(PenWidth(width=self.penWidth).to_xml())
-        if self.brushColor is not None:
-            if self.brushFill is None:
-                self.brushFill = True
-            widget.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
-        widget.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
+
+        # Get XML representations of all properties and append them to the widget
+        properties = self.generate_properties()
+
+        for prop in properties:
+            widget.append(prop)
         return widget
 
 
