@@ -471,9 +471,9 @@ class Enum(XMLConvertible):
 class PyDMRule:
     name: str
     rule_property: str
-    initial_value: Any = None
     expression: str
     channel: str
+    initial_value: Any = None
 
     def to_xml(self):
         prop = etree.Element(
