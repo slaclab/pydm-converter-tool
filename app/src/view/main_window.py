@@ -4,9 +4,11 @@ main_window.py
 Attaches additional functionality to the main window view
 """
 
+import fnmatch
 import os
 from pprint import pprint
 from time import sleep
+from typing import List
 from pydm import Display
 from qtpy.QtCore import Slot
 from qtpy.QtWidgets import (
@@ -75,6 +77,58 @@ class MainWindow(Display):
                 )
 
     @Slot()
+    def on_add_folder_button_clicked(self) -> None:
+        """Button action to allow user to add a folder to be added to the list"""
+
+        def get_files_recursively(folder: str, file_types: List[str]) -> List[str]:
+            """Traverses through folder, returning files matching list of desired types"""
+            matched_files = []
+            for root, dirs, files in os.walk(folder):
+                for file_type in file_types:
+                    for file in fnmatch.filter(files, file_type):
+                        matched_files.append(os.path.join(root, file))
+            return matched_files
+
+        # Require user to set output folder before adding items
+        if self.options_model.output_folder is None:
+            self.on_output_folder_button_clicked()
+            if self.options_model.output_folder is None:
+                QMessageBox.critical(
+                    self,
+                    "Set Output Folder First",
+                    "Select an output folder before adding items.",
+                )
+                return
+
+        # Create file dialog, filtering on folders
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+        selected_folder = dialog.getExistingDirectory(None, "Select Folder")
+        if not selected_folder:
+            return
+
+        files = get_files_recursively(selected_folder, self.app_model.valid_file_types)
+        data = [
+            [
+                file,
+                f"{self.options_model.output_folder}/{os.path.basename(os.path.normpath(selected_folder))}/{os.path.splitext(os.path.relpath(file, selected_folder))[0]}.ui",
+                "Not converted",
+            ]
+            for file in files
+        ]
+
+        table_widget: QTableWidget = self.ui.table_widget
+        for row, row_data in enumerate(data):
+            table_widget.insertRow(table_widget.rowCount())
+            for col, item in enumerate(row_data):
+                table_widget.setItem(
+                    table_widget.rowCount() - 1,
+                    col,
+                    QTableWidgetItem(item),
+                )
+
+    @Slot()
     def on_output_folder_button_clicked(self) -> None:
         """Opens file dialog to allow user to select output folder."""
         dialog = OutputSelectDialog(self.options_model, self)
@@ -83,7 +137,7 @@ class MainWindow(Display):
     @Slot()
     def on_options_button_clicked(self) -> None:
         """Opens options window to allow user to configure options"""
-        self.options_window = OptionsWindow(self.options_model, self)
+        self.options_window = OptionsWindow(self.options_model)
         self.options_window.show()
 
     @Slot()
