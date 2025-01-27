@@ -1,6 +1,7 @@
 import os
 import re
-from typing import Dict, List, Optional, Tuple
+import logging
+from typing import Dict, List, Optional, Tuple, Any
 
 
 def search_calc_list(file_path: str) -> str:
@@ -409,3 +410,274 @@ def replace_calc_and_loc_in_edm_content(
     new_content = loc_pattern.sub(replace_loc_match, new_content)
 
     return new_content, encountered_calcs, encountered_locs
+
+
+def search_color_list(cli_color_file=None):
+    """
+    Attempt to find the EDM color file by the following priority:
+      1. CLI argument (cli_color_file), if provided.
+      2. EDMCOLORFILE env variable (absolute path).
+      3. EDMFILES env variable + "colors.list".
+      4. Default path: "/etc/edm/colors.list".
+
+    Args:
+        cli_color_file (str or None): A file path passed via command line argument.
+          If this is provided and valid, it overrides other checks.
+
+    Returns:
+        str or None: The path to the EDM color file if found, else None.
+    """
+    if cli_color_file and os.path.isfile(cli_color_file):
+        return cli_color_file
+
+    edmc = os.environ.get("EDMCOLORFILE")
+    if edmc and os.path.isfile(edmc):
+        return edmc
+
+    edmfiles = os.environ.get("EDMFILES")
+    if edmfiles:
+        candidate = os.path.join(edmfiles, "colors.list")
+        if os.path.isfile(candidate):
+            return candidate
+
+    default_path = "/etc/edm/colors.list"
+    if os.path.isfile(default_path):
+        return default_path
+
+    return None
+
+
+def parse_colors_list(filepath: str) -> Dict[str, Any]:
+    """
+    Parse an EDM `colors.list` file into a structured Python dictionary.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the `colors.list` file.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary representing the parsed content of the `colors.list` file.
+
+        Keys
+        ----
+        version : Dict[str, int]
+            Dictionary containing {"major", "minor", "release"}.
+        blinkms : int or None
+            The blink period in milliseconds.
+        columns : int or None
+            Number of columns in the color palette.
+        max : int or None
+            The maximum RGB component value + 1 (e.g. 256 or 0x10000).
+        alias : Dict[str, str]
+            Maps an alias name to a (static or rule-based) color name.
+        static : Dict[int, Dict[str, Union[str, List[int]]]]
+            Static color definitions keyed by their numeric index.
+            Each value is a dictionary containing:
+              - "name": str
+              - "rgb": List[int]  (3 values) or 6 values if blinking
+        rules : Dict[int, Dict[str, Any]]
+            Rule definitions keyed by their numeric index.
+            Each value is a dictionary containing:
+              - "name": str
+              - "conditions": List[Dict[str, str]]
+                Each condition has:
+                  - "condition": str  (e.g. ">0 && <10" or "default")
+                  - "color": str
+        menumap : List[str]
+            List of color names as displayed in the color name menu.
+        alarm : Dict[str, str]
+            Alarm color configuration. Keys are alarm states, values are color names.
+
+    Notes
+    -----
+    - The first non-comment, non-empty line must be the version line: e.g. "4 0 0".
+    - The parser assumes a well-formed file. If your file structure differs, you may need to
+      handle additional edge cases (e.g. malformed lines, trailing braces, etc.).
+    - A “blinking” static color has six numeric components for its two RGB states.
+    - A rule line has the form: rule <index> <name> { ... }.
+    - The menumap and alarm blocks must each be enclosed in braces.
+    - The alias lines have the form: alias <alias_name> <color_name>.
+    """
+
+    re_comment = re.compile(r"^\s*#")
+    re_setting = re.compile(r"^\s*([a-zA-Z0-9_]+)\s*=\s*([^\s]+)")
+    re_alias = re.compile(r"^\s*alias\s+(\S+)\s+(.+)$")
+
+    # Regex for static color definitions:
+    # e.g. static 25 Controller { 0 0 65535 }
+    # or   static 26 "blinking red" { 65535 0 0 41120 0 0 }
+    # Captures: index, name, content inside braces
+    re_static = re.compile(r"^\s*static\s+(\d+)\s+\"?([^\"{]+)\"?\s*\{\s*([^}]*)\}")
+
+    # Regex for rule definitions:
+    # e.g. rule 100 exampleRule {
+    #        =100 || =200 : strange
+    #        default      : green
+    #      }
+    re_rule_header = re.compile(r"^\s*rule\s+(\d+)\s+(.*?){?\s*$")
+
+    parsed_data: Dict[str, Any] = {
+        "version": {},
+        "blinkms": None,
+        "columns": None,
+        "max": None,
+        "alias": {},
+        "static": {},
+        "rules": {},
+        "menumap": [],
+        "alarm": {},
+    }
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    def skip_blanks_and_comments(idx: int) -> int:
+        while idx < len(lines):
+            line_stripped = lines[idx].strip()
+            if not line_stripped or re_comment.match(line_stripped):
+                idx += 1
+            else:
+                break
+        return idx
+
+    idx = 0
+    idx = skip_blanks_and_comments(idx)
+    if idx >= len(lines):
+        raise ValueError("File is empty or missing version line.")
+
+    first_line = lines[idx].strip()
+    idx += 1
+
+    version_parts = first_line.split()
+    if len(version_parts) != 3:
+        raise ValueError("Version line must have exactly three integers: e.g. '4 0 0'.")
+
+    parsed_data["version"] = {
+        "major": int(version_parts[0]),
+        "minor": int(version_parts[1]),
+        "release": int(version_parts[2]),
+    }
+
+    while idx < len(lines):
+        line = lines[idx].strip()
+        idx += 1
+
+        if not line or re_comment.match(line):
+            continue
+
+        match_setting = re_setting.match(line)
+        if match_setting:
+            key, value_str = match_setting.groups()
+            try:
+                if value_str.startswith("0x"):
+                    value_int = int(value_str, 16)
+                else:
+                    value_int = int(value_str)
+                parsed_data[key] = value_int
+            except ValueError:
+                parsed_data[key] = value_str
+            continue
+
+        match_alias = re_alias.match(line)
+        if match_alias:
+            alias_name, color_name = match_alias.groups()
+            color_name = color_name.strip().strip('"')
+            parsed_data["alias"][alias_name] = color_name
+            continue
+
+        match_static = re_static.match(line)
+        if match_static:
+            idx_str, color_name, rgb_str = match_static.groups()
+            color_index = int(idx_str)
+            color_name = color_name.strip()
+            rgb_vals_str = rgb_str.replace(",", " ")
+            rgb_vals = rgb_vals_str.split()
+
+            def convert_val(v: str) -> int:
+                v = v.strip()
+                return int(v, 16) if v.startswith("0x") else int(v)
+
+            rgb_nums = [convert_val(v) for v in rgb_vals]
+
+            parsed_data["static"][color_index] = {
+                "name": color_name,
+                "rgb": rgb_nums,
+            }
+            continue
+
+        match_rule = re_rule_header.match(line)
+        if match_rule:
+            rule_index_str, rule_name_part = match_rule.groups()
+            rule_index = int(rule_index_str)
+            rule_name_part = rule_name_part.strip()
+
+            if rule_name_part.endswith("{"):
+                rule_name_part = rule_name_part[:-1].strip()
+
+            conditions = []
+            if "{" not in line:
+                idx = skip_blanks_and_comments(idx)
+
+            while idx < len(lines):
+                inner_line = lines[idx].strip()
+                idx += 1
+                if not inner_line or re_comment.match(inner_line):
+                    continue
+                if inner_line.startswith("}"):
+                    break
+
+                parts = inner_line.split(":")
+                if len(parts) == 2:
+                    condition_str = parts[0].strip()
+                    color_str = parts[1].strip().strip('"')
+                    conditions.append(
+                        {
+                            "condition": condition_str,
+                            "color": color_str,
+                        }
+                    )
+
+            parsed_data["rules"][rule_index] = {"name": rule_name_part, "conditions": conditions}
+            continue
+
+        if line.startswith("menumap"):
+            idx = skip_blanks_and_comments(idx)
+            while idx < len(lines):
+                inner_line = lines[idx].strip()
+                idx += 1
+                if inner_line.startswith("}"):
+                    break
+                if not inner_line or re_comment.match(inner_line):
+                    continue
+                color_name = inner_line.strip().strip('"')
+                parsed_data["menumap"].append(color_name)
+            continue
+
+        if line.startswith("alarm"):
+            idx = skip_blanks_and_comments(idx)
+            while idx < len(lines):
+                inner_line = lines[idx].strip()
+                idx += 1
+                if inner_line.startswith("}"):
+                    break
+                if not inner_line or re_comment.match(inner_line):
+                    continue
+                alarm_parts = inner_line.split(":")
+                if len(alarm_parts) == 2:
+                    alarm_state = alarm_parts[0].strip()
+                    color_name = alarm_parts[1].strip().strip('"')
+                    parsed_data["alarm"][alarm_state] = color_name
+            continue
+
+        logging.warning(f"Unrecognized line in colors.list: '{line}'")
+
+    for possible_key in ("blinkms", "columns", "max"):
+        if possible_key in parsed_data:
+            parsed_data[possible_key] = parsed_data[possible_key]
+        else:
+            parsed_data[possible_key] = None
+
+    return parsed_data
