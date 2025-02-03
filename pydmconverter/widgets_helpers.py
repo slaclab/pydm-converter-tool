@@ -1,8 +1,7 @@
-import xml.etree.ElementTree as etree
-
 from dataclasses import dataclass, field
-from typing import ClassVar, Any
-
+from typing import Any, ClassVar, List, Optional
+import xml.etree.ElementTree as etree
+from xml.etree import ElementTree as ET
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -18,165 +17,25 @@ class XMLConvertible:
         return etree.tostring(element, encoding="unicode")
 
 
-@dataclass
-class Tangible:
-    """Defines a widget that takes up space on a screen"""
+class XMLSerializableMixin:
+    """
+    Mixin class that provides a generic to_xml method for XML serialization.
+    Assumes that the class has a 'name' attribute and a 'generate_properties' method.
+    """
 
-    count: ClassVar[int] = 1
-    x: int = 0
-    y: int = 0
-    w: int = 0
-    h: int = 0
-
-    def __post_init__(self):
-        self.name = f"{type(self).__name__}_{type(self).count}"
-        (type(self)).count += 1
-
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a tangible object
+    def to_xml(self) -> ET.Element:
+        """
+        Generate an XML representation of the object.
 
         Returns
         -------
-        list[etree.Element]
-            List of all size properties of the tangible object
+        ET.Element
+            The XML element representing the object.
         """
-        properties = []
-        properties.append(Geometry(self.x, self.y, self.w, self.h).to_xml())
-        return properties
+        if not hasattr(self, "name") or not self.name:
+            raise ValueError(f"The 'name' attribute must be set for {type(self).__name__}.")
 
-
-@dataclass
-class Legible(Tangible):
-    """Defines a widget that displays text"""
-
-    text: str = None
-    font: dict = field(default_factory=dict)
-    alignment: str = None
-
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a legible object
-
-        Returns
-        -------
-        list[etree.Element]
-            List of all defined properties of the legible object
-        """
-        properties = super(Legible, self).generate_properties()
-        if self.text is not None:
-            properties.append(Text(self.text).to_xml())
-        if self.font:
-            properties.append(Font(**self.font).to_xml())
-        if self.alignment is not None:
-            properties.append(Alignment(self.alignment).to_xml())
-        return properties
-
-
-@dataclass
-class Controllable(Tangible):
-    """Defines a widget that uses an EPICS PV"""
-
-    channel: str = None
-
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a controllable object
-
-        Returns
-        -------
-        list[etree.Element]
-            List of all defined properties of the controllable object
-        """
-        properties = super(Controllable, self).generate_properties()
-        properties.append(Channel(self.channel).to_xml())
-        return properties
-
-
-@dataclass
-class Alarmable(Controllable):
-    """Defines a widget that changes color based on an EPICS PV"""
-
-    alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
-    alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
-
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of an alarmable object
-
-        Returns
-        -------
-        list[etree.Element]
-            List of all defined properties of the alarmable object
-        """
-        properties = super(Alarmable, self).generate_properties()
-        properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
-        properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
-        return properties
-
-
-@dataclass
-class Hidable(Tangible):
-    """Defines a widget that can be hidden"""
-
-    visibility_pv: str = None
-    visibility_max: str = None
-    visibility_min: str = None
-    visibility_invert: bool = False
-
-
-@dataclass
-class Drawable(Tangible):
-    """Defines a widget that can be drawn"""
-
-    penStyle: str = None
-    penColor: tuple[int] = None
-    penWidth: int = None
-    brushColor: tuple[int] = None
-    brushFill: bool = None
-
-    def generate_properties(self):
-        """Generate a list of defined properties of a drawable object
-
-        Returns
-        -------
-        list[etree.Element]
-            List of all defined properties of the drawable object
-        """
-        properties = super(Drawable, self).generate_properties()
-        if self.penColor is not None:
-            properties.append(PenColor(*self.penColor).to_xml())
-        if self.penStyle is not None:
-            properties.append(PenStyle(style=self.penStyle).to_xml())
-        if self.penWidth is not None:
-            properties.append(PenWidth(width=self.penWidth).to_xml())
-        if self.brushColor is not None:
-            if self.brushFill is None:
-                self.brushFill = True
-            properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
-
-        return properties
-
-
-class PyDMFrame:
-    pass
-
-
-@dataclass
-class QLabel(XMLConvertible, Legible):
-    count: ClassVar[int] = 1
-
-    precision: int = None
-    show_units: bool = None
-    tool_tip: str = None
-    frame_shape: str = None
-
-    def to_xml(self) -> etree.Element:
-        """Generate an XML representation of the QLabel object
-
-        Returns
-        -------
-        etree.Element
-            The XML representation of the QLabel
-        """
-        # Create the base of the etree, the widget element
-        widget = etree.Element(
+        widget = ET.Element(
             "widget",
             attrib={
                 "class": type(self).__name__,
@@ -184,147 +43,28 @@ class QLabel(XMLConvertible, Legible):
             },
         )
 
-        # Get XML representation of all defined properties of the QLabel
         properties = self.generate_properties()
-        if self.precision is not None:
-            properties.append(Int("precision", self.precision).to_xml())
-        if self.show_units is not None:
-            properties.append(Bool("showUnits", self.show_units).to_xml())
-        if self.tool_tip is not None:
-            properties.append(Str("toolTip", self.tool_tip).to_xml())
-        if self.frame_shape is not None:
-            properties.append(Str("frameShape", self.frame_shape).to_xml())
-
-        # Append all properties to the widget
         for prop in properties:
             widget.append(prop)
+
+        additional_properties = self.get_additional_properties()
+        for prop in additional_properties:
+            if widget.find(prop.tag) is None:
+                widget.append(prop)
+
         return widget
 
-
-@dataclass
-class PyDMLabel(QLabel, Alarmable):
-    count: ClassVar[int] = 1
-
-    precision_from_pv: bool = None
-    pydm_tool_tip: str = None
-
-    def to_xml(self) -> etree.Element:
-        """Generate an XML representation of the PyDMLabel object
+    def get_additional_properties(self) -> List[ET.Element]:
+        """
+        Hook method for subclasses to provide additional XML properties.
+        Subclasses can override this method to add custom properties.
 
         Returns
         -------
-        etree.Element
-            The XML representation of the PyDMLabel
+        List[ET.Element]
+            A list of XML elements representing additional properties.
         """
-        widget = super(PyDMLabel, self).to_xml()
-
-        # Get XML representation of all defined properties of the QLabel
-        properties = self.generate_properties()
-        if self.precision_from_pv is not None:
-            widget.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
-        if self.pydm_tool_tip is not None:
-            widget.append(Text("PyDMToolTip", self.pydm_tool_tip).to_xml())
-
-        # Append all properties to the widget if they are already defined
-        for prop in properties:
-            if widget.find(prop.tag):
-                continue
-            widget.append(prop)
-        return widget
-
-
-class PyDMLineEdit:
-    pass
-
-
-@dataclass
-class PyDMDrawingRectangle(XMLConvertible, Alarmable, Drawable):
-    count: ClassVar[int] = 1
-
-    def to_xml(self):
-        """Generate an XML representation of the PyDMDrawingRectangle object
-
-        Returns
-        -------
-        etree.Element
-            The XML representation of the PyDMDrawingRectangle
-        """
-        # Create the base of the etree, the widget element
-        widget = etree.Element(
-            "widget",
-            attrib={
-                "class": type(self).__name__,
-                "name": self.name,
-            },
-        )
-
-        # Get XML representations of all properties and append them to the widget
-        properties = self.generate_properties()
-
-        for prop in properties:
-            widget.append(prop)
-        return widget
-
-
-@dataclass
-class PyDMDrawingEllipse(XMLConvertible, Alarmable, Drawable):
-    count: ClassVar[int] = 1
-
-    def to_xml(self):
-        """Generate an XML representation of the PyDMDrawingEllipse object
-
-        Returns
-        -------
-        etree.Element
-            The XML representation of the PyDMDrawingEllipse
-        """
-        # Create the base of the etree, the widget element
-        widget = etree.Element(
-            "widget",
-            attrib={
-                "class": type(self).__name__,
-                "name": self.name,
-            },
-        )
-
-        # Get XML representations of all properties and append them to the widget
-        properties = self.generate_properties()
-
-        for prop in properties:
-            widget.append(prop)
-        return widget
-
-
-class PyDMShellCommand:
-    pass
-
-
-class PyDMPushButton:
-    pass
-
-
-class PyDMEnumComboBox:
-    pass
-
-
-class PyDMEnumButton:
-    pass
-
-
-class PyDMRelatedDisplayButton:
-    pass
-
-
-class PyDMEDMDisplayButton:
-    pass
-
-
-class PyDMDrawingLine:
-    pass
-
-
-class PyDMDrawingPolyLine:
-    pass
+        return []
 
 
 @dataclass
@@ -508,6 +248,18 @@ class Layout:
 
 
 @dataclass
+class Text(XMLConvertible):
+    name: str  # Adding 'name' for consistency
+    string: str
+
+    def to_xml(self) -> ET.Element:
+        prop = ET.Element("property", attrib={"name": self.name})
+        string_tag = ET.SubElement(prop, "string")
+        string_tag.text = self.string
+        return prop
+
+
+@dataclass
 class Channel(XMLConvertible):
     channel: str
 
@@ -525,13 +277,19 @@ class Channel(XMLConvertible):
 
 
 @dataclass
-class Text(XMLConvertible):
-    string: str
+class PyDMToolTip(XMLConvertible):
+    PyDMToolTip: str
 
     def to_xml(self):
-        prop = etree.Element("property", attrib={"name": "text"})
-        string_tag = etree.SubElement(prop, "string")
-        string_tag.text = self.string
+        prop = etree.Element(
+            "property",
+            attrib={
+                "name": "PyDMToolTip",
+                "stdset": "0",
+            },
+        )
+        string = etree.SubElement(prop, "string")
+        string.text = self.PyDMToolTip
         return prop
 
 
@@ -708,3 +466,158 @@ class Brush(XMLConvertible):
         color = Color(self.red, self.green, self.blue, self.alpha)
         brush.append(color.to_xml())
         return prop
+
+
+@dataclass
+class Rotation:
+    name: str
+    value: float
+
+    def to_xml(self):
+        # Create and return an XML element representing the rotation property.
+        element = etree.Element(self.name)
+        element.text = str(self.value)
+        return element
+
+
+@dataclass
+class Tangible:
+    """Defines a widget that takes up space on a screen"""
+
+    count: ClassVar[int] = 1
+    x: int = 0
+    y: int = 0
+    width: int = 0
+    height: int = 0
+
+    name: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.name:
+            self.name = f"{type(self).__name__}_{type(self).count}"
+        (type(self)).count += 1
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a tangible object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all size properties of the tangible object
+        """
+        properties = []
+        properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
+        return properties
+
+
+@dataclass
+class Legible(Tangible):
+    """Defines a widget that displays text"""
+
+    text: str = None
+    font: dict = field(default_factory=dict)
+    alignment: str = None
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a legible object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the legible object
+        """
+        properties = super(Legible, self).generate_properties()
+        if self.text is not None:
+            properties.append(Text("text", self.text).to_xml())
+        if self.font:
+            properties.append(Font(**self.font).to_xml())
+        if self.alignment is not None:
+            properties.append(Alignment(self.alignment).to_xml())
+        return properties
+
+
+@dataclass
+class Controllable(Tangible):
+    """Defines a widget that uses an EPICS PV"""
+
+    channel: str = None
+    pydm_tool_tip: str = None
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of a controllable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the controllable object
+        """
+        properties = super(Controllable, self).generate_properties()
+        properties.append(Channel(self.channel).to_xml())
+        properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
+        return properties
+
+
+@dataclass
+class Alarmable(Controllable):
+    """Defines a widget that changes color based on an EPICS PV"""
+
+    alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
+    alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
+
+    def generate_properties(self) -> list[etree.Element]:
+        """Generate a list of defined properties of an alarmable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the alarmable object
+        """
+        properties = super(Alarmable, self).generate_properties()
+        properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
+        properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        return properties
+
+
+@dataclass
+class Hidable(Tangible):
+    """Defines a widget that can be hidden"""
+
+    visibility_pv: str = None
+    visibility_max: str = None
+    visibility_min: str = None
+    visibility_invert: bool = False
+
+
+@dataclass
+class Drawable(Tangible):
+    """Defines a widget that can be drawn"""
+
+    penStyle: str = None
+    penColor: tuple[int] = None
+    penWidth: int = None
+    brushColor: tuple = None
+    brushFill: bool = None
+    rotation: float = None
+
+    def generate_properties(self):
+        """Generate a list of defined properties of a drawable object
+
+        Returns
+        -------
+        list[etree.Element]
+            List of all defined properties of the drawable object
+        """
+        properties = super(Drawable, self).generate_properties()
+        if self.penColor is not None:
+            properties.append(PenColor(*self.penColor).to_xml())
+        if self.penStyle is not None:
+            properties.append(PenStyle(style=self.penStyle).to_xml())
+        if self.penWidth is not None:
+            properties.append(PenWidth(width=self.penWidth).to_xml())
+        if self.brushColor is not None:
+            if self.brushFill is None:
+                self.brushFill = True
+            properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
+        if self.rotation is not None:
+            properties.append(float("rotation", self.rotation).to_xml())
+        return properties
