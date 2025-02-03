@@ -3,6 +3,8 @@ import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 
+logger = logging.getLogger(__name__)
+
 
 def search_calc_list(file_path: str) -> str:
     """
@@ -681,3 +683,61 @@ def parse_colors_list(filepath: str) -> Dict[str, Any]:
             parsed_data[possible_key] = None
 
     return parsed_data
+
+
+def get_color_by_index(color_data: Dict[str, Any], index: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve the color definition from color_data using an index string like 'index 3'.
+
+    Args:
+        color_data (Dict[str, Any]): The parsed colors.list data.
+        index (str): The color index string, e.g., 'index 3'.
+
+    Returns:
+        Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an 'rgb' key)
+                                  or None if not found.
+    """
+    match = re.match(r"index\s+(\d+)", index)
+    if match:
+        idx = int(match.group(1))
+        color = color_data.get("static", {}).get(idx)
+        if not color:
+            logger.warning(f"Color index {idx} not found in colors.list.")
+        return color
+    logger.warning(f"Invalid color index format: '{index}'.")
+    return None
+
+
+def convert_fill_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[Tuple[int, int, int, int]]:
+    """
+    Convert the EDM 'fillColor' property into a tuple representing RGBA values.
+
+    Returns:
+        Optional[Tuple[int, int, int, int]]: A tuple (red, green, blue, alpha) or None.
+    """
+    color_info = get_color_by_index(color_data, fillColor)
+    if not color_info:
+        logger.warning(f"Could not find a color for fillColor '{fillColor}'. Using default gray.")
+        return (128, 128, 128, 255)  # Default gray color
+
+    rgb = color_info.get("rgb")
+    if not rgb or len(rgb) < 3:
+        logger.warning(f"Invalid RGB data for color '{fillColor}': {rgb}")
+        return (128, 128, 128, 255)  # Default gray color
+
+    # Extract RGB values
+    red, green, blue = rgb[:3]
+    alpha = 255  # Default alpha value
+
+    # Check if values need scaling (EDM often uses 0-65535 range)
+    max_val = color_data.get("max", 256)
+    if max_val > 256:
+        # Scale from 0-65535 to 0-255
+        red = int(red * 255 / (max_val - 1))
+        green = int(green * 255 / (max_val - 1))
+        blue = int(blue * 255 / (max_val - 1))
+
+    result = (red, green, blue, alpha)
+    logger.info(f"Converted {fillColor} to color: {result}")
+
+    return result

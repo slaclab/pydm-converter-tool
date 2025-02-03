@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible
+from typing import List, Optional, Tuple
+from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color
 
 
 @dataclass
@@ -154,6 +154,17 @@ class PyDMLabel(QLabel, Alarmable):
     """
 
     precision_from_pv: Optional[bool] = None
+    autoSize: bool = False
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.autoSize:
+            self.adjustSize()
+
+    def setText(self, text):
+        super().setText(text)
+        if self.autoSize:
+            self.adjustSize()
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -170,6 +181,8 @@ class PyDMLabel(QLabel, Alarmable):
         properties: List[ET.Element] = super().generate_properties()
         if self.precision_from_pv is not None:
             properties.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
+        if self.autoSize:
+            properties.append(Bool("autoSize", True).to_xml())
         return properties
 
 
@@ -802,6 +815,9 @@ class PyDMDrawingLine(Legible, Drawable):
         Class variable tracking the number of PyDMDrawingLine instances.
     """
 
+    pen_color: Optional[Tuple[int, int, int]] = None
+    pen_width: Optional[int] = None
+
     arrow_size: Optional[int] = None
     arrow_end_point: Optional[bool] = None
     arrow_start_point: Optional[bool] = None
@@ -818,6 +834,14 @@ class PyDMDrawingLine(Legible, Drawable):
             A list of XML elements representing the PyDMDrawingLine properties.
         """
         properties: List[ET.Element] = super().generate_properties()
+        if self.pen_color is not None:
+            r, g, b = self.pen_color
+            property = ET.Element("property", attrib={"name": "penColor", "stdset": "0"})
+            property.append(Color(r, g, b).to_xml())
+            properties.append(property)
+        if self.pen_width is not None:
+            properties.append(Int("penWidth", self.pen_width).to_xml())
+
         if self.arrow_size is not None:
             properties.append(Int("arrowSize", self.arrow_size).to_xml())
         if self.arrow_end_point is not None:
@@ -838,13 +862,13 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
 
     Attributes
     ----------
-    points : Optional[str]
-        A string representation of the polyline points.
+    points : Optional[List[str]]
+        A list of point strings in the format "x, y".
     count : ClassVar[int]
         Class variable tracking the number of PyDMDrawingPolyline instances.
     """
 
-    points: Optional[str] = None
+    points: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -856,6 +880,15 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             A list of XML elements representing the PyDMDrawingPolyline properties.
         """
         properties: List[ET.Element] = super().generate_properties()
+
         if self.points is not None:
-            properties.append(Str("points", self.points).to_xml())
+            points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
+            stringlist = ET.SubElement(points_prop, "stringlist")
+
+            for point in self.points:
+                string_el = ET.SubElement(stringlist, "string")
+                string_el.text = point
+
+            properties.append(points_prop)
+
         return properties
