@@ -102,6 +102,43 @@ EDM_TO_PYDM_ATTRIBUTES = {
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def transform_edm_to_pydm(edm_x, edm_y, edm_width, edm_height,
+                          container_height, scale=1.0, offset_x=0, offset_y=0):
+    """
+    Transform coordinates from an EDM coordinate system (bottom-left origin)
+    to a PyDM coordinate system (top-left origin) at the root level.
+    """
+    pydm_x = offset_x + edm_x * scale
+    pydm_width = edm_width * scale
+    pydm_height = edm_height * scale
+    pydm_y = offset_y + (container_height - ((edm_y + edm_height) * scale))
+    return int(pydm_x), int(pydm_y), int(pydm_width), int(pydm_height)
+
+
+def transform_nested_widget(parent_x, parent_y, parent_height,
+                            child_edm_x, child_edm_y, child_edm_width, child_edm_height,
+                            scale=1.0):
+    """
+    Transform child widget coordinates relative to its parent.
+    
+    Assumes:
+      - The child's EDM coordinates are relative to the parent's EDM coordinate system,
+      - The parent's PyDM geometry has been computed so that its (x, y) is the top-left
+        corner and its height is the scaled height.
+    
+    Returns:
+      Tuple of integers (child_x, child_y, child_width, child_height) in PyDM coordinates.
+    """
+    # Convert the x coordinate directly.
+    child_x = parent_x + child_edm_x * scale
+    # For y, the child's top edge is computed by taking the parent's top (parent_y)
+    # and adding the parent's height, then subtracting the child's offset plus its height.
+    child_y = parent_y + (parent_height - (child_edm_y + child_edm_height) * scale)
+    child_width = child_edm_width * scale
+    child_height = child_edm_height * scale
+    return int(child_x), int(child_y), int(child_width), int(child_height)
+
+
 def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
@@ -123,38 +160,42 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
     def traverse_group(
         edm_group: EDMGroup,
-        color_list_dict, 
-        parent_pydm_group: Optional[PyDMFrame] = None, 
-        pydm_widgets = None):
-        """
-        Recursively traverse an EDMGroup and convert EDMObjects to PyDM widgets.
-
-        Parameters
-        ----------
-        edm_group : EDMGroup
-            The current EDMGroup to traverse.
-        parent_pydm_group : Optional[PyDMFrame]
-            The parent PyDMFrame to which widgets should be added. None if root.
-        pydm_widgets : Optional[List[PyDMWidget]]
-            A list to collect the converted PyDM widgets.
-
-        Returns
-        -------
-        List[PyDMWidget]
-            A list of all PyDM widgets converted from EDM objects.
-        """
+        color_list_dict,
+        parent_pydm_group: Optional[PyDMFrame] = None,
+        pydm_widgets=None,
+        container_height: float = None,
+        scale: float = 1.0,
+        offset_x: float = 0,
+        offset_y: float = 0
+    ):
         if pydm_widgets is None:
             pydm_widgets = []
 
         for obj in edm_group.objects:
             if isinstance(obj, EDMGroup):
-                # Create a PyDM container widget (Frame)
+                # Determine geometry for the group.
+                if parent_pydm_group is None:
+                    # At the root, use the provided container_height.
+                    x, y, width, height = transform_edm_to_pydm(
+                        obj.x, obj.y, obj.width, obj.height,
+                        container_height=container_height,
+                        scale=scale,
+                        offset_x=offset_x,
+                        offset_y=offset_y
+                    )
+                else:
+                    # For a nested group, use the parent's PyDM geometry.
+                    x, y, width, height = transform_nested_widget(
+                        parent_pydm_group.x, parent_pydm_group.y, parent_pydm_group.height,
+                        obj.x, obj.y, obj.width, obj.height,
+                        scale=scale
+                    )
                 pydm_group = PyDMFrame(
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
-                    x=obj.x,
-                    y=obj.y,
-                    width=obj.width,
-                    height=obj.height
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=height
                 )
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
@@ -162,11 +203,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     parent_pydm_group.add_child(pydm_group)
                 else:
                     pydm_widgets.append(pydm_group)
-                
+
                 used_classes.add(type(pydm_group).__name__)
 
-                # Recursively traverse the subgroup
-                traverse_group(obj, color_list_dict, pydm_group, pydm_widgets)
+                # For nested children, use this group's (transformed) height as the container height.
+                traverse_group(obj, color_list_dict, pydm_group, pydm_widgets,
+                            container_height=height, scale=scale, offset_x=0, offset_y=0)
 
             elif isinstance(obj, EDMObject):
                 widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
@@ -174,27 +216,22 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
                     continue
 
-                # Instantiate the widget
                 widget = widget_type(name=obj.name if hasattr(obj, "name") else f"widget_{id(obj)}")
                 used_classes.add(type(widget).__name__)
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
 
-                # Map and set attributes
+                # Set mapped attributes.
                 for edm_attr, value in obj.properties.items():
                     pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
                     if not pydm_attr:
-                        logger.debug(f"Attribute '{edm_attr}' not mapped. Skipping.")
                         continue
 
                     if edm_attr == "font":
                         value = parse_font_string(value)
-                    
-                    if edm_attr == 'fillColor':
+                    if edm_attr == "fillColor":
                         value = convert_fill_property_to_qcolor(value, color_data=color_list_dict)
-
                     if edm_attr == "value":
-                        value = str(value[0]) 
-                        print(widget, pydm_attr, value)
+                        value = str(value[0])
 
                     try:
                         setattr(widget, pydm_attr, value)
@@ -202,13 +239,27 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
 
-                # Set widget geometry
-                widget.x = obj.x
-                widget.y = obj.y
-                widget.width = obj.width
-                widget.height = obj.height
+                # Transform widget geometry.
+                if parent_pydm_group is None:
+                    x, y, width, height = transform_edm_to_pydm(
+                        obj.x, obj.y, obj.width, obj.height,
+                        container_height=container_height,
+                        scale=scale,
+                        offset_x=offset_x,
+                        offset_y=offset_y
+                    )
+                else:
+                    x, y, width, height = transform_nested_widget(
+                        parent_pydm_group.x, parent_pydm_group.y, parent_pydm_group.height,
+                        obj.x, obj.y, obj.width, obj.height,
+                        scale=scale
+                    )
 
-                # Add to parent group or root
+                widget.x = x
+                widget.y = y
+                widget.width = width
+                widget.height = height
+
                 if parent_pydm_group:
                     parent_pydm_group.add_child(widget)
                 else:
@@ -218,7 +269,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
         return pydm_widgets
 
-    pydm_widgets = traverse_group(parser.ui, color_list_dict, None, pydm_widgets)
+    pydm_widgets = traverse_group(parser.ui, color_list_dict, None, pydm_widgets, parser.ui.height)
     return pydm_widgets, used_classes
 
 
