@@ -17,11 +17,27 @@ class XMLConvertible:
         return etree.tostring(element, encoding="unicode")
 
 
+@dataclass
 class XMLSerializableMixin:
     """
     Mixin class that provides a generic to_xml method for XML serialization.
     Assumes that the class has a 'name' attribute and a 'generate_properties' method.
     """
+
+    name: str = None
+    count: ClassVar[int] = 1
+
+    def __post_init__(self):
+        if not self.name:
+            self.name = f"{type(self).__name__}{type(self).count}"
+        type(self).count += 1
+
+    def generate_properties(self) -> list[etree.Element]:
+        # Default dummy implementation
+        el = etree.Element("property")
+        el.set("name", "base")
+        el.text = "value"
+        return [el]
 
     def to_xml(self) -> ET.Element:
         """
@@ -47,7 +63,7 @@ class XMLSerializableMixin:
         for prop in properties:
             widget.append(prop)
 
-        additional_properties = self.get_additional_properties()
+        additional_properties = self.get_additional_properties() if hasattr(self, "get_additional_properties") else []
         for prop in additional_properties:
             if widget.find(prop.tag) is None:
                 widget.append(prop)

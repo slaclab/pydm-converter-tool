@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import ClassVar, List, Optional
+from typing import List, Optional
 from widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, XMLSerializableMixin
 
 
@@ -9,9 +9,24 @@ class PyDMFrame(XMLSerializableMixin, Alarmable):
     """
     PyDMFrame is a container widget that can hold other PyDM widgets.
     It inherits from Alarmable to support alarm-related features.
-    """
 
-    count: ClassVar[int] = 1
+    Attributes
+    ----------
+    frameShape : Optional[str]
+        The shape of the frame.
+    frameShadow : Optional[str]
+        The shadow style of the frame.
+    lineWidth : Optional[int]
+        The width of the frame's line.
+    midLineWidth : Optional[int]
+        The width of the mid-line of the frame.
+    disableOnDisconnect : Optional[bool]
+        If True, disables the frame on disconnect.
+    children : List[PyDMFrame]
+        A list of child PyDMFrame widgets.
+    count : ClassVar[int]
+        A class variable counting frames.
+    """
 
     frameShape: Optional[str] = None
     frameShadow: Optional[str] = None
@@ -21,12 +36,31 @@ class PyDMFrame(XMLSerializableMixin, Alarmable):
 
     children: List["PyDMFrame"] = field(default_factory=list)
 
-    def add_child(self, child: "PyDMFrame"):
-        """Add a child widget to this frame's internal list."""
+    def add_child(self, child: "PyDMFrame") -> None:
+        """
+        Add a child widget to this frame's internal list.
+
+        Parameters
+        ----------
+        child : PyDMFrame
+            The child widget to add.
+
+        Returns
+        -------
+        None
+        """
         self.children.append(child)
 
     def to_xml(self) -> ET.Element:
-        widget_el = super().to_xml()
+        """
+        Serialize the PyDMFrame and its children to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing this PyDMFrame and its children.
+        """
+        widget_el: ET.Element = super().to_xml()
 
         for child in self.children:
             widget_el.append(child.to_xml())
@@ -35,9 +69,14 @@ class PyDMFrame(XMLSerializableMixin, Alarmable):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMFrame-specific properties.
+        Generate PyDMFrame-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of this PyDMFrame.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
 
         if self.frameShape is not None:
             properties.append(Str("frameShape", self.frameShape).to_xml())
@@ -55,18 +94,39 @@ class PyDMFrame(XMLSerializableMixin, Alarmable):
 
 @dataclass
 class QLabel(XMLSerializableMixin, Legible):
-    count: ClassVar[int] = 1
+    """
+    QLabel is a label widget that supports numerical precision, unit display,
+    tool tip text, and a configurable frame shape.
 
-    precision: int = None
-    show_units: bool = None
-    tool_tip: str = None
-    frame_shape: str = None
+    Attributes
+    ----------
+    precision : Optional[int]
+        The numerical precision to display (if applicable).
+    show_units : Optional[bool]
+        Flag to indicate if units should be displayed.
+    tool_tip : Optional[str]
+        The tooltip text for the label.
+    frame_shape : Optional[str]
+        The frame shape style for the label.
+    count : ClassVar[int]
+        Class variable tracking the number of QLabel instances.
+    """
+
+    precision: Optional[int] = None
+    show_units: Optional[bool] = None
+    tool_tip: Optional[str] = None
+    frame_shape: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate QLabel-specific properties.
+        Generate QLabel-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of the QLabel.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
         if self.precision is not None:
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
@@ -80,15 +140,34 @@ class QLabel(XMLSerializableMixin, Legible):
 
 @dataclass
 class PyDMLabel(QLabel, Alarmable):
-    count: ClassVar[int] = 1
+    """
+    PyDMLabel is an extension of QLabel that supports an additional property to indicate whether
+    the numerical precision should be derived from the process variable (PV).
 
-    precision_from_pv: bool = None
+    Attributes
+    ----------
+    precision_from_pv : Optional[bool]
+        If True, the numerical precision is determined from the process variable.
+        If None, no such property is added.
+    count : ClassVar[int]
+        A class variable tracking the number of PyDMLabel instances.
+    """
+
+    precision_from_pv: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMLabel-specific properties.
+        Generate PyDMLabel-specific properties for XML serialization.
+
+        This method extends the properties generated by its superclass by appending a property
+        for 'precisionFromPV' if the corresponding attribute is not None.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of the PyDMLabel.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
         if self.precision_from_pv is not None:
             properties.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
         return properties
@@ -96,14 +175,33 @@ class PyDMLabel(QLabel, Alarmable):
 
 @dataclass
 class PyDMLineEdit(XMLSerializableMixin, Legible, Alarmable):
-    count: ClassVar[int] = 1
-    displayFormat = None
+    """
+    PyDMLineEdit represents a PyDMLineEdit widget with XML serialization capabilities.
+    It extends XMLSerializableMixin, Legible, and Alarmable to support additional features.
+
+    Attributes
+    ----------
+    displayFormat : Optional[int]
+        An integer representing the display format. If None, the display format property is omitted.
+    count : ClassVar[int]
+        A class variable tracking the number of PyDMLineEdit instances.
+    """
+
+    displayFormat: Optional[int] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMLineEdit-specific properties.
+        Generate PyDMLineEdit-specific properties for XML serialization.
+
+        This method extends the properties generated by the superclass by appending a property
+        for 'displayFormat' if the attribute is not None.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of the PyDMLineEdit.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
         if self.displayFormat is not None:
             properties.append(Int("displayFormat", self.displayFormat).to_xml())
         return properties
@@ -111,19 +209,60 @@ class PyDMLineEdit(XMLSerializableMixin, Legible, Alarmable):
 
 @dataclass
 class PyDMDrawingRectangle(XMLSerializableMixin, Alarmable, Drawable, Hidable):
-    count: ClassVar[int] = 1
-    # no extra properties in this class
+    """
+    PyDMDrawingRectangle represents a drawable rectangle that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This class does not add any extra properties beyond those provided by its base classes.
+
+    Attributes
+    ----------
+    count : ClassVar[int]
+        A class variable tracking the number of PyDMDrawingRectangle instances.
+    """
 
 
 @dataclass
 class PyDMDrawingEllipse(XMLSerializableMixin, Alarmable, Drawable, Hidable):
-    count: ClassVar[int] = 1
-    # no extra properties in this class
+    """
+    PyDMDrawingEllipse represents a drawable ellipse that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This class does not add any extra properties beyond those provided by its base classes.
+
+    Attributes
+    ----------
+    count : ClassVar[int]
+        A class variable tracking the number of PyDMDrawingEllipse instances.
+    """
 
 
 @dataclass
 class QPushButton(XMLSerializableMixin, Legible):
-    count: ClassVar[int] = 1
+    """
+    QPushButton is a button widget that supports text, icons, and various behavioral properties.
+
+    Attributes
+    ----------
+    text : Optional[str]
+        The label text displayed on the button.
+    auto_default : Optional[bool]
+        Determines if the button should automatically become the default button.
+    default : Optional[bool]
+        Indicates if the button is the default action.
+    flat : Optional[bool]
+        If True, the button is drawn with a flat appearance.
+    tool_tip : Optional[str]
+        The tooltip text that appears when hovering over the button.
+    icon : Optional[str]
+        The icon name or path displayed on the button.
+    checkable : Optional[bool]
+        Specifies whether the button supports a toggled (checked/unchecked) state.
+    checked : Optional[bool]
+        The initial checked state of the button.
+    count : ClassVar[int]
+        A class variable tracking the number of QPushButton instances.
+    """
 
     text: Optional[str] = None
     auto_default: Optional[bool] = None
@@ -136,9 +275,17 @@ class QPushButton(XMLSerializableMixin, Legible):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate QPushButton-specific properties.
+        Generate QPushButton-specific properties for XML serialization.
+
+        This method extends the properties generated by the superclass by appending
+        QPushButton-specific properties if they are set.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the QPushButton properties.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
 
         if self.text is not None:
             properties.append(Str("text", self.text).to_xml())
@@ -162,7 +309,25 @@ class QPushButton(XMLSerializableMixin, Legible):
 
 @dataclass
 class PyDMPushButtonBase(QPushButton, Alarmable):
-    count: ClassVar[int] = 1
+    """
+    PyDMPushButtonBase extends QPushButton with additional PyDM-specific properties,
+    including icon settings and password protection features.
+
+    Attributes
+    ----------
+    pydm_icon : Optional[str]
+        Icon identifier or file path for the PyDM button.
+    pydm_icon_color : Optional[str]
+        The color to apply to the PyDM icon.
+    password_protected : Optional[bool]
+        Indicates whether the button is password protected.
+    password : Optional[str]
+        The password used by the button (if applicable).
+    protected_password : Optional[str]
+        A version of the password that is protected or encrypted.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMPushButtonBase instances.
+    """
 
     pydm_icon: Optional[str] = None
     pydm_icon_color: Optional[str] = None
@@ -172,9 +337,17 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMPushButton-specific properties.
+        Generate PyDMPushButtonBase-specific properties for XML serialization.
+
+        This method extends the properties generated by the superclass (QPushButton) by appending
+        additional properties related to PyDM-specific features if they are not None.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMPushButtonBase properties.
         """
-        properties = super().generate_properties()
+        properties: List[ET.Element] = super().generate_properties()
 
         if self.pydm_icon is not None:
             properties.append(Str("PyDMIcon", self.pydm_icon).to_xml())
@@ -192,7 +365,28 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
 
 @dataclass
 class PyDMPushButton(PyDMPushButtonBase):
-    count: ClassVar[int] = 1
+    """
+    PyDMPushButton extends PyDMPushButtonBase with additional properties for push button behavior.
+
+    Attributes
+    ----------
+    monitor_disp : Optional[bool]
+        If True, enables monitoring of the display.
+    show_confirm_dialog : Optional[bool]
+        If True, displays a confirmation dialog before action.
+    confirm_message : Optional[str]
+        The confirmation message to display.
+    press_value : Optional[str]
+        The value to send when the button is pressed.
+    release_value : Optional[str]
+        The value to send when the button is released.
+    relative_change : Optional[bool]
+        If True, indicates that the change is relative.
+    write_when_release : Optional[bool]
+        If True, writes the value when the button is released.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMPushButton instances.
+    """
 
     monitor_disp: Optional[bool] = None
     show_confirm_dialog: Optional[bool] = None
@@ -204,10 +398,14 @@ class PyDMPushButton(PyDMPushButtonBase):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMPushButton-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMPushButton-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMPushButton properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
         if self.show_confirm_dialog is not None:
@@ -222,13 +420,37 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMShellCommand(PyDMPushButtonBase):
-    count: ClassVar[int] = 1
+    """
+    PyDMShellCommand extends PyDMPushButtonBase to execute shell commands.
+
+    Attributes
+    ----------
+    show_confirm_dialog : Optional[bool]
+        If True, displays a confirmation dialog before executing the command.
+    confirm_message : Optional[str]
+        The message to display in the confirmation dialog.
+    run_commands_in_full_shell : Optional[bool]
+        If True, runs commands in a full shell environment.
+    environment_variables : Optional[str]
+        Environment variables to pass to the command.
+    show_icon : Optional[bool]
+        If True, displays an icon on the button.
+    redirect_command_output : Optional[bool]
+        If True, redirects the command output.
+    allow_multiple_executions : Optional[bool]
+        If True, permits multiple command executions.
+    titles : Optional[str]
+        Titles associated with the command.
+    commands : Optional[str]
+        The shell commands to execute.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMShellCommand instances.
+    """
 
     show_confirm_dialog: Optional[bool] = None
     confirm_message: Optional[str] = None
@@ -242,10 +464,14 @@ class PyDMShellCommand(PyDMPushButtonBase):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMShellCommand-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMShellCommand-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMShellCommand properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.show_confirm_dialog is not None:
             properties.append(Bool("showConfirmDialog", self.show_confirm_dialog).to_xml())
         if self.confirm_message is not None:
@@ -264,13 +490,31 @@ class PyDMShellCommand(PyDMPushButtonBase):
             properties.append(Str("titles", self.titles).to_xml())
         if self.commands is not None:
             properties.append(Str("commands", self.commands).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMRelatedDisplayButton(PyDMPushButtonBase):
-    count: ClassVar[int] = 1
+    """
+    PyDMRelatedDisplayButton extends PyDMPushButtonBase to support opening related displays.
+
+    Attributes
+    ----------
+    show_icon : Optional[bool]
+        If True, an icon is displayed.
+    filenames : Optional[str]
+        The filenames associated with the display.
+    titles : Optional[str]
+        The titles for the display.
+    macros : Optional[str]
+        Macros used for the display.
+    open_in_new_window : Optional[bool]
+        If True, opens the display in a new window.
+    follow_symlinks : Optional[bool]
+        If True, follows symbolic links.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMRelatedDisplayButton instances.
+    """
 
     show_icon: Optional[bool] = None
     filenames: Optional[str] = None
@@ -281,10 +525,14 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMRelatedDisplayButton-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMRelatedDisplayButton-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMRelatedDisplayButton properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
         if self.filenames is not None:
@@ -297,13 +545,41 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
             properties.append(Bool("openInNewWindow", self.open_in_new_window).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
-
         return properties
 
 
 @dataclass
 class QComboBox(XMLSerializableMixin, Legible):
-    count: ClassVar[int] = 1
+    """
+    QComboBox represents a combo box widget with various configurable properties.
+
+    Attributes
+    ----------
+    editable : Optional[bool]
+        If True, the combo box is editable.
+    current_text : Optional[str]
+        The current text displayed in the combo box.
+    max_visible_items : Optional[int]
+        Maximum number of visible items in the dropdown.
+    max_count : Optional[int]
+        Maximum number of items allowed.
+    insert_policy : Optional[str]
+        The policy for inserting new items.
+    size_adjust_policy : Optional[str]
+        The policy for adjusting the size.
+    minimum_contents_length : Optional[int]
+        The minimum content length.
+    icon_size : Optional[str]
+        The size for the icons.
+    duplicates_enabled : Optional[bool]
+        If True, duplicate items are allowed.
+    frame : Optional[bool]
+        If True, the combo box is framed.
+    model_column : Optional[int]
+        The model column used.
+    count : ClassVar[int]
+        Class variable tracking the number of QComboBox instances.
+    """
 
     editable: Optional[bool] = None
     current_text: Optional[str] = None
@@ -319,10 +595,14 @@ class QComboBox(XMLSerializableMixin, Legible):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate QComboBox-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate QComboBox-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the QComboBox properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.editable is not None:
             properties.append(Bool("editable", self.editable).to_xml())
         if self.current_text is not None:
@@ -345,69 +625,125 @@ class QComboBox(XMLSerializableMixin, Legible):
             properties.append(Bool("frame", self.frame).to_xml())
         if self.model_column is not None:
             properties.append(Int("modelColumn", self.model_column).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMEnumComboBox(QComboBox, Alarmable):
+    """
+    PyDMEnumComboBox extends QComboBox to support enumeration with additional properties.
+
+    Attributes
+    ----------
+    tool_tip : Optional[str]
+        The tooltip text for the combo box.
+    monitor_disp : Optional[bool]
+        If True, enables monitoring of the display.
+    """
+
     tool_tip: Optional[str] = None
     monitor_disp: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMEnumComboBox-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMEnumComboBox-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMEnumComboBox properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMEnumButton(XMLSerializableMixin, Alarmable, Legible):
-    count: ClassVar[int] = 1
+    """
+    PyDMEnumButton represents a button widget with enumerated options and layout properties.
+
+    Attributes
+    ----------
+    tool_tip : Optional[str]
+        The tooltip text for the button.
+    monitor_disp : Optional[bool]
+        If True, enables monitoring of the display.
+    items_translatable : Optional[bool]
+        If True, the items are translatable.
+    items_disambiguation : Optional[str]
+        Disambiguation text for the items.
+    items_comment : Optional[str]
+        Comment text for the items.
+    use_custom_order : Optional[bool]
+        If True, a custom order is used.
+    invert_order : Optional[bool]
+        If True, inverts the order of the items.
+    custom_order_translatable : Optional[bool]
+        If True, the custom order is translatable.
+    custom_order_disambiguation : Optional[str]
+        Disambiguation text for the custom order.
+    custom_order_comment : Optional[str]
+        Comment for the custom order.
+    widget_type : Optional[str]
+        The widget type.
+    orientation : Optional[str]
+        The orientation of the widget.
+    margin_top : Optional[int]
+        Top margin.
+    margin_bottom : Optional[int]
+        Bottom margin.
+    margin_left : Optional[int]
+        Left margin.
+    margin_right : Optional[int]
+        Right margin.
+    horizontal_spacing : Optional[int]
+        Horizontal spacing.
+    vertical_spacing : Optional[int]
+        Vertical spacing.
+    checkable : Optional[bool]
+        If True, the button is checkable.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMEnumButton instances.
+    """
 
     tool_tip: Optional[str] = None
     monitor_disp: Optional[bool] = None
-
     items_translatable: Optional[bool] = None
     items_disambiguation: Optional[str] = None
     items_comment: Optional[str] = None
     use_custom_order: Optional[bool] = None
     invert_order: Optional[bool] = None
-
     custom_order_translatable: Optional[bool] = None
     custom_order_disambiguation: Optional[str] = None
     custom_order_comment: Optional[str] = None
-
     widget_type: Optional[str] = None
     orientation: Optional[str] = None
-
     margin_top: Optional[int] = None
     margin_bottom: Optional[int] = None
     margin_left: Optional[int] = None
     margin_right: Optional[int] = None
     horizontal_spacing: Optional[int] = None
     vertical_spacing: Optional[int] = None
-
     checkable: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMEnumButton-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMEnumButton-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMEnumButton properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
-
         if self.items_translatable is not None:
             properties.append(Bool("itemsTranslatable", self.items_translatable).to_xml())
         if self.items_disambiguation is not None:
@@ -418,19 +754,16 @@ class PyDMEnumButton(XMLSerializableMixin, Alarmable, Legible):
             properties.append(Bool("useCustomOrder", self.use_custom_order).to_xml())
         if self.invert_order is not None:
             properties.append(Bool("invertOrder", self.invert_order).to_xml())
-
         if self.custom_order_translatable is not None:
             properties.append(Bool("customOrderTranslatable", self.custom_order_translatable).to_xml())
         if self.custom_order_disambiguation is not None:
             properties.append(Str("customOrderDisambiguation", self.custom_order_disambiguation).to_xml())
         if self.custom_order_comment is not None:
             properties.append(Str("customOrderComment", self.custom_order_comment).to_xml())
-
         if self.widget_type is not None:
             properties.append(Str("widgetType", self.widget_type).to_xml())
         if self.orientation is not None:
             properties.append(Str("orientation", self.orientation).to_xml())
-
         if self.margin_top is not None:
             properties.append(Int("marginTop", self.margin_top).to_xml())
         if self.margin_bottom is not None:
@@ -443,16 +776,31 @@ class PyDMEnumButton(XMLSerializableMixin, Alarmable, Legible):
             properties.append(Int("horizontalSpacing", self.horizontal_spacing).to_xml())
         if self.vertical_spacing is not None:
             properties.append(Int("verticalSpacing", self.vertical_spacing).to_xml())
-
         if self.checkable is not None:
             properties.append(Bool("checkable", self.checkable).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMDrawingLine(XMLSerializableMixin, Legible, Drawable):
-    count: ClassVar[int] = 1
+    """
+    PyDMDrawingLine represents a drawable line with arrow properties.
+
+    Attributes
+    ----------
+    arrow_size : Optional[int]
+        The size of the arrow.
+    arrow_end_point : Optional[bool]
+        If True, draws an arrow at the end point.
+    arrow_start_point : Optional[bool]
+        If True, draws an arrow at the start point.
+    arrow_mid_point : Optional[bool]
+        If True, draws an arrow at the midpoint.
+    flip_mid_point_arrow : Optional[bool]
+        If True, flips the midpoint arrow.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMDrawingLine instances.
+    """
 
     arrow_size: Optional[int] = None
     arrow_end_point: Optional[bool] = None
@@ -462,10 +810,14 @@ class PyDMDrawingLine(XMLSerializableMixin, Legible, Drawable):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMDrawingLine-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMDrawingLine-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMDrawingLine properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.arrow_size is not None:
             properties.append(Int("arrowSize", self.arrow_size).to_xml())
         if self.arrow_end_point is not None:
@@ -476,23 +828,34 @@ class PyDMDrawingLine(XMLSerializableMixin, Legible, Drawable):
             properties.append(Bool("arrowMidPoint", self.arrow_mid_point).to_xml())
         if self.flip_mid_point_arrow is not None:
             properties.append(Bool("flipMidPointArrow", self.flip_mid_point_arrow).to_xml())
-
         return properties
 
 
 @dataclass
 class PyDMDrawingPolyline(PyDMDrawingLine):
-    count: ClassVar[int] = 1
+    """
+    PyDMDrawingPolyline represents a drawable polyline defined by a sequence of points.
+
+    Attributes
+    ----------
+    points : Optional[str]
+        A string representation of the polyline points.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMDrawingPolyline instances.
+    """
 
     points: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generate PyDMDrawingPolyline-specific properties.
-        """
-        properties = super().generate_properties()
+        Generate PyDMDrawingPolyline-specific properties for XML serialization.
 
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMDrawingPolyline properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
         if self.points is not None:
             properties.append(Str("points", self.points).to_xml())
-
         return properties
