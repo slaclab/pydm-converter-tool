@@ -176,7 +176,7 @@ def test_PyDMDrawingRectangle_generate_properties_inherited(monkeypatch):
     without adding extra properties.
     """
     monkeypatch.setattr(XMLSerializableMixin, "generate_properties", dummy_generate_properties)
-    monkeypatch.setattr(Alarmable, "generate_properties", lambda self: [])
+    monkeypatch.setattr(Alarmable, "generate_properties", lambda self: XMLSerializableMixin.generate_properties(self))
     monkeypatch.setattr(Drawable, "generate_properties", lambda self: [])
     monkeypatch.setattr(Hidable, "generate_properties", lambda self: [])
 
@@ -198,7 +198,7 @@ def test_PyDMDrawingEllipse_generate_properties_inherited(monkeypatch):
     without adding extra properties.
     """
     monkeypatch.setattr(XMLSerializableMixin, "generate_properties", dummy_generate_properties)
-    monkeypatch.setattr(Alarmable, "generate_properties", lambda self: [])
+    monkeypatch.setattr(Alarmable, "generate_properties", lambda self: XMLSerializableMixin.generate_properties(self))
     monkeypatch.setattr(Drawable, "generate_properties", lambda self: [])
     monkeypatch.setattr(Hidable, "generate_properties", lambda self: [])
 
@@ -314,7 +314,7 @@ def test_pydmpushbuttonbase_generate_properties_empty():
         pydm_icon=None, pydm_icon_color=None, password_protected=None, password=None, protected_password=None
     )
     properties = instance.generate_properties()
-    assert len(properties) == 1
+    assert len(properties) == 3
 
 
 # --- Tests for PyDMPushButton ---

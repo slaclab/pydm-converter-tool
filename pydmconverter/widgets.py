@@ -1,11 +1,11 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, XMLSerializableMixin
+from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible
 
 
 @dataclass
-class PyDMFrame(XMLSerializableMixin, Alarmable):
+class PyDMFrame(Alarmable):
     """
     PyDMFrame is a container widget that can hold other PyDM widgets.
     It inherits from Alarmable to support alarm-related features.
@@ -93,7 +93,7 @@ class PyDMFrame(XMLSerializableMixin, Alarmable):
 
 
 @dataclass
-class QLabel(XMLSerializableMixin, Legible):
+class QLabel(Legible):
     """
     QLabel is a label widget that supports numerical precision, unit display,
     tool tip text, and a configurable frame shape.
@@ -174,10 +174,10 @@ class PyDMLabel(QLabel, Alarmable):
 
 
 @dataclass
-class PyDMLineEdit(XMLSerializableMixin, Legible, Alarmable):
+class PyDMLineEdit(Legible, Alarmable):
     """
     PyDMLineEdit represents a PyDMLineEdit widget with XML serialization capabilities.
-    It extends XMLSerializableMixin, Legible, and Alarmable to support additional features.
+    It extends Legible, and Alarmable to support additional features.
 
     Attributes
     ----------
@@ -208,7 +208,7 @@ class PyDMLineEdit(XMLSerializableMixin, Legible, Alarmable):
 
 
 @dataclass
-class PyDMDrawingRectangle(XMLSerializableMixin, Alarmable, Drawable, Hidable):
+class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingRectangle represents a drawable rectangle that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -223,7 +223,7 @@ class PyDMDrawingRectangle(XMLSerializableMixin, Alarmable, Drawable, Hidable):
 
 
 @dataclass
-class PyDMDrawingEllipse(XMLSerializableMixin, Alarmable, Drawable, Hidable):
+class PyDMDrawingEllipse(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingEllipse represents a drawable ellipse that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -238,7 +238,7 @@ class PyDMDrawingEllipse(XMLSerializableMixin, Alarmable, Drawable, Hidable):
 
 
 @dataclass
-class QPushButton(XMLSerializableMixin, Legible):
+class QPushButton(Legible):
     """
     QPushButton is a button widget that supports text, icons, and various behavioral properties.
 
@@ -549,7 +549,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
 
 
 @dataclass
-class QComboBox(XMLSerializableMixin, Legible):
+class QComboBox(Legible):
     """
     QComboBox represents a combo box widget with various configurable properties.
 
@@ -662,7 +662,7 @@ class PyDMEnumComboBox(QComboBox, Alarmable):
 
 
 @dataclass
-class PyDMEnumButton(XMLSerializableMixin, Alarmable, Legible):
+class PyDMEnumButton(Alarmable, Legible):
     """
     PyDMEnumButton represents a button widget with enumerated options and layout properties.
 
@@ -782,7 +782,7 @@ class PyDMEnumButton(XMLSerializableMixin, Alarmable, Legible):
 
 
 @dataclass
-class PyDMDrawingLine(XMLSerializableMixin, Legible, Drawable):
+class PyDMDrawingLine(Legible, Drawable):
     """
     PyDMDrawingLine represents a drawable line with arrow properties.
 

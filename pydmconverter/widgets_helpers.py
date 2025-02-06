@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Any, ClassVar, List, Optional
+from dataclasses import dataclass, field, fields
+from typing import Any, ClassVar, List, Optional, Tuple, Union
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
 
@@ -8,50 +8,107 @@ ALARM_BORDER_DEFAULT = True
 
 
 class XMLConvertible:
-    def to_xml(self):
+    """
+    Abstract base class for objects that can be converted to XML.
+
+    Methods
+    -------
+    to_xml() -> ET.Element
+        Convert the object to an XML element.
+    to_string() -> str
+        Return a formatted string representation of the XML element.
+    """
+
+    def to_xml(self) -> ET.Element:
+        """
+        Convert the object to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representation of the object.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by the subclass.
+        """
         raise NotImplementedError
 
-    def to_string(self):
-        element = self.to_xml()
+    def to_string(self) -> str:
+        """
+        Convert the XML element to a formatted string.
+
+        Returns
+        -------
+        str
+            The formatted string representation of the XML element.
+        """
+        element: ET.Element = self.to_xml()
         etree.indent(element)
         return etree.tostring(element, encoding="unicode")
 
 
 @dataclass
-class XMLSerializableMixin:
+class XMLSerializableMixin(XMLConvertible):
     """
-    Mixin class that provides a generic to_xml method for XML serialization.
-    Assumes that the class has a 'name' attribute and a 'generate_properties' method.
+    Mixin class that provides a generic XML serialization method.
+
+    This mixin assumes that the class has a 'name' attribute and a
+    'generate_properties' method.
+
+    Attributes
+    ----------
+    name : Optional[str]
+        The name of the widget.
+    count : ClassVar[int]
+        A class variable used to generate default names.
     """
 
-    name: str = None
+    name: Optional[str] = None
     count: ClassVar[int] = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """
+        Set a default name if not provided.
+        """
         if not self.name:
             self.name = f"{type(self).__name__}{type(self).count}"
         type(self).count += 1
 
-    def generate_properties(self) -> list[etree.Element]:
-        # Default dummy implementation
-        el = etree.Element("property")
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate a list of XML property elements.
+        Subclasses should override this method to add thier own custom properties.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list of XML elements representing properties.
+        """
+        el: etree.Element = etree.Element("property")
         el.set("name", "base")
         el.text = "value"
         return [el]
 
     def to_xml(self) -> ET.Element:
         """
-        Generate an XML representation of the object.
+        Generate an XML element representing the object.
 
         Returns
         -------
         ET.Element
-            The XML element representing the object.
+            The XML element representation of the object.
+
+        Raises
+        ------
+        ValueError
+            If the 'name' attribute is not set.
         """
         if not hasattr(self, "name") or not self.name:
             raise ValueError(f"The 'name' attribute must be set for {type(self).__name__}.")
 
-        widget = ET.Element(
+        widget: ET.Element = ET.Element(
             "widget",
             attrib={
                 "class": type(self).__name__,
@@ -59,11 +116,13 @@ class XMLSerializableMixin:
             },
         )
 
-        properties = self.generate_properties()
+        properties: List[etree.Element] = self.generate_properties()
         for prop in properties:
             widget.append(prop)
 
-        additional_properties = self.get_additional_properties() if hasattr(self, "get_additional_properties") else []
+        additional_properties: List[etree.Element] = (
+            self.get_additional_properties() if hasattr(self, "get_additional_properties") else []
+        )
         for prop in additional_properties:
             if widget.find(prop.tag) is None:
                 widget.append(prop)
@@ -72,71 +131,130 @@ class XMLSerializableMixin:
 
     def get_additional_properties(self) -> List[ET.Element]:
         """
+        Provide additional XML properties for the object.
         Hook method for subclasses to provide additional XML properties.
         Subclasses can override this method to add custom properties.
 
         Returns
         -------
         List[ET.Element]
-            A list of XML elements representing additional properties.
+            A list of additional XML elements representing properties.
         """
         return []
 
 
 @dataclass
 class Font(XMLConvertible):
-    pointsize: int = None
-    weight: int = None
-    bold: bool = None
-    italic: bool = None
+    """
+    Represents font properties for a widget.
+
+    Attributes
+    ----------
+    pointsize : Optional[int]
+        The size of the font.
+    weight : Optional[int]
+        The weight of the font.
+    bold : Optional[bool]
+        Whether the font is bold.
+    italic : Optional[bool]
+        Whether the font is italic.
+    """
+
+    pointsize: Optional[int] = None
+    weight: Optional[int] = None
+    bold: Optional[bool] = None
+    italic: Optional[bool] = None
 
     def to_xml(self) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": "font"})
-        font = etree.SubElement(prop, "font")
+        """
+        Convert the font properties to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the font.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "font"})
+        font: etree.Element = etree.SubElement(prop, "font")
         if self.pointsize is not None:
-            pointsize_tag = etree.SubElement(font, "pointsize")
+            pointsize_tag: etree.Element = etree.SubElement(font, "pointsize")
             pointsize_tag.text = str(self.pointsize)
         if self.weight is not None:
-            weight_tag = etree.SubElement(font, "weight")
+            weight_tag: etree.Element = etree.SubElement(font, "weight")
             weight_tag.text = str(self.weight)
         if self.bold is not None:
-            bold_tag = etree.SubElement(font, "bold")
+            bold_tag: etree.Element = etree.SubElement(font, "bold")
             bold_tag.text = "true" if self.bold else "false"
         if self.italic is not None:
-            italic_tag = etree.SubElement(font, "italic")
+            italic_tag: etree.Element = etree.SubElement(font, "italic")
             italic_tag.text = "true" if self.italic else "false"
         return prop
 
 
 @dataclass
 class Size(XMLConvertible):
+    """
+    Represents a size property for a widget.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    width : str
+        The width value.
+    height : str
+        The height value.
+    """
+
     name: str
     width: str
     height: str
 
-    def to_xml(self):
-        top = etree.Element("property", attrib={"name": self.name})
-        size = etree.SubElement(top, "size")
-        width = etree.SubElement(size, "width")
-        width.text = self.width
-        height = etree.SubElement(size, "height")
-        height.text = self.height
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the size properties to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the size.
+        """
+        top: etree.Element = etree.Element("property", attrib={"name": self.name})
+        size_elem: etree.Element = etree.SubElement(top, "size")
+        width_elem: etree.Element = etree.SubElement(size_elem, "width")
+        width_elem.text = self.width
+        height_elem: etree.Element = etree.SubElement(size_elem, "height")
+        height_elem.text = self.height
         return top
 
 
 @dataclass
 class SizePolicy(XMLConvertible):
+    """
+    Represents the size policy for a widget.
+
+    Attributes
+    ----------
+    hsizetype : str
+        The horizontal size type.
+    vsizetype : str
+        The vertical size type.
+    """
+
     hsizetype: str
     vsizetype: str
 
-    def to_xml(self):
-        top = etree.Element(
-            "property",
-            attrib={
-                "name": "sizePolicy",
-            },
-        )
-        sizePolicy = etree.SubElement(
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the size policy to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the size policy.
+        """
+        top: etree.Element = etree.Element("property", attrib={"name": "sizePolicy"})
+        sizePolicy_elem: etree.Element = etree.SubElement(
             top,
             "sizepolicy",
             attrib={
@@ -144,102 +262,173 @@ class SizePolicy(XMLConvertible):
                 "vsizetype": self.vsizetype,
             },
         )
-        horstretch = etree.SubElement(sizePolicy, "horstretch")
+        horstretch: etree.Element = etree.SubElement(sizePolicy_elem, "horstretch")
         horstretch.text = "0"
-        verstretch = etree.SubElement(sizePolicy, "verstretch")
+        verstretch: etree.Element = etree.SubElement(sizePolicy_elem, "verstretch")
         verstretch.text = "0"
         return top
 
 
 @dataclass
 class Bool(XMLConvertible):
+    """
+    Represents a boolean property.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    value : bool
+        The boolean value.
+    """
+
     name: str
     value: bool
 
     def to_xml(self) -> etree.Element:
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": self.name,
-                "stdset": "0",
-            },
-        )
-        bool_tag = etree.SubElement(prop, "bool")
+        """
+        Convert the boolean property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the boolean.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        bool_tag: etree.Element = etree.SubElement(prop, "bool")
         bool_tag.text = "true" if self.value else "false"
         return prop
 
 
 @dataclass
 class Int(XMLConvertible):
+    """
+    Represents an integer property.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    value : int
+        The integer value.
+    """
+
     name: str
     value: int = 0
 
     def to_xml(self) -> etree.Element:
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": self.name,
-                "stdset": "0",
-            },
-        )
-        int_tag = etree.SubElement(prop, "number")
+        """
+        Convert the integer property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the integer.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        int_tag: etree.Element = etree.SubElement(prop, "number")
         int_tag.text = str(self.value)
         return prop
 
 
 @dataclass
 class Str(XMLConvertible):
+    """
+    Represents a string property.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    string : str
+        The string value.
+    """
+
     name: str
     string: str
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": self.name,
-                "stdset": "0",
-            },
-        )
-        string_tag = etree.SubElement(prop, "string")
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the string property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the string.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        string_tag: etree.Element = etree.SubElement(prop, "string")
         string_tag.text = self.string
         return prop
 
 
 @dataclass
 class Enum(XMLConvertible):
+    """
+    Represents an enumeration property.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    value : str
+        The enum value.
+    """
+
     name: str
     value: str
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": self.name,
-                "stdset": "0",
-            },
-        )
-        enum = etree.SubElement(prop, "enum")
-        enum.text = self.value
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the enum property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the enum.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        enum_elem: etree.Element = etree.SubElement(prop, "enum")
+        enum_elem.text = self.value
         return prop
 
 
 @dataclass
-class PyDMRule:
+class PyDMRule(XMLConvertible):
+    """
+    Represents a PyDM rule for a widget.
+
+    Attributes
+    ----------
+    name : str
+        The name of the rule.
+    rule_property : str
+        The property the rule affects.
+    expression : str
+        The expression for the rule.
+    channel : str
+        The channel associated with the rule.
+    initial_value : Any, optional
+        The initial value for the rule.
+    """
+
     name: str
     rule_property: str
     expression: str
     channel: str
     initial_value: Any = None
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "rules",
-                "stdset": "0",
-            },
-        )
-        rules_struct = [
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the PyDM rule to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the rule.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "rules", "stdset": "0"})
+        rules_struct: list[dict[str, Any]] = [
             {
                 "name": self.name,
                 "property": self.rule_property,
@@ -254,295 +443,550 @@ class PyDMRule:
                 ],
             },
         ]
-        rules = etree.SubElement(prop, "rules")
+        rules: etree.Element = etree.SubElement(prop, "rules")
         rules.text = str(rules_struct)
         return prop
 
 
 class Layout:
+    """
+    Represents a layout configuration for widgets.
+
+    This is a placeholder class for layout-related properties.
+    """
+
     pass
 
 
 @dataclass
 class Text(XMLConvertible):
-    name: str  # Adding 'name' for consistency
+    """
+    Represents a text property for a widget.
+
+    Attributes
+    ----------
+    name : str
+        The name of the text property.
+    string : str
+        The text content.
+    """
+
+    name: str
     string: str
 
     def to_xml(self) -> ET.Element:
-        prop = ET.Element("property", attrib={"name": self.name})
-        string_tag = ET.SubElement(prop, "string")
+        """
+        Convert the text property to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing the text.
+        """
+        prop: ET.Element = ET.Element("property", attrib={"name": self.name})
+        string_tag: ET.Element = ET.SubElement(prop, "string")
         string_tag.text = self.string
         return prop
 
 
 @dataclass
 class Channel(XMLConvertible):
+    """
+    Represents a channel property for a widget.
+
+    Attributes
+    ----------
+    channel : str
+        The channel name.
+    """
+
     channel: str
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "channel",
-                "stdset": "0",
-            },
-        )
-        string = etree.SubElement(prop, "string")
-        string.text = self.channel
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the channel property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the channel.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "channel", "stdset": "0"})
+        string_elem: etree.Element = etree.SubElement(prop, "string")
+        string_elem.text = self.channel
         return prop
 
 
 @dataclass
 class PyDMToolTip(XMLConvertible):
+    """
+    Represents a tooltip for a PyDM widget.
+
+    Attributes
+    ----------
+    PyDMToolTip : str
+        The tooltip text.
+    """
+
     PyDMToolTip: str
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "PyDMToolTip",
-                "stdset": "0",
-            },
-        )
-        string = etree.SubElement(prop, "string")
-        string.text = self.PyDMToolTip
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the tooltip to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the tooltip.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "PyDMToolTip", "stdset": "0"})
+        string_elem: etree.Element = etree.SubElement(prop, "string")
+        string_elem.text = self.PyDMToolTip
         return prop
 
 
 @dataclass
 class StyleSheet(XMLConvertible):
-    lines: list[str]
+    """
+    Represents a stylesheet for a widget.
 
-    def to_xml(self):
-        top = etree.Element(
-            "property",
-            attrib={
-                "name": "styleSheet",
-            },
-        )
-        string = etree.SubElement(
-            top,
-            "string",
-            attrib={
-                "notr": "true",
-            },
-        )
-        string.text = "\n".join(self.lines)
+    Attributes
+    ----------
+    lines : List[str]
+        A list of stylesheet lines.
+    """
+
+    lines: List[str]
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the stylesheet.
+        """
+        top: etree.Element = etree.Element("property", attrib={"name": "styleSheet"})
+        string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
+        string_elem.text = "\n".join(self.lines)
         return top
 
 
 @dataclass
 class CustomWidget(XMLConvertible):
+    """
+    Represents a custom widget configuration.
+
+    Attributes
+    ----------
+    cls : str
+        The class name of the custom widget.
+    base : str
+        The base class that this widget extends.
+    header : str
+        The header file for the widget.
+    container : str, optional
+        The container information (default is an empty string).
+    """
+
     cls: str
     base: str
     header: str
     container: str = ""
 
-    def to_xml(self):
-        top = etree.Element("customwidget")
-        cls = etree.SubElement(top, "class")
-        cls.text = self.cls
-        extends = etree.SubElement(top, "extends")
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the custom widget configuration to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the custom widget.
+        """
+        top: etree.Element = etree.Element("customwidget")
+        cls_elem: etree.Element = etree.SubElement(top, "class")
+        cls_elem.text = self.cls
+        extends: etree.Element = etree.SubElement(top, "extends")
         extends.text = self.base
-        header = etree.SubElement(top, "header")
-        header.text = self.header
+        header_elem: etree.Element = etree.SubElement(top, "header")
+        header_elem.text = self.header
         if self.container:
-            container = etree.SubElement(top, "container")
-            container.text = self.container
+            container_elem: etree.Element = etree.SubElement(top, "container")
+            container_elem.text = self.container
         return top
 
 
 @dataclass
 class Alignment(XMLConvertible):
+    """
+    Represents alignment properties for a widget.
+
+    Attributes
+    ----------
+    alignment : str
+        The alignment value (e.g., 'left', 'center').
+    """
+
     alignment: str
 
     def to_xml(self) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": "alignment"})
-        set_tag = etree.SubElement(prop, "set")
+        """
+        Convert the alignment property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the alignment.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
+        set_tag: etree.Element = etree.SubElement(prop, "set")
         set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         return prop
 
 
 @dataclass
 class TextFormat(XMLConvertible):
+    """
+    Represents text format properties for a widget.
+
+    Attributes
+    ----------
+    text_format : str
+        The text format value.
+    """
+
     text_format: str
 
     def to_xml(self) -> etree.Element:
-        prop = etree.Element("property", attrib={"name": "textFormat"})
-        set_tag = etree.SubElement(prop, "enum")
+        """
+        Convert the text format property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the text format.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "textFormat"})
+        set_tag: etree.Element = etree.SubElement(prop, "enum")
         set_tag.text = f"Qt::{self.text_format.capitalize()}"
         return prop
 
 
 @dataclass
 class Geometry(XMLConvertible):
-    x: int
-    y: int
-    width: int
-    height: int
+    """
+    Represents geometry properties for a widget.
 
-    def to_xml(self):
-        prop = etree.Element("property", attrib={"name": "geometry"})
-        rect = etree.SubElement(prop, "rect")
-        for attr, value in self.__dict__.items():
-            elem = etree.SubElement(rect, attr)
+    Attributes
+    ----------
+    x : Union[int, str]
+        The x-coordinate.
+    y : Union[int, str]
+        The y-coordinate.
+    width : Union[int, str]
+        The width of the widget.
+    height : Union[int, str]
+        The height of the widget.
+    """
+
+    x: Union[int, str]
+    y: Union[int, str]
+    width: Union[int, str]
+    height: Union[int, str]
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the geometry properties to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the geometry.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "geometry"})
+        rect: etree.Element = etree.SubElement(prop, "rect")
+        # Use dataclasses.fields to iterate over declared fields
+        for field_def in fields(self):
+            value = getattr(self, field_def.name)
+            elem: etree.Element = etree.SubElement(rect, field_def.name)
+            # Convert the value to string
             elem.text = str(value)
         return prop
 
 
 @dataclass
 class Color(XMLConvertible):
+    """
+    Represents a color.
+
+    Attributes
+    ----------
+    red : int
+        The red component (0-255).
+    green : int
+        The green component (0-255).
+    blue : int
+        The blue component (0-255).
+    alpha : int, optional
+        The alpha component (0-255), default is 255.
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
 
-    def to_xml(self):
-        color = etree.Element("color", attrib={"alpha": str(self.alpha)})
-        red = etree.SubElement(color, "red")
-        red.text = str(self.red)
-        green = etree.SubElement(color, "green")
-        green.text = str(self.green)
-        blue = etree.SubElement(color, "blue")
-        blue.text = str(self.blue)
-        return color
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the color to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the color.
+        """
+        color_elem: etree.Element = etree.Element("color", attrib={"alpha": str(self.alpha)})
+        red_elem: etree.Element = etree.SubElement(color_elem, "red")
+        red_elem.text = str(self.red)
+        green_elem: etree.Element = etree.SubElement(color_elem, "green")
+        green_elem.text = str(self.green)
+        blue_elem: etree.Element = etree.SubElement(color_elem, "blue")
+        blue_elem.text = str(self.blue)
+        return color_elem
 
 
 @dataclass
 class PenColor(XMLConvertible):
+    """
+    Represents a pen color property for a widget.
+
+    Attributes
+    ----------
+    red : int
+        The red component.
+    green : int
+        The green component.
+    blue : int
+        The blue component.
+    alpha : int, optional
+        The alpha component, default is 255.
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "penColor",
-                "stdset": "0",
-            },
-        )
-        color = Color(self.red, self.green, self.blue, alpha=self.alpha)
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the pen color property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the pen color.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "penColor", "stdset": "0"})
+        color: Color = Color(self.red, self.green, self.blue, alpha=self.alpha)
         prop.append(color.to_xml())
         return prop
 
 
 @dataclass
 class PenStyle(XMLConvertible):
-    style: str = None
+    """
+    Represents a pen style property for a widget.
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "penStyle",
-                "stdset": "0",
-            },
-        )
-        enum = etree.SubElement(prop, "enum")
+    Attributes
+    ----------
+    style : Optional[str]
+        The style of the pen ('dash' for dashed, otherwise solid).
+    """
+
+    style: Optional[str] = None
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the pen style property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the pen style.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "penStyle", "stdset": "0"})
+        enum: etree.Element = etree.SubElement(prop, "enum")
         enum.text = "Qt::DashLine" if self.style == "dash" else "Qt::SolidLine"
         return prop
 
 
 @dataclass
 class PenWidth(XMLConvertible):
-    width: int = None
+    """
+    Represents a pen width property for a widget.
 
-    def to_xml(self):
-        prop = etree.Element("property", attrib={"name": "penWidth", "stdset": "0"})
-        double = etree.SubElement(prop, "double")
-        double.text = str(self.width)
+    Attributes
+    ----------
+    width : Optional[int]
+        The width of the pen.
+    """
+
+    width: Optional[int] = None
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the pen width property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the pen width.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "penWidth", "stdset": "0"})
+        double_elem: etree.Element = etree.SubElement(prop, "double")
+        double_elem.text = str(self.width)
         return prop
 
 
 @dataclass
 class Brush(XMLConvertible):
+    """
+    Represents a brush property for a widget.
+
+    Attributes
+    ----------
+    red : int
+        The red component.
+    green : int
+        The green component.
+    blue : int
+        The blue component.
+    alpha : int, optional
+        The alpha component, default is 255.
+    fill : bool, optional
+        Whether the brush is filled, default is True.
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
     fill: bool = True
 
-    def to_xml(self):
-        prop = etree.Element(
-            "property",
-            attrib={
-                "name": "brush",
-                "stdset": "0",
-            },
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the brush property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the brush.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "brush", "stdset": "0"})
+        brush_elem: etree.Element = etree.SubElement(
+            prop, "brush", attrib={"brushstyle": "SolidPattern" if self.fill else "NoBrush"}
         )
-        brush = etree.SubElement(
-            prop,
-            "brush",
-            attrib={
-                "brushstyle": "SolidPattern" if self.fill else "NoBrush",
-            },
-        )
-        color = Color(self.red, self.green, self.blue, self.alpha)
-        brush.append(color.to_xml())
+        color: Color = Color(self.red, self.green, self.blue, self.alpha)
+        brush_elem.append(color.to_xml())
         return prop
 
 
 @dataclass
-class Rotation:
+class Rotation(XMLConvertible):
+    """
+    Represents a rotation property for a widget.
+
+    Attributes
+    ----------
+    name : str
+        The name of the rotation property.
+    value : float
+        The rotation angle.
+    """
+
     name: str
     value: float
 
-    def to_xml(self):
-        # Create and return an XML element representing the rotation property.
-        element = etree.Element(self.name)
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the rotation property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the rotation.
+        """
+        element: etree.Element = etree.Element(self.name)
         element.text = str(self.value)
         return element
 
 
 @dataclass
-class Tangible:
-    """Defines a widget that takes up space on a screen"""
+class Tangible(XMLSerializableMixin):
+    """
+    Represents a tangible widget that occupies space on a screen.
 
-    count: ClassVar[int] = 1
+    Attributes
+    ----------
+    x : int
+        The x-coordinate.
+    y : int
+        The y-coordinate.
+    width : int
+        The width of the widget.
+    height : int
+        The height of the widget.
+    """
+
     x: int = 0
     y: int = 0
     width: int = 0
     height: int = 0
 
-    name: Optional[str] = None
-
-    def __post_init__(self):
-        if not self.name:
-            self.name = f"{type(self).__name__}_{type(self).count}"
-        (type(self)).count += 1
-
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a tangible object
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate XML properties for the tangible widget.
 
         Returns
         -------
-        list[etree.Element]
-            List of all size properties of the tangible object
+        List[etree.Element]
+            A list containing the geometry property.
         """
-        properties = []
+        properties: List[etree.Element] = []
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         return properties
 
 
 @dataclass
 class Legible(Tangible):
-    """Defines a widget that displays text"""
+    """
+    Represents a widget that displays text.
 
-    text: str = None
+    Attributes
+    ----------
+    text : Optional[str]
+        The text to display.
+    font : dict
+        A dictionary containing font properties.
+    alignment : Optional[str]
+        The text alignment.
+    """
+
+    text: Optional[str] = None
     font: dict = field(default_factory=dict)
-    alignment: str = None
+    alignment: Optional[str] = None
 
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a legible object
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate XML properties for the legible widget.
 
         Returns
         -------
-        list[etree.Element]
-            List of all defined properties of the legible object
+        List[etree.Element]
+            A list containing geometry, text, font, and alignment properties.
         """
-        properties = super(Legible, self).generate_properties()
+        properties: List[etree.Element] = super().generate_properties()
         if self.text is not None:
             properties.append(Text("text", self.text).to_xml())
         if self.font:
@@ -554,41 +998,63 @@ class Legible(Tangible):
 
 @dataclass
 class Controllable(Tangible):
-    """Defines a widget that uses an EPICS PV"""
+    """
+    Represents a widget that uses an EPICS PV.
 
-    channel: str = None
-    pydm_tool_tip: str = None
+    Attributes
+    ----------
+    channel : Optional[str]
+        The EPICS channel.
+    pydm_tool_tip : Optional[str]
+        The tooltip text for the widget.
+    """
 
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of a controllable object
+    channel: Optional[str] = None
+    pydm_tool_tip: Optional[str] = None
+
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate XML properties for the controllable widget.
 
         Returns
         -------
-        list[etree.Element]
-            List of all defined properties of the controllable object
+        List[etree.Element]
+            A list containing geometry, channel, and tooltip properties.
         """
-        properties = super(Controllable, self).generate_properties()
-        properties.append(Channel(self.channel).to_xml())
-        properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
+        properties: List[etree.Element] = super().generate_properties()
+        if self.channel is not None:
+            properties.append(Channel(self.channel).to_xml())
+        if self.pydm_tool_tip is not None:
+            properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
         return properties
 
 
 @dataclass
 class Alarmable(Controllable):
-    """Defines a widget that changes color based on an EPICS PV"""
+    """
+    Represents a widget that changes appearance based on an EPICS alarm state.
+
+    Attributes
+    ----------
+    alarm_sensitive_content : bool
+        Whether the content is alarm sensitive.
+    alarm_sensitive_border : bool
+        Whether the border is alarm sensitive.
+    """
 
     alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
     alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
 
-    def generate_properties(self) -> list[etree.Element]:
-        """Generate a list of defined properties of an alarmable object
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate XML properties for the alarmable widget.
 
         Returns
         -------
-        list[etree.Element]
-            List of all defined properties of the alarmable object
+        List[etree.Element]
+            A list containing geometry, channel, tooltip, and alarm properties.
         """
-        properties = super(Alarmable, self).generate_properties()
+        properties: List[etree.Element] = super().generate_properties()
         properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
         return properties
@@ -596,34 +1062,65 @@ class Alarmable(Controllable):
 
 @dataclass
 class Hidable(Tangible):
-    """Defines a widget that can be hidden"""
+    """
+    Represents a widget that can be hidden.
 
-    visibility_pv: str = None
-    visibility_max: str = None
-    visibility_min: str = None
+    Attributes
+    ----------
+    visibility_pv : Optional[str]
+        The visibility process variable.
+    visibility_max : Optional[str]
+        The maximum visibility value.
+    visibility_min : Optional[str]
+        The minimum visibility value.
+    visibility_invert : bool
+        Whether the visibility is inverted.
+    """
+
+    visibility_pv: Optional[str] = None
+    visibility_max: Optional[str] = None
+    visibility_min: Optional[str] = None
     visibility_invert: bool = False
 
 
 @dataclass
 class Drawable(Tangible):
-    """Defines a widget that can be drawn"""
+    """
+    Represents a widget that can be drawn with pen and brush properties.
 
-    penStyle: str = None
-    penColor: tuple[int] = None
-    penWidth: int = None
-    brushColor: tuple = None
-    brushFill: bool = None
-    rotation: float = None
+    Attributes
+    ----------
+    penStyle : Optional[str]
+        The style of the pen ('dash' for dashed, otherwise solid).
+    penColor : Optional[Tuple[int, int, int, int]]
+        A tuple representing the pen color (red, green, blue, alpha).
+    penWidth : Optional[int]
+        The width of the pen.
+    brushColor : Optional[Tuple[int, int, int, int]]
+        A tuple representing the brush color (red, green, blue, alpha).
+    brushFill : Optional[bool]
+        Whether the brush should fill.
+    rotation : Optional[float]
+        The rotation angle.
+    """
 
-    def generate_properties(self):
-        """Generate a list of defined properties of a drawable object
+    penStyle: Optional[str] = None
+    penColor: Optional[Tuple[int, int, int, int]] = None
+    penWidth: Optional[int] = None
+    brushColor: Optional[Tuple[int, int, int, int]] = None
+    brushFill: Optional[bool] = None
+    rotation: Optional[float] = None
+
+    def generate_properties(self) -> List[etree.Element]:
+        """
+        Generate XML properties for the drawable widget.
 
         Returns
         -------
-        list[etree.Element]
-            List of all defined properties of the drawable object
+        List[etree.Element]
+            A list containing geometry, pen, brush, and rotation properties.
         """
-        properties = super(Drawable, self).generate_properties()
+        properties: List[etree.Element] = super().generate_properties()
         if self.penColor is not None:
             properties.append(PenColor(*self.penColor).to_xml())
         if self.penStyle is not None:
@@ -635,5 +1132,5 @@ class Drawable(Tangible):
                 self.brushFill = True
             properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
         if self.rotation is not None:
-            properties.append(float("rotation", self.rotation).to_xml())
+            properties.append(Rotation("rotation", self.rotation).to_xml())
         return properties
