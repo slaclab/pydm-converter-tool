@@ -2,7 +2,9 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
+from qtpy.QtGui import QBrush
 
+logger = logging.getLogger(__name__)
 
 def search_calc_list(file_path: str) -> str:
     """
@@ -681,3 +683,62 @@ def parse_colors_list(filepath: str) -> Dict[str, Any]:
             parsed_data[possible_key] = None
 
     return parsed_data
+<<<<<<< HEAD
+=======
+
+
+def get_color_by_index(color_data: Dict[str, Any], index: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve the color definition from color_data using an index string like 'index 3'.
+
+    Args:
+        color_data (Dict[str, Any]): The parsed colors.list data.
+        index (str): The color index string, e.g., 'index 3'.
+
+    Returns:
+        Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an 'rgb' key)
+                                  or None if not found.
+    """
+    match = re.match(r'index\s+(\d+)', index)
+    if match:
+        idx = int(match.group(1))
+        color = color_data.get("static", {}).get(idx)
+        if not color:
+            logger.warning(f"Color index {idx} not found in colors.list.")
+        return color
+    logger.warning(f"Invalid color index format: '{index}'.")
+    return None
+
+
+def convert_fill_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[QBrush]:
+    """
+    Convert the EDM 'fillColor' property into a PyQt QColor.
+
+    Args:
+        fillColor (str):  
+        color_data (Dict[str, Any]): Parsed colors.list data.
+
+    Returns:
+        Optional[QColor]: A QColor; otherwise, returns None.
+    """
+    color_info = get_color_by_index(color_data, fillColor)
+    if not color_info:
+        logger.warning(f"Could not find a color for fillColor '{fillColor}'.")
+        return None
+
+    rgb = color_info.get('rgb')
+    if not rgb or len(rgb) < 3:
+        logger.warning(f"Invalid RGB data for color '{fillColor}': {rgb}")
+        return None
+
+    # Extract RGB values. Adjust if needed (e.g., if your colors are in a different range).
+    red, green, blue = rgb[:3]
+    alpha = 255  # Default alpha value; change if your color data includes an alpha channel.
+
+    # Create a QColor
+    color = (int(red/257), int(green/257), int(blue/257), alpha)
+    logger.info(f"Created QColor: ({red}, {green}, {blue}, {alpha})")
+    
+    return color
+
+>>>>>>> added a method to the parser_helpers to help with converter the color.list data. also moved the test_parse_helpers.py file and removed old main.py
