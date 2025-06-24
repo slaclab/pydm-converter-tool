@@ -515,10 +515,20 @@ def test_pydmdrawingpolyline_generate_properties():
         arrow_start_point=True,
         arrow_mid_point=False,
         flip_mid_point_arrow=True,
-        points="0,0 10,10 20,20",
+        points=["0, 0", "10, 10", "20, 20"],
     )
     properties: List[ET.Element] = widget.generate_properties()
-    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    prop_dict = {}
+
+    for prop in properties:
+        name = prop.get("name")
+        if name == "points":
+            stringlist = prop.find("stringlist")
+            if stringlist is not None:
+                points_list = [string.text for string in stringlist.findall("string")]
+                prop_dict[name] = points_list
+        else:
+            prop_dict[name] = get_property_value(prop)
 
     assert prop_dict.get("arrowSize") == "10"
     assert prop_dict.get("arrowEndPoint") == "false"
@@ -526,4 +536,4 @@ def test_pydmdrawingpolyline_generate_properties():
     assert prop_dict.get("arrowMidPoint") == "false"
     assert prop_dict.get("flipMidPointArrow") == "true"
 
-    assert prop_dict.get("points") == "0,0 10,10 20,20"
+    assert prop_dict.get("points") == ["0, 0", "10, 10", "20, 20"]

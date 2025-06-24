@@ -706,11 +706,24 @@ class Geometry(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "geometry"})
         rect: etree.Element = etree.SubElement(prop, "rect")
-        # Use dataclasses.fields to iterate over declared fields
+
         for field_def in fields(self):
             value = getattr(self, field_def.name)
             elem: etree.Element = etree.SubElement(rect, field_def.name)
-            # Convert the value to string
+
+            if value is None:
+                default_values = {"x": 0, "y": 0, "width": 100, "height": 100}
+                value = default_values.get(field_def.name, 0)
+            else:
+                try:
+                    if isinstance(value, str) and "." in value:
+                        value = int(float(value))
+                    else:
+                        value = int(value)
+                except (ValueError, TypeError):
+                    default_values = {"x": 0, "y": 0, "width": 100, "height": 100}
+                    value = default_values.get(field_def.name, 0)
+
             elem.text = str(value)
         return prop
 
@@ -1134,3 +1147,42 @@ class Drawable(Tangible):
         if self.rotation is not None:
             properties.append(Rotation("rotation", self.rotation).to_xml())
         return properties
+
+
+class PageHeader:
+    def create_page_header(self, edm_parser):
+        ui_element = ET.Element("ui", attrib={"version": "4.0"})
+
+        class_element = ET.SubElement(ui_element, "class")
+        class_element.text = "QWidget"
+
+        main_widget = ET.SubElement(
+            ui_element,
+            "widget",
+            attrib={
+                "class": "QWidget",
+                "name": "Form",
+            },
+        )
+
+        geometry = ET.SubElement(main_widget, "property", attrib={"name": "geometry"})
+        rect = ET.SubElement(geometry, "rect")
+        ET.SubElement(rect, "x").text = "0"
+        ET.SubElement(rect, "y").text = "0"
+        ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
+        ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
+
+        window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
+        title_string = ET.SubElement(window_title, "string")
+        title_string.text = "PyDM Screen"
+
+        central_widget = ET.SubElement(
+            main_widget,
+            "widget",
+            attrib={
+                "class": "QWidget",
+                "name": "centralwidget",
+            },
+        )
+
+        return ui_element, central_widget

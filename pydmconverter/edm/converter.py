@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 from converter_helpers import convert_edm_to_pydm_widgets
 import logging
 from pprint import pprint
+from pydmconverter.widgets_helpers import PageHeader
 
 logger = logging.getLogger(__name__)
 
@@ -30,39 +31,8 @@ def convert(input_path, output_path):
     pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser)
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
-    ui_element = ET.Element("ui", attrib={"version": "4.0"})
-
-    class_element = ET.SubElement(ui_element, "class")
-    class_element.text = "QWidget"
-
-    main_widget = ET.SubElement(
-        ui_element,
-        "widget",
-        attrib={
-            "class": "QWidget",
-            "name": "Form",
-        },
-    )
-
-    geometry = ET.SubElement(main_widget, "property", attrib={"name": "geometry"})
-    rect = ET.SubElement(geometry, "rect")
-    ET.SubElement(rect, "x").text = "0"
-    ET.SubElement(rect, "y").text = "0"
-    ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
-    ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
-
-    window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
-    title_string = ET.SubElement(window_title, "string")
-    title_string.text = "PyDM Screen"
-
-    central_widget = ET.SubElement(
-        main_widget,
-        "widget",
-        attrib={
-            "class": "QWidget",
-            "name": "centralwidget",
-        },
-    )
+    page_header = PageHeader()
+    ui_element, central_widget = page_header.create_page_header(edm_parser)
 
     if isinstance(edm_parser.ui, EDMObject) and "bgColor" in edm_parser.ui.properties:
         bg_color = edm_parser.ui.properties["bgColor"]
