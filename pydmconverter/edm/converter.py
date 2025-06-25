@@ -1,9 +1,9 @@
-from parser import EDMFileParser, EDMObject
+from edm.parser import EDMFileParser, EDMObject
 import xml.etree.ElementTree as ET
-from converter_helpers import convert_edm_to_pydm_widgets
+from edm.converter_helpers import convert_edm_to_pydm_widgets
 import logging
 from pprint import pprint
-from pydmconverter.widgets_helpers import PageHeader
+from widgets_helpers import PageHeader
 
 logger = logging.getLogger(__name__)
 

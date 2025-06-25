@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color
+from widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color
 
 
 @dataclass
