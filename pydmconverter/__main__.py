@@ -5,8 +5,8 @@ import subprocess
 import sys
 import os
 from pydmconverter.edm.converter import convert
-import glob
 from pathlib import Path
+
 
 def run_gui() -> None:
     """
@@ -25,39 +25,43 @@ def run_cli(args: argparse.Namespace) -> None:
     input_file_type: str = args.output_type
 
     if input_path.is_file():
-        if output_path.suffix != '.ui':
-            output_path = output_path.with_suffix('.ui')
+        if output_path.suffix != ".ui":
+            output_path = output_path.with_suffix(".ui")
         convert(str(input_path), str(output_path))
-    elif input_path.is_dir():
-        if input_file_type[0] != '.': #prepending . so it will not pick up other file types with same suffix
-            input_file_type = '.' + input_file_type
+    else:
+        if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
+            input_file_type = "." + input_file_type
         output_path.mkdir(parents=True, exist_ok=True)
         convert_files_in_folder(input_path, output_path, input_file_type)
-    else:
-        raise ValueError(f"Input path '{str(input_path)}' is neither a file nor a directory.") #moved to earlier so likely can remove
-    
-def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type: str) -> int: #outputs the amount of files found in this directory and subdirectories
+
+
+def convert_files_in_folder(
+    input_path: Path, output_path: Path, input_file_type: str
+) -> int:  # outputs the amount of files found in this directory and subdirectories
     files_found = 0
-    inputted_files = input_path.glob(f'*{input_file_type}')
+    inputted_files = input_path.glob(f"*{input_file_type}")
     inputted_length = len(list(inputted_files))
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
         convert(file, output_file_name)
-    
+
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         files_found += convert_files_in_folder(subdir, output_path, input_file_type)
     print(f"{files_found + inputted_length} files found in {input_path}")
     return files_found + inputted_length
 
+
 def get_output_file_name(file: Path, output_path: Path) -> Path:
-    return output_path / (file.stem + '.ui')
+    return output_path / (file.stem + ".ui")
+
 
 def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
-    if not args.input_file or not args.output_file: 
+    if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
     if not os.path.isfile(args.input_file) and not os.path.isdir(args.input_file):
         parser.error(f"Input path '{args.input_file}' is neither a file nor a directory.")
+
 
 def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     input_path = Path(args.input_file)
@@ -66,29 +70,23 @@ def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentPa
     if input_path.is_file():
         file_dir = output_path.parent
         file_dir.mkdir(parents=True, exist_ok=True)
-        print('file_dir', file_dir)
+        print("file_dir", file_dir)
     elif input_path.is_dir() and not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
 
+
 def main() -> None:
-    import sys
     print("Args:", sys.argv)
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     """parser.add_argument(
         "--cli", action="store_true", help="If provided, run in command-line (CLI) mode instead of GUI."
     )"""
-    parser.add_argument(
-        "input_file", nargs='?', metavar="FILE"
-    )
-    parser.add_argument(
-        "output_file", nargs='?', metavar="FILE"
-    )
-    parser.add_argument(
-        "output_type", nargs='?', metavar="FILE TYPE"
-    )
-    args:argparse.Namespace = parser.parse_args()
-    
-    #if args.input_file:
+    parser.add_argument("input_file", nargs="?", metavar="FILE")
+    parser.add_argument("output_file", nargs="?", metavar="FILE")
+    parser.add_argument("output_type", nargs="?", metavar="FILE TYPE")
+    args: argparse.Namespace = parser.parse_args()
+
+    # if args.input_file:
     if args.input_file:
         check_parser_errors(args, parser)
         create_new_directories(args, parser)
