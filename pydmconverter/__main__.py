@@ -8,14 +8,14 @@ from pydmconverter.edm.converter import convert
 import glob
 from pathlib import Path
 
-def run_gui():
+def run_gui() -> None:
     """
     launch the PyDMConverter gui
     """
     subprocess.run(["pydm", "--hide-nav-bar", "--hide-menu-bar", "view/main_window.py"])
 
 
-def run_cli(args: object):
+def run_cli(args: argparse.Namespace) -> None:
     """
     run PyDMConverter through command line"
     """
@@ -36,7 +36,7 @@ def run_cli(args: object):
     else:
         raise ValueError(f"Input path '{str(input_path)}' is neither a file nor a directory.") #moved to earlier so likely can remove
     
-def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type: str):
+def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type: str) -> None:
     inputted_files = input_path.glob(f'*{input_file_type}')
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
@@ -46,16 +46,16 @@ def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type
     for subdir in subdirectories:
         convert_files_in_folder(subdir, output_path, input_file_type)
 
-def get_output_file_name(file: Path, output_path: Path):
+def get_output_file_name(file: Path, output_path: Path) -> Path:
     return output_path / (file.stem + '.ui')
 
-def check_parser_errors(args: object, parser: argparse.ArgumentParser):
+def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
     if not args.input_file or not args.output_file: 
         parser.error("Must input two files or two folders")
     if not os.path.isfile(args.input_file) and not os.path.isdir(args.input_file):
         parser.error(f"Input path '{args.input_file}' is neither a file nor a directory.")
 
-def create_new_directories(args: object, parser: argparse.ArgumentParser):
+def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     input_path = Path(args.input_file)
     output_path = Path(args.output_file)
 
@@ -66,10 +66,10 @@ def create_new_directories(args: object, parser: argparse.ArgumentParser):
     elif input_path.is_dir() and not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
 
-def main():
+def main() -> None:
     import sys
     print("Args:", sys.argv)
-    parser = argparse.ArgumentParser()
+    parser: argparse.ArgumentParser = argparse.ArgumentParser()
     """parser.add_argument(
         "--cli", action="store_true", help="If provided, run in command-line (CLI) mode instead of GUI."
     )"""
@@ -82,7 +82,7 @@ def main():
     parser.add_argument(
         "output_type", nargs='?', metavar="FILE TYPE"
     )
-    args = parser.parse_args()
+    args:argparse.Namespace = parser.parse_args()
     
     #if args.input_file:
     if args.input_file:
