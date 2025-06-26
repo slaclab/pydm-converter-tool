@@ -78,15 +78,11 @@ def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentPa
 def main() -> None:
     print("Args:", sys.argv)
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    """parser.add_argument(
-        "--cli", action="store_true", help="If provided, run in command-line (CLI) mode instead of GUI."
-    )"""
     parser.add_argument("input_file", nargs="?", metavar="FILE")
     parser.add_argument("output_file", nargs="?", metavar="FILE")
     parser.add_argument("output_type", nargs="?", metavar="FILE TYPE")
     args: argparse.Namespace = parser.parse_args()
 
-    # if args.input_file:
     if args.input_file:
         check_parser_errors(args, parser)
         create_new_directories(args, parser)
