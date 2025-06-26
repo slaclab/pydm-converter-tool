@@ -1,5 +1,3 @@
-# setup.py
-
 from setuptools import setup, find_packages
 
 setup(
@@ -11,5 +9,4 @@ setup(
             "pydmconverter = pydmconverter.__main__:main",
         ]
     },
-    install_requires=[],  # Add dependencies if needed
 )
