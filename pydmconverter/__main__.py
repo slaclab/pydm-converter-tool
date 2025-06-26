@@ -15,7 +15,7 @@ def run_gui():
     subprocess.run(["pydm", "--hide-nav-bar", "--hide-menu-bar", "view/main_window.py"])
 
 
-def run_cli(args):
+def run_cli(args: object):
     """
     run PyDMConverter through command line"
     """
@@ -41,13 +41,17 @@ def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
         convert(file, output_file_name)
+    
+    subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
+    for subdir in subdirectories:
+        convert_files_in_folder(subdir, output_path, input_file_type)
 
 def get_output_file_name(file: Path, output_path: Path):
     return output_path / (file.stem + '.ui')
 
 def check_parser_errors(args: object, parser: argparse.ArgumentParser):
-    if not args.input_file or not args.output_file: #techincally may be folders instead but this should still work for that
-        parser.error("Must input two files")
+    if not args.input_file or not args.output_file: 
+        parser.error("Must input two files or two folders")
     if not os.path.isfile(args.input_file) and not os.path.isdir(args.input_file):
         parser.error(f"Input path '{args.input_file}' is neither a file nor a directory.")
 
@@ -61,13 +65,6 @@ def create_new_directories(args: object, parser: argparse.ArgumentParser):
         print('file_dir', file_dir)
     elif input_path.is_dir() and not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
-    """if os.path.isfile(args.input_file):
-        file_dir = "/".join(args.output_file.split('/')[:-1])
-        if not os.path.isdir(file_dir) and file_dir:
-            os.makedirs(file_dir)
-        print('file_dir', file_dir)
-    if os.path.isdir(args.input_file) and not os.path.isdir(args.output_file) and args.output_file: #maybe unnecesary
-        os.makedirs(args.output_file)"""
 
 def main():
     import sys
