@@ -18,17 +18,55 @@ def run_cli(args):
     run PyDMConverter through command line"
     """
     print("Running CLI with arguments:", args)
-    input_file = args.input_file
-    output_file = args.output_file
-    output_file_type = args.output_type
-    if os.path.isfile(input_file) and os.path.isfile(input_file):
+    input_file: str = args.input_file
+    output_file: str = args.output_file #maybe confusing input and output file can also be directories
+    input_file_type: str = args.output_type
+    if os.path.isfile(args.input_file): #maybe need to add path checking (no need to check file itself because always a .ui file)
+        if len(output_file) < 3 or output_file[-3:] != '.ui':
+            output_file += ".ui"
         convert(input_file, output_file)
-    elif os.path.isdir(input_file) and os.path.isdir(output_file):
-        search_pattern = os.path.join(input_file, '*' + output_file_type)
+    elif os.path.isdir(input_file):
+        if not os.path.isdir(output_file):
+            os.makedirs(output_file)
+        if input_file_type[0] != '.': #prepending . #technically redundant
+            input_file_type = '.' + input_file_type
+        search_pattern = os.path.join(input_file, '*' + input_file_type)
         inputted_files = glob.glob(search_pattern)
-    else:
-        raise TypeError("Arguments must either be both files or both folders")
+        for file in inputted_files:
+            output_file_name = get_output_file_name(file, output_file)
+            print('here4', output_file_name)
+            convert(file, output_file_name)
 
+def get_output_file_name(file: str, output_file: str):
+    input_file_name = file.split('/')[-1]
+    print('here3', file, len(file) >= 4, file[-4:] == '.edl')
+    if len(input_file_name) >= 4 and input_file_name[-4:] == '.edl':
+        input_file_name = input_file_name[:-4]
+    input_file_name += '.ui'
+    return output_file + '/' + input_file_name
+
+def check_parser_errors(args: object, parser: argparse.ArgumentParser):
+    if not args.input_file or not args.output_file: #techincally may be folders instead but this should still work for that
+        parser.error("Must input two files")
+    #if not os.path.isfile(args.input_file) or not os.path.isdir(args.input_file):
+    #    parser.error("Invalid input file: Must input a valid file or directory")
+    """if os.path.isfile(args.input_file):
+        file_dir = "/".join(args.input_file.split('/')[:-1])
+        if not os.path.isdir(file_dir):
+            parser.error("Invalid output file directory")
+    elif os.path.isdir(args.input_file) and not os.path.isdir(args.output_file): #this assumes that the user does not want to add the files to the root
+        parser.error("Invalid output directory")
+    else:
+        parser.error("Invalid input file: Must input a valid file or directory")"""
+
+def create_new_directories(args: object, parser: argparse.ArgumentParser):
+    if os.path.isfile(args.input_file):
+        file_dir = "/".join(args.output_file.split('/')[:-1])
+        if not os.path.isdir(file_dir):
+            os.makedirs(file_dir)
+        print('file_dir', file_dir)
+    if os.path.isdir(args.input_file) and not os.path.isdir(args.output_file):
+        os.makedirs(args.output_file)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -48,8 +86,9 @@ def main():
     
 
     if args.cli:
-        if not args.input_file or not args.output_file: #techincally may be folders instead but this should still work for that
-            parser.error("Must input two files")
+        check_parser_errors(args, parser)
+        create_new_directories(args, parser)
+        print
         run_cli(args)
     else:
         run_gui()
