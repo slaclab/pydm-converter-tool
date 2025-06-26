@@ -19,8 +19,15 @@ def run_cli(args):
     print("Running CLI with arguments:", args)
     input_file = args.input_file
     output_file = args.output_file
+    output_file_type = args.output_type
+    if os.path.isfile(input_file) and os.path.isfile(input_file):
+        print("both files")
+    elif os.path.isdir(input_file) and os.path.isdir(output_file):
+        print("both folders")
+    else:
+        raise TypeError("Arguments must either be both files or both folders")
 
-    convert(input_file, output_file)
+    #convert(input_file, output_file)
 
 
 def main():
