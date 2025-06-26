@@ -53,7 +53,7 @@ def convert_files_in_folder(
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
-        files_found += convert_files_in_folder(subdir, output_path, input_file_type)
+        files_found += convert_files_in_folder(subdir, output_path, input_file_type, override)
     print(f"{files_found + len(inputted_files)} files found in {input_path}")
     return files_found + len(inputted_files)
 
@@ -65,7 +65,7 @@ def get_output_file_name(file: Path, output_path: Path) -> Path:
 def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
     if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
-    if not Path(args.input_file).isfile() and not Path(args.input_file).isdir():
+    if not Path(args.input_file).is_file() and not Path(args.input_file).is_dir():
         parser.error(f"Input path '{args.input_file}' is neither a valid file nor a valid directory.")
 
 

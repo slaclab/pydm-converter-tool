@@ -9,5 +9,4 @@ setup(
             "pydmconverter = pydmconverter.__main__:main",
         ]
     },
-    install_requires=[],
 )
