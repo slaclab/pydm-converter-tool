@@ -4,6 +4,7 @@ import sys
 import os
 #import edm.converter
 from edm.converter import convert
+import glob
 
 def run_gui():
     """
@@ -21,13 +22,12 @@ def run_cli(args):
     output_file = args.output_file
     output_file_type = args.output_type
     if os.path.isfile(input_file) and os.path.isfile(input_file):
-        print("both files")
+        convert(input_file, output_file)
     elif os.path.isdir(input_file) and os.path.isdir(output_file):
-        print("both folders")
+        search_pattern = os.path.join(input_file, '*' + output_file_type)
+        inputted_files = glob.glob(search_pattern)
     else:
         raise TypeError("Arguments must either be both files or both folders")
-
-    #convert(input_file, output_file)
 
 
 def main():
