@@ -78,7 +78,6 @@ def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentPa
     if input_path.is_file():
         file_dir = output_path.parent
         file_dir.mkdir(parents=True, exist_ok=True)
-        print("file_dir", file_dir)
     elif input_path.is_dir() and not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -95,7 +94,6 @@ def main() -> None:
     if args.input_file:
         check_parser_errors(args, parser)
         create_new_directories(args, parser)
-        print
         run_cli(args)
     else:
         run_gui()
