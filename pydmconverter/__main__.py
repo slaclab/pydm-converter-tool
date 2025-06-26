@@ -41,18 +41,16 @@ def run_cli(args: argparse.Namespace) -> None:
 def convert_files_in_folder(
     input_path: Path, output_path: Path, input_file_type: str, override: bool
 ) -> int:  # outputs the amount of files found in this directory and subdirectories
-    # print("here")
     files_found = 0
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
     inputted_length = len(inputted_files)
-    # print(inputted_length)
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
         output_file_path = Path(output_file_name)
-        # print("now here")
-        # print('blah', output_file_path.is_file(), override)
         if output_file_path.is_file() and not override:
-            raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
+            raise FileExistsError(
+                f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it."
+            )
         convert(file, output_file_name)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
