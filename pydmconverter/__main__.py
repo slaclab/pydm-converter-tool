@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 import argparse
 import subprocess
 import sys
 import os
 #import edm.converter
-from edm.converter import convert
+from pydmconverter.edm.converter import convert
 import glob
 
 def run_gui():
@@ -21,7 +22,7 @@ def run_cli(args):
     input_file: str = args.input_file
     output_file: str = args.output_file #maybe confusing input and output file can also be directories
     input_file_type: str = args.output_type
-    if os.path.isfile(args.input_file): #maybe need to add path checking (no need to check file itself because always a .ui file)
+    if os.path.isfile(args.input_file): 
         if len(output_file) < 3 or output_file[-3:] != '.ui':
             output_file += ".ui"
         convert(input_file, output_file)
@@ -34,12 +35,11 @@ def run_cli(args):
         inputted_files = glob.glob(search_pattern)
         for file in inputted_files:
             output_file_name = get_output_file_name(file, output_file)
-            print('here4', output_file_name)
             convert(file, output_file_name)
 
 def get_output_file_name(file: str, output_file: str):
     input_file_name = file.split('/')[-1]
-    print('here3', file, len(file) >= 4, file[-4:] == '.edl')
+    #input_file_name = ".".join(input_file_name.split['.'][:-1]) #this works for all file types but may have issues if file does not end with a .type
     if len(input_file_name) >= 4 and input_file_name[-4:] == '.edl':
         input_file_name = input_file_name[:-4]
     input_file_name += '.ui'
@@ -69,6 +69,8 @@ def create_new_directories(args: object, parser: argparse.ArgumentParser):
         os.makedirs(args.output_file)
 
 def main():
+    import sys
+    print("Args:", sys.argv)
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--cli", action="store_true", help="If provided, run in command-line (CLI) mode instead of GUI."

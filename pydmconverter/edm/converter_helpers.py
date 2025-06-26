@@ -1,6 +1,6 @@
 from typing import Optional
-from edm.parser import EDMObject, EDMGroup, EDMFileParser
-from widgets import (
+from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser
+from pydmconverter.widgets import (
     PyDMDrawingRectangle,
     PyDMDrawingEllipse,
     PyDMDrawingLine,
@@ -12,7 +12,7 @@ from widgets import (
     PyDMShellCommand,
     PyDMFrame,
 )
-from edm.parser_helpers import convert_fill_property_to_qcolor, search_color_list, parse_colors_list
+from pydmconverter.edm.parser_helpers import convert_fill_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 
 
