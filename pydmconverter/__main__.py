@@ -3,7 +3,6 @@
 import argparse
 import subprocess
 import sys
-import os
 from pydmconverter.edm.converter import convert
 from pathlib import Path
 
@@ -67,11 +66,11 @@ def get_output_file_name(file: Path, output_path: Path) -> Path:
 def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
     if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
-    if not os.path.isfile(args.input_file) and not os.path.isdir(args.input_file):
-        parser.error(f"Input path '{args.input_file}' is neither a file nor a directory.")
+    if not Path(args.input_file).isfile() and not Path(args.input_file).isdir():
+        parser.error(f"Input path '{args.input_file}' is neither a valid file nor a valid directory.")
 
 
-def create_new_directories(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+def create_new_directories(args: argparse.Namespace) -> None:
     input_path = Path(args.input_file)
     output_path = Path(args.output_file)
 
@@ -93,7 +92,7 @@ def main() -> None:
 
     if args.input_file:
         check_parser_errors(args, parser)
-        create_new_directories(args, parser)
+        create_new_directories(args)
         run_cli(args)
     else:
         run_gui()
