@@ -36,6 +36,8 @@ def run_cli(args):
         for file in inputted_files:
             output_file_name = get_output_file_name(file, output_file)
             convert(file, output_file_name)
+    else:
+        raise ValueError(f"Input path '{input_file}' is neither a file nor a directory.")
 
 def get_output_file_name(file: str, output_file: str):
     input_file_name = file.split('/')[-1]
@@ -62,10 +64,11 @@ def check_parser_errors(args: object, parser: argparse.ArgumentParser):
 def create_new_directories(args: object, parser: argparse.ArgumentParser):
     if os.path.isfile(args.input_file):
         file_dir = "/".join(args.output_file.split('/')[:-1])
-        if not os.path.isdir(file_dir):
+        print(file_dir)
+        if not os.path.isdir(file_dir) and file_dir:
             os.makedirs(file_dir)
         print('file_dir', file_dir)
-    if os.path.isdir(args.input_file) and not os.path.isdir(args.output_file):
+    if os.path.isdir(args.input_file) and not os.path.isdir(args.output_file) and args.output_file: #maybe unnecesary
         os.makedirs(args.output_file)
 
 def main():
