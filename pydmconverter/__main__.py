@@ -42,7 +42,6 @@ def convert_files_in_folder(
 ) -> int:  # outputs the amount of files found in this directory and subdirectories
     files_found = 0
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
-    inputted_length = len(inputted_files)
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
         output_file_path = Path(output_file_name)
@@ -55,8 +54,8 @@ def convert_files_in_folder(
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         files_found += convert_files_in_folder(subdir, output_path, input_file_type)
-    print(f"{files_found + inputted_length} files found in {input_path}")
-    return files_found + inputted_length
+    print(f"{files_found + len(inputted_files)} files found in {input_path}")
+    return files_found + len(inputted_files)
 
 
 def get_output_file_name(file: Path, output_path: Path) -> Path:
