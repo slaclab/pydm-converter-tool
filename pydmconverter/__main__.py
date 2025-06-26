@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+
 import argparse
 import subprocess
 import sys
 import os
-#import edm.converter
 from pydmconverter.edm.converter import convert
 import glob
 from pathlib import Path
@@ -70,9 +70,9 @@ def main():
     import sys
     print("Args:", sys.argv)
     parser = argparse.ArgumentParser()
-    parser.add_argument(
+    """parser.add_argument(
         "--cli", action="store_true", help="If provided, run in command-line (CLI) mode instead of GUI."
-    )
+    )"""
     parser.add_argument(
         "input_file", nargs='?', metavar="FILE"
     )
@@ -84,8 +84,8 @@ def main():
     )
     args = parser.parse_args()
     
-
-    if args.cli:
+    #if args.input_file:
+    if args.input_file:
         check_parser_errors(args, parser)
         create_new_directories(args, parser)
         print
