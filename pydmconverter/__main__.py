@@ -5,7 +5,9 @@ import subprocess
 import sys
 from pydmconverter.edm.converter import convert
 from pathlib import Path
-import warnings
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 def run_gui() -> None:
@@ -24,7 +26,7 @@ def run_cli(args: argparse.Namespace) -> None:
     args : argparse.Namespace
         Parsed command-line arguments
     """
-    print("Running CLI with arguments:", args)
+    logging.info(f"Running CLI with arguments: {args}")
     input_path: Path = Path(args.input_file)
     output_path: Path = Path(args.output_file)
     input_file_type: str = args.output_type
@@ -86,10 +88,7 @@ def convert_files_in_folder(
 
         if output_file_path.is_file() and not override:
             files_failed.append(str(file))
-            warnings.warn(
-                f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.",
-                category=UserWarning,
-            )
+            logging.warning(f"Skipped: {output_file_path} already exists.")
         else:
             convert(file, output_file_path)
 
@@ -138,7 +137,7 @@ def create_new_directories(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Runs pydmconverter from the CLI or GUI"""
-    print("Args:", sys.argv)
+    logging.debug(f"Sys argv: {sys.argv}")
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument("input_file", nargs="?", metavar="FILE")
     parser.add_argument("output_file", nargs="?", metavar="FILE")
