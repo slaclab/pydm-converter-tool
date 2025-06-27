@@ -17,7 +17,12 @@ def run_gui() -> None:
 
 def run_cli(args: argparse.Namespace) -> None:
     """
-    run PyDMConverter through command line"
+    run PyDMConverter through command line
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments
     """
     print("Running CLI with arguments:", args)
     input_path: Path = Path(args.input_file)
@@ -102,20 +107,10 @@ def check_parser_errors(args: argparse.Namespace, parser: argparse.ArgumentParse
 
     Parameters
     ----------
-    args : o
-    input_path : Path
-        The parent directory of files to convert
-    output_path: Path
-        The directory where converted files will be stored
-    input_file_type: str
-        The type of file to convert (often will be .edl)
-    override: bool
-        Boolean if the override flag was included
-
-    Returns
-    -------
-    tuple[int, list[str]]
-        A tuple containing the amount of total files of valid type found in directory and a list of all files that failed due to override warnings
+    args : argparse.Namespace
+        Parsed command-line arguments
+    parser : argparse.ArgumentParser
+        Parser object to allow for parser errors
     """
     if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
@@ -124,6 +119,13 @@ def check_parser_errors(args: argparse.Namespace, parser: argparse.ArgumentParse
 
 
 def create_new_directories(args: argparse.Namespace) -> None:
+    """Creates an output directory if it does not already exist
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments
+    """
     input_path = Path(args.input_file)
     output_path = Path(args.output_file)
 
@@ -135,6 +137,7 @@ def create_new_directories(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Runs pydmconverter from the CLI or GUI"""
     print("Args:", sys.argv)
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument("input_file", nargs="?", metavar="FILE")
