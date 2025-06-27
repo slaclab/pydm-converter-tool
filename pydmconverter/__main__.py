@@ -47,13 +47,17 @@ def convert_files_in_folder(
         output_file_path = Path(output_file_name)
         if output_file_path.is_file() and not override:
             raise Exception(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
+            # raise FileExistsError(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
         else:
             convert(file, output_file_name)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         files_found += convert_files_in_folder(subdir, output_path, input_file_type, override)
-    print(f"{files_found + len(inputted_files)} files found in {input_path}")
+    if files_found + len(inputted_files) == 0:
+        print(f"No {input_file_type} files found in {input_path}")
+    else:
+        print(f"{files_found + len(inputted_files)} {input_file_type} files found in {input_path}")
     return files_found + len(inputted_files)
 
 
