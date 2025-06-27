@@ -34,31 +34,52 @@ def run_cli(args: argparse.Namespace) -> None:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
         output_path.mkdir(parents=True, exist_ok=True)
-        convert_files_in_folder(input_path, output_path, input_file_type, override)
+        files_found: int
+        files_failed: list[str]
+        files_found, files_failed = convert_files_in_folder(input_path, output_path, input_file_type, override)
+
+        if files_found == 0:
+            print(f"No {input_file_type} files found in {input_path}")
+        else:
+            print(f"{files_found} {input_file_type} files found in {input_path}")
+        if files_failed:
+            print(f"{len(files_failed)} files failed to convert to prevent overriding current files")
+            print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
 
 
 def convert_files_in_folder(
     input_path: Path, output_path: Path, input_file_type: str, override: bool
-) -> int:  # outputs the amount of files found in this directory and subdirectories
-    files_found = 0
+) -> tuple[int, list[str]]:  # outputs the amount of files found in this directory and subdirectories
+    files_found: int = 0
+    files_failed: list[Path] = []
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
     for file in inputted_files:
         output_file_name = get_output_file_name(file, output_path)
         output_file_path = Path(output_file_name)
         if output_file_path.is_file() and not override:
-            raise Exception(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
+            files_failed.append(file)
+            import warnings
+
+            warnings.warn(
+                f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.",
+                category=UserWarning,
+            )
+            # print(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
             # raise FileExistsError(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
         else:
             convert(file, output_file_name)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
-        files_found += convert_files_in_folder(subdir, output_path, input_file_type, override)
-    if files_found + len(inputted_files) == 0:
+        sub_found, sub_failed = convert_files_in_folder(subdir, output_path, input_file_type, override)
+        files_found += sub_found
+        files_failed += sub_failed
+
+    """if files_found + len(inputted_files) == 0:
         print(f"No {input_file_type} files found in {input_path}")
     else:
-        print(f"{files_found + len(inputted_files)} {input_file_type} files found in {input_path}")
-    return files_found + len(inputted_files)
+        print(f"{files_found + len(inputted_files)} {input_file_type} files found in {input_path}")"""  # only need to print for the top layer
+    return (files_found + len(inputted_files), files_failed)
 
 
 def get_output_file_name(file: Path, output_path: Path) -> Path:
