@@ -16,7 +16,12 @@ def run_gui() -> None:
 
 def run_cli(args: argparse.Namespace) -> None:
     """
-    run PyDMConverter through command line"
+    run PyDMConverter through command line
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments
     """
     print("Running CLI with arguments:", args)
     input_path: Path = Path(args.input_file)
@@ -34,13 +39,29 @@ def run_cli(args: argparse.Namespace) -> None:
         convert_files_in_folder(input_path, output_path, input_file_type)
 
 
-def convert_files_in_folder(
-    input_path: Path, output_path: Path, input_file_type: str
-) -> int:  # outputs the amount of files found in this directory and subdirectories
+def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type: str) -> int:
+    """Recursively runs convert on files in directory and subdirectories
+
+    Parameters
+    ----------
+    input_path : Path
+        The parent directory of files to convert
+    output_path: Path
+        The directory where converted files will be stored
+    input_file_type: str
+        The type of file to convert (often will be .edl)
+    override: bool
+        Boolean if the override flag was included
+
+    Returns
+    -------
+    tuple[int, list[str]]
+        A tuple containing the amount of total files of valid type found in directory and a list of all files that failed due to override warnings
+    """
     files_found = 0
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
     for file in inputted_files:
-        output_file_name = get_output_file_name(file, output_path)
+        output_file_name = output_path / (file.stem + ".ui")
         convert(file, output_file_name)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
@@ -50,11 +71,16 @@ def convert_files_in_folder(
     return files_found + len(inputted_files)
 
 
-def get_output_file_name(file: Path, output_path: Path) -> Path:
-    return output_path / (file.stem + ".ui")
+def check_parser_errors(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    """Checks for invalid CLI calls
 
-
-def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments
+    parser : argparse.ArgumentParser
+        Parser object to allow for parser errors
+    """
     if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
     if not Path(args.input_file).is_file() and not Path(args.input_file).is_dir():
@@ -62,6 +88,13 @@ def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
 
 
 def create_new_directories(args: argparse.Namespace) -> None:
+    """Creates an output directory if it does not already exist
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command-line arguments
+    """
     input_path = Path(args.input_file)
     output_path = Path(args.output_file)
 
@@ -73,6 +106,7 @@ def create_new_directories(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Runs pydmconverter from the CLI or GUI"""
     print("Args:", sys.argv)
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument("input_file", nargs="?", metavar="FILE")
