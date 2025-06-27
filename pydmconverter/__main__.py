@@ -51,6 +51,24 @@ def run_cli(args: argparse.Namespace) -> None:
 def convert_files_in_folder(
     input_path: Path, output_path: Path, input_file_type: str, override: bool
 ) -> tuple[int, list[str]]:
+    """Recursively runs convert on files in directory and subdirectories
+
+    Parameters
+    ----------
+    input_path : Path
+        The parent directory of files to convert
+    output_path: Path
+        The directory where converted files will be stored
+    input_file_type: str
+        The type of file to convert (often will be .edl)
+    override: bool
+        Boolean if the override flag was included
+
+    Returns
+    -------
+    tuple[int, list[str]]
+        A tuple containing the amount of total files of valid type found in directory and a list of all files that failed due to override warnings
+    """
     files_found: int = 0
     files_failed: list[str] = []
 
@@ -79,11 +97,26 @@ def convert_files_in_folder(
     return (files_found + len(inputted_files), files_failed)
 
 
-def get_output_file_name(file: Path, output_path: Path) -> Path:
-    return output_path / (file.stem + ".ui")
+def check_parser_errors(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    """Checks for invalid CLI calls
 
+    Parameters
+    ----------
+    args : o
+    input_path : Path
+        The parent directory of files to convert
+    output_path: Path
+        The directory where converted files will be stored
+    input_file_type: str
+        The type of file to convert (often will be .edl)
+    override: bool
+        Boolean if the override flag was included
 
-def check_parser_errors(args: object, parser: argparse.ArgumentParser) -> None:
+    Returns
+    -------
+    tuple[int, list[str]]
+        A tuple containing the amount of total files of valid type found in directory and a list of all files that failed due to override warnings
+    """
     if not args.input_file or not args.output_file:
         parser.error("Must input two files or two folders")
     if not Path(args.input_file).is_file() and not Path(args.input_file).is_dir():
