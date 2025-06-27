@@ -50,13 +50,11 @@ def convert_files_in_folder(input_path: Path, output_path: Path, input_file_type
         The directory where converted files will be stored
     input_file_type: str
         The type of file to convert (often will be .edl)
-    override: bool
-        Boolean if the override flag was included
 
     Returns
     -------
-    tuple[int, list[str]]
-        A tuple containing the amount of total files of valid type found in directory and a list of all files that failed due to override warnings
+    int
+        Returns the amount of files found in this input directory
     """
     files_found = 0
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
