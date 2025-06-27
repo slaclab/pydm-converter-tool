@@ -11,16 +11,19 @@ from pydmconverter.widgets import (
     PyDMRelatedDisplayButton,
     PyDMShellCommand,
     PyDMFrame,
+    QLabel,
+    PyDMEnumComboBox,
 )
 from pydmconverter.edm.parser_helpers import convert_fill_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 
 
-EDM_TO_PYDM_WIDGETS = {
+EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
     "activerectangleclass": PyDMDrawingRectangle,
     "circle": PyDMDrawingEllipse,
-    "activelineclass": PyDMDrawingPolyline,
+    "activelineclass": PyDMDrawingPolyline,  # also activeLineClass can convert to PyDMDradfdfderererewwfdyyyyy
+    "line": PyDMDrawingLine,
     # "image": PyDMImageView,
     "activextextclass": PyDMLabel,
     # Monitors
@@ -37,6 +40,9 @@ EDM_TO_PYDM_WIDGETS = {
     # "radio_box": PyDMRadioButtonGroup,
     "related_display_button": PyDMRelatedDisplayButton,
     "shell_command": PyDMShellCommand,
+    "activeXTextClass": QLabel,
+    "activeMessageButtonClass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
+    # "": PyDMEnumButton
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
