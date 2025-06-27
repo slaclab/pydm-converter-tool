@@ -46,10 +46,9 @@ def convert_files_in_folder(
         output_file_name = get_output_file_name(file, output_path)
         output_file_path = Path(output_file_name)
         if output_file_path.is_file() and not override:
-            raise FileExistsError(
-                f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it."
-            )
-        convert(file, output_file_name)
+            raise Exception(f"Output file '{output_file_path}' already exists. Use --override or -o to overwrite it.")
+        else:
+            convert(file, output_file_name)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
