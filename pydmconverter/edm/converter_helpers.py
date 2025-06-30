@@ -261,6 +261,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
+                    if edm_attr == "fgColor":
+                        value = convert_fill_property_to_qcolor(value, color_data=color_list_dict)
 
                     try:
                         setattr(widget, pydm_attr, value)

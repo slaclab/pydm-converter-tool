@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color
+from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color, RGBAStyleSheet
 
 
 @dataclass
@@ -116,6 +116,7 @@ class QLabel(Legible):
     show_units: Optional[bool] = None
     tool_tip: Optional[str] = None
     frame_shape: Optional[str] = None
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -135,6 +136,11 @@ class QLabel(Legible):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
             properties.append(Str("frameShape", self.frame_shape).to_xml())
+        if self.foreground_color is not None:
+            r, g, b, _ = self.foreground_color
+            # properties.append(StyleSheet(f"color: rgb({r}, {g}, {b});").to_xml())
+            properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
+
         return properties
 
 

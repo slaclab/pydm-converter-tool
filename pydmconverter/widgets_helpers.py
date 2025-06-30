@@ -774,6 +774,21 @@ class Color(XMLConvertible):
 
 
 @dataclass
+class RGBAStyleSheet(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
+
+
+@dataclass
 class PenColor(XMLConvertible):
     """
     Represents a pen color property for a widget.
@@ -1007,7 +1022,6 @@ class Legible(Tangible):
         if self.text is not None:
             properties.append(Text("text", self.text).to_xml())
         if self.font:
-            print("here", (Font(**self.font).to_xml()))
             properties.append(Font(**self.font).to_xml())
         if self.alignment is not None:
             properties.append(Alignment(self.alignment).to_xml())
