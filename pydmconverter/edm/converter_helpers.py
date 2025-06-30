@@ -260,7 +260,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             logger.warning(f"Could not convert color {value}, skipping")
                             continue
                     if edm_attr == "value":
-                        value = str(value[0])
+                        value = get_string_value(value)
 
                     try:
                         setattr(widget, pydm_attr, value)
@@ -334,6 +334,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
     pydm_widgets = traverse_group(parser.ui, color_list_dict, None, None, parser.ui.height)
     return pydm_widgets, used_classes
+
+
+def get_string_value(value: list) -> str:
+    """
+    Takes in a value string and joins each element into a string separated by a new line
+    """
+    return "\n".join(value)
 
 
 def parse_font_string(font_str: str) -> dict:
