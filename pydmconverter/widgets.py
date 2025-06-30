@@ -138,7 +138,6 @@ class QLabel(Legible):
             properties.append(Str("frameShape", self.frame_shape).to_xml())
         if self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
-            # properties.append(StyleSheet(f"color: rgb({r}, {g}, {b});").to_xml())
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
 
         return properties

@@ -781,7 +781,7 @@ class RGBAStyleSheet(XMLConvertible):
     alpha: int = 255
 
     def to_xml(self):
-        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
+        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
         string_elem.text = style

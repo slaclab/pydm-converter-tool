@@ -67,6 +67,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "fill": "brushFill",
     "fillColor": "brushColor",
     "autoSize": "autoSize",
+    "lineColor": "penColor",
     # Graphics attributes
     "lineWidth": "line_width",
     "lineStyle": "line_style",
@@ -247,6 +248,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if not pydm_attr:
                         continue
 
+                    # if edm_attr == "lineColor":
+                    #    print("here5", value, edm_attr, obj.name.lower())
                     if edm_attr == "font":
                         value = parse_font_string(value)
                     if edm_attr == "fillColor":
@@ -261,7 +264,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-                    if edm_attr == "fgColor":
+                    if edm_attr == "fgColor" or edm_attr == "bgColor" or edm_attr == "lineColor":
                         value = convert_fill_property_to_qcolor(value, color_data=color_list_dict)
 
                     try:
