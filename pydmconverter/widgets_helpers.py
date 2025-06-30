@@ -160,6 +160,7 @@ class Font(XMLConvertible):
         Whether the font is italic.
     """
 
+    family: Optional[str] = None
     pointsize: Optional[int] = None
     weight: Optional[int] = None
     bold: Optional[bool] = None
@@ -176,6 +177,9 @@ class Font(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "font"})
         font: etree.Element = etree.SubElement(prop, "font")
+        if self.family is not None:
+            family_tag: etree.Element = etree.SubElement(font, "family")
+            family_tag.text = str(self.family)
         if self.pointsize is not None:
             pointsize_tag: etree.Element = etree.SubElement(font, "pointsize")
             pointsize_tag.text = str(self.pointsize)
@@ -1003,6 +1007,7 @@ class Legible(Tangible):
         if self.text is not None:
             properties.append(Text("text", self.text).to_xml())
         if self.font:
+            print("here", (Font(**self.font).to_xml()))
             properties.append(Font(**self.font).to_xml())
         if self.alignment is not None:
             properties.append(Alignment(self.alignment).to_xml())

@@ -349,13 +349,16 @@ def parse_font_string(font_str: str) -> dict:
     into a dictionary for a PyDM widget.
     This is just an example parser—adjust as needed.
     """
+    print("fonts", font_str)
     parts = font_str.split("-")
+    family = parts[0].capitalize()
     bold = "bold" in parts[1].lower()
-    italic = "i" in parts[1].lower()
+    italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
     pointsize = int(convert_pointsize(float(size_str)))
 
     return {
+        "family": family,
         "pointsize": pointsize,
         "bold": bold,
         "italic": italic,
