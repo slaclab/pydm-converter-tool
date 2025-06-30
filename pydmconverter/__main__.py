@@ -51,7 +51,9 @@ def run_cli(args: argparse.Namespace) -> None:
         else:
             print(f"{files_found - len(files_failed)} {input_file_type} files converted from {input_path}")
         if files_failed:
-            print(f"{len(files_failed)} files failed to convert to prevent overriding current files")
+            print(
+                f"{len(files_failed)} files failed to convert to prevent overriding current files. Use --override or -o to overwrite these files."
+            )
             print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
 
 
@@ -88,7 +90,7 @@ def convert_files_in_folder(
 
         if output_file_path.is_file() and not override:
             files_failed.append(str(file))
-            logging.warning(f"Skipped: {output_file_path} already exists.")
+            logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
             convert(file, output_file_path)
 
