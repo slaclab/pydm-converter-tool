@@ -346,7 +346,7 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[1].lower()
     size_str = parts[-1]
-    pointsize = int(float(size_str))
+    pointsize = int(convert_pointsize(float(size_str)))
 
     return {
         "pointsize": pointsize,
@@ -354,6 +354,14 @@ def parse_font_string(font_str: str) -> dict:
         "italic": italic,
         "weight": 50,
     }
+
+
+def convert_pointsize(pixel_size, dpi: int = 96):
+    """
+    Convert the edm pizelsize to pydm pointsize (default is 96)
+    """
+    point_size = pixel_size * 72 / dpi
+    return point_size
 
 
 def geom_and_local_points(abs_points, pen_width: int = 1):
