@@ -1,7 +1,18 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color, RGBAStyleSheet
+from pydmconverter.widgets_helpers import (
+    Int,
+    Bool,
+    Str,
+    Drawable,
+    Hidable,
+    Alarmable,
+    Legible,
+    Color,
+    RGBAStyleSheet,
+    TransparentBackground,
+)
 
 
 @dataclass
@@ -88,6 +99,7 @@ class PyDMFrame(Alarmable):
             properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
         if self.disableOnDisconnect is not None:
             properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+        properties.append(TransparentBackground().to_xml())
 
         return properties
 

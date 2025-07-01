@@ -782,6 +782,18 @@ class RGBAStyleSheet(XMLConvertible):
 
     def to_xml(self):
         style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
+        # style = f"color: rgba(100, 0, 0, 0); background-color: transparent;"
+        # style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
+
+
+@dataclass
+class TransparentBackground(XMLConvertible):
+    def to_xml(self):
+        style = "background-color: transparent;"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
         string_elem.text = style
