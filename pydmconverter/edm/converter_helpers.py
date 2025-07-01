@@ -141,8 +141,8 @@ def transform_nested_widget(
     If EDM uses absolute coordinates for nested widgets, subtract parent position.
     """
     # Convert to relative coordinates by subtracting parent position
-    relative_x = parent_edm_x + (child_edm_x * scale)
-    relative_y = parent_edm_y + (child_edm_y * scale)
+    relative_x = child_edm_x * scale  # - parent_edm_y
+    relative_y = child_edm_y * scale  # - parent_edm_x
     child_width = child_edm_width * scale
     child_height = child_edm_height * scale
 
@@ -195,6 +195,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         offset_y=offset_y,
                     )
                 else:
+                    print("here7", parent_pydm_group, "checkpoint", obj)
                     x, y, width, height = transform_nested_widget(
                         obj.x,
                         obj.y,
@@ -206,8 +207,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         scale=scale,
                     )
                 pydm_group = PyDMFrame(
-                    name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}", x=x, y=y, width=width, height=height
+                    name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
+                    x=0,
+                    y=0,
+                    width=width + x,
+                    height=height + y,
                 )
+                print("here8", pydm_group)
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
                 if parent_pydm_group:
