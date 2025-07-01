@@ -708,16 +708,39 @@ def get_color_by_index(color_data: Dict[str, Any], index: str) -> Optional[Dict[
     return None
 
 
-def convert_fill_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[Tuple[int, int, int, int]]:
+def get_color_by_rgb(colorStr: str) -> Optional[Dict[str, Any]]:
     """
-    Convert the EDM 'fillColor' property into a tuple representing RGBA values.
+    Retrieve the color definition from color_data using an rgb string like 'rgb 0 0 0'.
+
+    Args:
+        colorStr (str): The color index string, e.g., 'rgb 0 0 0'.
+
+    Returns:
+        Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an 'rgb' key)
+                                  or None if not found.
+    """
+    color_list: list[str] = colorStr.split(" ")
+    output_dict = {}
+    output_dict["rgb"] = [int(s) for s in color_list[1:]]  # get ints from list excluding 'rgb' at index 0
+
+    return output_dict
+
+
+def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[Tuple[int, int, int, int]]:
+    """
+    Convert the EDM 'fillColor', 'bgColor', 'fgColor' property into a tuple representing RGBA values.
 
     Returns:
         Optional[Tuple[int, int, int, int]]: A tuple (red, green, blue, alpha) or None.
     """
-    color_info = get_color_by_index(color_data, fillColor)
+    if fillColor.startswith("rgb"):
+        color_info = get_color_by_rgb(fillColor)
+    else:
+        color_info = get_color_by_index(color_data, fillColor)
+    print("here", color_info)
     if not color_info:
         logger.warning(f"Could not find a color for fillColor '{fillColor}'. Using default gray.")
+        # return (0, 0, 0, 255)
         return (128, 128, 128, 255)  # Default gray color
 
     rgb = color_info.get("rgb")

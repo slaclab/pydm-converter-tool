@@ -11,10 +11,8 @@ from pydmconverter.widgets import (
     PyDMRelatedDisplayButton,
     PyDMShellCommand,
     PyDMFrame,
-    QLabel,
-    PyDMEnumComboBox,
 )
-from pydmconverter.edm.parser_helpers import convert_fill_property_to_qcolor, search_color_list, parse_colors_list
+from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
 
@@ -41,9 +39,9 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "radio_box": PyDMRadioButtonGroup,
     "related_display_button": PyDMRelatedDisplayButton,
     "shell_command": PyDMShellCommand,
-    "activeXTextClass": QLabel,
-    "activeMessageButtonClass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
+    # "activemessagebuttonclass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
     # "": PyDMEnumButton
+    "activextextdspclass": PyDMLabel,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -209,10 +207,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     )
                 pydm_group = PyDMFrame(
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
+                    # x=0,
+                    # y=0,
+                    # width=width + x,
+                    # height=height + y,
                     x=0,
                     y=0,
-                    width=width + x,
-                    height=height + y,
+                    width=1000,
+                    height=1000,
                 )
                 print("here8", pydm_group)
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
@@ -261,7 +263,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         value = parse_font_string(value)
                     if edm_attr == "fillColor":
                         original_value = value
-                        color_tuple = convert_fill_property_to_qcolor(value, color_data=color_list_dict)
+                        color_tuple = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                         logger.info(f"Color conversion: {original_value} -> {color_tuple}")
                         if color_tuple:
                             value = color_tuple
@@ -272,7 +274,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if edm_attr == "value":
                         value = get_string_value(value)
                     if edm_attr == "fgColor" or edm_attr == "bgColor" or edm_attr == "lineColor":
-                        value = convert_fill_property_to_qcolor(value, color_data=color_list_dict)
+                        value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
 
                     try:
                         setattr(widget, pydm_attr, value)
