@@ -16,6 +16,7 @@ from pydmconverter.widgets import (
 )
 from pydmconverter.edm.parser_helpers import convert_fill_property_to_qcolor, search_color_list, parse_colors_list
 import logging
+import math
 
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
@@ -366,7 +367,7 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-    pointsize = int(convert_pointsize(float(size_str)))
+    pointsize = math.floor(convert_pointsize(float(size_str), 100))
 
     return {
         "family": family,
@@ -377,7 +378,7 @@ def parse_font_string(font_str: str) -> dict:
     }
 
 
-def convert_pointsize(pixel_size, dpi: int = 96):
+def convert_pointsize(pixel_size, dpi: float = 96):
     """
     Convert the edm pizelsize to pydm pointsize (default is 96)
     """
