@@ -194,7 +194,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         offset_y=offset_y,
                     )
                 else:
-                    print("here7", parent_pydm_group, "checkpoint", obj)
                     x, y, width, height = transform_nested_widget(
                         obj.x,
                         obj.y,
@@ -243,7 +242,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
                     continue
 
-                widget = widget_type(name=obj.name if hasattr(obj, "name") else f"widget_{id(obj)}")
+                widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
                 used_classes.add(type(widget).__name__)
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
 
