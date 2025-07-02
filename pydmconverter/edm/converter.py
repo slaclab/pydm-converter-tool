@@ -14,6 +14,8 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMDrawingLine": {"extends": "QLabel", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMDrawingPolyline": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMLabel": {"extends": "QLabel", "header": "pydm.widgets.label", "container": ""},
+    "PyDMEnumComboBox": {"extends": "QComboBox", "header": "pydm.widgets.enum_combo_box", "container": ""},
+    "PyDMPushButton": {"extends": "QPushButton", "header": "pydm.widgets.pushbutton", "container": ""},
 }
 
 
@@ -43,7 +45,6 @@ def convert(input_path, output_path):
     add_widgets_to_parent(pydm_widgets, central_widget)
 
     customwidgets_el = build_customwidgets_element(used_classes)
-    print(ui_element)
     ui_element.append(customwidgets_el)
 
     ET.SubElement(ui_element, "resources")
@@ -60,6 +61,7 @@ def build_customwidgets_element(used_classes: set) -> ET.Element:
 
     for cls_name in sorted(used_classes):
         if cls_name not in CUSTOM_WIDGET_DEFINITIONS:
+            logger.warning(f"Could not find custom widget {cls_name} in CUSTOM_WIDGET_DEFINITIONS")
             continue
 
         data = CUSTOM_WIDGET_DEFINITIONS[cls_name]
@@ -84,8 +86,11 @@ def build_customwidgets_element(used_classes: set) -> ET.Element:
 
 def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
+        print(f"Top-level: {widget}, children={len(getattr(widget, 'children', []))}")
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
 
-        if hasattr(widget, "children") and widget.children:
-            add_widgets_to_parent(widget.children, widget_element)
+        # print("Adding widget:", widget)
+        # print("  Children:", getattr(widget, 'children', []))
+        # if hasattr(widget, "children") and widget.children:
+        #    add_widgets_to_parent(widget.children, widget_element)
