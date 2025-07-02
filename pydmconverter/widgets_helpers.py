@@ -1167,7 +1167,7 @@ class Drawable(Tangible):
         properties: List[etree.Element] = super().generate_properties()
         if self.penColor is not None:
             properties.append(PenColor(*self.penColor).to_xml())
-        if self.penStyle is not None:
+        if self.penStyle is not None or self.penColor is not None:
             properties.append(PenStyle(style=self.penStyle).to_xml())
         if self.penWidth is not None:
             properties.append(PenWidth(width=self.penWidth).to_xml())
