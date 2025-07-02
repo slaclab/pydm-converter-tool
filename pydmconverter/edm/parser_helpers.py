@@ -737,7 +737,6 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
         color_info = get_color_by_rgb(fillColor)
     else:
         color_info = get_color_by_index(color_data, fillColor)
-    print("here", color_info)
     if not color_info:
         logger.warning(f"Could not find a color for fillColor '{fillColor}'. Using default gray.")
         # return (0, 0, 0, 255)
@@ -747,14 +746,14 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
     if not rgb or len(rgb) < 3:
         logger.warning(f"Invalid RGB data for color '{fillColor}': {rgb}")
         return (128, 128, 128, 255)  # Default gray color
-
     # Extract RGB values
     red, green, blue = rgb[:3]
     alpha = 255  # Default alpha value
 
     # Check if values need scaling (EDM often uses 0-65535 range)
     max_val = color_data.get("max", 256)
-    if max_val > 256:
+    rgbMax = max(rgb)
+    if rgbMax > 256:
         # Scale from 0-65535 to 0-255
         red = int(red * 255 / (max_val - 1))
         green = int(green * 255 / (max_val - 1))
