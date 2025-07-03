@@ -86,7 +86,6 @@ def build_customwidgets_element(used_classes: set) -> ET.Element:
 
 def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
-        print(f"Top-level: {widget}, children={len(getattr(widget, 'children', []))}")
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
 
