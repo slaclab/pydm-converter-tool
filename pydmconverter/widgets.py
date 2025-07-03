@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
@@ -12,6 +12,7 @@ from pydmconverter.widgets_helpers import (
     Color,
     RGBAStyleSheet,
     TransparentBackground,
+    StyleSheet,
 )
 
 
@@ -688,6 +689,16 @@ class PyDMEnumComboBox(QComboBox, Alarmable):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
+        if self.background_color is not None or self.foreground_color is not None:
+            styles: Dict[str, any] = {}
+            if self.background_color is not None:
+                styles["background-color"] = self.background_color
+            if self.background_color is not None:
+                styles["color"] = self.foreground_color
+            properties.append(StyleSheet(styles).to_xml())
+
+        for prop in properties:
+            print(ET.tostring(prop, encoding="unicode"))
         return properties
 
 

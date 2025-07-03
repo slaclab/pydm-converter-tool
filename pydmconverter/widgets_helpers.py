@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, fields
-from typing import Any, ClassVar, List, Optional, Tuple, Union
+from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
 
@@ -549,32 +549,17 @@ class PyDMToolTip(XMLConvertible):
         return prop
 
 
-@dataclass
+"""@dataclass
 class StyleSheet(XMLConvertible):
-    """
-    Represents a stylesheet for a widget.
-
-    Attributes
-    ----------
-    lines : List[str]
-        A list of stylesheet lines.
-    """
 
     lines: List[str]
 
     def to_xml(self) -> etree.Element:
-        """
-        Convert the stylesheet to an XML element.
-
-        Returns
-        -------
-        etree.Element
-            The XML element representing the stylesheet.
-        """
         top: etree.Element = etree.Element("property", attrib={"name": "styleSheet"})
         string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
         string_elem.text = "\n".join(self.lines)
         return top
+"""
 
 
 @dataclass
@@ -787,6 +772,47 @@ class RGBAStyleSheet(XMLConvertible):
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
         string_elem.text = style
+        return prop
+
+
+@dataclass
+class StyleSheet(XMLConvertible):
+    """
+    Represents a stylesheet for a widget.
+
+    Attributes
+    ----------
+    lines : List[str]
+        A list of stylesheet lines.
+    """
+
+    styles: Dict[str, Any]
+
+    def _format_value(self, key: str, value: Any) -> str:
+        if isinstance(value, tuple) and key in ("color", "background-color"):
+            r, g, b, *a = value
+            alpha = a[0] if a else 1.0
+            return f"{key}: rgba({r}, {g}, {b}, {round(alpha, 2)});"
+        return f"{key}: {value};"
+
+    def to_style_string(self) -> str:
+        return " ".join(self._format_value(k, v) for k, v in self.styles.items())
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the stylesheet.
+        """
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        style_str: str = self.to_style_string()
+        if "background-color" not in self.styles:
+            style_str += "background-color: transparent;"
+        string_elem.text = style_str
         return prop
 
 
@@ -1243,8 +1269,8 @@ class PageHeader:
         if "bgColor" in properties:
             style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
             style_string = ET.SubElement(style_prop, "string")
-            # Use the object name in the selector to scope it
             style_string.text = f"#Form {{ background-color: rgba{properties['bgColor']} }}"  # commented code adds bg to all child widgets but for now, this is fine
+            # TODO: There is a bug that the background does not show up normally but does in designer
 
     """def add_screen_properties(self, main_widget: ET, properties: dict[str, Any]) -> None:
         if "bgColor" in properties:
