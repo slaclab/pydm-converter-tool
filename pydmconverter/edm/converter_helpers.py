@@ -22,7 +22,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # Graphics widgets
     "activerectangleclass": PyDMDrawingRectangle,
     "circle": PyDMDrawingEllipse,
-    "activelineclass": PyDMDrawingPolyline,  # also activeLineClass can convert to PyDMDradfdfderererewwfdyyyyy
+    "activelineclass": PyDMDrawingPolyline,
     "line": PyDMDrawingLine,
     # "image": PyDMImageView,
     "activextextclass": PyDMLabel,
