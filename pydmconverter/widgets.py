@@ -14,6 +14,7 @@ from pydmconverter.widgets_helpers import (
     TransparentBackground,
     StyleSheet,
 )
+import logging
 
 
 @dataclass
@@ -451,6 +452,18 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
+        if self.on_color is not None or self.foreground_color is not None:
+            styles: Dict[str, any] = {}
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            if self.on_color is not None and self.off_color == self.on_color:
+                styles["background-color"] = self.on_color
+            if self.on_color is not None and self.off_color != self.on_color:
+                logging.warning("on and off colors are different, need to modify code")
+            properties.append(StyleSheet(styles).to_xml())
+
+        for prop in properties:
+            print(ET.tostring(prop, encoding="unicode"))
         return properties
 
 
@@ -697,8 +710,8 @@ class PyDMEnumComboBox(QComboBox, Alarmable):
                 styles["color"] = self.foreground_color
             properties.append(StyleSheet(styles).to_xml())
 
-        for prop in properties:
-            print(ET.tostring(prop, encoding="unicode"))
+        # for prop in properties:
+        #    print(ET.tostring(prop, encoding="unicode"))
         return properties
 
 

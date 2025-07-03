@@ -88,6 +88,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "bitPattern": "bits",
     "onColor": "on_color",
     "offColor": "off_color",
+    "topShadowColor": "top_shadow_color",
+    "botShadowColor": "bottom_shadow_color",
     # Command-related attributes
     "cmd": "command",
     "args": "arguments",
@@ -274,7 +276,16 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-                    if edm_attr == "fgColor" or edm_attr == "bgColor" or edm_attr == "lineColor":
+                    color_attributes: set = {
+                        "fgColor",
+                        "bgColor",
+                        "lineColor",
+                        "offColor",
+                        "onColor",
+                        "topShadowColor",
+                        "botShadowColor",
+                    }
+                    if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
 
                     try:
