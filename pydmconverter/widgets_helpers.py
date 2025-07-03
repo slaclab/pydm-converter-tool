@@ -791,6 +791,21 @@ class RGBAStyleSheet(XMLConvertible):
 
 
 @dataclass
+class RGBABackgroundSheet(XMLConvertible):  # eventually combine with rgbastylesheet
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        style = f"background-color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
+
+
+@dataclass
 class TransparentBackground(XMLConvertible):
     def to_xml(self):
         style = "background-color: transparent;"
@@ -1207,6 +1222,12 @@ class PageHeader:
         title_string = ET.SubElement(window_title, "string")
         title_string.text = "PyDM Screen"
 
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+        # style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
+        # style_string = ET.SubElement(style_prop, "string")
+        # style_string.text = "background-color: rgba(187, 0, 0, 1.0)"
+
         central_widget = ET.SubElement(
             main_widget,
             "widget",
@@ -1217,3 +1238,18 @@ class PageHeader:
         )
 
         return ui_element, central_widget
+
+    def add_screen_properties(self, main_widget: ET.Element, properties: dict[str, Any]) -> None:
+        if "bgColor" in properties:
+            style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
+            style_string = ET.SubElement(style_prop, "string")
+            # Use the object name in the selector to scope it
+            style_string.text = f"#Form {{ background-color: rgba{properties['bgColor']} }}"  # commented code adds bg to all child widgets but for now, this is fine
+
+    """def add_screen_properties(self, main_widget: ET, properties: dict[str, Any]) -> None:
+        if "bgColor" in properties:
+            print("here")
+            style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
+            style_string = ET.SubElement(style_prop, "string")
+            style_string.text = f"background-color: rgba{properties['bgColor']}"
+    """

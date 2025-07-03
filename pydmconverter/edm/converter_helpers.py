@@ -11,11 +11,11 @@ from pydmconverter.widgets import (
     PyDMRelatedDisplayButton,
     PyDMShellCommand,
     PyDMFrame,
+    PyDMEnumComboBox,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
-
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
@@ -41,6 +41,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "shell_command": PyDMShellCommand,
     # "activemessagebuttonclass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
     # "": PyDMEnumButton
+    "activemenubuttonclass": PyDMEnumComboBox,
+    "activemessagebuttonclass": PyDMPushButton,
     "activextextdspclass": PyDMLabel,
 }
 
@@ -69,7 +71,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "lineColor": "penColor",
     # Graphics attributes
     "lineWidth": "line_width",
-    "lineStyle": "line_style",
+    "lineStyle": "penStyle",
     "radius": "radius",
     "color": "color",
     # Image and display attributes

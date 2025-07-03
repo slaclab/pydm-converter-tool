@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, field
+from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, parse_colors_list, search_color_list
 
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
@@ -72,6 +73,13 @@ class EDMFileParser:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
             size_properties = self.get_size_properties(screen_prop_text)
+            other_properties = self.get_object_properties(screen_prop_text)
+            if "bgColor" in other_properties:
+                color_list_filepath = search_color_list()
+                color_list_dict = parse_colors_list(color_list_filepath)
+                edmColor = other_properties["bgColor"]
+                other_properties["bgColor"] = convert_color_property_to_qcolor(edmColor, color_data=color_list_dict)
+            self.ui.properties = other_properties
 
             self.ui.height = size_properties["height"]
             self.ui.width = size_properties["width"]
