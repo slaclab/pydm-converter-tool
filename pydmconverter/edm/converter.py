@@ -16,6 +16,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMLabel": {"extends": "QLabel", "header": "pydm.widgets.label", "container": ""},
     "PyDMEnumComboBox": {"extends": "QComboBox", "header": "pydm.widgets.enum_combo_box", "container": ""},
     "PyDMPushButton": {"extends": "QPushButton", "header": "pydm.widgets.pushbutton", "container": ""},
+    "PyDMEmbeddedDisplay": {"extends": "QWidget", "header": "pydm.widgets.embedded_display", "container": "1"},
 }
 
 

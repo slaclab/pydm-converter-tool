@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
@@ -909,3 +909,38 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             properties.append(points_prop)
 
         return properties
+    
+@dataclass
+class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
+    """
+    PyDMEmbeddedDisplay embeds another UI file (display) inside the current display.
+
+    Attributes
+    ----------
+    filename : Optional[str]
+        The path to the embedded UI file.
+    macros : Optional[Dict[str, str]]
+        Macros to pass down to the embedded display.
+    visible : Optional[bool]
+        Whether the embedded display is visible.
+    """
+
+    filename: Optional[str] = None
+    macros: Optional[Dict[str, str]] = field(default_factory=dict)
+    visible: Optional[bool] = True
+
+    def generate_properties(self) -> list:
+        """
+        Generate XML elements for PyDMEmbeddedDisplay properties.
+        """
+        properties = super().generate_properties()
+        if self.filename is not None:
+            properties.append(Str("filename", self.filename).to_xml())
+        if self.macros:
+            import json
+            macros_str = json.dumps(self.macros)
+            properties.append(Str("macros", macros_str).to_xml())
+        if self.visible is not None:
+            properties.append(Bool("visible", self.visible).to_xml())
+        return properties
+
