@@ -929,6 +929,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
     macros: Optional[Dict[str, str]] = field(default_factory=dict)
     visible: Optional[bool] = True
     noscroll: Optional[bool] = True
+    background_color: Optional[bool] = None
 
     def generate_properties(self) -> list:
         """
@@ -936,7 +937,8 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         """
         properties = super().generate_properties()
         if self.filename is not None:
-            properties.append(Str("filename", self.filename).to_xml())
+            converted_filename = self.convert_filetype(self.filename)
+            properties.append(Str("filename", converted_filename).to_xml())
         if self.macros:
             import json
             macros_str = json.dumps(self.macros)
@@ -946,5 +948,16 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         if self.noscroll is not None:
             scroll: Bool = not self.noscroll
             properties.append(Bool("scrollable", scroll).to_xml())
+        if self.background_color is not None:
+            print("add stylesheet class")
+            #TODO: add stylesheet class when on server
         return properties
+    
+    def convert_filetype(self, file_string: str) -> None:
+        """
+        Converts file strings of .<type> to .ui
+        """
+        filename = ".".join(file_string.split(".")[:-1])
+        return f"{filename}.ui"
+        #return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
 
