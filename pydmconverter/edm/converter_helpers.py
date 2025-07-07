@@ -61,6 +61,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "label": "text",
     "tooltip": "PyDMToolTip",
     "visible": "visible",
+    "noScroll": "noscroll",
     "enabled": "enabled",
     "precision": "precision",
     "showUnits": "show_units",

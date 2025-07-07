@@ -928,6 +928,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
     filename: Optional[str] = None
     macros: Optional[Dict[str, str]] = field(default_factory=dict)
     visible: Optional[bool] = True
+    noscroll: Optional[bool] = True
 
     def generate_properties(self) -> list:
         """
@@ -942,5 +943,8 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
             properties.append(Str("macros", macros_str).to_xml())
         if self.visible is not None:
             properties.append(Bool("visible", self.visible).to_xml())
+        if self.noscroll is not None:
+            scroll: Bool = not self.noscroll
+            properties.append(Bool("scrollable", scroll).to_xml())
         return properties
 
