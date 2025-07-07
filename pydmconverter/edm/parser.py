@@ -3,6 +3,7 @@ from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, field
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, parse_colors_list, search_color_list
+import os
 
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
@@ -76,7 +77,61 @@ class EDMFileParser:
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
-                color_list_dict = parse_colors_list(color_list_filepath)
+                #color_list_dict = {"index0": "black"} 
+                #color_list_filepath = os.getenv("COLORS_LIST_FILE")
+                #parse_colors_list(color_list_filepath) #TODO
+                color_list_dict = {
+    "version": {
+        "major": 4,
+        "minor": 0,
+        "release": 0,
+    },
+    "blinkms": 750,
+    "columns": 5,
+    "max": 0x10000,  # or 65536
+    "alias": {
+        "trace0": "red",
+        "trace1": "green",
+    },
+    "static": {
+        25: {
+            "name": "Controller",
+            "rgb": [0, 0, 65535],
+        },
+        26: {
+            "name": "blinking red",
+            "rgb": [65535, 0, 0, 41120, 0, 0],
+        },
+        27: {
+            "name": "dark green",
+            "rgb": [45055, 45055, 0],
+        },
+    },
+    "rules": {
+        100: {
+            "name": "exampleRule",
+            "conditions": [
+                {
+                    "condition": "=100 || =200",
+                    "color": "strange",
+                },
+                # ... (3 other condition entries here) ...
+                {
+                    "condition": "default",
+                    "color": "green",
+                },
+            ]
+        }
+    },
+    "menumap": ["blinking red", "Controller", "dark green"],
+    "alarm": {
+        "disconnected": "dark green",
+        "invalid": "blinking red",
+        "minor": "Controller",
+        "major": "red",
+        "noalarm": "*",
+    }
+}
                 edmColor = other_properties["bgColor"]
                 other_properties["bgColor"] = convert_color_property_to_qcolor(edmColor, color_data=color_list_dict)
             self.ui.properties = other_properties
