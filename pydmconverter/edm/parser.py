@@ -43,7 +43,12 @@ class EDMFileParser:
 
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
     group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
-    object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
+    #object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
+    object_pattern = re.compile(
+    r"object\s+(\w+)\s+beginObjectProperties\s*(.*?)\s*endObjectProperties",
+    re.DOTALL
+)
+
 
     def __init__(self, file_path: str | Path):
         """Creates an instance of EDMFileParser for the given file_path
@@ -63,7 +68,7 @@ class EDMFileParser:
         self.ui = EDMGroup()
 
         self.parse_screen_properties()
-        self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
+        self.trial_parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def parse_screen_properties(self) -> None:
         """Get the screen properties from the .edl file and set the UI
@@ -139,6 +144,112 @@ class EDMFileParser:
             self.ui.height = size_properties["height"]
             self.ui.width = size_properties["width"]
 
+    def trial_parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
+        pos = 0
+        while pos < len(text):
+            # Skip whitespace and comments
+            while pos < len(text) and (text[pos].isspace() or text[pos] == '#'):
+                if text[pos] == '#':
+                    # Skip entire comment line
+                    while pos < len(text) and text[pos] != '\n':
+                        pos += 1
+                else:
+                    pos += 1
+            
+            if pos >= len(text):
+                break
+                
+            # Handle groups manually
+            if text[pos:].startswith("object activeGroupClass"):
+                group_start = pos
+                
+                # Find the beginObjectProperties for this group
+                begin_obj_props = text.find("beginObjectProperties", group_start)
+                if begin_obj_props == -1:
+                    print(f"No beginObjectProperties found for group at {pos}")
+                    pos += 1
+                    continue
+                    
+                # Find the corresponding endObjectProperties
+                end_obj_props = text.find("endObjectProperties", begin_obj_props)
+                if end_obj_props == -1:
+                    print(f"No endObjectProperties found for group at {pos}")
+                    pos += 1
+                    continue
+                
+                # Extract the group header (properties between beginObjectProperties and endObjectProperties)
+                group_header = text[begin_obj_props + len("beginObjectProperties"):end_obj_props]
+                
+                # Now find beginGroup and endGroup
+                begin_group_idx = text.find("beginGroup", end_obj_props)
+                if begin_group_idx == -1:
+                    print(f"No beginGroup found for group at {pos}")
+                    pos = end_obj_props + len("endObjectProperties")
+                    continue
+                    
+                # Find the matching endGroup
+                end_group_idx = self.find_matching_end_group(text, begin_group_idx)
+                if end_group_idx == -1:
+                    print(f"No matching endGroup found for group at {pos}")
+                    pos += 1
+                    continue
+
+                group_body = text[begin_group_idx + len("beginGroup"):end_group_idx]
+
+                size_props = self.get_size_properties(group_header)
+                properties = self.get_object_properties(group_header)
+
+                group = EDMGroup(**size_props)
+                group.properties = properties
+                self.trial_parse_objects_and_groups(group_body, group)
+
+                parent_group.add_object(group)
+                pos = end_group_idx + len("endGroup")
+                
+            else:
+                # Try matching a regular object
+                object_match = self.object_pattern.search(text, pos)
+                if object_match:
+                    name = object_match.group(1)
+                    object_text = object_match.group(2)
+
+                    size_properties = self.get_size_properties(object_text)
+                    properties = self.get_object_properties(object_text)
+
+                    obj = EDMObject(name=name, properties=properties, **size_properties)
+                    parent_group.add_object(obj)
+
+                    pos = object_match.end()
+                else:
+                    # If no match found, advance position to avoid infinite loop
+                    pos += 1
+
+    def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
+        """Find the matching endGroup for a beginGroup, handling nested groups"""
+        pos = begin_group_pos + len("beginGroup")
+        group_depth = 1
+        
+        while pos < len(text) and group_depth > 0:
+            # Look for beginGroup
+            begin_group_next = text.find("beginGroup", pos)
+            end_group_next = text.find("endGroup", pos)
+            
+            if end_group_next == -1:
+                return -1  # No matching endGroup found
+                
+            if begin_group_next != -1 and begin_group_next < end_group_next:
+                # Found nested beginGroup
+                group_depth += 1
+                pos = begin_group_next + len("beginGroup")
+            else:
+                # Found endGroup
+                group_depth -= 1
+                if group_depth == 0:
+                    return end_group_next
+                pos = end_group_next + len("endGroup")
+        
+        return -1  # No matching endGroup found
+
     def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
         """Recursively parse the given text into a tree of EDMObjects and
         EDMGroups. The parsed EDMObjects and EDMGroups are added to the
@@ -176,6 +287,7 @@ class EDMFileParser:
 
                 pos = group_match.end()
             else:
+                print(f"Unmatched text starting at {pos}:\n{text[pos:pos+200]}")
                 break
 
     @staticmethod

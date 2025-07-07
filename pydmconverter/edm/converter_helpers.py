@@ -276,7 +276,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     width=1000,
                     height=1000,
                 )
-                print("here8", pydm_group)
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
                 if parent_pydm_group:
