@@ -108,6 +108,10 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
+    #Push Button attributes
+    "pressValue": "press_value",
+    "releaseValue": "release_value",
+    "onLabel": "text", #TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
 }
 
 # Configure logging
