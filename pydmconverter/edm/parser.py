@@ -35,6 +35,7 @@ class EDMObject(EDMObjectBase):
 
     name: str = ""
     properties: dict = field(default_factory=dict)
+    last_unmatched = True
 
 
 class EDMFileParser:
@@ -45,9 +46,9 @@ class EDMFileParser:
     group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
     #object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
     object_pattern = re.compile(
-    r"object\s+(\w+)\s+beginObjectProperties\s*(.*?)\s*endObjectProperties",
-    re.DOTALL
-)
+        r"object\s+(\w+)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))", 
+        re.DOTALL | re.MULTILINE
+    )
 
 
     def __init__(self, file_path: str | Path):
@@ -68,6 +69,7 @@ class EDMFileParser:
         self.ui = EDMGroup()
 
         self.parse_screen_properties()
+        self.last_unmatched = False
         self.trial_parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def parse_screen_properties(self) -> None:
@@ -150,50 +152,46 @@ class EDMFileParser:
             # Skip whitespace and comments
             while pos < len(text) and (text[pos].isspace() or text[pos] == '#'):
                 if text[pos] == '#':
-                    # Skip entire comment line
                     while pos < len(text) and text[pos] != '\n':
                         pos += 1
                 else:
                     pos += 1
-            
             if pos >= len(text):
                 break
-                
+
             # Handle groups manually
-            if text[pos:].startswith("object activeGroupClass"):
+            if text[pos:].lstrip().startswith("object activeGroupClass"):
                 group_start = pos
-                
-                # Find the beginObjectProperties for this group
+
                 begin_obj_props = text.find("beginObjectProperties", group_start)
-                if begin_obj_props == -1:
-                    print(f"No beginObjectProperties found for group at {pos}")
-                    pos += 1
-                    continue
-                    
-                # Find the corresponding endObjectProperties
                 end_obj_props = text.find("endObjectProperties", begin_obj_props)
-                if end_obj_props == -1:
-                    print(f"No endObjectProperties found for group at {pos}")
-                    pos += 1
-                    continue
-                
-                # Extract the group header (properties between beginObjectProperties and endObjectProperties)
-                group_header = text[begin_obj_props + len("beginObjectProperties"):end_obj_props]
-                
-                # Now find beginGroup and endGroup
-                begin_group_idx = text.find("beginGroup", end_obj_props)
-                if begin_group_idx == -1:
-                    print(f"No beginGroup found for group at {pos}")
-                    pos = end_obj_props + len("endObjectProperties")
-                    continue
-                    
-                # Find the matching endGroup
-                end_group_idx = self.find_matching_end_group(text, begin_group_idx)
-                if end_group_idx == -1:
-                    print(f"No matching endGroup found for group at {pos}")
+                begin_group_idx = text.find("beginGroup", begin_obj_props, end_obj_props)
+
+                # Ensure all markers are present
+                if begin_obj_props == -1 or end_obj_props == -1 or begin_group_idx == -1:
+                    print("here8", begin_obj_props, end_obj_props, begin_group_idx)
+                    print("here9", text, "here9", end_obj_props)
+                    snippet = text[pos:pos + 100].strip()
+                    print(f"Skipping malformed group at {pos}, snippet: {snippet}")
+                    breakpoint()
                     pos += 1
                     continue
 
+                # Get matching endGroup (handles nesting)
+                end_group_idx = self.find_matching_end_group(text, begin_group_idx)
+                if end_group_idx == -1:
+                    print(f"Could not find matching endGroup at {pos}")
+                    pos += 1
+                    continue
+
+                # OPTIONAL trailing endObjectProperties
+                extra_end_props = text.find("endObjectProperties", end_group_idx)
+                group_end = extra_end_props + len("endObjectProperties") if (
+                    extra_end_props != -1 and extra_end_props < text.find("object", end_group_idx)
+                ) else end_group_idx + len("endGroup")
+
+                # Extract header and body
+                group_header = text[begin_obj_props + len("beginObjectProperties"):end_obj_props]
                 group_body = text[begin_group_idx + len("beginGroup"):end_group_idx]
 
                 size_props = self.get_size_properties(group_header)
@@ -201,28 +199,43 @@ class EDMFileParser:
 
                 group = EDMGroup(**size_props)
                 group.properties = properties
+
+                # DEBUG: See if group contains ImageMode
+                if "ImageMode" in group_body:
+                    print("Found ImageMode inside group")
+                    print(group_body[:500])
+                    breakpoint()
+
                 self.trial_parse_objects_and_groups(group_body, group)
-
                 parent_group.add_object(group)
-                pos = end_group_idx + len("endGroup")
-                
+                pos = group_end
+                continue
+
+            # Try matching a regular object
+            object_match = self.object_pattern.search(text, pos)
+            if object_match:
+                name = object_match.group(1)
+                object_text = object_match.group(2)
+                size_properties = self.get_size_properties(object_text)
+                properties = self.get_object_properties(object_text)
+
+                control_pv = properties.get("controlPv", "")
+                if control_pv == "$(P)$(R)ImageMode":
+                    print(f"Found ImageMode button at pos {pos} with properties: {properties}")
+                    breakpoint()
+
+                obj = EDMObject(name=name, properties=properties, **size_properties)
+                parent_group.add_object(obj)
+
+                pos = object_match.end()
             else:
-                # Try matching a regular object
-                object_match = self.object_pattern.search(text, pos)
-                if object_match:
-                    name = object_match.group(1)
-                    object_text = object_match.group(2)
+                # Could not parse anything at this location
+                snippet = text[pos:pos + 100].strip()
+                print(f"Unrecognized text at pos {pos}: '{snippet}'")
+                breakpoint()
+                pos = text.find('\n', pos) if '\n' in text[pos:] else len(text)
 
-                    size_properties = self.get_size_properties(object_text)
-                    properties = self.get_object_properties(object_text)
 
-                    obj = EDMObject(name=name, properties=properties, **size_properties)
-                    parent_group.add_object(obj)
-
-                    pos = object_match.end()
-                else:
-                    # If no match found, advance position to avoid infinite loop
-                    pos += 1
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
@@ -262,22 +275,43 @@ class EDMFileParser:
         parent_group : EDMGroup
             Parent EDMGroup to add the parsed EDMObjects and EDMGroups to
         """
+        print(f"[parse_objects_and_groups] Entered, last_unmatched = {getattr(self, 'last_unmatched', None)}")
+
         pos = 0
         while pos < len(text):
             group_match = self.group_pattern.search(text, pos)
             object_match = self.object_pattern.search(text, pos)
 
             if object_match and (not group_match or object_match.start() < group_match.start()):
+                if self.last_unmatched == True:
+                    self.last_unmatched = False
+                    print(f"correctly matched text starting at {pos}:\n{text[pos:pos+200]}")
+                    breakpoint()
+                """if any("ImageMode" in str(v) for v in properties.values()):
+                    print(f"\n🧠 Found object containing 'ImageMode' at pos {pos}:")
+                    print(name)
+                    print(properties)
+                    breakpoint()"""
                 name = object_match.group(1)
                 object_text = object_match.group(2)
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
                 obj = EDMObject(name=name, properties=properties, **size_properties)
+                """if name == "activeMenuButtonClass":
+                    print("here457")
+                    print(name)
+                    print(object_text)
+                    print(obj)
+                    breakpoint()"""
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
             elif group_match:
+                if self.last_unmatched == True:
+                    self.last_unmatched = False
+                    print(f"correctly matched text starting at {pos}:\n{text[pos:pos+200]}")
+                    breakpoint()
                 group_text = group_match.group(1)
                 size_properties = self.get_size_properties(group_text)
 
@@ -288,6 +322,9 @@ class EDMFileParser:
                 pos = group_match.end()
             else:
                 print(f"Unmatched text starting at {pos}:\n{text[pos:pos+200]}")
+                self.last_unmatched = True
+                breakpoint()
+                pos = text.find('\n', pos)
                 break
 
     @staticmethod
