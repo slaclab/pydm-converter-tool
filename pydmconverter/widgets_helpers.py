@@ -1129,6 +1129,7 @@ class Alarmable(Controllable):
 
     alarm_sensitive_content: bool = ALARM_CONTENT_DEFAULT
     alarm_sensitive_border: bool = ALARM_BORDER_DEFAULT
+    useDisplayBg: Optional[bool] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1142,6 +1143,8 @@ class Alarmable(Controllable):
         properties: List[etree.Element] = super().generate_properties()
         properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
+        if self.useDisplayBg is not None:
+            properties.append(Bool("useDisplayBg", self.useDisplayBg).to_xml())
         return properties
 
 

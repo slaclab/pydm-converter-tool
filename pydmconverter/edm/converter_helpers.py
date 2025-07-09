@@ -101,6 +101,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "fileName": "filename",
     "macro": "macro",
     "file": "filename",
+    "useDisplayBg": "useDisplayBg",
     # Scatter plot attributes
     "xChannel": "x_channel",
     "yChannel": "y_channel",

@@ -131,6 +131,7 @@ class QLabel(Legible):
     tool_tip: Optional[str] = None
     frame_shape: Optional[str] = None
     foreground_color: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -153,6 +154,13 @@ class QLabel(Legible):
         if self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
+        if self.foreground_color is not None or self.background_color is not None:
+            styles: Dict[str, any] = {}
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            if self.background_color is not None:
+                styles["background-color"] = self.background_color
+            properties.append(StyleSheet(styles).to_xml())
 
         return properties
 
@@ -432,11 +440,11 @@ class PyDMPushButton(PyDMPushButtonBase):
     release_value: Optional[str] = None
     relative_change: Optional[bool] = None
     write_when_release: Optional[bool] = None
-    on_color: Optional[tuple] = (
+    on_color: Optional[Tuple[int, int, int, int]] = (
         None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
     )
-    foreground_color: Optional[tuple] = None
-    background_color: Optional[tuple] = None
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
