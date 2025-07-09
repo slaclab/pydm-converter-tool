@@ -270,8 +270,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if not pydm_attr:
                         continue
 
-                    # if edm_attr == "lineColor":
-                    #    print("here5", value, edm_attr, obj.name.lower())
                     if edm_attr == "font":
                         value = parse_font_string(value)
                     if edm_attr == "fillColor":
@@ -353,9 +351,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if obj.properties.get("autoSize", False):
                     widget.autoSize = True
-
-                if isinstance(widget, PyDMLabel):
-                    widget.width += 8.0  # don't like this....
 
                 if parent_pydm_group:
                     parent_pydm_group.add_child(widget)
