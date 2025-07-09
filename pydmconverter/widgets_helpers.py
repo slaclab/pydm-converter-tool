@@ -1216,9 +1216,9 @@ class Drawable(Tangible):
         if self.penWidth is not None:
             properties.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
-            if self.brushFill is None:
-                self.brushFill = True
             properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
+        if self.brushFill is None:
+            properties.append(TransparentBackground().to_xml())
         if self.rotation is not None:
             properties.append(Rotation("rotation", self.rotation).to_xml())
         return properties
@@ -1268,17 +1268,16 @@ class PageHeader:
 
         return ui_element, central_widget
 
-    def add_screen_properties(self, main_widget: ET.Element, properties: dict[str, Any]) -> None:
+    """def add_screen_properties(self, main_widget: ET.Element, properties: dict[str, Any]) -> None:
         if "bgColor" in properties:
             style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
             style_string = ET.SubElement(style_prop, "string")
             style_string.text = f"#Form {{ background-color: rgba{properties['bgColor']} }}"  # commented code adds bg to all child widgets but for now, this is fine
-            # TODO: There is a bug that the background does not show up normally but does in designer
+            # TODO: There is a bug that the background does not show up normally but does in designer"""
 
-    """def add_screen_properties(self, main_widget: ET, properties: dict[str, Any]) -> None:
+    def add_screen_properties(self, main_widget: ET, properties: dict[str, Any]) -> None:
         if "bgColor" in properties:
             print("here")
             style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
             style_string = ET.SubElement(style_prop, "string")
             style_string.text = f"background-color: rgba{properties['bgColor']}"
-    """
