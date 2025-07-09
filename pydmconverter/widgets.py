@@ -336,9 +336,9 @@ class QPushButton(Legible):
         if self.checked is not None:
             properties.append(Bool("checked", self.checked).to_xml())
 
-        #print("here45")
-        #print(properties)
-        #breakpoint()
+        # print("here45")
+        # print(properties)
+        # breakpoint()
         return properties
 
 
@@ -394,6 +394,8 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
             properties.append(Str("password", self.password).to_xml())
         if self.protected_password is not None:
             properties.append(Str("protectedPassword", self.protected_password).to_xml())
+        if isinstance(self.name, str) and self.name.startswith("activeMenuButtonClass"):
+            properties.append(Str("text", "Menu").to_xml())
 
         return properties
 
@@ -430,6 +432,11 @@ class PyDMPushButton(PyDMPushButtonBase):
     release_value: Optional[str] = None
     relative_change: Optional[bool] = None
     write_when_release: Optional[bool] = None
+    on_color: Optional[tuple] = (
+        None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
+    )
+    foreground_color: Optional[tuple] = None
+    background_color: Optional[tuple] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -455,18 +462,19 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
-        if self.on_color is not None or self.foreground_color is not None:
+        if self.on_color is not None or self.foreground_color is not None or self.background_color is not None:
             styles: Dict[str, any] = {}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
-            if self.on_color is not None and self.off_color == self.on_color:
+            if (
+                self.on_color is not None and self.off_color == self.on_color
+            ):  # TODO: find if on_color/background_color should take precedent (they are used for diff edm classes anyway)
                 styles["background-color"] = self.on_color
+            elif self.background_color is not None:
+                styles["background-color"] = self.background_color
             if self.on_color is not None and self.off_color != self.on_color:
                 logging.warning("on and off colors are different, need to modify code")
             properties.append(StyleSheet(styles).to_xml())
-
-        for prop in properties:
-            print(ET.tostring(prop, encoding="unicode"))
         return properties
 
 
@@ -712,9 +720,6 @@ class PyDMEnumComboBox(QComboBox, Alarmable):
             if self.background_color is not None:
                 styles["color"] = self.foreground_color
             properties.append(StyleSheet(styles).to_xml())
-
-        # for prop in properties:
-        #    print(ET.tostring(prop, encoding="unicode"))
         return properties
 
 
@@ -936,7 +941,8 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             properties.append(points_prop)
 
         return properties
-    
+
+
 @dataclass
 class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
     """
@@ -968,6 +974,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
             properties.append(Str("filename", converted_filename).to_xml())
         if self.macros:
             import json
+
             macros_str = json.dumps(self.macros)
             properties.append(Str("macros", macros_str).to_xml())
         if self.visible is not None:
@@ -977,14 +984,13 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
             properties.append(Bool("scrollable", scroll).to_xml())
         if self.background_color is not None:
             print("add stylesheet class")
-            #TODO: add stylesheet class when on server
+            # TODO: add stylesheet class when on server
         return properties
-    
+
     def convert_filetype(self, file_string: str) -> None:
         """
         Converts file strings of .<type> to .ui
         """
         filename = ".".join(file_string.split(".")[:-1])
         return f"{filename}.ui"
-        #return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
-
+        # return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path

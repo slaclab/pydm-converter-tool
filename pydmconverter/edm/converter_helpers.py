@@ -11,7 +11,6 @@ from pydmconverter.widgets import (
     PyDMRelatedDisplayButton,
     PyDMShellCommand,
     PyDMFrame,
-    PyDMEnumComboBox,
     PyDMEmbeddedDisplay,
     QPushButton,
 )
@@ -43,7 +42,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "shell_command": PyDMShellCommand,
     # "activemessagebuttonclass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
     # "": PyDMEnumButton
-    "activemenubuttonclass": PyDMEnumComboBox,
+    "activemenubuttonclass": PyDMPushButton,  # "activemenubuttonclass": PyDMEnumComboBox,
     "activemessagebuttonclass": PyDMPushButton,
     "activextextdspclass": PyDMLabel,
     "activepipclass": PyDMEmbeddedDisplay,
