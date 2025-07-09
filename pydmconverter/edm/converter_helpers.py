@@ -12,7 +12,8 @@ from pydmconverter.widgets import (
     PyDMShellCommand,
     PyDMFrame,
     PyDMEnumComboBox,
-    PyDMEmbeddedDisplay
+    PyDMEmbeddedDisplay,
+    QPushButton
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -47,6 +48,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activemessagebuttonclass": PyDMPushButton,
     "activextextdspclass": PyDMLabel,
     "activepipclass": PyDMEmbeddedDisplay,
+    "activeexitbuttonclass": QPushButton,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -304,6 +306,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
                 if not widget_type:
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
+                    #breakpoint()
                     continue
 
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")

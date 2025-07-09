@@ -277,12 +277,6 @@ class EDMFileParser:
                 properties = self.get_object_properties(object_text)
 
                 obj = EDMObject(name=name, properties=properties, **size_properties)
-                """if name == "activeMenuButtonClass":
-                    print("here457")
-                    print(name)
-                    print(object_text)
-                    print(obj)
-                    breakpoint()"""
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
