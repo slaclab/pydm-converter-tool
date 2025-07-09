@@ -151,10 +151,12 @@ class QLabel(Legible):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
             properties.append(Str("frameShape", self.frame_shape).to_xml())
-        if self.foreground_color is not None:
+        if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
-        if self.foreground_color is not None or self.background_color is not None:
+        if self.name.startswith("activeXTextDspClass") and (
+            self.foreground_color is not None or self.background_color is not None
+        ):
             styles: Dict[str, any] = {}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
