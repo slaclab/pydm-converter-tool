@@ -3,7 +3,6 @@ from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, field
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, parse_colors_list, search_color_list
-import os
 
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
@@ -43,12 +42,11 @@ class EDMFileParser:
 
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
     group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
-    #object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
+    # object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
     object_pattern = re.compile(
-        r"object\s+(\w+)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))", 
-        re.DOTALL | re.MULTILINE
+        r"object\s+(\w+)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))",
+        re.DOTALL | re.MULTILINE,
     )
-
 
     def __init__(self, file_path: str | Path):
         """Creates an instance of EDMFileParser for the given file_path
@@ -82,61 +80,8 @@ class EDMFileParser:
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
-                #color_list_dict = {"index0": "black"} 
-                #color_list_filepath = os.getenv("COLORS_LIST_FILE")
-                #parse_colors_list(color_list_filepath) #TODO
-                color_list_dict = {
-    "version": {
-        "major": 4,
-        "minor": 0,
-        "release": 0,
-    },
-    "blinkms": 750,
-    "columns": 5,
-    "max": 0x10000,  # or 65536
-    "alias": {
-        "trace0": "red",
-        "trace1": "green",
-    },
-    "static": {
-        25: {
-            "name": "Controller",
-            "rgb": [0, 0, 65535],
-        },
-        26: {
-            "name": "blinking red",
-            "rgb": [65535, 0, 0, 41120, 0, 0],
-        },
-        27: {
-            "name": "dark green",
-            "rgb": [45055, 45055, 0],
-        },
-    },
-    "rules": {
-        100: {
-            "name": "exampleRule",
-            "conditions": [
-                {
-                    "condition": "=100 || =200",
-                    "color": "strange",
-                },
-                # ... (3 other condition entries here) ...
-                {
-                    "condition": "default",
-                    "color": "green",
-                },
-            ]
-        }
-    },
-    "menumap": ["blinking red", "Controller", "dark green"],
-    "alarm": {
-        "disconnected": "dark green",
-        "invalid": "blinking red",
-        "minor": "Controller",
-        "major": "red",
-        "noalarm": "*",
-    }
-}
+                color_list_dict = parse_colors_list(color_list_filepath)
+
                 edmColor = other_properties["bgColor"]
                 other_properties["bgColor"] = convert_color_property_to_qcolor(edmColor, color_data=color_list_dict)
             self.ui.properties = other_properties
@@ -148,9 +93,9 @@ class EDMFileParser:
         pos = 0
         while pos < len(text):
             # Skip whitespace and comments
-            while pos < len(text) and (text[pos].isspace() or text[pos] == '#'):
-                if text[pos] == '#':
-                    while pos < len(text) and text[pos] != '\n':
+            while pos < len(text) and (text[pos].isspace() or text[pos] == "#"):
+                if text[pos] == "#":
+                    while pos < len(text) and text[pos] != "\n":
                         pos += 1
                 else:
                     pos += 1
@@ -166,14 +111,14 @@ class EDMFileParser:
                 end_group_idx = self.find_matching_end_group(text, begin_group_idx)
                 end_obj_props = text.find("endObjectProperties", end_group_idx)
 
-                #print("here232", begin_obj_props, begin_group_idx, end_group_idx, end_obj_props)
+                # print("here232", begin_obj_props, begin_group_idx, end_group_idx, end_obj_props)
                 # Ensure all markers are present
                 if begin_obj_props == -1 or end_obj_props == -1 or begin_group_idx == -1:
-                    #print("here8", begin_obj_props, end_obj_props, begin_group_idx)
-                    #print("here9", text, "here9", end_obj_props)
-                    snippet = text[pos:pos + 100].strip()
-                    #print(f"Skipping malformed group at {pos}, snippet: {snippet}")
-                    #breakpoint()
+                    # print("here8", begin_obj_props, end_obj_props, begin_group_idx)
+                    # print("here9", text, "here9", end_obj_props)
+                    snippet = text[pos : pos + 100].strip()
+                    # print(f"Skipping malformed group at {pos}, snippet: {snippet}")
+                    # breakpoint()
                     pos += 1
                     continue
 
@@ -186,13 +131,15 @@ class EDMFileParser:
 
                 # OPTIONAL trailing endObjectProperties
                 extra_end_props = text.find("endObjectProperties", end_group_idx)
-                group_end = extra_end_props + len("endObjectProperties") if (
-                    extra_end_props != -1 and extra_end_props < text.find("object", end_group_idx)
-                ) else end_group_idx + len("endGroup")
+                group_end = (
+                    extra_end_props + len("endObjectProperties")
+                    if (extra_end_props != -1 and extra_end_props < text.find("object", end_group_idx))
+                    else end_group_idx + len("endGroup")
+                )
 
                 # Extract header and body
-                group_header = text[begin_obj_props + len("beginObjectProperties"):end_obj_props]
-                group_body = text[begin_group_idx + len("beginGroup"):end_group_idx]
+                group_header = text[begin_obj_props + len("beginObjectProperties") : end_obj_props]
+                group_body = text[begin_group_idx + len("beginGroup") : end_group_idx]
                 print("blah", end_obj_props, "blah2", group_header, "blah3", group_body)
 
                 size_props = self.get_size_properties(group_header)
@@ -214,33 +161,30 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
-
                 obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
             else:
                 # Could not parse anything at this location
-                snippet = text[pos:pos + 100]#.strip()
+                snippet = text[pos : pos + 100]  # .strip()
                 print(f"Unrecognized text at pos {pos}: '{snippet}'")
-                #breakpoint()
-                pos = text.find('\n', pos) if '\n' in text[pos:] else len(text)
-
-
+                # breakpoint()
+                pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
         pos = begin_group_pos + len("beginGroup")
         group_depth = 1
-        
+
         while pos < len(text) and group_depth > 0:
             # Look for beginGroup
             begin_group_next = text.find("beginGroup", pos)
             end_group_next = text.find("endGroup", pos)
-            
+
             if end_group_next == -1:
                 return -1
-                
+
             if begin_group_next != -1 and begin_group_next < end_group_next:
                 group_depth += 1
                 pos = begin_group_next + len("beginGroup")
@@ -249,7 +193,7 @@ class EDMFileParser:
                 if group_depth == 0:
                     return end_group_next
                 pos = end_group_next + len("endGroup")
-        
+
         return -1
 
     def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
@@ -290,9 +234,9 @@ class EDMFileParser:
 
                 pos = group_match.end()
             else:
-                print(f"Unmatched text starting at {pos}:\n{text[pos:pos+200]}")
-                #breakpoint()
-                pos = text.find('\n', pos)
+                print(f"Unmatched text starting at {pos}:\n{text[pos : pos + 200]}")
+                # breakpoint()
+                pos = text.find("\n", pos)
                 break
 
     @staticmethod

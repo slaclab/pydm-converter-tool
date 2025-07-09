@@ -13,12 +13,11 @@ from pydmconverter.widgets import (
     PyDMFrame,
     PyDMEnumComboBox,
     PyDMEmbeddedDisplay,
-    QPushButton
+    QPushButton,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
-import os
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
@@ -81,7 +80,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "radius": "radius",
     "color": "color",
     # Image and display attributes
-    "file": "image_file",
+    # "file": "image_file", #TODO: find where this image file is used
     "aspectRatio": "aspect_ratio_mode",
     "scale": "scale_contents",
     # Slider, meter, and bar attributes
@@ -112,10 +111,10 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
-    #Push Button attributes
+    # Push Button attributes
     "pressValue": "press_value",
     "releaseValue": "release_value",
-    "onLabel": "text", #TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
+    "onLabel": "text",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
 }
 
 # Configure logging
@@ -179,62 +178,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     """
     pydm_widgets = []
     used_classes = set()
-    #color_list_filepath = search_color_list()
-    #color_list_dict = {"index0": "black"} 
-    #color_list_filepath = os.getenv("COLORS_LIST_FILE")
-    #parse_colors_list(color_list_filepath)
-    color_list_dict = color_list_dict = {
-    "version": {
-        "major": 4,
-        "minor": 0,
-        "release": 0,
-    },
-    "blinkms": 750,
-    "columns": 5,
-    "max": 0x10000,  # or 65536
-    "alias": {
-        "trace0": "red",
-        "trace1": "green",
-    },
-    "static": {
-        25: {
-            "name": "Controller",
-            "rgb": [0, 0, 65535],
-        },
-        26: {
-            "name": "blinking red",
-            "rgb": [65535, 0, 0, 41120, 0, 0],
-        },
-        27: {
-            "name": "dark green",
-            "rgb": [45055, 45055, 0],
-        },
-    },
-    "rules": {
-        100: {
-            "name": "exampleRule",
-            "conditions": [
-                {
-                    "condition": "=100 || =200",
-                    "color": "strange",
-                },
-                # ... (3 other condition entries here) ...
-                {
-                    "condition": "default",
-                    "color": "green",
-                },
-            ]
-        }
-    },
-    "menumap": ["blinking red", "Controller", "dark green"],
-    "alarm": {
-        "disconnected": "dark green",
-        "invalid": "blinking red",
-        "minor": "Controller",
-        "major": "red",
-        "noalarm": "*",
-    }
-}
+    color_list_filepath = search_color_list()
+    color_list_dict = parse_colors_list(color_list_filepath)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -308,7 +253,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
                 if not widget_type:
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
-                    #breakpoint()
+                    # breakpoint()
                     continue
 
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
