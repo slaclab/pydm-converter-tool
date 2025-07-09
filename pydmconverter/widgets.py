@@ -336,6 +336,9 @@ class QPushButton(Legible):
         if self.checked is not None:
             properties.append(Bool("checked", self.checked).to_xml())
 
+        #print("here45")
+        #print(properties)
+        #breakpoint()
         return properties
 
 
@@ -933,3 +936,55 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             properties.append(points_prop)
 
         return properties
+    
+@dataclass
+class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
+    """
+    PyDMEmbeddedDisplay embeds another UI file (display) inside the current display.
+
+    Attributes
+    ----------
+    filename : Optional[str]
+        The path to the embedded UI file.
+    macros : Optional[Dict[str, str]]
+        Macros to pass down to the embedded display.
+    visible : Optional[bool]
+        Whether the embedded display is visible.
+    """
+
+    filename: Optional[str] = None
+    macros: Optional[Dict[str, str]] = field(default_factory=dict)
+    visible: Optional[bool] = True
+    noscroll: Optional[bool] = True
+    background_color: Optional[bool] = None
+
+    def generate_properties(self) -> list:
+        """
+        Generate XML elements for PyDMEmbeddedDisplay properties.
+        """
+        properties = super().generate_properties()
+        if self.filename is not None:
+            converted_filename = self.convert_filetype(self.filename)
+            properties.append(Str("filename", converted_filename).to_xml())
+        if self.macros:
+            import json
+            macros_str = json.dumps(self.macros)
+            properties.append(Str("macros", macros_str).to_xml())
+        if self.visible is not None:
+            properties.append(Bool("visible", self.visible).to_xml())
+        if self.noscroll is not None:
+            scroll: Bool = not self.noscroll
+            properties.append(Bool("scrollable", scroll).to_xml())
+        if self.background_color is not None:
+            print("add stylesheet class")
+            #TODO: add stylesheet class when on server
+        return properties
+    
+    def convert_filetype(self, file_string: str) -> None:
+        """
+        Converts file strings of .<type> to .ui
+        """
+        filename = ".".join(file_string.split(".")[:-1])
+        return f"{filename}.ui"
+        #return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
+
