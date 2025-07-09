@@ -472,8 +472,18 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
-        if self.on_color is not None or self.foreground_color is not None or self.background_color is not None:
+        if (
+            self.on_color is not None
+            or self.foreground_color is not None
+            or self.background_color is not None
+            or (
+                isinstance(self.name, str)
+                and (self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"))
+            )
+        ):
             styles: Dict[str, any] = {}
+            if self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"):
+                styles["border"] = "1px solid black"
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
             if (
@@ -973,6 +983,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
     visible: Optional[bool] = True
     noscroll: Optional[bool] = True
     background_color: Optional[bool] = None
+    foreground_color: Optional[bool] = None
 
     def generate_properties(self) -> list:
         """
@@ -992,9 +1003,19 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         if self.noscroll is not None:
             scroll: Bool = not self.noscroll
             properties.append(Bool("scrollable", scroll).to_xml())
-        if self.background_color is not None:
-            print("add stylesheet class")
-            # TODO: add stylesheet class when on server
+        if (
+            self.foreground_color is not None
+            or self.background_color is not None
+            or (isinstance(self.name, str) and self.name.startswith("activePipClass"))
+        ):
+            styles: Dict[str, any] = {}
+            if self.name.startswith("activePipClass"):
+                styles["border"] = "1px solid black"
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            elif self.background_color is not None:
+                styles["background-color"] = self.background_color
+            properties.append(StyleSheet(styles).to_xml())
         return properties
 
     def convert_filetype(self, file_string: str) -> None:
