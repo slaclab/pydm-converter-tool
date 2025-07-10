@@ -47,6 +47,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activextextdspclass": PyDMLabel,
     "activepipclass": PyDMEmbeddedDisplay,
     "activeexitbuttonclass": QPushButton,
+    "shellcmdclass": QPushButton,  # may need to change
+    "textupdateclass": PyDMLabel,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
