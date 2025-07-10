@@ -346,8 +346,9 @@ class QPushButton(Legible):
         if self.checked is not None:
             properties.append(Bool("checked", self.checked).to_xml())
 
-        # print("here45")
-        # print(properties)
+        # print(vars(self))
+        # for prop in properties:
+        #    ET.dump(prop)
         # breakpoint()
         return properties
 

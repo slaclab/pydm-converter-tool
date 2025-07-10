@@ -61,6 +61,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "fgColor": "foreground_color",
     "font": "font",
     "label": "text",
+    "buttonLabel": "text",
     "tooltip": "PyDMToolTip",
     "visible": "visible",
     "noScroll": "noscroll",
