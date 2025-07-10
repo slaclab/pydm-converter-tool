@@ -74,7 +74,7 @@ def parse_calc_list(calc_list_path: str) -> Dict[str, Tuple[Optional[str], Optio
     with open(calc_list_path, "r") as f:
         lines = [line.strip() for line in f]
 
-    i = 0
+    i = 1  # first line of file should be ignored
     while i < len(lines):
         line = lines[i]
 
@@ -114,7 +114,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
 
     EDM CALC PV examples:
       - 'CALC\\sum(pv1, pv2)'
-      - 'CALC\\{A+B}(pv1, pv2)'
+      - 'CALC\\\{A+B}(pv1, pv2)'
 
     Parameters
     ----------
@@ -136,7 +136,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     ValueError
         If the given edm_pv string doesn't match the expected CALC syntax.
     """
-    pattern = r"^CALC\\([^(\s]+)\(([^)]*)\)$"
+    pattern = r"^CALC\\+([^(\s]+)\(([^)]*)\)$"
     match = re.match(pattern, edm_pv.strip())
     if not match:
         raise ValueError(f"Invalid CALC PV syntax: '{edm_pv}'")
@@ -237,7 +237,6 @@ def translate_calc_pv_to_pydm(
     """
     if calc_dict is None:
         calc_dict = {}
-
     name_or_expr, arg_list, is_inline_expr = parse_calc_pv(edm_pv)
 
     if is_inline_expr:
@@ -246,7 +245,7 @@ def translate_calc_pv_to_pydm(
     else:
         calc_name = name_or_expr
         if calc_name not in calc_dict:
-            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. ")
+            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
 
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
@@ -383,7 +382,7 @@ def replace_calc_and_loc_in_edm_content(
     encountered_calcs: Dict[str, Dict[str, str]] = {}
     encountered_locs: Dict[str, Dict[str, str]] = {}
 
-    calc_pattern = re.compile(r"CALC\\[^(\s]+\([^)]*\)")
+    calc_pattern = re.compile(r"CALC\\[^(\s]+\([^)]*\)")  # TODO: May need to change to CALC\\+
 
     def replace_calc_match(match: re.Match) -> str:
         edm_pv = match.group(0)
