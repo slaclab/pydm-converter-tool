@@ -61,12 +61,20 @@ class EDMFileParser:
 
         with open(file_path, "r") as file:
             self.text = file.read()
+        self.modify_text()
 
         self.screen_properties_end = 0
         self.ui = EDMGroup()
 
         self.parse_screen_properties()
         self.trial_parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
+
+    def modify_text(self) -> str:  # unnecessary return
+        # self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        # TODO add macro conversion from $() to ${}
+        pattern = r"\$\((\w+)\)"
+        self.text = re.sub(pattern, r"${\1}", self.text)
+        return self.text
 
     def parse_screen_properties(self) -> None:
         """Get the screen properties from the .edl file and set the UI
