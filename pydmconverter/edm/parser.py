@@ -2,7 +2,12 @@ import re
 from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, field
-from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, parse_colors_list, search_color_list
+from pydmconverter.edm.parser_helpers import (
+    convert_color_property_to_qcolor,
+    parse_colors_list,
+    search_color_list,
+    replace_calc_and_loc_in_edm_content,
+)
 
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
@@ -61,7 +66,7 @@ class EDMFileParser:
 
         with open(file_path, "r") as file:
             self.text = file.read()
-        self.modify_text()
+        self.modify_text(file_path)
 
         self.screen_properties_end = 0
         self.ui = EDMGroup()
@@ -69,8 +74,8 @@ class EDMFileParser:
         self.parse_screen_properties()
         self.trial_parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
-    def modify_text(self) -> str:  # unnecessary return
-        # self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+    def modify_text(self, file_path) -> str:  # unnecessary return
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
         # TODO add macro conversion from $() to ${}
         pattern = r"\$\((\w+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
