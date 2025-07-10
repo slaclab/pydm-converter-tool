@@ -9,7 +9,6 @@ from pydmconverter.widgets_helpers import (
     Hidable,
     Alarmable,
     Legible,
-    Color,
     RGBAStyleSheet,
     TransparentBackground,
     StyleSheet,
@@ -904,11 +903,6 @@ class PyDMDrawingLine(Legible, Drawable):
             A list of XML elements representing the PyDMDrawingLine properties.
         """
         properties: List[ET.Element] = super().generate_properties()
-        if self.pen_color is not None:
-            r, g, b = self.pen_color
-            property = ET.Element("property", attrib={"name": "penColor", "stdset": "0"})
-            property.append(Color(r, g, b).to_xml())
-            properties.append(property)
         if self.pen_width is not None:
             properties.append(Int("penWidth", self.pen_width).to_xml())
 
@@ -1026,3 +1020,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         filename = ".".join(file_string.split(".")[:-1])
         return f"{filename}.ui"
         # return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
+
+
+# @dataclass
+# class PyDMImageView():
