@@ -17,6 +17,7 @@ from pydmconverter.widgets import (
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
+import os
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
@@ -257,7 +258,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
                 if not widget_type:
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
-                    # breakpoint()
+                    log_unsupported_widget(obj.name)
                     continue
 
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
@@ -369,6 +370,18 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
     pydm_widgets = traverse_group(parser.ui, color_list_dict, None, None, parser.ui.height)
     return pydm_widgets, used_classes
+
+
+def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
+    if os.path.exists(file_path):
+        with open(file_path, "r") as file:
+            existing_widgets = {line.strip() for line in file.readlines()}
+    else:
+        existing_widgets = set()
+
+    if widget_type.lower() not in existing_widgets:
+        with open(file_path, "a") as file:
+            file.write(widget_type.lower() + "\n")
 
 
 def get_string_value(value: list) -> str:
