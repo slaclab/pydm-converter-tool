@@ -21,6 +21,11 @@ CUSTOM_WIDGET_DEFINITIONS = {
         "header": "pydm.widgets.embedded_display",
         "container": "1",
     },  # maybe Qframe instead
+    "PyDMImageView": {
+        "extends": "QWidget",
+        "header": "pydm.widgets.image",
+        "container": "",
+    },
 }
 
 

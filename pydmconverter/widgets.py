@@ -9,7 +9,6 @@ from pydmconverter.widgets_helpers import (
     Hidable,
     Alarmable,
     Legible,
-    RGBAStyleSheet,
     TransparentBackground,
     StyleSheet,
 )
@@ -150,12 +149,19 @@ class QLabel(Legible):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
             properties.append(Str("frameShape", self.frame_shape).to_xml())
-        if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
+        """if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
         if self.name.startswith("activeXTextDspClass") and (
             self.foreground_color is not None or self.background_color is not None
         ):
+            styles: Dict[str, any] = {}
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            if self.background_color is not None:
+                styles["background-color"] = self.background_color
+            properties.append(StyleSheet(styles).to_xml())"""
+        if self.foreground_color is not None or self.background_color is not None:
             styles: Dict[str, any] = {}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
@@ -1038,5 +1044,32 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         # return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
 
 
-# @dataclass
-# class PyDMImageView():
+@dataclass
+class PyDMImageView(Alarmable):
+    """
+    PyDMImageView represents an image file to be inserted.
+
+    Attributes
+    ----------
+    filename : Optional[str]
+        A string representing the filename of the image file.
+    """
+
+    filename: Optional[str] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate PyDMImageView-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMImageView properties.
+        """
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.filename is not None:
+            properties.append(Str("filename", self.filename).to_xml())
+
+        return properties

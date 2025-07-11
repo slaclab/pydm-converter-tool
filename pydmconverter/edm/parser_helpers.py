@@ -246,7 +246,7 @@ def translate_calc_pv_to_pydm(
         calc_name = name_or_expr
         if calc_name not in calc_dict:
             raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
-
+            # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
             raise ValueError(f"Calculation '{calc_name}' in calc_dict has no expression defined.")
