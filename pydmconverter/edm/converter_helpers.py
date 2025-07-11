@@ -231,14 +231,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     )
                 pydm_group = PyDMFrame(
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
-                    # x=0,
-                    # y=0,
-                    # width=width + x,
-                    # height=height + y,
                     x=0,
                     y=0,
-                    width=1000,
-                    height=1000,
+                    width=width + x,
+                    height=height + y,
+                    # x=0,
+                    # y=0,
+                    # width=2000,
+                    # height=2000,
                 )
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
