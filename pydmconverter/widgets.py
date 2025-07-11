@@ -884,14 +884,15 @@ class PyDMDrawingLine(Legible, Drawable):
         Class variable tracking the number of PyDMDrawingLine instances.
     """
 
-    pen_color: Optional[Tuple[int, int, int]] = None
+    pen_color: Optional[Tuple[int, int, int]] = None  # maybe can remove
     pen_width: Optional[int] = None
-
     arrow_size: Optional[int] = None
     arrow_end_point: Optional[bool] = None
     arrow_start_point: Optional[bool] = None
     arrow_mid_point: Optional[bool] = None
     flip_mid_point_arrow: Optional[bool] = None
+    arrows: Optional[str] = None
+    penColor: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -902,10 +903,13 @@ class PyDMDrawingLine(Legible, Drawable):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingLine properties.
         """
+        if self.arrows in ("to", "from", "both"):
+            self.brushFill = True
+            self.brushColor = self.penColor
+
         properties: List[ET.Element] = super().generate_properties()
         if self.pen_width is not None:
             properties.append(Int("penWidth", self.pen_width).to_xml())
-
         if self.arrow_size is not None:
             properties.append(Int("arrowSize", self.arrow_size).to_xml())
         if self.arrow_end_point is not None:
@@ -916,6 +920,11 @@ class PyDMDrawingLine(Legible, Drawable):
             properties.append(Bool("arrowMidPoint", self.arrow_mid_point).to_xml())
         if self.flip_mid_point_arrow is not None:
             properties.append(Bool("flipMidPointArrow", self.flip_mid_point_arrow).to_xml())
+        if self.arrows is not None and (self.arrows == "both" or self.arrows == "to"):
+            properties.append(Bool("arrowStartPoint", True).to_xml())
+        if self.arrows is not None and (self.arrows == "both" or self.arrows == "from"):
+            properties.append(Bool("arrowEndPoint", True).to_xml())
+        properties.append(TransparentBackground().to_xml())
         return properties
 
 
@@ -933,6 +942,7 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
     """
 
     points: Optional[List[str]] = None
+    arrows: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -943,13 +953,19 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingPolyline properties.
         """
+        self.x -= 10
+        self.y -= 10
+        self.width += 20
+        self.height += (
+            20  # TODO: May need to come back and avoid hardcoding if it is possible to have non-arrow functions
+        )
         properties: List[ET.Element] = super().generate_properties()
 
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
             stringlist = ET.SubElement(points_prop, "stringlist")
-
             for point in self.points:
+                point = ", ".join(str(int(x.strip()) + 10) for x in point.split(","))
                 string_el = ET.SubElement(stringlist, "string")
                 string_el.text = point
 

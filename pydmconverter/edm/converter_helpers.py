@@ -24,7 +24,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # Graphics widgets
     "activerectangleclass": PyDMDrawingRectangle,
     "circle": PyDMDrawingEllipse,
-    "activelineclass": PyDMDrawingPolyline,  # also activeLineClass can convert to PyDMDradfdfderererewwfdyyyyy
+    "activelineclass": PyDMDrawingPolyline,
     "line": PyDMDrawingLine,
     # "image": PyDMImageView,
     "activextextclass": PyDMLabel,
@@ -126,6 +126,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "pressValue": "press_value",
     "releaseValue": "release_value",
     "onLabel": "text",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
+    "arrows": "arrows",
 }
 
 # Configure logging
@@ -233,12 +234,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
                     x=0,
                     y=0,
-                    width=width + x,
-                    height=height + y,
-                    # x=0,
-                    # y=0,
-                    # width=2000,
-                    # height=2000,
+                    width=parser.ui.width,
+                    height=parser.ui.height,
                 )
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
