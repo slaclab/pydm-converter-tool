@@ -38,6 +38,7 @@ def run_cli(args: argparse.Namespace) -> None:
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         convert(str(input_path), str(output_path))
+        copy_img_files(input_path.parent, output_path.parent)
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
@@ -55,6 +56,17 @@ def run_cli(args: argparse.Namespace) -> None:
                 f"{len(files_failed)} files failed to convert to prevent overriding current files. Use --override or -o to overwrite these files."
             )
             print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
+
+
+def copy_img_files(input_path: Path, output_path: Path) -> None:
+    img_files = list(input_path.glob("*.png"))
+    for file in img_files:
+        relative_path = file.relative_to(input_path)
+        output_file_path = output_path / relative_path
+
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file, "rb") as src, open(output_file_path, "wb") as dst:
+            dst.write(src.read())
 
 
 def convert_files_in_folder(
@@ -82,6 +94,7 @@ def convert_files_in_folder(
     files_failed: list[str] = []
 
     inputted_files = list(input_path.glob(f"*{input_file_type}"))
+    copy_img_files(input_path, output_path)
     for file in inputted_files:
         relative_path = file.relative_to(input_path)
         output_file_path = (output_path / relative_path).with_suffix(".ui")
