@@ -31,6 +31,12 @@ CUSTOM_WIDGET_DEFINITIONS = {
         "header": "pydm.widgets.related_display_button",
         "container": "",
     },
+    "PyDMTabWidget": {
+        "extends": "QTabWidget",
+        "header": "pydm.widgets.tab_bar",
+        "container": "1",
+    },
+    "PyDMEnumButton": {"extends": "QWidget", "header": "pydm.widgets.enum_button", "container": ""},
 }
 
 

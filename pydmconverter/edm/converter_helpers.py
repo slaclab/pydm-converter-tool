@@ -13,6 +13,8 @@ from pydmconverter.widgets import (
     PyDMFrame,
     PyDMEmbeddedDisplay,
     QPushButton,
+    PyDMEnumButton,
+    PyDMTabWidget,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -53,9 +55,11 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
     "activebuttonclass": PyDMPushButton,
-    "activechoicebuttonclass": PyDMPushButton,
+    "activechoicebuttonclass": PyDMTabWidget,
     "activecircleclass": PyDMDrawingEllipse,
     "activepngclass": PyDMLabel,
+    "activeslacbarclass": PyDMDrawingRectangle,
+    "activeradiobuttonclass": PyDMEnumButton,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -78,6 +82,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "alarmPv": "channel",
     "controlPv": "channel",
     "indicatorPv": "channel",
+    "filePv": "channel",
     "value": "text",
     "fill": "brushFill",
     "fillColor": "brushColor",

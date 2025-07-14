@@ -1082,3 +1082,92 @@ class PyDMImageView(Alarmable):
             properties.append(Str("filename", self.filename).to_xml())
 
         return properties
+
+
+@dataclass
+class PyDMTabWidget(Alarmable):
+    """
+    PyDMTabWidget is a container widget that can hold tabWidgets.
+    It inherits from Alarmable to support alarm-related features.
+
+    Attributes
+    ----------
+    frameShape : Optional[str]
+        The shape of the frame.
+    frameShadow : Optional[str]
+        The shadow style of the frame.
+    lineWidth : Optional[int]
+        The width of the frame's line.
+    midLineWidth : Optional[int]
+        The width of the mid-line of the frame.
+    disableOnDisconnect : Optional[bool]
+        If True, disables the frame on disconnect.
+    children : List[PyDMFrame]
+        A list of child PyDMFrame widgets.
+    count : ClassVar[int]
+        A class variable counting frames.
+    """
+
+    frameShape: Optional[str] = None
+    frameShadow: Optional[str] = None
+    lineWidth: Optional[int] = None
+    midLineWidth: Optional[int] = None
+    disableOnDisconnect: Optional[bool] = None
+
+    children: List["PyDMFrame"] = field(default_factory=list)
+
+    def add_child(self, child: "PyDMFrame") -> None:
+        """
+        Add a child widget to this frame's internal list.
+
+        Parameters
+        ----------
+        child : PyDMFrame
+            The child widget to add.
+
+        Returns
+        -------
+        None
+        """
+        self.children.append(child)
+
+    def to_xml(self) -> ET.Element:
+        """
+        Serialize the PyDMFrame and its children to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing this PyDMFrame and its children.
+        """
+        widget_el: ET.Element = super().to_xml()
+
+        for child in self.children:
+            widget_el.append(child.to_xml())
+
+        return widget_el
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate PyDMFrame-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of this PyDMFrame.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.frameShape is not None:
+            properties.append(Str("frameShape", self.frameShape).to_xml())
+        if self.frameShadow is not None:
+            properties.append(Str("frameShadow", self.frameShadow).to_xml())
+        if self.lineWidth is not None:
+            properties.append(Int("lineWidth", self.lineWidth).to_xml())
+        if self.midLineWidth is not None:
+            properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
+        if self.disableOnDisconnect is not None:
+            properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+        properties.append(TransparentBackground().to_xml())
+
+        return properties
