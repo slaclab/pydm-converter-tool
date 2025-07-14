@@ -1133,7 +1133,7 @@ class PyDMTabWidget(Alarmable):
 
     def to_xml(self) -> ET.Element:
         """
-        Serialize the PyDMFrame and its children to an XML element.
+        Serialize the PyDMTabWidget and its children to an XML element.
 
         Returns
         -------
@@ -1168,6 +1168,5 @@ class PyDMTabWidget(Alarmable):
             properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
         if self.disableOnDisconnect is not None:
             properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
-        properties.append(TransparentBackground().to_xml())
 
         return properties
