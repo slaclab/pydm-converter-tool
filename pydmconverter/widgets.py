@@ -11,6 +11,7 @@ from pydmconverter.widgets_helpers import (
     Legible,
     TransparentBackground,
     StyleSheet,
+    Alignment,
 )
 import logging
 
@@ -130,6 +131,8 @@ class QLabel(Legible):
     frame_shape: Optional[str] = None
     foreground_color: Optional[Tuple[int, int, int, int]] = None
     background_color: Optional[Tuple[int, int, int, int]] = None
+    alignment: Optional[str] = None
+    useDisplayBg: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -149,6 +152,8 @@ class QLabel(Legible):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
             properties.append(Str("frameShape", self.frame_shape).to_xml())
+        if self.alignment is not None:
+            properties.append(Alignment(self.alignment).to_xml())
         """if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
@@ -165,7 +170,7 @@ class QLabel(Legible):
             styles: Dict[str, any] = {}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
-            if self.background_color is not None:
+            if self.background_color is not None and self.useDisplayBg is None:
                 styles["background-color"] = self.background_color
             properties.append(StyleSheet(styles).to_xml())
 
