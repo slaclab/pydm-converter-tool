@@ -845,6 +845,34 @@ class TransparentBackground(XMLConvertible):
 
 
 @dataclass
+class PixMap(XMLConvertible):
+    """
+    Represents an image widget.
+
+    Attributes
+    ----------
+    filename : str
+        The filename of the imported image.
+    """
+
+    filename: str
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the filename property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the image.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": "pixmap"})
+        pixmap_tag: etree.Element = etree.SubElement(prop, "pixmap")
+        pixmap_tag.text = self.filename
+        return prop
+
+
+@dataclass
 class PenColor(XMLConvertible):
     """
     Represents a pen color property for a widget.

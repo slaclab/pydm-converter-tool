@@ -12,6 +12,7 @@ from pydmconverter.widgets_helpers import (
     TransparentBackground,
     StyleSheet,
     Alignment,
+    PixMap,
 )
 import logging
 
@@ -133,6 +134,7 @@ class QLabel(Legible):
     background_color: Optional[Tuple[int, int, int, int]] = None
     alignment: Optional[str] = None
     useDisplayBg: Optional[bool] = None
+    filename: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -154,6 +156,8 @@ class QLabel(Legible):
             properties.append(Str("frameShape", self.frame_shape).to_xml())
         if self.alignment is not None:
             properties.append(Alignment(self.alignment).to_xml())
+        if self.filename is not None and self.name.startswith("activePngClass"):
+            properties.append(PixMap(self.filename).to_xml())
         """if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
             r, g, b, _ = self.foreground_color
             properties.append(RGBAStyleSheet(r, g, b, _).to_xml())

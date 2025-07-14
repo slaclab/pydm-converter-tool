@@ -59,7 +59,7 @@ def run_cli(args: argparse.Namespace) -> None:
 
 
 def copy_img_files(input_path: Path, output_path: Path) -> None:
-    img_files = list(input_path.glob("*.png"))
+    img_files = list(input_path.glob("*.png")) + list(input_path.glob("*.gif"))
     for file in img_files:
         relative_path = file.relative_to(input_path)
         output_file_path = output_path / relative_path
