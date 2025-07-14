@@ -76,8 +76,7 @@ class EDMFileParser:
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
-        # TODO add macro conversion from $() to ${}
-        pattern = r"\$\((\w+)\)"
+        pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         return self.text
 

@@ -311,8 +311,8 @@ def loc_conversion(edm_string: str) -> str:
 
     content = edm_string[len(prefix) :]
 
-    if "$(" in content and ")" in content:
-        content = content.split(")", 1)[-1]
+    # if "$(" in content and ")" in content:
+    #    content = content.split(")", 1)[-1]
 
     try:
         name, type_and_value = content.split("=", 1)
@@ -396,13 +396,19 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
+    loc_pattern = re.compile(r'LOC\\+([^\s"=]+(?:=[dies]:[^",\s]*)?)')
 
     def replace_loc_match(match: re.Match) -> str:
         edm_pv = match.group(0)
         if edm_pv not in encountered_locs:
-            full_url = loc_conversion(edm_pv)
-            short_url = full_url.split("?", 1)[0]
+            if "=" not in edm_pv:  # For case when calling pvs (with no =)
+                cleaned_pv = re.sub(r"^LOC\\+", "", edm_pv)
+                full_url = f"loc://{cleaned_pv}"
+                short_url = full_url
+            else:
+                full_url = loc_conversion(edm_pv)
+                short_url = full_url.split("?", 1)[0]
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
         else:
