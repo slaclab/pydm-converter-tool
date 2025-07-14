@@ -26,6 +26,11 @@ CUSTOM_WIDGET_DEFINITIONS = {
         "header": "pydm.widgets.image",
         "container": "",
     },
+    "PyDMRelatedDisplayButton": {
+        "extends": "QPushButton",
+        "header": "pydm.widgets.related_display_button",
+        "container": "",
+    },
 }
 
 

@@ -630,7 +630,10 @@ class Alignment(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
         set_tag: etree.Element = etree.SubElement(prop, "set")
-        set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
+        if self.alignment == "center":
+            set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
+        else:
+            set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         return prop
 
 
