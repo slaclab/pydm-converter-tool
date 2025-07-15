@@ -115,6 +115,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     EDM CALC PV examples:
       - 'CALC\\sum(pv1, pv2)'
       - 'CALC\\\{A+B\}(pv1, pv2)'
+      - 'CALC\\\{(A)\}($(P)$(R)Acquire)'
 
     Parameters
     ----------
@@ -136,18 +137,10 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     ValueError
         If the given edm_pv string doesn't match the expected CALC syntax.
     """
-    pattern = r"^CALC\\\\([^(\s]+)\(([^)]*)\)$"
-    match = re.match(pattern, edm_pv.strip())
-    if not match:
-        raise ValueError(f"Invalid CALC PV syntax: '{edm_pv}'")
 
-    print(edm_pv)
-    print(match.group(1))
-    print(match.group(2))
-    breakpoint()
-
-    name_or_expr = match.group(1)
-    arg_string = match.group(2).strip()
+    expr_part, args_part = get_calc_groups(edm_pv)
+    name_or_expr = clean_escape_characters(expr_part)
+    arg_string = clean_escape_characters(args_part)
 
     arg_list: List[str] = []
     if arg_string:
@@ -159,6 +152,50 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
         name_or_expr = name_or_expr[1:-1]
 
     return name_or_expr, arg_list, is_inline_expr
+
+
+def get_calc_groups(edm_pv) -> Tuple[str]:
+    prefix = "CALC\\"
+    if not edm_pv.startswith(prefix):
+        raise ValueError(f"Not a CALC PV: {edm_pv}")
+
+    edm_pv = edm_pv[len(prefix) :]
+    depth = 0
+    end_idx = -1
+    for i in range(len(edm_pv) - 1, -1, -1):
+        if edm_pv[i] == ")":
+            depth += 1
+        elif edm_pv[i] == "(":
+            depth -= 1
+            if depth == 0:
+                end_idx = i
+                break
+
+    if end_idx == -1:
+        raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
+
+    return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
+
+
+def clean_escape_characters(expr: str) -> str:
+    """
+    Remove extra \ characters from CALC/LOC expressions.
+
+    Parameters
+    ----------
+    expression : str
+        The expression to be cleaned.
+
+    Returns
+    -------
+    str
+        The new expression with \s removed.
+    """
+    expr = expr.lstrip("\\")
+    expr = expr.replace(r"\{", "{").replace(r"\}", "}")
+    # TODO: If more \ removal cases are needed, add them here
+
+    return expr
 
 
 def apply_rewrite_rule(rewrite_rule: str, arg_list: List[str]) -> List[str]:
@@ -398,8 +435,6 @@ def replace_calc_and_loc_in_edm_content(
     # calc_pattern = r'^CALC\\\\\{(.+?)\}\\\((.+)\)$'
 
     def replace_calc_match(match: re.Match) -> str:
-        print(match.group(1))
-        breakpoint()
         edm_pv = match.group(1)
         if edm_pv not in encountered_calcs:
             full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
