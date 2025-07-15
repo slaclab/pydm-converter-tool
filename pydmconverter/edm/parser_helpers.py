@@ -328,7 +328,7 @@ def loc_conversion(edm_string: str) -> str:
         "d": "float",
         "i": "int",
         "s": "str",
-        "e": "int",  # mapping enum to int by default
+        "e": "enum",  # mapping enum to int by default
     }
 
     edm_type = type_char.lower()
@@ -347,6 +347,8 @@ def loc_conversion(edm_string: str) -> str:
     else:
         pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
 
+    # print(edm_string, pydm_string)
+    # breakpoint()
     return pydm_string
 
 
