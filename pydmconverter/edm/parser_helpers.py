@@ -114,7 +114,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
 
     EDM CALC PV examples:
       - 'CALC\\sum(pv1, pv2)'
-      - 'CALC\\\{A+B}(pv1, pv2)'
+      - 'CALC\\\{A+B\}(pv1, pv2)'
 
     Parameters
     ----------
@@ -136,10 +136,15 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     ValueError
         If the given edm_pv string doesn't match the expected CALC syntax.
     """
-    pattern = r"^CALC\\+([^(\s]+)\(([^)]*)\)$"
+    pattern = r"^CALC\\\\([^(\s]+)\(([^)]*)\)$"
     match = re.match(pattern, edm_pv.strip())
     if not match:
         raise ValueError(f"Invalid CALC PV syntax: '{edm_pv}'")
+
+    print(edm_pv)
+    print(match.group(1))
+    print(match.group(2))
+    breakpoint()
 
     name_or_expr = match.group(1)
     arg_string = match.group(2).strip()
@@ -344,6 +349,11 @@ def loc_conversion(edm_string: str) -> str:
         # an invisible widget with the definiation of a temp local pv would have to be added to the screen as well
         # temp_pv_string = "loc://temp?type=float&init=0.0"
 
+    elif pydm_type == "enum":
+        value_arr: List[str] = value.split(",")
+        init: str = value_arr[0]
+        enum_string: List[str] = value_arr[1:]
+        pydm_string = f"loc://{name}?type={pydm_type}&init={init}&enum_string={enum_string}"
     else:
         pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
 
@@ -384,10 +394,14 @@ def replace_calc_and_loc_in_edm_content(
     encountered_calcs: Dict[str, Dict[str, str]] = {}
     encountered_locs: Dict[str, Dict[str, str]] = {}
 
-    calc_pattern = re.compile(r"CALC\\[^(\s]+\([^)]*\)")  # TODO: May need to change to CALC\\+
+    # calc_pattern = re.compile(r"CALC\\\\[^(\s]+\([^)]*\)")  # TODO: May need to change to CALC\\+
+    calc_pattern = re.compile(r'"(CALC\\\\[^"]+)"')
+    # calc_pattern = r'^CALC\\\\\{(.+?)\}\\\((.+)\)$'
 
     def replace_calc_match(match: re.Match) -> str:
-        edm_pv = match.group(0)
+        print(match.group(1))
+        breakpoint()
+        edm_pv = match.group(1)
         if edm_pv not in encountered_calcs:
             full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
             short_url = full_url.split("?", 1)[0]
@@ -398,8 +412,7 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    # loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
-    loc_pattern = re.compile(r'LOC\\+([^\s"=]+(?:=[dies]:[^",\s]*)?)')
+    loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
 
     def replace_loc_match(match: re.Match) -> str:
         edm_pv = match.group(0)
