@@ -321,6 +321,7 @@ def loc_conversion(edm_string: str) -> str:
 
     try:
         name, type_and_value = content.split("=", 1)
+        name = name.lstrip("\\")
     except ValueError:
         raise ValueError("Invalid EDM format: Missing '=' separator")
 
@@ -357,8 +358,6 @@ def loc_conversion(edm_string: str) -> str:
     else:
         pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
 
-    # print(edm_string, pydm_string)
-    # breakpoint()
     return pydm_string
 
 
@@ -412,10 +411,11 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')
+    loc_pattern = re.compile(r'"(LOC\\[^"]+)"')
 
     def replace_loc_match(match: re.Match) -> str:
-        edm_pv = match.group(0)
+        edm_pv = match.group(1)
         if edm_pv not in encountered_locs:
             if "=" not in edm_pv:  # For case when calling pvs (with no =)
                 cleaned_pv = re.sub(r"^LOC\\+", "", edm_pv)

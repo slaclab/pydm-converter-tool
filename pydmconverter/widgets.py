@@ -879,7 +879,7 @@ class PyDMEnumButton(Alarmable, Legible):
 
 
 @dataclass
-class PyDMDrawingLine(Legible, Drawable):
+class PyDMDrawingLine(Legible, Drawable, Alarmable):
     """
     PyDMDrawingLine represents a drawable line with arrow properties.
 

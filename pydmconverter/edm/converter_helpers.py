@@ -83,6 +83,10 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "controlPv": "channel",
     "indicatorPv": "channel",
     "filePv": "channel",
+    "visPv": "channel",
+    "colorPv": "channel",
+    "readPv": "channel",
+    "nullPv": "channel",  # TODO: Add xpv and yPv
     "value": "text",
     "fill": "brushFill",
     "fillColor": "brushColor",
