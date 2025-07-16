@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, List
 from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser
 from pydmconverter.widgets import (
     PyDMDrawingRectangle,
@@ -202,6 +202,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     color_list_filepath = search_color_list()
     color_list_dict = parse_colors_list(color_list_filepath)
 
+    pip_objects = find_objects(parser.ui, "activepipclass")
+
+    for pip_object in pip_objects:
+        print(pip_object.name)
+    print(len(pip_objects))
+    breakpoint()
+
     def traverse_group(
         edm_group: EDMGroup,
         color_list_dict,
@@ -321,10 +328,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
 
-                if (
+                """if (
                     obj.name.lower() == "activepipclass"
-                ):  # TODO: Maybe make a separate that handles all of these edgecases for specific widgets
-                    create_embedded_tabs(obj, central_widget)
+                ):
+                    create_embedded_tabs(obj, central_widget)"""
 
                 if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
@@ -391,6 +398,33 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     return pydm_widgets, used_classes
 
 
+def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
+    """
+    Recursively search through an EDMGroup and its nested groups to find all
+    instances of EDMObjects that match a specified name.
+
+    Parameters
+    ----------
+    group : EDMGroup
+        The EDMGroup instance within which to search for objects.
+    obj_name : str
+        The name of the object to search for (case insensitive)
+
+    Returns
+    -------
+    List[EDMObject]
+        A list of EDMObject instances that match the specified name. If no
+        matches are found, an empty list is returned.
+    """
+    objects = []
+    for obj in group.objects:
+        if isinstance(obj, EDMGroup):
+            objects += find_objects(obj, obj_name)
+        elif obj.name.lower() == obj_name.lower():
+            objects.append(obj)
+    return objects
+
+
 def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     """
     If needed, creates tabs from local variables of this embedded display.
@@ -400,15 +434,57 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     obj : EDMObject
         The activePipClass EDMFileObject instance that will be used to generate tabs and embedded displays. (This object is an activePipClass).
     """
-    print(vars(obj))
-    breakpoint()
-    search_group(central_widget, "activeChoiceButton", {})
-    if int(obj.num_disps) <= 1:
-        print("add or to this")
+    searched_arr = None
+    for prop_name, prop_val in obj.properties.items():
+        if prop_val is str and prop_val.startswith(
+            "LOC\\"
+        ):  # TODO: is it possible to have multiple loc\\ in the same embedded display?
+            searched_arr = prop_val.split("=")
+    if int(obj.num_disps) <= 1 or searched_arr is None or not searched_arr[1].startswith("e"):
+        return None
+    channel_name, channel_value = searched_arr
+
+    tab_widget = search_group(central_widget, "activeChoiceButton", channel_name, "Pv")
+    if tab_widget is None:
+        return None
+    # tab_names = channel_value.split(",")[1:]
+    # tab_widget.properties[]
 
 
-def search_group(group: EDMGroup, widget_type: str, property_dict: Dict[str, any]):
-    print("not done")
+def search_group(
+    group: EDMGroup, widget_type: str, prop_val: str, prop_name_suffix: str = "Pv"
+) -> EDMObject:  # TODO: May need to check for edgecases with multiple tabs
+    """
+    Recursively search through all nodes in an EDMGroup for a specified widget type
+    and a property-value pair where property names end with a specific suffix.
+
+    Parameters
+    ----------
+    group : EDMGroup
+        The EDMGroup to search within.
+    widget_type : str
+        The type of widget to search for.
+    property_val: str
+        The expected value.
+    prop_name_suffix : str
+        The suffix that property names should end with to be checked.
+
+    Returns
+    -------
+    Optional[EDMObject]
+        Returns the found EDMObject if it matches the criteria, else None.
+    """
+    for obj in group.objects:
+        if isinstance(obj, EDMGroup):
+            child_object = search_group(obj, widget_type, prop_val, prop_name_suffix)
+            if child_object is not None:
+                return child_object
+        elif obj.name.lower() == widget_type.lower():
+            for key, value in obj.properties.items():
+                if key.endswith(prop_name_suffix):
+                    if value is not None and value == prop_val:
+                        return obj
+    return None
 
 
 def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
