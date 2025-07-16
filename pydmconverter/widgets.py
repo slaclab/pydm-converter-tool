@@ -1085,7 +1085,7 @@ class PyDMImageView(Alarmable):
 
 
 @dataclass
-class PyDMTabWidget(Alarmable):
+class QTabWidget(Alarmable):
     """
     PyDMTabWidget is a container widget that can hold tabWidgets.
     It inherits from Alarmable to support alarm-related features.
@@ -1102,10 +1102,8 @@ class PyDMTabWidget(Alarmable):
         The width of the mid-line of the frame.
     disableOnDisconnect : Optional[bool]
         If True, disables the frame on disconnect.
-    children : List[PyDMFrame]
-        A list of child PyDMFrame widgets.
-    count : ClassVar[int]
-        A class variable counting frames.
+    tabs : List[str]
+        A list of child tab widgets.
     """
 
     frameShape: Optional[str] = None
@@ -1114,9 +1112,10 @@ class PyDMTabWidget(Alarmable):
     midLineWidth: Optional[int] = None
     disableOnDisconnect: Optional[bool] = None
 
+    tabs: List[str] = field(default_factory=list)
     children: List["PyDMFrame"] = field(default_factory=list)
 
-    def add_child(self, child: "PyDMFrame") -> None:
+    def add_child(self, child) -> None:
         """
         Add a child widget to this frame's internal list.
 
@@ -1168,5 +1167,48 @@ class PyDMTabWidget(Alarmable):
             properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
         if self.disableOnDisconnect is not None:
             properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+
+        return properties
+
+
+@dataclass
+class QWidget(Alarmable):
+    """
+    QWidget is a base class for creating a QWidget that can be used
+    as a child in other PyDM widgets like PyDMTabWidget.
+
+    Attributes
+    ----------
+    title : Optional[str]
+        The title of the tab associated with this QWidget.
+    children : List[Alarmable]
+        The list of child widgets within this QWidget.
+    """
+
+    title: Optional[str] = None
+    children: List[Alarmable] = field(default_factory=list)
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate properties specific to the QWidget for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of this QWidget.
+        """
+        properties: List[ET.Element] = []
+
+        # Add title property if it exists
+        if self.title is not None:
+            title_element = ET.Element("attribute", name="title")
+            title_string_element = ET.Element("string")
+            title_string_element.text = self.title
+            title_element.append(title_string_element)
+            properties.append(title_element)
+
+        # Optionally add properties for children if any exist
+        for child in self.children:
+            properties.append(child.to_xml())
 
         return properties

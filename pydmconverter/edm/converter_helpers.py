@@ -14,7 +14,8 @@ from pydmconverter.widgets import (
     PyDMEmbeddedDisplay,
     QPushButton,
     PyDMEnumButton,
-    PyDMTabWidget,
+    QTabWidget,
+    QWidget,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -55,7 +56,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
     "activebuttonclass": PyDMPushButton,
-    "activechoicebuttonclass": PyDMTabWidget,
+    "activechoicebuttonclass": QTabWidget,
     "activecircleclass": PyDMDrawingEllipse,
     "activepngclass": PyDMLabel,
     "activeslacbarclass": PyDMDrawingRectangle,
@@ -326,11 +327,17 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
 
-                """if (
-                    obj.name.lower() == "activepipclass"
-                ):
-                    create_embedded_tabs(obj, central_widget)"""
+                """widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
+                if not widget_type:
+                    logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
+                    log_unsupported_widget(obj.name)
+                    continue
 
+                widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
+                used_classes.add(type(widget).__name__)
+                logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")"""
+                if obj.name.lower() == "activechoicebuttonclass":
+                    populate_tab_bar(obj, widget)
                 if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
@@ -423,6 +430,17 @@ def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
     return objects
 
 
+def populate_tab_bar(obj: EDMObject, widget):
+    tab_names = obj.properties.get("tabs", [])
+    if not tab_names:
+        logger.warning(f"No tab names found in {obj.name}. Skipping.")
+        return
+
+    for tab_name in tab_names:
+        child_widget = QWidget(title=tab_name)
+        widget.add_child(child_widget)
+
+
 def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     """
     If needed, creates tabs from local variables of this embedded display.
@@ -452,6 +470,8 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     # tab_names = channel_value.split(",")[1:]
     print(tab_names)
     tab_widget.properties["tabs"] = tab_names
+    # tab_widget.properties["w"] = tab_widget.properties["w"] + obj.properties["w"] #prob not use
+    # tab_widget.properties["height"] = tab_widget.properties["height"] + obj.properties["height"]
 
 
 def search_group(
