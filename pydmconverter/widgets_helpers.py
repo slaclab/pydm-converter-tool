@@ -1308,7 +1308,6 @@ class PageHeader:
 
     def add_screen_properties(self, main_widget: ET, properties: dict[str, Any]) -> None:
         if "bgColor" in properties:
-            print("here")
             style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
             style_string = ET.SubElement(style_prop, "string")
             style_string.text = f"background-color: rgba{properties['bgColor']}"

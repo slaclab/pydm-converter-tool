@@ -205,9 +205,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     pip_objects = find_objects(parser.ui, "activepipclass")
 
     for pip_object in pip_objects:
-        print(pip_object.name)
-    print(len(pip_objects))
-    breakpoint()
+        create_embedded_tabs(pip_object, parser.ui)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -435,20 +433,25 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
         The activePipClass EDMFileObject instance that will be used to generate tabs and embedded displays. (This object is an activePipClass).
     """
     searched_arr = None
+    print(obj.properties.items())
     for prop_name, prop_val in obj.properties.items():
-        if prop_val is str and prop_val.startswith(
-            "LOC\\"
+        if isinstance(prop_val, str) and (
+            "loc://" in prop_val or "LOC\\" in prop_val
         ):  # TODO: is it possible to have multiple loc\\ in the same embedded display?
             searched_arr = prop_val.split("=")
-    if int(obj.num_disps) <= 1 or searched_arr is None or not searched_arr[1].startswith("e"):
+            channel_name = prop_val.split("?")[0]
+    if int(obj.properties["numDsps"]) <= 1 or searched_arr is None:
         return None
-    channel_name, channel_value = searched_arr
-
-    tab_widget = search_group(central_widget, "activeChoiceButton", channel_name, "Pv")
+    # channel_name = searched_arr[0]
+    string_list = searched_arr[-1]
+    channel_list = string_list[1:-1].split(", ")
+    tab_names = [item.strip("'") for item in channel_list]
+    tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
         return None
     # tab_names = channel_value.split(",")[1:]
-    # tab_widget.properties[]
+    print(tab_names)
+    tab_widget.properties["tabs"] = tab_names
 
 
 def search_group(
@@ -482,8 +485,11 @@ def search_group(
         elif obj.name.lower() == widget_type.lower():
             for key, value in obj.properties.items():
                 if key.endswith(prop_name_suffix):
-                    if value is not None and value == prop_val:
+                    if value is not None and prop_val in value:  # prop_val == value
                         return obj
+        # else:
+        # print(obj.name)
+        # breakpoint()
     return None
 
 
