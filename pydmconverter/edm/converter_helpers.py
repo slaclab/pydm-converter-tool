@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser
 from pydmconverter.widgets import (
     PyDMDrawingRectangle,
@@ -211,6 +211,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         scale: float = 1.0,
         offset_x: float = 0,
         offset_y: float = 0,
+        central_widget: EDMGroup = None,
     ):
         if pydm_widgets is None:
             pydm_widgets = []
@@ -264,6 +265,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     scale=scale,
                     offset_x=0,
                     offset_y=0,
+                    central_widget=central_widget,
                 )
 
             elif isinstance(obj, EDMObject):
@@ -318,6 +320,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
+
+                if (
+                    obj.name.lower() == "activepipclass"
+                ):  # TODO: Maybe make a separate that handles all of these edgecases for specific widgets
+                    create_embedded_tabs(obj, central_widget)
 
                 if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
@@ -380,8 +387,28 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
         return pydm_widgets
 
-    pydm_widgets = traverse_group(parser.ui, color_list_dict, None, None, parser.ui.height)
+    pydm_widgets = traverse_group(parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui)
     return pydm_widgets, used_classes
+
+
+def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
+    """
+    If needed, creates tabs from local variables of this embedded display.
+
+    Parameters
+    ----------
+    obj : EDMObject
+        The activePipClass EDMFileObject instance that will be used to generate tabs and embedded displays. (This object is an activePipClass).
+    """
+    print(vars(obj))
+    breakpoint()
+    search_group(central_widget, "activeChoiceButton", {})
+    if int(obj.num_disps) <= 1:
+        print("add or to this")
+
+
+def search_group(group: EDMGroup, widget_type: str, property_dict: Dict[str, any]):
+    print("not done")
 
 
 def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
