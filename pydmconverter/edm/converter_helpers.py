@@ -264,18 +264,29 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
                 print("skipped pydm_group")
-                if parent_pydm_group:
+                """if parent_pydm_group:
                     parent_pydm_group.add_child(pydm_group)
                 else:
-                    pydm_widgets.append(pydm_group)
+                    pydm_widgets.append(pydm_group)"""
 
                 used_classes.add(type(pydm_group).__name__)
 
-                traverse_group(
+                """traverse_group(
                     obj,
                     color_list_dict,
                     pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
                     pydm_widgets=None,
+                    container_height=height,
+                    scale=scale,
+                    offset_x=0,
+                    offset_y=0,
+                    central_widget=central_widget,
+                )"""
+                traverse_group(
+                    obj,
+                    color_list_dict,
+                    pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
+                    pydm_widgets=pydm_widgets,
                     container_height=height,
                     scale=scale,
                     offset_x=0,
@@ -388,12 +399,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if obj.properties.get("autoSize", False):
                     widget.autoSize = True
 
-                if parent_pydm_group:
+                """if parent_pydm_group:
                     parent_pydm_group.add_child(widget)
                     logger.info(f"Added {widget.name} to parent {parent_pydm_group.name}")
                 else:
                     pydm_widgets.append(widget)
-                    logger.info(f"Added {widget.name} to root")
+                    logger.info(f"Added {widget.name} to root")"""
+                pydm_widgets.append(widget)
+                logger.info(f"Added {widget.name} to root")
             else:
                 logger.warning(f"Unknown object type: {type(obj)}. Skipping.")
 
