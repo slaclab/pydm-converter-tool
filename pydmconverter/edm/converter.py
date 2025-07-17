@@ -113,4 +113,4 @@ def add_widgets_to_parent(widgets, parent_element):
         # print("Adding widget:", widget)
         # print("  Children:", getattr(widget, 'children', []))
         # if hasattr(widget, "children") and widget.children:
-        #    add_widgets_to_parent(widget.children, widget_element)
+        #    add_widgets_to_parent(widget.children, widget_element) #TODO: Make sure that this is redundant and causes replication

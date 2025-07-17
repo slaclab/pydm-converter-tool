@@ -211,6 +211,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
 
+    rects = find_objects(parser.ui, "activextextclass")
+    print(rects)
+    print("here5")
+    # breakpoint()
+
     def traverse_group(
         edm_group: EDMGroup,
         color_list_dict,
@@ -249,28 +254,27 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         parent_pydm_group.height,
                         scale=scale,
                     )
-                """pydm_group = PyDMFrame(
+                pydm_group = PyDMFrame(
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
                     x=0,
                     y=0,
                     width=parser.ui.width,
                     height=parser.ui.height,
-                )"""
-                # logger.info(f"Created PyDMFrame: {pydm_group.name}")
+                )
+                logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
                 print("skipped pydm_group")
-                # if parent_pydm_group:
-                # parent_pydm_group.add_child(pydm_group)
-                # else:
-                #    pydm_widgets.append(pydm_group)
+                if parent_pydm_group:
+                    parent_pydm_group.add_child(pydm_group)
+                else:
+                    pydm_widgets.append(pydm_group)
 
-                # used_classes.add(type(pydm_group).__name__)
+                used_classes.add(type(pydm_group).__name__)
 
                 traverse_group(
                     obj,
                     color_list_dict,
-                    # pydm_group,
-                    parent_pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
+                    pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
                     pydm_widgets=None,
                     container_height=height,
                     scale=scale,
@@ -332,15 +336,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
 
-                """widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
-                if not widget_type:
-                    logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
-                    log_unsupported_widget(obj.name)
-                    continue
-
-                widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
-                used_classes.add(type(widget).__name__)
-                logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")"""
                 if obj.name.lower() == "activechoicebuttonclass":
                     populate_tab_bar(obj, widget)
                 if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):

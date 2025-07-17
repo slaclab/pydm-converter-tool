@@ -184,7 +184,7 @@ class EDMFileParser:
                 # Could not parse anything at this location
                 snippet = text[pos : pos + 100]  # .strip()
                 print(f"Unrecognized text at pos {pos}: '{snippet}'")
-                breakpoint()
+                # breakpoint()
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
