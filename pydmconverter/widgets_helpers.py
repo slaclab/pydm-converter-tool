@@ -1059,6 +1059,7 @@ class Tangible(XMLSerializableMixin):
     y: int = 0
     width: int = 0
     height: int = 0
+    visPvList: Optional[list] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1070,6 +1071,9 @@ class Tangible(XMLSerializableMixin):
             A list containing the geometry property.
         """
         properties: List[etree.Element] = []
+        if self.visPvList is not None:
+            for elem in self.visPvList:
+                properties.append(Str("visPv", elem).to_xml())
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         return properties
 

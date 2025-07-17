@@ -84,7 +84,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "controlPv": "channel",
     "indicatorPv": "channel",
     "filePv": "channel",
-    "visPv": "channel",
+    "visPv": "visPv",
+    # "visPv": "channel", #TODO: vispvs become rules
     "colorPv": "channel",
     "readPv": "channel",
     "nullPv": "channel",  # TODO: Add xpv and yPv
@@ -226,6 +227,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_x: float = 0,
         offset_y: float = 0,
         central_widget: EDMGroup = None,
+        parent_vispvs: List[str] = [],
     ):
         if pydm_widgets is None:
             pydm_widgets = []
@@ -269,7 +271,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 else:
                     pydm_widgets.append(pydm_group)"""
 
-                used_classes.add(type(pydm_group).__name__)
+                # used_classes.add(type(pydm_group).__name__)
+
+                if "visPv" in obj.properties:
+                    parent_vispvs.append(obj.properties["visPv"])
 
                 """traverse_group(
                     obj,
@@ -292,6 +297,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_x=0,
                     offset_y=0,
                     central_widget=central_widget,
+                    parent_vispvs=parent_vispvs,
                 )
 
             elif isinstance(obj, EDMObject):
@@ -304,6 +310,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
                 used_classes.add(type(widget).__name__)
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
+
+                if parent_vispvs:
+                    setattr(widget, "visPvList", parent_vispvs)
 
                 # Set mapped attributes.
                 for edm_attr, value in obj.properties.items():
