@@ -137,6 +137,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "onLabel": "text",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
     "arrows": "arrows",
     "fontAlign": "alignment",
+    "displayFileName": "displayFileName",
+    "embeddedHeight": "embeddedHeight",
+    "embeddedWidth": "embeddedWidth",
 }
 
 # Configure logging
@@ -246,26 +249,28 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         parent_pydm_group.height,
                         scale=scale,
                     )
-                pydm_group = PyDMFrame(
+                """pydm_group = PyDMFrame(
                     name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
                     x=0,
                     y=0,
                     width=parser.ui.width,
                     height=parser.ui.height,
-                )
-                logger.info(f"Created PyDMFrame: {pydm_group.name}")
+                )"""
+                # logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
-                if parent_pydm_group:
-                    parent_pydm_group.add_child(pydm_group)
-                else:
-                    pydm_widgets.append(pydm_group)
+                print("skipped pydm_group")
+                # if parent_pydm_group:
+                # parent_pydm_group.add_child(pydm_group)
+                # else:
+                #    pydm_widgets.append(pydm_group)
 
-                used_classes.add(type(pydm_group).__name__)
+                # used_classes.add(type(pydm_group).__name__)
 
                 traverse_group(
                     obj,
                     color_list_dict,
-                    pydm_group,
+                    # pydm_group,
+                    parent_pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
                     pydm_widgets=None,
                     container_height=height,
                     scale=scale,
@@ -436,9 +441,25 @@ def populate_tab_bar(obj: EDMObject, widget):
         logger.warning(f"No tab names found in {obj.name}. Skipping.")
         return
 
-    for tab_name in tab_names:
-        child_widget = QWidget(title=tab_name)
-        widget.add_child(child_widget)
+    if obj.properties["displayFileName"] is not None:
+        file_list = obj.properties["displayFileName"]
+        for index, tab_name in enumerate(tab_names):
+            child_widget = QWidget(title=tab_name)
+            widget.add_child(child_widget)
+            embedded_widget = PyDMEmbeddedDisplay(
+                name=f"{tab_name}_embedded",
+                x=0,
+                y=0,
+                filename=file_list[index],
+                visible=True,
+                height=500,
+                width=500,
+            )
+            child_widget.add_child(embedded_widget)
+    else:
+        for tab_name in tab_names:
+            child_widget = QWidget(title=tab_name)
+            widget.add_child(child_widget)
 
 
 def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
@@ -467,9 +488,11 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
         return None
-    # tab_names = channel_value.split(",")[1:]
-    print(tab_names)
+
     tab_widget.properties["tabs"] = tab_names
+    tab_widget.properties["displayFileName"] = obj.properties["displayFileName"]
+    tab_widget.properties["embeddedHeight"] = obj.height
+    tab_widget.properties["embeddedWidth"] = obj.width
     # tab_widget.properties["w"] = tab_widget.properties["w"] + obj.properties["w"] #prob not use
     # tab_widget.properties["height"] = tab_widget.properties["height"] + obj.properties["height"]
 

@@ -1114,6 +1114,8 @@ class QTabWidget(Alarmable):
 
     tabs: List[str] = field(default_factory=list)
     children: List["PyDMFrame"] = field(default_factory=list)
+    embeddedHeight: Optional[int] = None
+    embeddedWidth: Optional[int] = None
 
     def add_child(self, child) -> None:
         """
@@ -1155,6 +1157,9 @@ class QTabWidget(Alarmable):
         List[ET.Element]
             A list of XML elements representing the properties of this PyDMFrame.
         """
+        if self.embeddedHeight is not None:
+            self.height += self.embeddedHeight
+
         properties: List[ET.Element] = super().generate_properties()
 
         if self.frameShape is not None:
@@ -1207,8 +1212,35 @@ class QWidget(Alarmable):
             title_element.append(title_string_element)
             properties.append(title_element)
 
-        # Optionally add properties for children if any exist
-        for child in self.children:
-            properties.append(child.to_xml())
-
         return properties
+
+    def add_child(self, child) -> None:
+        """
+        Add a child widget to this frame's internal list.
+
+        Parameters
+        ----------
+        child : PyDMFrame
+            The child widget to add.
+
+        Returns
+        -------
+        None
+        """
+        self.children.append(child)
+
+    def to_xml(self) -> ET.Element:
+        """
+        Serialize the PyDMTabWidget and its children to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing this PyDMFrame and its children.
+        """
+        widget_el: ET.Element = super().to_xml()
+
+        for child in self.children:
+            widget_el.append(child.to_xml())
+
+        return widget_el

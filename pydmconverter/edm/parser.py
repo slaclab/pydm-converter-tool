@@ -47,11 +47,14 @@ class EDMFileParser:
 
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
     group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
-    # object_pattern = re.compile(r"object (\w+)(?:.*?)beginObjectProperties(.*?)endObjectProperties", re.DOTALL)
     object_pattern = re.compile(
-        r"object\s+(\w+)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))",
+        r"object\s+(\w+(?::\w+)?)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))",
         re.DOTALL | re.MULTILINE,
     )
+    # object_pattern = re.compile(
+    #    r"object\s+(\w+)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))",
+    #    re.DOTALL | re.MULTILINE,
+    # )
 
     def __init__(self, file_path: str | Path):
         """Creates an instance of EDMFileParser for the given file_path
@@ -181,7 +184,7 @@ class EDMFileParser:
                 # Could not parse anything at this location
                 snippet = text[pos : pos + 100]  # .strip()
                 print(f"Unrecognized text at pos {pos}: '{snippet}'")
-                # breakpoint()
+                breakpoint()
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
