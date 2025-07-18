@@ -262,12 +262,10 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
     PyDMDrawingRectangle represents a drawable rectangle that supports XML serialization,
     alarm functionality, and can be hidden.
 
-    This class does not add any extra properties beyond those provided by its base classes.
-
     Attributes
     ----------
-    count : ClassVar[int]
-        A class variable tracking the number of PyDMDrawingRectangle instances.
+    indicatorColor: Optional[Tuple[int, int, int, int]]
+        The fill color for specifically activebar/slacbarclass rectangles
     """
 
     indicatorColor: Optional[Tuple[int, int, int, int]] = None
@@ -300,6 +298,16 @@ class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
     ----------
     count : ClassVar[int]
         A class variable tracking the number of PyDMDrawingEllipse instances.
+    """
+
+
+@dataclass
+class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
+    """
+    PyDMDrawingArc represents a drawable ellipse that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This class does not add any extra properties beyond those provided by its base classes.
     """
 
 
@@ -525,7 +533,7 @@ class PyDMPushButton(PyDMPushButtonBase):
 
 
 @dataclass
-class PyDMShellCommand(PyDMPushButtonBase):
+class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
     """
     PyDMShellCommand extends PyDMPushButtonBase to execute shell commands.
 

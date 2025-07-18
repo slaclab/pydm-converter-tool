@@ -40,6 +40,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMByteIndicator": {"extends": "QWidget", "header": "pydm.widgets.byte", "container": ""},
     "PyDMLineEdit": {"extends": "QLineEdit", "header": "pydm.widgets.line_edit", "container": ""},
     "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
+    "PyDMDrawingArc": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
 }
 
 

@@ -18,6 +18,7 @@ from pydmconverter.widgets import (
     QWidget,
     QTableWidget,
     PyDMByteIndicator,
+    PyDMDrawingArc,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -68,6 +69,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "activecoeftableclass": PyDMWaveformTable,
     "byteclass": PyDMByteIndicator,
     "textentryclass": PyDMLineEdit,
+    "activextextdspclass:noedit": PyDMLabel,
+    "activearcclass": PyDMDrawingArc,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
