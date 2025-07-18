@@ -14,6 +14,7 @@ from pydmconverter.widgets_helpers import (
     Alignment,
     PixMap,
     StyleSheetObject,
+    OnOffColor,
 )
 import logging
 
@@ -108,7 +109,7 @@ class PyDMFrame(Alarmable):
 
 
 @dataclass
-class QLabel(Legible):
+class QLabel(Legible, StyleSheetObject):
     """
     QLabel is a label widget that supports numerical precision, unit display,
     tool tip text, and a configurable frame shape.
@@ -159,25 +160,14 @@ class QLabel(Legible):
             properties.append(Alignment(self.alignment).to_xml())
         if self.filename is not None and self.name.startswith("activePngClass"):
             properties.append(PixMap(self.filename).to_xml())
-        """if self.name.startswith("activeXTextClass") and self.foreground_color is not None:
-            r, g, b, _ = self.foreground_color
-            properties.append(RGBAStyleSheet(r, g, b, _).to_xml())
-        if self.name.startswith("activeXTextDspClass") and (
-            self.foreground_color is not None or self.background_color is not None
-        ):
-            styles: Dict[str, any] = {}
-            if self.foreground_color is not None:
-                styles["color"] = self.foreground_color
-            if self.background_color is not None:
-                styles["background-color"] = self.background_color
-            properties.append(StyleSheet(styles).to_xml())"""
-        if self.foreground_color is not None or self.background_color is not None:
+
+        """if self.foreground_color is not None or self.background_color is not None:
             styles: Dict[str, any] = {}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
             if self.background_color is not None and self.useDisplayBg is None:
                 styles["background-color"] = self.background_color
-            properties.append(StyleSheet(styles).to_xml())
+            properties.append(StyleSheet(styles).to_xml())"""
 
         return properties
 
@@ -1257,8 +1247,8 @@ class QTableWidget(Alarmable, Drawable, StyleSheetObject):
     disableOnDisconnect: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
-        print(vars(self))
-        breakpoint()
+        # print(vars(self))
+        # breakpoint()
 
         properties: List[ET.Element] = super().generate_properties()
 
@@ -1272,5 +1262,30 @@ class QTableWidget(Alarmable, Drawable, StyleSheetObject):
             properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
         if self.disableOnDisconnect is not None:
             properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMByteIndicator(Alarmable):
+    numBits: Optional[int] = None
+    showLabels: Optional[bool] = None
+    on_color: Optional[Tuple[int, int, int, int]] = None
+    off_color: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        # print(vars(self))
+        # breakpoint()
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.numBits is not None:
+            properties.append(Int("numBits", self.numBits).to_xml())
+        if self.showLabels is not None:
+            properties.append(Bool("showLabels", self.showLabels).to_xml())
+        if self.on_color is not None:
+            properties.append(OnOffColor("on", *self.on_color).to_xml())
+        if self.off_color is not None:
+            properties.append(OnOffColor("off", *self.off_color).to_xml())
 
         return properties

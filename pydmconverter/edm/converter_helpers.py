@@ -17,6 +17,7 @@ from pydmconverter.widgets import (
     QTabWidget,
     QWidget,
     QTableWidget,
+    PyDMByteIndicator,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -64,7 +65,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activeradiobuttonclass": PyDMEnumButton,
     "activetableclass": QTableWidget,
     # "activecoeftableclass": PyDMWaveformTable,
-    "byteclass": PyDMPushButton,
+    "byteclass": PyDMByteIndicator,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -140,12 +141,14 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Push Button attributes
     "pressValue": "press_value",
     "releaseValue": "release_value",
+    # Misc attributes
     "onLabel": "text",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
     "arrows": "arrows",
     "fontAlign": "alignment",
     "displayFileName": "displayFileName",
     "embeddedHeight": "embeddedHeight",
     "embeddedWidth": "embeddedWidth",
+    "numBits": "numBits",
 }
 
 # Configure logging

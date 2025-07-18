@@ -1009,6 +1009,46 @@ class Brush(XMLConvertible):
 
 
 @dataclass
+class OnOffColor(XMLConvertible):
+    """
+    Represents the on/offColor property for a widget.
+
+    Attributes
+    ----------
+    onOff : str
+        The prefix for _color (either on or off).
+    red : int
+        The red component.
+    green : int
+        The green component.
+    blue : int
+        The blue component.
+    alpha : int, optional
+        The alpha component, default is 255.
+    """
+
+    onOff: str  # TODO: Make this an enum?
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the brush property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the brush.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": f"{self.onOff}Color", "stdset": "0"})
+        color: Color = Color(self.red, self.green, self.blue, alpha=self.alpha)
+        prop.append(color.to_xml())
+        return prop
+
+
+@dataclass
 class Rotation(XMLConvertible):
     """
     Represents a rotation property for a widget.
@@ -1238,15 +1278,18 @@ class StyleSheetObject(Tangible):
         """
         properties: List[ET.Element] = super().generate_properties()
 
-        if self.background_color is not None or self.foreground_color is not None:
-            styles: Dict[str, Any] = {}
-            if self.background_color is not None:
-                styles["background-color"] = self.background_color
-            if self.foreground_color is not None:
-                styles["color"] = self.foreground_color
-            properties.append(StyleSheet(styles).to_xml())
+        # if self.background_color is not None or self.foreground_color is not None:
+        styles: Dict[str, Any] = {}
+        if self.background_color is not None:
+            styles["background-color"] = self.background_color
+        if self.foreground_color is not None:
+            styles["color"] = self.foreground_color
+        properties.append(StyleSheet(styles).to_xml())
 
         return properties
+
+
+# class OnOffColorObject(Tangible):
 
 
 @dataclass

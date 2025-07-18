@@ -37,6 +37,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
         "container": "1",
     },
     "PyDMEnumButton": {"extends": "QWidget", "header": "pydm.widgets.enum_button", "container": ""},
+    "PyDMByteIndicator": {"extends": "QWidget", "header": "pydm.widgets.byte", "container": ""},
 }
 
 
