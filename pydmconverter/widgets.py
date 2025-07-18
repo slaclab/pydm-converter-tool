@@ -13,6 +13,7 @@ from pydmconverter.widgets_helpers import (
     StyleSheet,
     Alignment,
     PixMap,
+    StyleSheetObject,
 )
 import logging
 
@@ -279,7 +280,7 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
 
 
 @dataclass
-class PyDMDrawingEllipse(Alarmable, Drawable, Hidable):
+class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
     """
     PyDMDrawingEllipse represents a drawable ellipse that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -719,7 +720,7 @@ class QComboBox(Legible):
 
 
 @dataclass
-class PyDMEnumComboBox(QComboBox, Alarmable):
+class PyDMEnumComboBox(QComboBox, Alarmable, StyleSheetObject):
     """
     PyDMEnumComboBox extends QComboBox to support enumeration with additional properties.
 
@@ -748,13 +749,13 @@ class PyDMEnumComboBox(QComboBox, Alarmable):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
-        if self.background_color is not None or self.foreground_color is not None:
+        """if self.background_color is not None or self.foreground_color is not None:
             styles: Dict[str, any] = {}
             if self.background_color is not None:
                 styles["background-color"] = self.background_color
             if self.background_color is not None:
                 styles["color"] = self.foreground_color
-            properties.append(StyleSheet(styles).to_xml())
+            properties.append(StyleSheet(styles).to_xml())"""
         return properties
 
 
@@ -1202,6 +1203,7 @@ class QWidget(Alarmable):
         List[ET.Element]
             A list of XML elements representing the properties of this QWidget.
         """
+        # properties: List[ET.Element] = super().generate_properties()
         properties: List[ET.Element] = []
 
         # Add title property if it exists
@@ -1244,3 +1246,31 @@ class QWidget(Alarmable):
             widget_el.append(child.to_xml())
 
         return widget_el
+
+
+@dataclass
+class QTableWidget(Alarmable, Drawable, StyleSheetObject):
+    frameShape: Optional[str] = None
+    frameShadow: Optional[str] = None
+    lineWidth: Optional[int] = None
+    midLineWidth: Optional[int] = None
+    disableOnDisconnect: Optional[bool] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        print(vars(self))
+        breakpoint()
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.frameShape is not None:
+            properties.append(Str("frameShape", self.frameShape).to_xml())
+        if self.frameShadow is not None:
+            properties.append(Str("frameShadow", self.frameShadow).to_xml())
+        if self.lineWidth is not None:
+            properties.append(Int("lineWidth", self.lineWidth).to_xml())
+        if self.midLineWidth is not None:
+            properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
+        if self.disableOnDisconnect is not None:
+            properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+
+        return properties

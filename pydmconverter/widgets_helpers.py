@@ -1060,6 +1060,7 @@ class Tangible(XMLSerializableMixin):
     width: int = 0
     height: int = 0
     visPvList: Optional[list] = None
+    visPv: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1074,6 +1075,8 @@ class Tangible(XMLSerializableMixin):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 properties.append(Str("visPv", elem).to_xml())
+        if self.visPv is not None:
+            properties.append(Str("visPv", elem).to_xml())
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         return properties
 
@@ -1204,6 +1207,46 @@ class Hidable(Tangible):
     visibility_max: Optional[str] = None
     visibility_min: Optional[str] = None
     visibility_invert: bool = False
+
+
+@dataclass
+class StyleSheetObject(Tangible):
+    """
+    A base class for UI elements that support stylesheet-based customization.
+
+    Attributes
+    ----------
+    foreground_color : Optional[Tuple[int, int, int, int]]
+        RGBA color tuple for the foreground (text) color.
+    background_color : Optional[Tuple[int, int, int, int]]
+        RGBA color tuple for the background color.
+    """
+
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate a list of XML property elements for this object, including
+        any stylesheets derived from foreground or background color settings.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing properties, including inherited
+            ones from the base class and additional style properties if specified.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.background_color is not None or self.foreground_color is not None:
+            styles: Dict[str, Any] = {}
+            if self.background_color is not None:
+                styles["background-color"] = self.background_color
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            properties.append(StyleSheet(styles).to_xml())
+
+        return properties
 
 
 @dataclass
