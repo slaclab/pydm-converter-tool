@@ -1035,14 +1035,37 @@ class OnOffColor(XMLConvertible):
 
     def to_xml(self) -> etree.Element:
         """
-        Convert the brush property to an XML element.
+        Convert the onOff color property to an XML element.
 
         Returns
         -------
         etree.Element
-            The XML element representing the brush.
+            The XML element representing the on//offcolor.
         """
         prop: etree.Element = etree.Element("property", attrib={"name": f"{self.onOff}Color", "stdset": "0"})
+        color: Color = Color(self.red, self.green, self.blue, alpha=self.alpha)
+        prop.append(color.to_xml())
+        return prop
+
+
+@dataclass
+class ColorObject(XMLConvertible):
+    name: str
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the color property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the color.
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         color: Color = Color(self.red, self.green, self.blue, alpha=self.alpha)
         prop.append(color.to_xml())
         return prop
@@ -1288,9 +1311,6 @@ class StyleSheetObject(Tangible):
         properties.append(StyleSheet(styles).to_xml())
 
         return properties
-
-
-# class OnOffColorObject(Tangible):
 
 
 @dataclass

@@ -15,6 +15,8 @@ from pydmconverter.widgets_helpers import (
     PixMap,
     StyleSheetObject,
     OnOffColor,
+    ColorObject,
+    Brush,
 )
 import logging
 
@@ -268,6 +270,23 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
         A class variable tracking the number of PyDMDrawingRectangle instances.
     """
 
+    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the drawable widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing geometry, pen, brush, and rotation properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+        if self.indicatorColor is not None:
+            properties.append(Brush(*self.indicatorColor, fill=True).to_xml())
+
+        return properties
+
 
 @dataclass
 class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
@@ -453,6 +472,7 @@ class PyDMPushButton(PyDMPushButtonBase):
     )
     foreground_color: Optional[Tuple[int, int, int, int]] = None
     background_color: Optional[Tuple[int, int, int, int]] = None
+    useDisplayBg: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -494,9 +514,9 @@ class PyDMPushButton(PyDMPushButtonBase):
                 styles["color"] = self.foreground_color
             if (
                 self.on_color is not None and self.off_color == self.on_color
-            ):  # TODO: find if on_color/background_color should take precedent (they are used for diff edm classes anyway)
+            ):  # TODO: find if on_color/background_color should take precedent (they are used for diff edm classes anyway) #TODO: Replace with OnOffColor class eventually
                 styles["background-color"] = self.on_color
-            elif self.background_color is not None:
+            elif self.background_color is not None and self.useDisplayBg is None:
                 styles["background-color"] = self.background_color
             if self.on_color is not None and self.off_color != self.on_color:
                 logging.warning("on and off colors are different, need to modify code")
@@ -1243,6 +1263,17 @@ class QWidget(Alarmable):
 
 @dataclass
 class QTableWidget(Alarmable, Drawable, StyleSheetObject):
+    """
+    Represents a table widget with optional frame and line styling properties.
+
+    Attributes:
+        frameShape (Optional[str]): Shape of the frame (e.g., 'Box', 'Panel').
+        frameShadow (Optional[str]): Style of the frame's shadow (e.g., 'Raised').
+        lineWidth (Optional[int]): Width of the outer frame lines.
+        midLineWidth (Optional[int]): Width of the mid-line frame.
+        disableOnDisconnect (Optional[bool]): Whether to disable the widget if disconnected.
+    """
+
     frameShape: Optional[str] = None
     frameShadow: Optional[str] = None
     lineWidth: Optional[int] = None
@@ -1250,8 +1281,12 @@ class QTableWidget(Alarmable, Drawable, StyleSheetObject):
     disableOnDisconnect: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
-        # print(vars(self))
-        # breakpoint()
+        """
+        Generates a list of XML elements representing the widget's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
 
         properties: List[ET.Element] = super().generate_properties()
 
@@ -1271,14 +1306,28 @@ class QTableWidget(Alarmable, Drawable, StyleSheetObject):
 
 @dataclass
 class PyDMByteIndicator(Alarmable):
+    """
+    Represents a widget that displays a multi-bit (byte) indicator.
+
+    Attributes:
+        numBits (Optional[int]): Number of bits to display.
+        showLabels (Optional[bool]): Whether to show bit labels.
+        on_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is on.
+        off_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is off.
+    """
+
     numBits: Optional[int] = None
     showLabels: Optional[bool] = None
     on_color: Optional[Tuple[int, int, int, int]] = None
     off_color: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
-        # print(vars(self))
-        # breakpoint()
+        """
+        Generates a list of XML elements representing the byte indicator's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
 
         properties: List[ET.Element] = super().generate_properties()
 
@@ -1290,5 +1339,42 @@ class PyDMByteIndicator(Alarmable):
             properties.append(OnOffColor("on", *self.on_color).to_xml())
         if self.off_color is not None:
             properties.append(OnOffColor("off", *self.off_color).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
+    """
+    Represents a scale indicator widget that shows a bar with an orientation and optional flipping.
+
+    Attributes:
+        orientation (Optional[str]): The orientation of the scale ('Horizontal' or 'Vertical').
+        indicatorColor (Optional[Tuple[int, int, int, int]]): RGBA color of the scale bar.
+        flipScale (Optional[bool]): Whether to flip the scale direction.
+    """
+
+    orientation: Optional[str] = None
+    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+    flipScale: Optional[bool] = False
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the scale indicator's properties.
+
+        Note:
+            The "flipScale" property is always included, as scaleIndicator does not load properly without it.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.orientation is not None:
+            properties.append(Str("orientation", self.orientation).to_xml())
+        if self.indicatorColor is not None:
+            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
+        properties.append(Bool("flipScale", self.flipScale).to_xml())  # The bar will not show up without this attribute
 
         return properties

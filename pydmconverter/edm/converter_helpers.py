@@ -61,11 +61,13 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activechoicebuttonclass": QTabWidget,
     "activecircleclass": PyDMDrawingEllipse,
     "activepngclass": PyDMLabel,
-    # "activeslacbarclass": PyDMScaleIndicator,
+    "activebarclass": PyDMDrawingRectangle,
+    "activeslacbarclass": PyDMDrawingRectangle,
     "activeradiobuttonclass": PyDMEnumButton,
     "activetableclass": QTableWidget,
     # "activecoeftableclass": PyDMWaveformTable,
     "byteclass": PyDMByteIndicator,
+    "textentryclass": PyDMLineEdit,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -149,6 +151,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "embeddedHeight": "embeddedHeight",
     "embeddedWidth": "embeddedWidth",
     "numBits": "numBits",
+    "indicatorColor": "indicatorColor",
 }
 
 # Configure logging
@@ -354,6 +357,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         "onColor",
                         "topShadowColor",
                         "botShadowColor",
+                        "indicatorColor",
                     }
                     if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
