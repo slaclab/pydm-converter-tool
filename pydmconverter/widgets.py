@@ -626,6 +626,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
             properties.append(Bool("openInNewWindow", self.open_in_new_window).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
+        properties.append(
+            Bool("showIcon", False).to_xml()
+        )  # TODO: Make sre that this will not need to be shown in other examples
         return properties
 
 

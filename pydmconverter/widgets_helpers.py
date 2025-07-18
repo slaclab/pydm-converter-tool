@@ -1264,6 +1264,7 @@ class StyleSheetObject(Tangible):
 
     foreground_color: Optional[Tuple[int, int, int, int]] = None
     background_color: Optional[Tuple[int, int, int, int]] = None
+    useDisplayBg: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1280,7 +1281,7 @@ class StyleSheetObject(Tangible):
 
         # if self.background_color is not None or self.foreground_color is not None:
         styles: Dict[str, Any] = {}
-        if self.background_color is not None:
+        if self.background_color is not None and self.useDisplayBg is None:
             styles["background-color"] = self.background_color
         if self.foreground_color is not None:
             styles["color"] = self.foreground_color
