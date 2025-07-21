@@ -171,7 +171,7 @@ class EDMFileParser:
             # Try matching a regular object
             object_match = self.object_pattern.search(text, pos)
             if object_match:
-                name = object_match.group(1)
+                name = object_match.group(1).replace(":", "")  # remove colons from name
                 object_text = object_match.group(2)
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
