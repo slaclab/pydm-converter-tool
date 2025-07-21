@@ -19,11 +19,13 @@ from pydmconverter.widgets import (
     QTableWidget,
     PyDMByteIndicator,
     PyDMDrawingArc,
+    PyDMWaveformPlot,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
 import os
+import copy
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
@@ -71,6 +73,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "textentryclass": PyDMLineEdit,
     "activextextdspclass:noedit": PyDMLabel,
     "activearcclass": PyDMDrawingArc,
+    "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
+    # "xygraphclass": PyDMScatterPlot
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -228,11 +232,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
 
-    rects = find_objects(parser.ui, "activextextclass")
-    print(rects)
-    print("here5")
-    # breakpoint()
-
     def traverse_group(
         edm_group: EDMGroup,
         color_list_dict,
@@ -243,7 +242,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_x: float = 0,
         offset_y: float = 0,
         central_widget: EDMGroup = None,
-        parent_vispvs: set[str] = set(),
+        parent_vispvs: Optional[set[str]] = None,
     ):
         if pydm_widgets is None:
             pydm_widgets = []
@@ -289,8 +288,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 # used_classes.add(type(pydm_group).__name__)
 
-                if "visPv" in obj.properties:
+                if "visPv" in obj.properties and parent_vispvs:
                     parent_vispvs.add(obj.properties["visPv"])
+                elif "visPv" in obj.properties:
+                    parent_vispvs = set()
 
                 """traverse_group(
                     obj,
@@ -313,7 +314,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_x=0,
                     offset_y=0,
                     central_widget=central_widget,
-                    parent_vispvs=parent_vispvs,
+                    parent_vispvs=copy.deepcopy(parent_vispvs),
                 )
 
             elif isinstance(obj, EDMObject):

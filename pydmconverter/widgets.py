@@ -322,7 +322,7 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
             A list containing arc properties.
         """
         self.x -= 4
-        self.width += 4  # TODO:
+        self.width += 4  # TODO: Find a better solution
         properties: List[ET.Element] = super().generate_properties()
         if self.startAngle is not None:
             properties.append(
@@ -1410,5 +1410,38 @@ class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
         if self.indicatorColor is not None:
             properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
         properties.append(Bool("flipScale", self.flipScale).to_xml())  # The bar will not show up without this attribute
+
+        return properties
+
+
+@dataclass
+class PyDMWaveformPlot(Alarmable, StyleSheetObject):
+    y_channel: Optional[str] = None
+    plot_name: Optional[str] = None
+    color: Optional[Tuple[int, int, int, int]] = None
+    minXRange: Optional[int] = None
+    minYRange: Optional[int] = None
+    maxXRange: Optional[int] = None
+    maxYRange: Optional[int] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.y_channel is not None:
+            properties.append(Str("y_channel", self.y_channel).to_xml())
+        if self.plot_name is not None:
+            properties.append(
+                Str("name", self.plot_name).to_xml()
+            )  # Possibly overrides other name (may need to remove other name for plots)
+        if self.color is not None:
+            properties.append(ColorObject("color", *self.color).to_xml())
+        if self.minXRange is not None:
+            properties.append(Int("minXRange", self.minXRange).to_xml())
+        if self.minYRange is not None:
+            properties.append(Int("minYRange", self.minYRange).to_xml())
+        if self.maxXRange is not None:
+            properties.append(Int("maxXRange", self.maxXRange).to_xml())
+        if self.maxYRange is not None:
+            properties.append(Int("maxYRange", self.maxYRange).to_xml())
 
         return properties
