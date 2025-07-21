@@ -147,7 +147,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "pressValue": "press_value",
     "releaseValue": "release_value",
     # Misc attributes
-    "onLabel": "text",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
+    "onLabel": "on_label",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
+    "offLabel": "off_label",
     "arrows": "arrows",
     "fontAlign": "alignment",
     "displayFileName": "displayFileName",
@@ -242,7 +243,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_x: float = 0,
         offset_y: float = 0,
         central_widget: EDMGroup = None,
-        parent_vispvs: List[str] = [],
+        parent_vispvs: set[str] = set(),
     ):
         if pydm_widgets is None:
             pydm_widgets = []
@@ -289,7 +290,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 # used_classes.add(type(pydm_group).__name__)
 
                 if "visPv" in obj.properties:
-                    parent_vispvs.append(obj.properties["visPv"])
+                    parent_vispvs.add(obj.properties["visPv"])
 
                 """traverse_group(
                     obj,
@@ -327,7 +328,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
 
                 if parent_vispvs:
-                    setattr(widget, "visPvList", parent_vispvs)
+                    setattr(widget, "visPvList", list(parent_vispvs))
 
                 # Set mapped attributes.
                 for edm_attr, value in obj.properties.items():
