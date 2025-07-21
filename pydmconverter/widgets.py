@@ -310,6 +310,28 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
     This class does not add any extra properties beyond those provided by its base classes.
     """
 
+    startAngle: Optional[float] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the drawable widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing arc properties.
+        """
+        self.x -= 4
+        self.width += 4  # TODO:
+        properties: List[ET.Element] = super().generate_properties()
+        if self.startAngle is not None:
+            properties.append(
+                Int("startAngle", int(self.startAngle)).to_xml()
+            )  # TODO: Maybe make a float class (probabaly unnecessary)
+        properties.append(Int("spanAngle", 180).to_xml())
+
+        return properties
+
 
 @dataclass
 class QPushButton(Legible):

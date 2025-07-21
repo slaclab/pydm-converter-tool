@@ -155,6 +155,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "embeddedWidth": "embeddedWidth",
     "numBits": "numBits",
     "indicatorColor": "indicatorColor",
+    "startAngle": "startAngle",
 }
 
 # Configure logging
