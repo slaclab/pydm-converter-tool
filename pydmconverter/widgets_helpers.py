@@ -1139,7 +1139,7 @@ class Tangible(XMLSerializableMixin):
             for elem in self.visPvList:
                 properties.append(Str("visPv", elem).to_xml())
         if self.visPv is not None:
-            properties.append(Str("visPv", elem).to_xml())
+            properties.append(Str("visPv", self.visPv).to_xml())
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         return properties
 
@@ -1288,6 +1288,7 @@ class StyleSheetObject(Tangible):
     foreground_color: Optional[Tuple[int, int, int, int]] = None
     background_color: Optional[Tuple[int, int, int, int]] = None
     useDisplayBg: Optional[bool] = None
+    name: Optional[str] = ""
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1308,9 +1309,17 @@ class StyleSheetObject(Tangible):
             styles["background-color"] = self.background_color
         if self.foreground_color is not None:
             styles["color"] = self.foreground_color
+        if self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"):
+            styles["border"] = "1px solid black"
         properties.append(StyleSheet(styles).to_xml())
 
         return properties
+
+
+@dataclass
+class OnOffObject(Tangible):
+    on_color: Optional[Tuple[int, int, int, int]] = None
+    off_color: Optional[Tuple[int, int, int, int]] = None
 
 
 @dataclass

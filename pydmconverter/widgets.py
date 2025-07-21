@@ -334,7 +334,9 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
 
 
 @dataclass
-class QPushButton(Legible):
+class QPushButton(
+    Legible, StyleSheetObject
+):  # TODO: This creates a stylesheet for children classes but is overriden later (may need to remove to prevent repeated properties)
     """
     QPushButton is a button widget that supports text, icons, and various behavioral properties.
 
@@ -383,8 +385,8 @@ class QPushButton(Legible):
         """
         properties: List[ET.Element] = super().generate_properties()
 
-        if self.text is not None:
-            properties.append(Str("text", self.text).to_xml())
+        # if self.text is not None:
+        #    properties.append(Str("text", self.text).to_xml())
         if self.auto_default is not None:
             properties.append(Bool("autoDefault", self.auto_default).to_xml())
         if self.default is not None:
@@ -534,7 +536,9 @@ class PyDMPushButton(PyDMPushButtonBase):
             or self.background_color is not None
             or (
                 isinstance(self.name, str)
-                and (self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"))
+                and (
+                    self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass")
+                )  # TODO: Eventually remove this whole stylesheet property
             )
         ):
             styles: Dict[str, any] = {}
