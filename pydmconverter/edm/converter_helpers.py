@@ -227,7 +227,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     color_list_filepath = search_color_list()
     color_list_dict = parse_colors_list(color_list_filepath)
 
-    pip_objects = find_objects(parser.ui, "activepipclass")
+    pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
 
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
@@ -418,6 +418,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget.width = max(1, int(width))
                 widget.height = max(1, int(height))
 
+                if type(widget).__name__ == "PyDMPushButton" and (
+                    ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+                    or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                ):
+                    off_button = create_off_button(widget)
+                    pydm_widgets.append(off_button)
+
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
                     pad = widget.pen_width or 1
                     widget.width = int(widget.width) + pad
@@ -468,6 +475,26 @@ def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
         elif obj.name.lower() == obj_name.lower():
             objects.append(obj)
     return objects
+
+
+def create_off_button(widget: PyDMPushButton):
+    """
+    Given a PyDMPushButton with distinct off/on states, clone it into an "off" version.
+    Modifies relevant visual attributes and appends a flag to identify it.
+    """
+    off_button = copy.deepcopy(widget)
+    off_button.name = widget.name + "_off"
+    if hasattr(widget, "off_color"):
+        off_button.on_color = widget.off_color
+    if hasattr(widget, "off_label"):
+        off_button.on_label = widget.off_label
+        off_button.text = widget.off_label
+        widget.text = widget.on_label
+    setattr(off_button, "is_off_button", True)
+    setattr(widget, "is_off_button", False)
+    logger.info(f"Created off-button: {off_button.name} based on {widget.name}")
+
+    return off_button
 
 
 def populate_tab_bar(obj: EDMObject, widget):

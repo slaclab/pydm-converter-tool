@@ -17,6 +17,7 @@ from pydmconverter.widgets_helpers import (
     OnOffColor,
     ColorObject,
     Brush,
+    BoolRule,
 )
 import logging
 
@@ -510,6 +511,10 @@ class PyDMPushButton(PyDMPushButtonBase):
     foreground_color: Optional[Tuple[int, int, int, int]] = None
     background_color: Optional[Tuple[int, int, int, int]] = None
     useDisplayBg: Optional[bool] = None
+    on_label: Optional[str] = None
+    off_label: Optional[str] = None
+    is_off_button: Optional[bool] = None
+    text: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -535,6 +540,15 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
+        if not self.is_off_button:
+            properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+            properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+        elif self.is_off_button:
+            properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+            properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+        if self.on_label is not None:
+            properties.append(Str("text", self.on_label).to_xml())
+
         if (
             self.on_color is not None
             or self.foreground_color is not None
@@ -552,7 +566,7 @@ class PyDMPushButton(PyDMPushButtonBase):
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
             if (
-                self.on_color is not None and self.off_color == self.on_color
+                self.on_color is not None
             ):  # TODO: find if on_color/background_color should take precedent (they are used for diff edm classes anyway) #TODO: Replace with OnOffColor class eventually
                 styles["background-color"] = self.on_color
             elif self.background_color is not None and self.useDisplayBg is None:

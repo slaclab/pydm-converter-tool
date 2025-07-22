@@ -770,8 +770,8 @@ class BoolRule(XMLConvertible):
     notes: Optional[str] = ""
 
     def to_xml(self):
-        show_on_true_string = "True if ch[0] else False"
-        show_on_false_string = "False if ch[0] else True"
+        show_on_true_string = "ch[0]==1"
+        show_on_false_string = "ch[0]!=1"
         expression = show_on_true_string if self.show_on_true else show_on_false_string
 
         output_string = (
@@ -790,7 +790,7 @@ class BoolRule(XMLConvertible):
             '"notes": "{self.notes}"'
             "}]"
         )
-        return Str("rules", output_string)
+        return Str("rules", output_string).to_xml()
 
 
 @dataclass
@@ -846,7 +846,7 @@ class StyleSheet(XMLConvertible):
         string_elem = ET.SubElement(prop, "string")
         style_str: str = self.to_style_string()
         if "background-color" not in self.styles:
-            style_str += "background-color: transparent;"
+            style_str += "background-color: none;"
         string_elem.text = style_str
         return prop
 
@@ -1154,8 +1154,8 @@ class Tangible(XMLSerializableMixin):
     y: int = 0
     width: int = 0
     height: int = 0
-    visPvList: Optional[list] = None
-    visPv: Optional[str] = None
+    # visPvList: Optional[list] = None
+    # visPv: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1167,11 +1167,6 @@ class Tangible(XMLSerializableMixin):
             A list containing the geometry property.
         """
         properties: List[etree.Element] = []
-        if self.visPvList is not None:
-            for elem in self.visPvList:
-                properties.append(Str("visPv", elem).to_xml())
-        if self.visPv is not None:
-            properties.append(Str("visPv", self.visPv).to_xml())
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         return properties
 
@@ -1229,6 +1224,8 @@ class Controllable(Tangible):
 
     channel: Optional[str] = None
     pydm_tool_tip: Optional[str] = None
+    visPvList: Optional[list] = None
+    visPv: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1244,6 +1241,15 @@ class Controllable(Tangible):
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
+        if self.visPvList is not None:
+            for elem in self.visPvList:
+                # properties.append(Str("visPv", elem).to_xml())
+                properties.append(BoolRule("Visible", elem, True, True).to_xml())
+                # properties.append(BoolRule("Enable", elem, True, True).to_xml())
+        if self.visPv is not None:
+            # properties.append(Str("visPv", self.visPv).to_xml())
+            properties.append(BoolRule("Visible", self.visPv, True, True).to_xml())
+            # properties.append(BoolRule("Enable", self.visPv, True, True).to_xml())
         return properties
 
 
