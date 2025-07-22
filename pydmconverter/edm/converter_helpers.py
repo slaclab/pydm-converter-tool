@@ -71,7 +71,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "activecoeftableclass": PyDMWaveformTable,
     "byteclass": PyDMByteIndicator,
     "textentryclass": PyDMLineEdit,
-    "activextextdspclass:noedit": PyDMLabel,
+    "activextextdspclassnoedit": PyDMLabel,
     "activearcclass": PyDMDrawingArc,
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
     # "xygraphclass": PyDMScatterPlot

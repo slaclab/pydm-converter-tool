@@ -762,6 +762,38 @@ class Color(XMLConvertible):
 
 
 @dataclass
+class BoolRule(XMLConvertible):
+    rule_type: str
+    channel: str
+    initial_value: Optional[bool] = True
+    show_on_true: Optional[bool] = True
+    notes: Optional[str] = ""
+
+    def to_xml(self):
+        show_on_true_string = "True if ch[0] else False"
+        show_on_false_string = "False if ch[0] else True"
+        expression = show_on_true_string if self.show_on_true else show_on_false_string
+
+        output_string = (
+            "[{"
+            f'"name": "{self.rule_type}_rule", '
+            f'"property": "{self.rule_type}", '
+            f'"initial_value": "{self.initial_value}", '
+            f'"expression": "{expression}", '
+            '"channels": ['
+            "{"
+            f'"channel": "{self.channel}", '
+            '"trigger": true, '
+            '"use_enum": true'
+            "}"
+            "], "
+            '"notes": "{self.notes}"'
+            "}]"
+        )
+        return Str("rules", output_string)
+
+
+@dataclass
 class RGBAStyleSheet(XMLConvertible):
     red: int
     green: int

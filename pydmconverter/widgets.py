@@ -154,6 +154,8 @@ class QLabel(Legible, StyleSheetObject):
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
             properties.append(Bool("showUnits", self.show_units).to_xml())
+        elif self.name.startswith("TextupdateClass"):
+            properties.append(Bool("showUnits", "true").to_xml())
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
@@ -500,6 +502,9 @@ class PyDMPushButton(PyDMPushButtonBase):
     relative_change: Optional[bool] = None
     write_when_release: Optional[bool] = None
     on_color: Optional[Tuple[int, int, int, int]] = (
+        None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
+    )
+    off_color: Optional[Tuple[int, int, int, int]] = (
         None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
     )
     foreground_color: Optional[Tuple[int, int, int, int]] = None
