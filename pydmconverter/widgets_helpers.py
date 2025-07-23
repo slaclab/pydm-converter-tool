@@ -367,6 +367,21 @@ class Str(XMLConvertible):
 
 
 @dataclass
+class StringList(XMLConvertible):
+    name: str
+    items: List[str]
+
+    def to_xml(self) -> etree.Element:
+        prop = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        stringlist = etree.SubElement(prop, "stringlist")
+
+        for item in self.items:
+            etree.SubElement(stringlist, "string").text
+
+        return prop
+
+
+@dataclass
 class Enum(XMLConvertible):
     """
     Represents an enumeration property.
@@ -770,8 +785,8 @@ class BoolRule(XMLConvertible):
     notes: Optional[str] = ""
 
     def to_xml(self):
-        show_on_true_string = "ch[0]==1"
-        show_on_false_string = "ch[0]!=1"
+        show_on_true_string = "True if ch[0]==1 else False"
+        show_on_false_string = "True if ch[0]!=1 else False"
         expression = show_on_true_string if self.show_on_true else show_on_false_string
 
         output_string = (

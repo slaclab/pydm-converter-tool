@@ -18,6 +18,7 @@ from pydmconverter.widgets_helpers import (
     ColorObject,
     Brush,
     BoolRule,
+    StringList,
 )
 import logging
 
@@ -676,6 +677,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
     macros: Optional[str] = None
     open_in_new_window: Optional[bool] = None
     follow_symlinks: Optional[bool] = None
+    displayFileName = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -702,7 +704,23 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(
             Bool("showIcon", False).to_xml()
         )  # TODO: Make sre that this will not need to be shown in other examples
+        if (
+            self.displayFileName is not None and self.displayFileName
+        ):  # TODO: Come back and find out why sometimes an empty list
+            converted_filename = self.convert_filetype(self.displayFileName[0])
+            properties.append(Str("filename", converted_filename).to_xml())
         return properties
+
+    def convert_filetype(self, file_string: str) -> None:
+        """
+        Converts file strings of .<type> to .ui
+        """
+        filearr = file_string.split(".")
+        if len(filearr) > 1:
+            filename = ".".join(filearr[:-1])
+        else:
+            filename = file_string
+        return f"{filename}.ui"
 
 
 @dataclass
@@ -886,13 +904,14 @@ class PyDMEnumButton(Alarmable, Legible):
     custom_order_comment: Optional[str] = None
     widget_type: Optional[str] = None
     orientation: Optional[str] = None
-    margin_top: Optional[int] = None
-    margin_bottom: Optional[int] = None
-    margin_left: Optional[int] = None
-    margin_right: Optional[int] = None
-    horizontal_spacing: Optional[int] = None
-    vertical_spacing: Optional[int] = None
+    margin_top: Optional[int] = 0
+    margin_bottom: Optional[int] = 0
+    margin_left: Optional[int] = 0
+    margin_right: Optional[int] = 0
+    horizontal_spacing: Optional[int] = 0
+    vertical_spacing: Optional[int] = 0
     checkable: Optional[bool] = None
+    tab_names: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -942,6 +961,9 @@ class PyDMEnumButton(Alarmable, Legible):
             properties.append(Int("verticalSpacing", self.vertical_spacing).to_xml())
         if self.checkable is not None:
             properties.append(Bool("checkable", self.checkable).to_xml())
+        if self.tab_names is not None:
+            properties.append(StringList("items", self.tab_names).to_xml())
+            # TODO: Add enum here
         return properties
 
 

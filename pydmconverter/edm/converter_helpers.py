@@ -21,6 +21,7 @@ from pydmconverter.widgets import (
     PyDMDrawingArc,
     PyDMWaveformPlot,
 )
+from epics import PV
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
@@ -230,7 +231,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
 
     for pip_object in pip_objects:
+        # create_tabs(pip_object, parser.ui)
         create_embedded_tabs(pip_object, parser.ui)
+
+    # tab_objects = find_objects(parser.ui, "activechoicebuttonclass")
+    # for tab_object in tab_objects:
+    #    create_tabs(tab_object, parser.ui)
+    # create_embedded_tabs(tab_object, parser.ui)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -324,6 +331,17 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     log_unsupported_widget(obj.name)
                     continue
 
+                if obj.name.lower() == "activechoicebuttonclass" and (
+                    "tabs" not in obj.properties or not obj.properties["tab"]
+                ):
+                    channel = search_for_edm_attr(obj, "channel")
+                    if not channel:
+                        logger.warning("Could not find channel in object: {obj.name}")
+                    else:
+                        tab_names = get_channel_tabs(channel)
+                        widget_type = PyDMEnumButton
+                        obj.properties["tab_names"] = tab_names
+
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
                 used_classes.add(type(widget).__name__)
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
@@ -374,7 +392,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     except Exception as e:
                         logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
 
-                if obj.name.lower() == "activechoicebuttonclass":
+                if obj.name.lower() == "activechoicebuttonclass" and widget_type == QTabWidget:
                     populate_tab_bar(obj, widget)
                 if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
@@ -499,11 +517,14 @@ def create_off_button(widget: PyDMPushButton):
 
 def populate_tab_bar(obj: EDMObject, widget):
     tab_names = obj.properties.get("tabs", [])
+    if not tab_names and widget.channel is not None:
+        tab_names = get_channel_tabs(widget.channel)
+        print(tab_names)
     if not tab_names:
         logger.warning(f"No tab names found in {obj.name}. Skipping.")
         return
 
-    if obj.properties["displayFileName"] is not None:
+    if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
         file_list = obj.properties["displayFileName"]
         for index, tab_name in enumerate(tab_names):
             child_widget = QWidget(title=tab_name)
@@ -524,7 +545,14 @@ def populate_tab_bar(obj: EDMObject, widget):
             widget.add_child(child_widget)
 
 
-def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
+def get_channel_tabs(channel: str) -> List[str]:
+    pv = PV(channel)
+    if not pv or not pv.enum_strs:
+        return []
+    return list(pv.enum_strs)
+
+
+def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     """
     If needed, creates tabs from local variables of this embedded display.
 
@@ -532,6 +560,11 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     ----------
     obj : EDMObject
         The activePipClass EDMFileObject instance that will be used to generate tabs and embedded displays. (This object is an activePipClass).
+
+    Returns
+    -------
+    bool
+        Returns true if embedded tabs added, returns false if unable to create embedded tabs
     """
     searched_arr = None
     print(obj.properties.items())
@@ -542,14 +575,14 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
             searched_arr = prop_val.split("=")
             channel_name = prop_val.split("?")[0]
     if int(obj.properties["numDsps"]) <= 1 or searched_arr is None:
-        return None
+        return False
     # channel_name = searched_arr[0]
     string_list = searched_arr[-1]
     channel_list = string_list[1:-1].split(", ")
     tab_names = [item.strip("'") for item in channel_list]
     tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
-        return None
+        return False
 
     tab_widget.properties["tabs"] = tab_names
     tab_widget.properties["displayFileName"] = obj.properties["displayFileName"]
@@ -557,6 +590,7 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> None:
     tab_widget.properties["embeddedWidth"] = obj.width
     # tab_widget.properties["w"] = tab_widget.properties["w"] + obj.properties["w"] #prob not use
     # tab_widget.properties["height"] = tab_widget.properties["height"] + obj.properties["height"]
+    return True
 
 
 def search_group(
@@ -608,6 +642,13 @@ def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
     if widget_type.lower() not in existing_widgets:
         with open(file_path, "a") as file:
             file.write(widget_type.lower() + "\n")
+
+
+def search_for_edm_attr(obj: EDMObject, target_attr: str):
+    for edm_attr, value in obj.properties.items():
+        pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
+        if pydm_attr == target_attr:
+            return value
 
 
 def get_string_value(value: list) -> str:
