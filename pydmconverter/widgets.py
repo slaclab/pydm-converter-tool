@@ -452,8 +452,6 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
         List[ET.Element]
             A list of XML elements representing the PyDMPushButtonBase properties.
         """
-        print("here456")
-        print(self.rules)
         properties: List[ET.Element] = super().generate_properties()
 
         if self.pydm_icon is not None:

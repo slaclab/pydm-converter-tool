@@ -161,6 +161,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "numBits": "numBits",
     "indicatorColor": "indicatorColor",
     "startAngle": "startAngle",
+    "visMin": "visMin",
+    "visMax": "visMax",
 }
 
 # Configure logging
@@ -258,8 +260,19 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
             #    child_vispvs = (parent_vispvs or []) + [obj.properties["visPv"]]
             # else:
             #    child_vispvs = list(parent_vispvs or [])
+            """if "visPv" in obj.properties:
+                child_vispvs = [obj.properties["visPv"]]
+            elif parent_vispvs:
+                child_vispvs = list(parent_vispvs)
+            else:
+                child_vispvs = []"""
+            # if "visPv" in obj.properties:
+            #    child_vispvs = [obj.properties["visPv"]]
+            # else:
+            #    child_vispvs = parent_vispvs[:] if parent_vispvs else []
+
             # if child_vispvs:
-            #    setattr(widget, "visPvList", list(child_vispvs))
+            #   setattr(widget, "visPvList", list(child_vispvs))
 
             if isinstance(obj, EDMGroup):
                 if parent_pydm_group is None:
@@ -302,7 +315,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 # used_classes.add(type(pydm_group).__name__)
 
                 if "visPv" in obj.properties and parent_vispvs:
-                    parent_vispvs.append(obj.properties["visPv"])
+                    curr_vispv = [obj.properties["visPv"]]
+                else:
+                    curr_vispv = []
+
                 # elif "visPv" in obj.properties:
                 # parent_vispvs = set()
                 #    parent_vispvs = [obj.properties["visPv"]]
@@ -328,7 +344,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_x=0,
                     offset_y=0,
                     central_widget=central_widget,
-                    parent_vispvs=parent_vispvs,
+                    # parent_vispvs=parent_vispvs,
+                    parent_vispvs=(parent_vispvs or []) + curr_vispv,
                 )
 
             elif isinstance(obj, EDMObject):
@@ -354,7 +371,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
 
                 if parent_vispvs:
-                    setattr(widget, "visPvList", list(parent_vispvs))
+                    setattr(widget, "visPvList", list(set(parent_vispvs)))
+                    if "IOC:BSY0:MP01:REQBYKIKBRST" in parent_vispvs:
+                        print(widget.name)
+                        breakpoint()
 
                 # Set mapped attributes.
                 for edm_attr, value in obj.properties.items():
