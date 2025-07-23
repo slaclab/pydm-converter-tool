@@ -807,6 +807,48 @@ class BoolRule(XMLConvertible):
         )
         return Str("rules", output_string).to_xml()
 
+    def to_string(self):
+        show_on_true_string = "True if ch[0]==1 else False"
+        show_on_false_string = "True if ch[0]!=1 else False"
+        expression = show_on_true_string if self.show_on_true else show_on_false_string
+
+        output_string = (
+            "{"
+            f'"name": "{self.rule_type}_rule", '
+            f'"property": "{self.rule_type}", '
+            f'"initial_value": "{self.initial_value}", '
+            f'"expression": "{expression}", '
+            '"channels": ['
+            "{"
+            f'"channel": "{self.channel}", '
+            '"trigger": true, '
+            '"use_enum": true'
+            "}"
+            "], "
+            '"notes": "{self.notes}"'
+            "}"
+        )
+        return output_string
+
+
+@dataclass
+class Rules(XMLConvertible):
+    rules: List[Tuple[any]]
+
+    def to_xml(self):
+        bool_rule_types = set(["Visible", "Enable"])
+
+        rule_list = []
+        for rule in self.rules:
+            rule_type, channel, initial_value, show_on_true = rule
+            rule_string = ""
+            if rule_type in bool_rule_types:
+                rule_string = BoolRule(rule_type, channel, initial_value, show_on_true).to_string()
+            if rule_string:
+                rule_list.append(rule_string)
+        output_string = f"[{', '.join(rule_list)}]"
+        return Str("rules", output_string).to_xml()
+
 
 @dataclass
 class RGBAStyleSheet(XMLConvertible):
@@ -1241,6 +1283,8 @@ class Controllable(Tangible):
     pydm_tool_tip: Optional[str] = None
     visPvList: Optional[list] = None
     visPv: Optional[str] = None
+    rules: Optional[List[str]] = field(default_factory=list)
+    text = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1256,15 +1300,22 @@ class Controllable(Tangible):
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
+        if self.text == "Bunch Charge...":
+            print("here2")
+            print(self.visPvList)
+            print(self.visPv)
+            # breakpoint()
         if self.visPvList is not None:
             for elem in self.visPvList:
                 # properties.append(Str("visPv", elem).to_xml())
-                properties.append(BoolRule("Visible", elem, True, True).to_xml())
+                self.rules.append(("Visible", elem, True, True))
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
             # properties.append(Str("visPv", self.visPv).to_xml())
-            properties.append(BoolRule("Visible", self.visPv, True, True).to_xml())
+            self.rules.append(("Visible", self.visPv, True, True))
             # properties.append(BoolRule("Enable", self.visPv, True, True).to_xml())
+        if self.rules:
+            properties.append(Rules(self.rules).to_xml())
         return properties
 
 
@@ -1294,6 +1345,10 @@ class Alarmable(Controllable):
         List[etree.Element]
             A list containing geometry, channel, tooltip, and alarm properties.
         """
+        # print("here567")
+        # print(self.rules)
+        # print(self.name)
+        # breakpoint()
         properties: List[etree.Element] = super().generate_properties()
         properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())

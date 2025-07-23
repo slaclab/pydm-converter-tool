@@ -21,7 +21,6 @@ from pydmconverter.widgets import (
     PyDMDrawingArc,
     PyDMWaveformPlot,
 )
-from epics import PV
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
 import math
@@ -249,12 +248,19 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_x: float = 0,
         offset_y: float = 0,
         central_widget: EDMGroup = None,
-        parent_vispvs: Optional[set[str]] = None,
+        parent_vispvs: Optional[List[str]] = None,
     ):
         if pydm_widgets is None:
             pydm_widgets = []
 
         for obj in edm_group.objects:
+            # if "visPv" in obj.properties:
+            #    child_vispvs = (parent_vispvs or []) + [obj.properties["visPv"]]
+            # else:
+            #    child_vispvs = list(parent_vispvs or [])
+            # if child_vispvs:
+            #    setattr(widget, "visPvList", list(child_vispvs))
+
             if isinstance(obj, EDMGroup):
                 if parent_pydm_group is None:
                     x, y, width, height = transform_edm_to_pydm(
@@ -296,9 +302,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 # used_classes.add(type(pydm_group).__name__)
 
                 if "visPv" in obj.properties and parent_vispvs:
-                    parent_vispvs.add(obj.properties["visPv"])
-                elif "visPv" in obj.properties:
-                    parent_vispvs = set()
+                    parent_vispvs.append(obj.properties["visPv"])
+                # elif "visPv" in obj.properties:
+                # parent_vispvs = set()
+                #    parent_vispvs = [obj.properties["visPv"]]
 
                 """traverse_group(
                     obj,
@@ -321,7 +328,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_x=0,
                     offset_y=0,
                     central_widget=central_widget,
-                    parent_vispvs=copy.deepcopy(parent_vispvs),
+                    parent_vispvs=parent_vispvs,
                 )
 
             elif isinstance(obj, EDMObject):
@@ -545,11 +552,12 @@ def populate_tab_bar(obj: EDMObject, widget):
             widget.add_child(child_widget)
 
 
-def get_channel_tabs(channel: str) -> List[str]:
-    pv = PV(channel)
-    if not pv or not pv.enum_strs:
-        return []
-    return list(pv.enum_strs)
+def get_channel_tabs(channel: str, timeout: float = 0.5) -> List[str]:
+    # pv = PV(channel, connection_timeout=timeout)
+    # pv = PV(channel)
+    # if pv and pv.enum_strs:
+    #    return list(pv.enum_strs)
+    return None
 
 
 def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:

@@ -17,8 +17,7 @@ from pydmconverter.widgets_helpers import (
     OnOffColor,
     ColorObject,
     Brush,
-    BoolRule,
-    StringList,
+    Enum,
 )
 import logging
 
@@ -453,6 +452,8 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
         List[ET.Element]
             A list of XML elements representing the PyDMPushButtonBase properties.
         """
+        print("here456")
+        print(self.rules)
         properties: List[ET.Element] = super().generate_properties()
 
         if self.pydm_icon is not None:
@@ -526,6 +527,18 @@ class PyDMPushButton(PyDMPushButtonBase):
         List[ET.Element]
             A list of XML elements representing the PyDMPushButton properties.
         """
+        if self.is_off_button is not None and not self.is_off_button:
+            self.rules.append(("Visible", self.channel, False, True))
+            self.rules.append(("Enable", self.channel, False, True))
+            # properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+            # properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+        elif self.is_off_button is not None and self.is_off_button:
+            # properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+            # properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+            self.rules.append(("Visible", self.channel, False, False))
+            self.rules.append(("Enable", self.channel, False, False))
+        print(self.rules)
+        print("here")
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
@@ -541,12 +554,12 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
-        if not self.is_off_button:
-            properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-            properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
-        elif self.is_off_button:
-            properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-            properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+        # if not self.is_off_button:
+        #    properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+        #    properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+        # elif self.is_off_button:
+        #    properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
+        #    properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
         if self.on_label is not None:
             properties.append(Str("text", self.on_label).to_xml())
 
@@ -946,7 +959,9 @@ class PyDMEnumButton(Alarmable, Legible):
         if self.widget_type is not None:
             properties.append(Str("widgetType", self.widget_type).to_xml())
         if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation).to_xml())
+            properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
+        elif self.tab_names is not None:
+            properties.append(Enum("orientation", "Qt::Horizontal"))
         if self.margin_top is not None:
             properties.append(Int("marginTop", self.margin_top).to_xml())
         if self.margin_bottom is not None:
@@ -961,9 +976,8 @@ class PyDMEnumButton(Alarmable, Legible):
             properties.append(Int("verticalSpacing", self.vertical_spacing).to_xml())
         if self.checkable is not None:
             properties.append(Bool("checkable", self.checkable).to_xml())
-        if self.tab_names is not None:
-            properties.append(StringList("items", self.tab_names).to_xml())
-            # TODO: Add enum here
+        # if self.tab_names is not None:
+        #    properties.append(StringList("items", self.tab_names).to_xml())
         return properties
 
 
