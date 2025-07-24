@@ -786,34 +786,6 @@ class BoolRule(XMLConvertible):
     visMax: Optional[int] = None
     notes: Optional[str] = ""
 
-    """def to_xml(self):
-        if self.visMin is not None and self.visMax is not None:
-            show_on_true_string = f"True if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else False"
-            show_on_false_string = f"False if ch[0] >= {self.visMin} and ch[0] < {self.visMax} else True"
-        else:
-            show_on_true_string = "True if ch[0]==1 else False"
-            show_on_false_string = "True if ch[0]!=1 else False"
-        expression = show_on_true_string if self.show_on_true else show_on_false_string
-
-        output_string = (
-            "[{"
-            f'"name": "{self.rule_type}_rule", '
-            f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
-            f'"expression": "{expression}", '
-            '"channels": ['
-            "{"
-            f'"channel": "{self.channel}", '
-            '"trigger": true, '
-            '"use_enum": true'
-            "}"
-            "], "
-            '"notes": "{self.notes}"'
-            "}]"
-        )
-        return Str("rules", output_string).to_xml()
-    """
-
     def to_string(self):
         if self.visMin is not None and self.visMax is not None:
             show_on_true_string = f"True if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else False"
@@ -825,7 +797,7 @@ class BoolRule(XMLConvertible):
 
         output_string = (
             "{"
-            f'"name": "{self.rule_type}_rule", '
+            f'"name": "{self.rule_type}_{self.channel}", '
             f'"property": "{self.rule_type}", '
             f'"initial_value": "{self.initial_value}", '
             f'"expression": "{expression}", '
@@ -843,26 +815,81 @@ class BoolRule(XMLConvertible):
 
 
 @dataclass
+class MultiRule(XMLConvertible):
+    rule_type: str
+    rule_list: List[Tuple[str, str, bool, bool, int, int]]
+    initial_value: Optional[bool] = True
+    notes: Optional[str] = ""
+
+    def to_string(self):
+        channel_list = []
+        expression_list = []
+
+        for i, rule in enumerate(self.rule_list):
+            rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+            channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
+            expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
+
+        expression_str = "(" + ") and (".join(expression_list) + ")"
+
+        output_string = (
+            "{"
+            f'"name": "{self.rule_type}_{self.rule_list[0][1]}", '
+            f'"property": "{self.rule_type}", '
+            f'"initial_value": "{self.initial_value}", '
+            f'"expression": "{expression_str}", '
+            f'"channels": [{", ".join(channel_list)}], '
+            f'"notes": "{self.notes}"'
+            "}"
+        )
+        return output_string
+
+    def get_expression(self, index, show_on_true, visMin, visMax):
+        ch = f"ch[{index}]"
+        if visMin is not None and visMax is not None:
+            show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
+            show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+        else:
+            show_on_true_string = f"True if {ch}==1 else False"
+            show_on_false_string = f"True if {ch}!=1 else False"
+
+        return show_on_true_string if show_on_true else show_on_false_string
+
+
+@dataclass
 class Rules(XMLConvertible):
-    rules: List[Tuple[any]]
-    visMin: Optional[int] = None
-    visMax: Optional[int] = None
+    rules: List[Tuple[str, str, bool, bool, int, int]]
+    # visMin: Optional[int] = None
+    # visMax: Optional[int] = None
 
     def to_xml(self):
-        bool_rule_types = set(["Visible", "Enable"])
+        # bool_rule_types = set(["Visible", "Enable"])
 
         rule_list = []
-        for rule in self.rules:
-            rule_type, channel, initial_value, show_on_true = rule
+        rule_variables = self.group_by_rules()
+        """for rule in self.rules:
+            rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
             rule_string = ""
             if rule_type in bool_rule_types:
                 rule_string = BoolRule(
-                    rule_type, channel, initial_value, show_on_true, self.visMin, self.visMax
+                    rule_type, channel, initial_value, show_on_true, visMin, visMax
                 ).to_string()
             if rule_string:
+                rule_list.append(rule_string)"""
+        for rule_type, value in rule_variables.items():
+            if value:
+                rule_string = MultiRule(rule_type, value).to_string()
                 rule_list.append(rule_string)
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
+
+    def group_by_rules(self):
+        bool_rule_types = ["Visible", "Enable"]
+        rule_variables = {key: [] for key in bool_rule_types}
+        for rule in self.rules:
+            if rule[0] in rule_variables:
+                rule_variables[rule[0]].append(rule)
+        return rule_variables
 
 
 @dataclass
@@ -1296,11 +1323,12 @@ class Controllable(Tangible):
 
     channel: Optional[str] = None
     pydm_tool_tip: Optional[str] = None
-    visPvList: Optional[list] = None
+    visPvList: Optional[List[Tuple[str, int, int]]] = None
     visPv: Optional[str] = None
     rules: Optional[List[str]] = field(default_factory=list)
     visMin: Optional[int] = None
     visMax: Optional[int] = None
+    text = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1316,28 +1344,29 @@ class Controllable(Tangible):
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
-        # if self.text == "Bunch Charge...":
-        #    print("here2")
-        #    print(self.visPvList)
-        #    print(self.visPv)
-        # breakpoint()
+        if self.text == "Bunch Charge...":
+            print("here2")
+            print(self.visPvList)
+            print(self.visPv)
+            breakpoint()
         if self.visPvList is not None:
             print("here45")
             print(self.visPvList)
             print(self.name)
             # breakpoint()
             for elem in self.visPvList:
-                # properties.append(Str("visPv", elem).to_xml())
-                self.rules.append(("Visible", elem, True, True))
+                group_channel, group_min, group_max = elem
+                self.rules.append(("Visible", group_channel, True, True, group_min, group_max))
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
             # properties.append(Str("visPv", self.visPv).to_xml())
-            self.rules.append(("Visible", self.visPv, True, True))
+            self.rules.append(("Visible", self.visPv, True, True, self.visMin, self.visMax))
             # properties.append(BoolRule("Enable", self.visPv, True, True).to_xml())
-        if self.rules and self.visMin is not None and self.visMax is not None:
-            properties.append(Rules(self.rules, float(self.visMin), float(self.visMax)).to_xml())
-        elif self.rules:
-            properties.append(Rules(self.rules).to_xml())
+        # if self.rules and self.visMin is not None and self.visMax is not None:
+        # properties.append(Rules(self.rules, float(self.visMin), float(self.visMax)).to_xml())
+        properties.append(Rules(self.rules).to_xml())
+        # elif self.rules:
+        #    properties.append(Rules(self.rules).to_xml())
         return properties
 
 

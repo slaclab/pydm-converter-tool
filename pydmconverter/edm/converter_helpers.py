@@ -250,8 +250,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_x: float = 0,
         offset_y: float = 0,
         central_widget: EDMGroup = None,
-        parent_vispvs: Optional[List[str]] = None,
-        parent_vis_range: Optional[Tuple[int, int]] = None,
+        parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
+        # parent_vis_range: Optional[Tuple[int, int]] = None,
     ):
         if pydm_widgets is None:
             pydm_widgets = []
@@ -315,15 +315,17 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 # used_classes.add(type(pydm_group).__name__)
 
-                if "visPv" in obj.properties:
-                    curr_vispv = [obj.properties["visPv"]]
+                if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
+                    curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
+                elif "visPv" in obj.properties:
+                    curr_vispv = [(obj.properties["visPv"], None, None)]
                 else:
                     curr_vispv = []
 
-                if "visMin" in obj.properties and "visMax" in obj.properties:
-                    curr_vis_range = [(obj.properties["visMin"], obj.properties["visMax"])]
-                else:
-                    curr_vis_range = []
+                # if "visMin" in obj.properties and "visMax" in obj.properties:
+                #    curr_vis_range = [(obj.properties["visMin"], obj.properties["visMax"])]
+                # else:
+                #    curr_vis_range = []
 
                 # elif "visPv" in obj.properties:
                 # parent_vispvs = set()
@@ -351,7 +353,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_y=0,
                     central_widget=central_widget,
                     parent_vispvs=(parent_vispvs or []) + curr_vispv,
-                    parent_vis_range=(parent_vis_range or []) + curr_vis_range,
+                    # parent_vis_range=(parent_vis_range or []) + curr_vis_range,
                 )
 
             elif isinstance(obj, EDMObject):
@@ -378,9 +380,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if parent_vispvs:
                     setattr(widget, "visPvList", list(parent_vispvs))
-                    if "IOC:BSY0:MP01:REQBYKIKBRST" in parent_vispvs:
-                        print(widget.name)
-                        breakpoint()
+                    # if "IOC:BSY0:MP01:REQBYKIKBRST" in parent_vispvs:
+                    #    print(widget.name)
+                    #    breakpoint()
 
                 # if parent_vis_range:
                 #    setattr(widget, "visPvRange", )
