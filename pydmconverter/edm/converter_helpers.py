@@ -380,10 +380,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if parent_vispvs:
                     setattr(widget, "visPvList", list(parent_vispvs))
-                    # if "IOC:BSY0:MP01:REQBYKIKBRST" in parent_vispvs:
-                    #    print(widget.name)
-                    #    breakpoint()
+                    if "IOC:BSY0:MP01:REQBYKIKBRST" in parent_vispvs:
+                        print(widget.name)
+                        breakpoint()
 
+                if "visPv" in obj.properties and obj.properties["visPv"] == "IOC:BSY0:MP01:REQBYKIKBRST":
+                    print("here")
+                    print(obj)
+                    breakpoint()
                 # if parent_vis_range:
                 #    setattr(widget, "visPvRange", )
 

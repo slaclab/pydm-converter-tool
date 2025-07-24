@@ -876,10 +876,17 @@ class Rules(XMLConvertible):
                 ).to_string()
             if rule_string:
                 rule_list.append(rule_string)"""
+        test = False
         for rule_type, value in rule_variables.items():
             if value:
                 rule_string = MultiRule(rule_type, value).to_string()
                 rule_list.append(rule_string)
+                if value[0][1] == "FBCK:FB04:LG01:MODE":
+                    test = True
+        if test:
+            print(rule_variables)
+            print("rule_list")
+            breakpoint()
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
 

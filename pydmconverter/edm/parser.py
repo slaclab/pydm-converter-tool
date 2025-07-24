@@ -153,12 +153,21 @@ class EDMFileParser:
                 )
 
                 # Extract header and body
-                group_header = text[begin_obj_props + len("beginObjectProperties") : end_obj_props]
+                # group_header = text[begin_obj_props + len("beginObjectProperties") : end_obj_props]
+                group_header = (
+                    text[begin_obj_props + len("beginObjectProperties") : begin_group_idx]
+                    + text[end_group_idx + len("endGroup") : end_obj_props]
+                )
                 group_body = text[begin_group_idx + len("beginGroup") : end_group_idx]
-                print("blah", end_obj_props, "blah2", group_header, "blah3", group_body)
+                # print("blah", end_obj_props, "blah2", group_header, "blah3", group_body)
 
                 size_props = self.get_size_properties(group_header)
                 properties = self.get_object_properties(group_header)
+                # if "visPv" in properties and properties["visPv"] == "IOC:BSY0:MP01:REQBYKIKBRST":
+                # if "visPv" in properties:
+                #    print("here")
+                #    print(group_header)
+                #    breakpoint()
 
                 group = EDMGroup(**size_props)
                 group.properties = properties

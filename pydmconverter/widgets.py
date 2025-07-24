@@ -528,17 +528,14 @@ class PyDMPushButton(PyDMPushButtonBase):
             A list of XML elements representing the PyDMPushButton properties.
         """
         if self.is_off_button is not None and not self.is_off_button:
-            self.rules.append(("Visible", self.channel, False, True, self.visMin, self.visMax))
-            self.rules.append(("Enable", self.channel, False, True, self.visMin, self.visMax))
-            # properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-            # properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
+            # self.rules.append(("Visible", self.channel, False, True, self.visMin, self.visMax))
+            # self.rules.append(("Enable", self.channel, False, True, self.visMin, self.visMax))
+            self.rules.append(("Visible", self.channel, False, True, None, None))
+            self.rules.append(("Enable", self.channel, False, True, None, None))
         elif self.is_off_button is not None and self.is_off_button:
-            # properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-            # properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
-            self.rules.append(("Visible", self.channel, False, False, self.visMin, self.visMax))
-            self.rules.append(("Enable", self.channel, False, False, self.visMin, self.visMax))
-        print(self.rules)
-        print("here")
+            self.rules.append(("Visible", self.channel, False, False, None, None))
+            self.rules.append(("Enable", self.channel, False, False, None, None))
+
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
