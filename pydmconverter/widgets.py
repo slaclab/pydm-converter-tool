@@ -715,8 +715,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
             properties.append(Str("titles", self.titles).to_xml())
         if self.macros is not None:
             properties.append(Str("macros", self.macros).to_xml())
-        if self.open_in_new_window is not None:
-            properties.append(Bool("openInNewWindow", self.open_in_new_window).to_xml())
+        # if self.open_in_new_window is not None:
+        properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
         properties.append(
@@ -724,6 +724,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         )  # TODO: Make sre that this will not need to be shown in other examples
         if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
+            # print(converted_filename)
+            # breakpoint()
             properties.append(StringList("filenames", [converted_filename]).to_xml())
         return properties
 

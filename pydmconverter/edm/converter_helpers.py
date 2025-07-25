@@ -20,6 +20,7 @@ from pydmconverter.widgets import (
     PyDMByteIndicator,
     PyDMDrawingArc,
     PyDMWaveformPlot,
+    PyDMScaleIndicator,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 import logging
@@ -57,6 +58,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activepipclass": PyDMEmbeddedDisplay,
     "activeexitbuttonclass": QPushButton,
     "shellcmdclass": QPushButton,  # may need to change
+    # "shellcmdclass": PyDMShellCommand,  # may need to change
     "textupdateclass": PyDMLabel,
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
@@ -75,6 +77,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activearcclass": PyDMDrawingArc,
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
     # "xygraphclass": PyDMScatterPlot
+    "activeIndicatorClass": PyDMScaleIndicator,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -163,6 +166,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "startAngle": "startAngle",
     "visMin": "visMin",
     "visMax": "visMax",
+    "tab_names": "tab_names",
+    "hide_on_disconnect_channel": "hide_on_disconnect_channel",
 }
 
 # Configure logging
@@ -367,12 +372,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     "tabs" not in obj.properties or not obj.properties["tab"]
                 ):
                     channel = search_for_edm_attr(obj, "channel")
+
                     if not channel:
                         logger.warning("Could not find channel in object: {obj.name}")
                     else:
                         tab_names = get_channel_tabs(channel)
                         widget_type = PyDMEnumButton
                         obj.properties["tab_names"] = tab_names
+                        obj.properties["hide_on_disconnect_channel"] = channel
 
                 widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
                 used_classes.add(type(widget).__name__)

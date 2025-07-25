@@ -376,7 +376,8 @@ class StringList(XMLConvertible):
         stringlist = etree.SubElement(prop, "stringlist")
 
         for item in self.items:
-            etree.SubElement(stringlist, "string").text
+            string_el = etree.SubElement(stringlist, "string")
+            string_el.text = item
 
         return prop
 
@@ -817,24 +818,33 @@ class BoolRule(XMLConvertible):
 @dataclass
 class MultiRule(XMLConvertible):
     rule_type: str
-    rule_list: List[Tuple[str, str, bool, bool, int, int]]
-    initial_value: Optional[bool] = True
+    rule_list: Optional[List[Tuple[str, str, bool, bool, int, int]]] = None
+    hide_on_disconnect_channel: Optional[str] = None
+    initial_value: Optional[bool] = False
     notes: Optional[str] = ""
 
     def to_string(self):
         channel_list = []
         expression_list = []
-
-        for i, rule in enumerate(self.rule_list):
-            rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-            channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-            expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
-
+        if self.rule_list is not None:
+            for i, rule in enumerate(self.rule_list):
+                rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
+                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
+        if self.hide_on_disconnect_channel is not None:
+            print("453545")
+            new_index = len(self.rule_list)  # Start at the index after the current one
+            expression_list.append(self.get_hide_on_disconnect_expression(new_index))
+            channel_list.append(
+                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
+            )
+        if not expression_list:
+            return ""
         expression_str = "(" + ") and (".join(expression_list) + ")"
 
         output_string = (
             "{"
-            f'"name": "{self.rule_type}_{self.rule_list[0][1]}", '
+            f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
             f'"initial_value": "{self.initial_value}", '
             f'"expression": "{expression_str}", '
@@ -855,31 +865,28 @@ class MultiRule(XMLConvertible):
 
         return show_on_true_string if show_on_true else show_on_false_string
 
+    def get_hide_on_disconnect_expression(self, index):
+        ch = f"ch[{index}]"
+        return f"(True if {ch} is not None else False)"
+
 
 @dataclass
 class Rules(XMLConvertible):
     rules: List[Tuple[str, str, bool, bool, int, int]]
-    # visMin: Optional[int] = None
-    # visMax: Optional[int] = None
+    hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
         # bool_rule_types = set(["Visible", "Enable"])
-
         rule_list = []
         rule_variables = self.group_by_rules()
-        """for rule in self.rules:
-            rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-            rule_string = ""
-            if rule_type in bool_rule_types:
-                rule_string = BoolRule(
-                    rule_type, channel, initial_value, show_on_true, visMin, visMax
-                ).to_string()
-            if rule_string:
-                rule_list.append(rule_string)"""
+
+        print(vars(self), rule_variables)
         for rule_type, value in rule_variables.items():
             if value:
-                rule_string = MultiRule(rule_type, value).to_string()
+                rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
                 rule_list.append(rule_string)
+            elif rule_type == "Visible":
+                rule_list.append(MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string())
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
 
@@ -1331,6 +1338,7 @@ class Controllable(Tangible):
     visMin: Optional[int] = None
     visMax: Optional[int] = None
     text = None
+    hide_on_disconnect_channel: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1357,7 +1365,7 @@ class Controllable(Tangible):
             # properties.append(BoolRule("Enable", self.visPv, True, True).to_xml())
         # if self.rules and self.visMin is not None and self.visMax is not None:
         # properties.append(Rules(self.rules, float(self.visMin), float(self.visMax)).to_xml())
-        properties.append(Rules(self.rules).to_xml())
+        properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
         # elif self.rules:
         #    properties.append(Rules(self.rules).to_xml())
         return properties
