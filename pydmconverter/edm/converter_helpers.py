@@ -77,7 +77,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activearcclass": PyDMDrawingArc,
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
     # "xygraphclass": PyDMScatterPlot
-    "activeIndicatorClass": PyDMScaleIndicator,
+    "activeindicatorclass": PyDMScaleIndicator,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -162,12 +162,15 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "embeddedHeight": "embeddedHeight",
     "embeddedWidth": "embeddedWidth",
     "numBits": "numBits",
-    "indicatorColor": "indicatorColor",
     "startAngle": "startAngle",
     "visMin": "visMin",
     "visMax": "visMax",
     "tab_names": "tab_names",
     "hide_on_disconnect_channel": "hide_on_disconnect_channel",
+    "flipScale": "flipScale",
+    "indicatorColor": "indicatorColor",
+    "majorTicks": "majorTicks",
+    "minorTicks": "minorTicks",
 }
 
 # Configure logging

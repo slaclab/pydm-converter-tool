@@ -117,6 +117,9 @@ class XMLSerializableMixin(XMLConvertible):
         )
 
         properties: List[etree.Element] = self.generate_properties()
+        print("here")
+        print(vars(self))
+        print("here2")
         for prop in properties:
             widget.append(prop)
 

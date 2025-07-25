@@ -367,7 +367,6 @@ class QPushButton(
         A class variable tracking the number of QPushButton instances.
     """
 
-    text: Optional[str] = None
     auto_default: Optional[bool] = None
     default: Optional[bool] = None
     flat: Optional[bool] = None
@@ -1437,31 +1436,15 @@ class PyDMByteIndicator(Alarmable):
         return properties
 
 
-@dataclass
+"""@dataclass
 class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
-    """
-    Represents a scale indicator widget that shows a bar with an orientation and optional flipping.
 
-    Attributes:
-        orientation (Optional[str]): The orientation of the scale ('Horizontal' or 'Vertical').
-        indicatorColor (Optional[Tuple[int, int, int, int]]): RGBA color of the scale bar.
-        flipScale (Optional[bool]): Whether to flip the scale direction.
-    """
 
     orientation: Optional[str] = None
     indicatorColor: Optional[Tuple[int, int, int, int]] = None
     flipScale: Optional[bool] = False
 
     def generate_properties(self) -> List[ET.Element]:
-        """
-        Generates a list of XML elements representing the scale indicator's properties.
-
-        Note:
-            The "flipScale" property is always included, as scaleIndicator does not load properly without it.
-
-        Returns:
-            List[ET.Element]: List of XML elements for serialization.
-        """
 
         properties: List[ET.Element] = super().generate_properties()
 
@@ -1472,6 +1455,7 @@ class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
         properties.append(Bool("flipScale", self.flipScale).to_xml())  # The bar will not show up without this attribute
 
         return properties
+"""
 
 
 @dataclass
@@ -1503,5 +1487,61 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMScaleIndicator(Alarmable):
+    showUnits: Optional[bool] = None
+    showLimits: Optional[bool] = False
+    showValue: Optional[bool] = False
+    flipScale: Optional[bool] = None
+    precision: Optional[int] = None
+    # numDivisions: Optional[int] = None
+    minorTicks: Optional[int] = None
+    majorTicks: Optional[int] = None
+    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the scale indicator's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """  # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
+        self.height += 20
+        self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.showUnits is not None:
+            properties.append(Bool("showUnits", self.showUnits).to_xml())
+        # if self.showLimits is not None:
+        #    properties.append(Bool("showLimits", self.showLimits).to_xml())
+        # if self.showValue is not None:
+        #    properties.append(Bool("showValue", self.showValue).to_xml())
+        if self.flipScale is not None:
+            properties.append(Bool("flipScale", self.flipScale).to_xml())
+        if self.precision is not None:
+            properties.append(Int("precision", self.precision).to_xml())
+        if self.minorTicks is not None or self.majorTicks is not None:
+            properties.append(Int("numDivisions", int(self.minorTicks or 0) + int(self.majorTicks or 0)).to_xml())
+        if self.indicatorColor is not None:
+            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
+        # if self.background_color is not None:
+        #    styles: Dict[str, any] = {}
+        #    styles["color"] = self.background_color
+        #    properties.append(StyleSheet(styles).to_xml())
+        if self.background_color is not None:
+            properties.append(ColorObject("backgroundColor", *self.background_color).to_xml())
+        if self.foreground_color is not None:
+            properties.append(ColorObject("tickColor", *self.foreground_color).to_xml())
+        properties.append(TransparentBackground().to_xml())
+        # properties.append(ColorObject("tickColor", 255, 255, 255).to_xml())
+        properties.append(Bool("showTicks", True).to_xml())
+        properties.append(Bool("showValue", self.showValue).to_xml())
+        properties.append(Bool("showLimits", self.showLimits).to_xml())
 
         return properties

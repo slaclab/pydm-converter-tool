@@ -39,9 +39,9 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMEnumButton": {"extends": "QWidget", "header": "pydm.widgets.enum_button", "container": ""},
     "PyDMByteIndicator": {"extends": "QWidget", "header": "pydm.widgets.byte", "container": ""},
     "PyDMLineEdit": {"extends": "QLineEdit", "header": "pydm.widgets.line_edit", "container": ""},
-    "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
     "PyDMDrawingArc": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMWaveformPlot": {"extends": "QWidget", "header": "pydm.widgets.waveformplot", "container": ""},
+    "PyDMScaleIndicator": {"extends": "QFrame", "header": "pydm.widgets.scale", "container": ""},
 }
 
 
