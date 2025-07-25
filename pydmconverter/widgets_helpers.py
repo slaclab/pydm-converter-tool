@@ -876,17 +876,10 @@ class Rules(XMLConvertible):
                 ).to_string()
             if rule_string:
                 rule_list.append(rule_string)"""
-        test = False
         for rule_type, value in rule_variables.items():
             if value:
                 rule_string = MultiRule(rule_type, value).to_string()
                 rule_list.append(rule_string)
-                if value[0][1] == "FBCK:FB04:LG01:MODE":
-                    test = True
-        if test:
-            print(rule_variables)
-            print("rule_list")
-            breakpoint()
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
 
@@ -896,6 +889,8 @@ class Rules(XMLConvertible):
         for rule in self.rules:
             if rule[0] in rule_variables:
                 rule_variables[rule[0]].append(rule)
+        for rule_name in rule_variables.keys():  # removes repeated tuples
+            rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
 
 
@@ -1351,16 +1346,7 @@ class Controllable(Tangible):
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
-        if self.text == "Bunch Charge...":
-            print("here2")
-            print(self.visPvList)
-            print(self.visPv)
-            breakpoint()
         if self.visPvList is not None:
-            print("here45")
-            print(self.visPvList)
-            print(self.name)
-            # breakpoint()
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
                 self.rules.append(("Visible", group_channel, True, True, group_min, group_max))
