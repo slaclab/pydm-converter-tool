@@ -18,6 +18,7 @@ from pydmconverter.widgets_helpers import (
     ColorObject,
     Brush,
     Enum,
+    StringList,
 )
 import logging
 from epics import PV
@@ -708,8 +709,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties: List[ET.Element] = super().generate_properties()
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
-        if self.filenames is not None:
-            properties.append(Str("filenames", self.filenames).to_xml())
+        # if self.filenames is not None:
+        #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
             properties.append(Str("titles", self.titles).to_xml())
         if self.macros is not None:
@@ -721,11 +722,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(
             Bool("showIcon", False).to_xml()
         )  # TODO: Make sre that this will not need to be shown in other examples
-        if (
-            self.displayFileName is not None and self.displayFileName
-        ):  # TODO: Come back and find out why sometimes an empty list
+        if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
-            properties.append(Str("filename", converted_filename).to_xml())
+            properties.append(StringList("filenames", [converted_filename]).to_xml())
         return properties
 
     def convert_filetype(self, file_string: str) -> None:
