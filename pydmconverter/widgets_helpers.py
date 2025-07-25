@@ -820,7 +820,7 @@ class MultiRule(XMLConvertible):
     rule_type: str
     rule_list: Optional[List[Tuple[str, str, bool, bool, int, int]]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = False
+    initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
     notes: Optional[str] = ""
 
     def to_string(self):
