@@ -117,9 +117,9 @@ class XMLSerializableMixin(XMLConvertible):
         )
 
         properties: List[etree.Element] = self.generate_properties()
-        print("here")
-        print(vars(self))
-        print("here2")
+        # print("here")
+        # print(vars(self))
+        # print("here2")
         for prop in properties:
             widget.append(prop)
 
@@ -365,6 +365,8 @@ class Str(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
+        if isinstance(self.string, list):
+            raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         string_tag.text = self.string
         return prop
 
@@ -379,9 +381,10 @@ class StringList(XMLConvertible):
         stringlist = etree.SubElement(prop, "stringlist")
 
         for item in self.items:
+            if not isinstance(item, str):
+                raise TypeError(f"Expected string in StringList.items, got {type(item)}: {item}")
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
-
         return prop
 
 
@@ -985,6 +988,13 @@ class TransparentBackground(XMLConvertible):
         string_elem = ET.SubElement(prop, "string")
         string_elem.text = style
         return prop
+
+
+@dataclass
+class Curves(XMLConvertible):
+    x_channel: Optional[str] = None
+    y_channel: Optional[str] = None
+    plotColor: Optional[Tuple[int, int, int, int]] = None
 
 
 @dataclass

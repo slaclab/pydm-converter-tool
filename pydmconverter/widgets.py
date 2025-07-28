@@ -723,8 +723,6 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         )  # TODO: Make sre that this will not need to be shown in other examples
         if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
-            # print(converted_filename)
-            # breakpoint()
             properties.append(StringList("filenames", [converted_filename]).to_xml())
         return properties
 
@@ -1460,19 +1458,19 @@ class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
 
 @dataclass
 class PyDMWaveformPlot(Alarmable, StyleSheetObject):
-    y_channel: Optional[str] = None
+    x_channel: Optional[List[str]] = None
+    y_channel: Optional[List[str]] = None
     plot_name: Optional[str] = None
     color: Optional[Tuple[int, int, int, int]] = None
     minXRange: Optional[int] = None
     minYRange: Optional[int] = None
     maxXRange: Optional[int] = None
     maxYRange: Optional[int] = None
+    plotColor: Optional[List[Tuple[int, int, int, int]]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
 
-        if self.y_channel is not None:
-            properties.append(Str("y_channel", self.y_channel).to_xml())
         if self.plot_name is not None:
             properties.append(
                 Str("name", self.plot_name).to_xml()
@@ -1487,8 +1485,50 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
+        if self.x_channel is not None or self.y_channel is not None:
+            properties.append(StringList("curves", self.get_curve_strings()).to_xml())
+        properties.append(Bool("useSharedAxis", True).to_xml())
 
         return properties
+
+    def get_curve_strings(self) -> List[str]:
+        lists = [self.x_channel or [], self.y_channel or [], self.plotColor or []]
+        max_len = max(len(lst) for lst in lists)
+        if self.x_channel is None:
+            self.x_channel = [""] * max_len
+        if self.y_channel is None:
+            self.y_channel = [""] * max_len
+        if self.plotColor is None:
+            self.plotColor = [""] * max_len
+        curve_string_list = []
+        for i in range(max_len):
+            curve_string = (
+                "{"
+                f'"name": "", '
+                f'"x_channel": "{self.x_channel[i]}", '
+                f'"y_channel": "{self.y_channel[i]}", '
+                # f'"color": "rgba{str(self.plotColor[i])}"'
+                # f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                '"color": "cyan"'
+                "}"
+            )
+            curve_string_list.append(curve_string)
+        return curve_string_list
+
+    def rgba_to_hex(self, r, g, b, a=255):
+        """
+        Convert RGBA or RGB to a hex string in #RRGGBBAA format.
+
+        Args:
+            r (int): Red (0–255)
+            g (int): Green (0–255)
+            b (int): Blue (0–255)
+            a (int): Alpha (0–255), default is 255 (opaque)
+
+        Returns:
+            str: Hex color string like "#00e0e0ff"
+        """
+        return f"#{r:02x}{g:02x}{b:02x}{a:02x}"
 
 
 @dataclass

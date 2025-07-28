@@ -144,6 +144,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Scatter plot attributes
     "xChannel": "x_channel",
     "yChannel": "y_channel",
+    "xPv": "x_channel",
+    "yPv": "y_channel",
     "xRange": "x_range",
     "yRange": "y_range",
     "markerStyle": "marker_style",
@@ -171,6 +173,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "indicatorColor": "indicatorColor",
     "majorTicks": "majorTicks",
     "minorTicks": "minorTicks",
+    "plotColor": "plotColor",
 }
 
 # Configure logging
@@ -427,7 +430,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     }
                     if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
-
+                    if edm_attr == "plotColor":
+                        color_list = []
+                        for color in value:
+                            color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
+                        value = color_list
                     try:
                         setattr(widget, pydm_attr, value)
                         logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
