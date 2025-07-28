@@ -174,6 +174,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "majorTicks": "majorTicks",
     "minorTicks": "minorTicks",
     "plotColor": "plotColor",
+    "nullColor": "nullColor",
 }
 
 # Configure logging

@@ -41,7 +41,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMLineEdit": {"extends": "QLineEdit", "header": "pydm.widgets.line_edit", "container": ""},
     "PyDMDrawingArc": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMWaveformPlot": {"extends": "QWidget", "header": "pydm.widgets.waveformplot", "container": ""},
-    "PyDMScaleIndicator": {"extends": "QFrame", "header": "pydm.widgets.scale", "container": ""},
+    "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
 }
 
 
