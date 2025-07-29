@@ -1508,8 +1508,8 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"x_channel": "{self.x_channel[i]}", '
                 f'"y_channel": "{self.y_channel[i]}", '
                 # f'"color": "rgba{str(self.plotColor[i])}"'
-                # f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
-                '"color": "cyan"'
+                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                #'"color": ""'
                 "}"
             )
             curve_string_list.append(curve_string)
@@ -1528,7 +1528,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         Returns:
             str: Hex color string like "#00e0e0ff"
         """
-        return f"#{r:02x}{g:02x}{b:02x}{a:02x}"
+        return f"#{r:02x}{g:02x}{b:02x}"
 
 
 @dataclass
