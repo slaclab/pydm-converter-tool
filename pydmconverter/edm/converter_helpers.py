@@ -743,6 +743,9 @@ def convert_pointsize(pixel_size, dpi: float = 96):
 
 
 def geom_and_local_points(abs_points, pen_width: int = 1):
+    if not abs_points:
+        logger.warning("abs_points is empty for PyDMDrawingPolyLine")  # TODO: Fix this
+        return {}, []
     xs, ys = zip(*abs_points)
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
