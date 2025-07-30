@@ -378,7 +378,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     continue
 
                 if obj.name.lower() == "activechoicebuttonclass" and (
-                    "tabs" not in obj.properties or not obj.properties["tab"]
+                    "tabs" not in obj.properties or not obj.properties["tabs"]
                 ):
                     channel = search_for_edm_attr(obj, "channel")
 
