@@ -152,6 +152,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
+    "fgAlarm": "alarmSensitiveContent",
+    "lineAlarm": "alarmSensitiveContent",
     # Push Button attributes
     "pressValue": "press_value",
     "releaseValue": "release_value",

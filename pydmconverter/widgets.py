@@ -518,6 +518,7 @@ class PyDMPushButton(PyDMPushButtonBase):
     text: Optional[str] = None
     visMin: Optional[int] = None
     visMax: Optional[int] = None
+    pressValue: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -558,12 +559,6 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
-        # if not self.is_off_button:
-        #    properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-        #    properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
-        # elif self.is_off_button:
-        #    properties.append(BoolRule("Visible", self.channel, True, True).to_xml())
-        #    properties.append(BoolRule("Enable", self.channel, True, True).to_xml())
         if self.on_label is not None:
             properties.append(Str("text", self.on_label).to_xml())
 
@@ -1509,7 +1504,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"y_channel": "{self.y_channel[i]}", '
                 # f'"color": "rgba{str(self.plotColor[i])}"'
                 f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
-                #'"color": ""'
                 "}"
             )
             curve_string_list.append(curve_string)
@@ -1526,7 +1520,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             a (int): Alpha (0–255), default is 255 (opaque)
 
         Returns:
-            str: Hex color string like "#00e0e0ff"
+            str: Hex color string like "#00e0e0"
         """
         return f"#{r:02x}{g:02x}{b:02x}"
 
@@ -1552,8 +1546,8 @@ class PyDMScaleIndicator(Alarmable):
         Returns:
             List[ET.Element]: List of XML elements for serialization.
         """  # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
-        self.height += 20
-        self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
+        # self.height += 20
+        # self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
         properties: List[ET.Element] = super().generate_properties()
 
         if self.showUnits is not None:

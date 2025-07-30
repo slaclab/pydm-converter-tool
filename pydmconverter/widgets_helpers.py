@@ -1410,10 +1410,6 @@ class Alarmable(Controllable):
         List[etree.Element]
             A list containing geometry, channel, tooltip, and alarm properties.
         """
-        # print("here567")
-        # print(self.rules)
-        # print(self.name)
-        # breakpoint()
         properties: List[etree.Element] = super().generate_properties()
         properties.append(Bool("alarmSensitiveContent", self.alarm_sensitive_content).to_xml())
         properties.append(Bool("alarmSensitiveBorder", self.alarm_sensitive_border).to_xml())
