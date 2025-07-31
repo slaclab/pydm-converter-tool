@@ -78,6 +78,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
     # "xygraphclass": PyDMScatterPlot
     "activeindicatorclass": PyDMScaleIndicator,
+    "activesymbolclass": PyDMEmbeddedDisplay,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -723,7 +724,8 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-    pointsize = math.floor(convert_pointsize(float(size_str), 100))
+    # pointsize = math.floor(convert_pointsize(float(size_str), 110))
+    pointsize = new_convert_pointsize(float(size_str))
 
     return {
         "family": family,
@@ -740,6 +742,11 @@ def convert_pointsize(pixel_size, dpi: float = 96):
     """
     point_size = pixel_size * 72 / dpi
     return point_size
+
+
+def new_convert_pointsize(pixel_size):
+    point_size = pixel_size * 37 / 72  # Recieved these numbers from aribtrary test
+    return math.floor(point_size)
 
 
 def geom_and_local_points(abs_points, pen_width: int = 1):
