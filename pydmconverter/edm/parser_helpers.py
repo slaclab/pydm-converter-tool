@@ -370,7 +370,8 @@ def loc_conversion(edm_string: str) -> str:
             value = type_and_value
             type_char = "i"
         except ValueError:
-            raise ValueError("Invalid EDM format: Missing ':' separator")
+            return None  # TODO: Come back and fix
+        #    raise ValueError("Invalid EDM format: Missing ':' separator")
 
     type_mapping = {
         "d": "float",
@@ -462,8 +463,11 @@ def replace_calc_and_loc_in_edm_content(
                 full_url = f"loc://{cleaned_pv}"
                 short_url = full_url
             else:
-                full_url = loc_conversion(edm_pv)
-                short_url = full_url.split("?", 1)[0]
+                full_url = loc_conversion(edm_pv)  # TODO: remove the ifs later
+                if full_url:
+                    short_url = full_url.split("?", 1)[0]
+                else:
+                    full_url, short_url = "", ""
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
         else:
