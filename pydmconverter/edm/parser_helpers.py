@@ -365,7 +365,12 @@ def loc_conversion(edm_string: str) -> str:
     try:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
-        raise ValueError("Invalid EDM format: Missing ':' separator")
+        try:
+            int(type_and_value)
+            value = type_and_value
+            type_char = "i"
+        except ValueError:
+            raise ValueError("Invalid EDM format: Missing ':' separator")
 
     type_mapping = {
         "d": "float",
