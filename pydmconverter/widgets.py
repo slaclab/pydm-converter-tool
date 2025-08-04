@@ -316,6 +316,7 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
     """
 
     startAngle: Optional[float] = None
+    spanAngle: Optional[int] = 180
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -333,7 +334,10 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
             properties.append(
                 Int("startAngle", int(self.startAngle)).to_xml()
             )  # TODO: Maybe make a float class (probabaly unnecessary)
-        properties.append(Int("spanAngle", 180).to_xml())
+        # if self.spanAngle is not None:
+        #    properties.append(Int("spanAngle", self.spanAngle))
+        # else:
+        properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
         return properties
 
@@ -1058,6 +1062,7 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
 
     points: Optional[List[str]] = None
     arrows: Optional[str] = None
+    closePolygon: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1075,17 +1080,19 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             20  # TODO: May need to come back and avoid hardcoding if it is possible to have non-arrow functions
         )
         properties: List[ET.Element] = super().generate_properties()
-
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
             stringlist = ET.SubElement(points_prop, "stringlist")
             for point in self.points:
+                print(point)
                 point = ", ".join(str(int(x.strip()) + 10) for x in point.split(","))
                 string_el = ET.SubElement(stringlist, "string")
                 string_el.text = point
-
+            if self.closePolygon is not None:
+                startPoint = ", ".join(str(int(x.strip()) + 10) for x in self.points[0].split(","))
+                string_el = ET.SubElement(stringlist, "string")
+                string_el.text = startPoint
             properties.append(points_prop)
-
         return properties
 
 
