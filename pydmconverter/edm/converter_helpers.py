@@ -168,6 +168,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "embeddedWidth": "embeddedWidth",
     "numBits": "numBits",
     "startAngle": "startAngle",
+    "totalAngle": "spanAngle",
     "visMin": "visMin",
     "visMax": "visMax",
     "tab_names": "tab_names",
@@ -178,6 +179,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "minorTicks": "minorTicks",
     "plotColor": "plotColor",
     "nullColor": "nullColor",
+    "closePolygon": "closePolygon",
 }
 
 # Configure logging
@@ -452,8 +454,14 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
                         abs_pts = [(int(x), int(y)) for x, y in zip(x_points, y_points)]
+                        if not x_points and not y_points:
+                            print("malformed x/y")
+                            print(widget)
+                            breakpoint()
                         pen = int(obj.properties.get("lineWidth", 1))
-                        geom, point_strings = geom_and_local_points(abs_pts, pen)
+                        print(vars(obj))
+                        startCoord = (obj.x, obj.y)
+                        geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen)
 
                         widget.points = point_strings
                         widget.pen_width = pen
@@ -724,7 +732,7 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-    # pointsize = math.floor(convert_pointsize(float(size_str), 110))
+    # pointsize = math.floor(convert_pointsize(float(size_str), 100))
     pointsize = new_convert_pointsize(float(size_str))
 
     return {
@@ -745,17 +753,17 @@ def convert_pointsize(pixel_size, dpi: float = 96):
 
 
 def new_convert_pointsize(pixel_size):
-    point_size = pixel_size * 37 / 72  # Recieved these numbers from aribtrary test
+    point_size = pixel_size * 37 / 72  # Recieved these numbers from arbitrary test
     return math.floor(point_size)
 
 
-def geom_and_local_points(abs_points, pen_width: int = 1):
+def geom_and_local_points(abs_points, startCoord, pen_width: int = 1):
     if not abs_points:
         logger.warning("abs_points is empty for PyDMDrawingPolyLine")  # TODO: Fix this
         return {}, []
     xs, ys = zip(*abs_points)
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
+    min_x, max_x = min(list(xs) + [startCoord[0]]), max(xs)
+    min_y, max_y = min(list(ys) + [startCoord[1]]), max(ys)
 
     geom = {
         "x": min_x,
