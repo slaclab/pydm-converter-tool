@@ -171,6 +171,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "totalAngle": "spanAngle",
     "visMin": "visMin",
     "visMax": "visMax",
+    "symbolMin": "symbolMin",
+    "symbolMax": "symbolMax",
+    "symbolChannel": "symbolChannel",
     "tab_names": "tab_names",
     "hide_on_disconnect_channel": "hide_on_disconnect_channel",
     "flipScale": "flipScale",
@@ -331,13 +334,22 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     pydm_widgets.append(pydm_group)"""
 
                 # used_classes.add(type(pydm_group).__name__)
-
                 if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
                     curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
                 elif "visPv" in obj.properties:
                     curr_vispv = [(obj.properties["visPv"], None, None)]
                 else:
                     curr_vispv = []
+
+                if (
+                    "symbolMin" in obj.properties
+                    and "symbolMax" in obj.properties
+                    and "symbolChannel" in obj.properties
+                ):
+                    parent_vispvs = parent_vispvs or []
+                    parent_vispvs.append(
+                        (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
+                    )
 
                 # if "visMin" in obj.properties and "visMax" in obj.properties:
                 #    curr_vis_range = [(obj.properties["visMin"], obj.properties["visMax"])]
@@ -359,6 +371,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_y=0,
                     central_widget=central_widget,
                 )"""
+                # print(parent_vispvs)
+                # breakpoint()
                 traverse_group(
                     obj,
                     color_list_dict,
@@ -454,10 +468,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
                         abs_pts = [(int(x), int(y)) for x, y in zip(x_points, y_points)]
-                        if not x_points and not y_points:
-                            print("malformed x/y")
-                            print(widget)
-                            breakpoint()
                         pen = int(obj.properties.get("lineWidth", 1))
                         print(vars(obj))
                         startCoord = (obj.x, obj.y)

@@ -1,4 +1,5 @@
 import re
+import os
 from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, field
@@ -28,6 +29,7 @@ class EDMGroup(EDMObjectBase):
     """EDM Group class represents a group in .edl files"""
 
     objects: list[EDMObjectBase] = field(default_factory=list)
+    properties: dict = field(default_factory=dict)
 
     def add_object(self, obj):
         self.objects.append(obj)
@@ -186,10 +188,10 @@ class EDMFileParser:
                 properties = self.get_object_properties(object_text)
 
                 if name.lower() == "activesymbolclass":
-                    obj = self.get_symbol_groups(properties=properties, size_properties=size_properties)
-                    if not obj:
-                        print(properties)
-                        breakpoint()
+                    obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
+                    # print(obj)
+                    # print("32435")
+                    # breakpoint()
                 else:
                     obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
@@ -202,25 +204,77 @@ class EDMFileParser:
                 # breakpoint()
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
-    def get_symbol_groups(self, properties, size_properties):
-        embedded_file = properties["file"]
-        file_path = Path(self.file_path)
-        embedded_path = file_path.parent / embedded_file
+    def get_symbol_group(self, properties: dict[str, bool | str | list[str]], size_properties: dict[str, int]):
+        embedded_file = properties.get("file")
+        if not embedded_file:
+            print("No embedded file specified in properties.")
+            return EDMGroup()
+        if not embedded_file.endswith(".edl"):
+            embedded_file += ".edl"
+        edm_paths = os.environ.get("EDMDATAFILES", ".").split(":")
+        embedded_text = None
+        for path in edm_paths:
+            full_path = Path(path) / embedded_file
+            if full_path.is_file():
+                with open(full_path, "r") as file:
+                    embedded_text = file.read()
+                break
+        if embedded_text is None:
+            return EDMGroup()
 
-        if not embedded_path.is_file():
-            print(f"Embedded symbol file not found: {embedded_path}")
-            # breakpoint()
-            return EDMObject()
-        with open(embedded_path, "r") as file:
-            embedded_text = file.read()  # TODO: Make sure that this does not require LOC/CALC conversions
         temp_group = EDMGroup()
         match = self.screen_prop_pattern.search(embedded_text)
         if match:
             screen_properties_end = match.end()
 
         self.trial_parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
-        print(temp_group)
-        breakpoint()
+        self.resize_symbol_groups(temp_group, size_properties)
+        self.populate_symbol_pvs(temp_group, properties)
+        return temp_group
+
+    def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
+        for sub_group in temp_group.objects:
+            for sub_object in sub_group.objects:
+                sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
+                sub_object.y = sub_object.y - sub_group.y + size_properties["y"]
+
+    def populate_symbol_pvs(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
+        min_values = properties["minValues"]
+        max_values = properties["maxValues"]
+        num_states = int(properties["numStates"])
+        symbol_channel = properties["controlPvs"][0]
+        if len(properties["controlPvs"]) > 1:
+            print(f"This symbol object has more than one pV: {properties}")
+            print(f"controlPvs: {properties['controlPvs']}")
+            breakpoint()
+        ranges = [[None, None] for _ in range(num_states)]
+        for i in range(len(min_values)):
+            separated_value = min_values[i].split(" ")
+            if len(separated_value) == 1:
+                ranges[i][0] = separated_value[0]
+            elif len(separated_value) == 2:
+                print(separated_value, ranges[int(separated_value[0])][0])
+                ranges[int(separated_value[0])][0] = separated_value[1]
+            else:
+                raise ValueError(f"Malformed minValue attribute: {min_values}")
+        for i in range(len(max_values)):
+            separated_value = max_values[i].split(" ")
+            if len(separated_value) == 1:
+                ranges[i][1] = separated_value[0]
+            elif len(separated_value) == 2:
+                ranges[int(separated_value[0])][1] = separated_value[1]
+            else:
+                raise ValueError(f"Malformed maxValue attribute: {max_values}")
+        for i in range(
+            min(len(temp_group.objects), num_states)
+        ):  # TODO: Figure out what happens when numStates < temp_group.objects
+            # print(temp_group)
+            # setattr(temp_group, "symbolMin", ranges[i][0])
+            # setattr(temp_group, "symbolMax", ranges[i][1])
+            # setattr(temp_group, "symbolChannel", symbol_channel)
+            temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
+            temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
+            temp_group.objects[i].properties["symbolChannel"] = symbol_channel
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
