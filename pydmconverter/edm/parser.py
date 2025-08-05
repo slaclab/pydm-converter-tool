@@ -66,6 +66,7 @@ class EDMFileParser:
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
+        self.file_path = file_path
 
         with open(file_path, "r") as file:
             self.text = file.read()
@@ -117,7 +118,6 @@ class EDMFileParser:
             if pos >= len(text):
                 break
 
-            # Handle groups manually
             if text[pos:].lstrip().startswith("object activeGroupClass"):
                 group_start = pos
 
@@ -185,7 +185,13 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
-                obj = EDMObject(name=name, properties=properties, **size_properties)
+                if name.lower() == "activesymbolclass":
+                    obj = self.get_symbol_groups(properties=properties, size_properties=size_properties)
+                    if not obj:
+                        print(properties)
+                        breakpoint()
+                else:
+                    obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
 
                 pos = object_match.end()
@@ -195,6 +201,26 @@ class EDMFileParser:
                 print(f"Unrecognized text at pos {pos}: '{snippet}'")
                 # breakpoint()
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
+
+    def get_symbol_groups(self, properties, size_properties):
+        embedded_file = properties["file"]
+        file_path = Path(self.file_path)
+        embedded_path = file_path.parent / embedded_file
+
+        if not embedded_path.is_file():
+            print(f"Embedded symbol file not found: {embedded_path}")
+            # breakpoint()
+            return EDMObject()
+        with open(embedded_path, "r") as file:
+            embedded_text = file.read()  # TODO: Make sure that this does not require LOC/CALC conversions
+        temp_group = EDMGroup()
+        match = self.screen_prop_pattern.search(embedded_text)
+        if match:
+            screen_properties_end = match.end()
+
+        self.trial_parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
+        print(temp_group)
+        breakpoint()
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
@@ -220,18 +246,7 @@ class EDMFileParser:
 
         return -1
 
-    def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
-        """Recursively parse the given text into a tree of EDMObjects and
-        EDMGroups. The parsed EDMObjects and EDMGroups are added to the
-        given parent_group, which is the root EDMGroup of the tree.
-
-        Parameters
-        ----------
-        text : str
-            Text from the file to be parsed
-        parent_group : EDMGroup
-            Parent EDMGroup to add the parsed EDMObjects and EDMGroups to
-        """
+    """def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
 
         pos = 0
         while pos < len(text):
@@ -262,6 +277,7 @@ class EDMFileParser:
                 # breakpoint()
                 pos = text.find("\n", pos)
                 break
+    """
 
     @staticmethod
     def get_size_properties(text: str) -> dict[str, int]:
