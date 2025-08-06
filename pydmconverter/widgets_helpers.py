@@ -19,6 +19,8 @@ class XMLConvertible:
         Return a formatted string representation of the XML element.
     """
 
+    secretId: str = None
+
     def to_xml(self) -> ET.Element:
         """
         Convert the object to an XML element.
@@ -67,6 +69,7 @@ class XMLSerializableMixin(XMLConvertible):
 
     name: Optional[str] = None
     count: ClassVar[int] = 1
+    secretId: str = None
 
     def __post_init__(self) -> None:
         """
@@ -117,9 +120,6 @@ class XMLSerializableMixin(XMLConvertible):
         )
 
         properties: List[etree.Element] = self.generate_properties()
-        # print("here")
-        # print(vars(self))
-        # print("here2")
         for prop in properties:
             widget.append(prop)
 
@@ -838,8 +838,7 @@ class MultiRule(XMLConvertible):
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
                 expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
         if self.hide_on_disconnect_channel is not None:
-            print("453545")
-            new_index = len(self.rule_list)  # Start at the index after the current one
+            new_index = len(self.rule_list)
             expression_list.append(self.get_hide_on_disconnect_expression(new_index))
             channel_list.append(
                 f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
@@ -886,7 +885,6 @@ class Rules(XMLConvertible):
         rule_list = []
         rule_variables = self.group_by_rules()
 
-        print(vars(self), rule_variables)
         for rule_type, value in rule_variables.items():
             if value:
                 rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
@@ -1275,6 +1273,7 @@ class Tangible(XMLSerializableMixin):
     y: int = 0
     width: int = 0
     height: int = 0
+    secretId: str = None
     # visPvList: Optional[list] = None
     # visPv: Optional[str] = None
 
@@ -1289,6 +1288,9 @@ class Tangible(XMLSerializableMixin):
         """
         properties: List[etree.Element] = []
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
+        if self.secretId is not None:
+            properties.append(Str("secretId", self.secretId))
+            breakpoint()
         return properties
 
 

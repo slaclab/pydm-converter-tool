@@ -183,6 +183,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "plotColor": "plotColor",
     "nullColor": "nullColor",
     "closePolygon": "closePolygon",
+    "secretId": "secretId",
 }
 
 # Configure logging
@@ -346,10 +347,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     and "symbolMax" in obj.properties
                     and "symbolChannel" in obj.properties
                 ):
-                    parent_vispvs = parent_vispvs or []
-                    parent_vispvs.append(
+                    symbol_vispv = [
                         (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
-                    )
+                    ]
+                    # breakpoint()
+                else:
+                    symbol_vispv = []
 
                 # if "visMin" in obj.properties and "visMax" in obj.properties:
                 #    curr_vis_range = [(obj.properties["visMin"], obj.properties["visMax"])]
@@ -383,7 +386,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_x=0,
                     offset_y=0,
                     central_widget=central_widget,
-                    parent_vispvs=(parent_vispvs or []) + curr_vispv,
+                    parent_vispvs=(parent_vispvs or []) + curr_vispv + symbol_vispv,
                     # parent_vis_range=(parent_vis_range or []) + curr_vis_range,
                 )
 

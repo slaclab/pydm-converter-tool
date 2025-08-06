@@ -227,9 +227,17 @@ class EDMFileParser:
         if match:
             screen_properties_end = match.end()
 
+        num_pvs = properties["numPvs"]
         self.trial_parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
-        self.populate_symbol_pvs(temp_group, properties)
+        if "orientation" in properties:
+            self.reorient_symbol_groups(temp_group)
+        ranges = self.generate_pv_ranges(properties)
+        self.remove_extra_groups(temp_group, ranges)
+        if num_pvs == 0 or num_pvs == "0":
+            self.remove_symbol_groups(temp_group, ranges)
+        else:
+            self.populate_symbol_pvs(temp_group, properties, ranges)
         return temp_group
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
@@ -238,22 +246,32 @@ class EDMFileParser:
                 sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
                 sub_object.y = sub_object.y - sub_group.y + size_properties["y"]
 
-    def populate_symbol_pvs(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
+    def reorient_symbol_groups(self, temp_group: EDMGroup, properties) -> None:
+        print()
+
+    def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        while len(temp_group.objects) > len(ranges):
+            print(f"removed symbol group: {temp_group.objects.pop()}")
+
+    def remove_symbol_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        for i in range(
+            len(ranges) - 1, -1, -1
+        ):  # going backwards so I do not need to change indices when deleting objects
+            min_range = ranges[i][0] or float("-inf")
+            max_range = ranges[i][1] or float("inf")
+            if float(min_range) > 1 or float(max_range) <= 1:
+                temp_group.objects.pop(i)
+
+    def generate_pv_ranges(self, properties: dict[str, bool | str | list[str]]) -> None:
         min_values = properties["minValues"]
         max_values = properties["maxValues"]
         num_states = int(properties["numStates"])
-        symbol_channel = properties["controlPvs"][0]
-        if len(properties["controlPvs"]) > 1:
-            print(f"This symbol object has more than one pV: {properties}")
-            print(f"controlPvs: {properties['controlPvs']}")
-            breakpoint()
         ranges = [[None, None] for _ in range(num_states)]
         for i in range(len(min_values)):
             separated_value = min_values[i].split(" ")
             if len(separated_value) == 1:
                 ranges[i][0] = separated_value[0]
             elif len(separated_value) == 2:
-                print(separated_value, ranges[int(separated_value[0])][0])
                 ranges[int(separated_value[0])][0] = separated_value[1]
             else:
                 raise ValueError(f"Malformed minValue attribute: {min_values}")
@@ -265,13 +283,39 @@ class EDMFileParser:
                 ranges[int(separated_value[0])][1] = separated_value[1]
             else:
                 raise ValueError(f"Malformed maxValue attribute: {max_values}")
+        return ranges
+
+    def populate_symbol_pvs(
+        self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
+    ) -> None:
+        # min_values = properties["minValues"]
+        # max_values = properties["maxValues"]
+        num_states = int(properties["numStates"])
+        symbol_channel = properties["controlPvs"][0]
+        if len(properties["controlPvs"]) > 1:
+            print(f"This symbol object has more than one pV: {properties}")
+            print(f"controlPvs: {properties['controlPvs']}")
+            breakpoint()
+        # ranges = [[None, None] for _ in range(num_states)]
+        # for i in range(len(min_values)):
+        #    separated_value = min_values[i].split(" ")
+        #    if len(separated_value) == 1:
+        #        ranges[i][0] = separated_value[0]
+        #    elif len(separated_value) == 2:
+        #        ranges[int(separated_value[0])][0] = separated_value[1]
+        #    else:
+        #        raise ValueError(f"Malformed minValue attribute: {min_values}")
+        # for i in range(len(max_values)):
+        #    separated_value = max_values[i].split(" ")
+        #    if len(separated_value) == 1:
+        #        ranges[i][1] = separated_value[0]
+        #    elif len(separated_value) == 2:
+        #        ranges[int(separated_value[0])][1] = separated_value[1]
+        #    else:
+        #        raise ValueError(f"Malformed maxValue attribute: {max_values}")
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
-            # print(temp_group)
-            # setattr(temp_group, "symbolMin", ranges[i][0])
-            # setattr(temp_group, "symbolMax", ranges[i][1])
-            # setattr(temp_group, "symbolChannel", symbol_channel)
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
             temp_group.objects[i].properties["symbolChannel"] = symbol_channel
