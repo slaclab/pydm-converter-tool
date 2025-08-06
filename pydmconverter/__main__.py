@@ -105,7 +105,12 @@ def convert_files_in_folder(
             files_failed.append(str(file))
             logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
-            convert(file, output_file_path)
+            try:
+                convert(file, output_file_path)
+            except Exception as e:
+                files_failed.append(str(file))
+                logging.warning(f"Failed to convert {file}: {e}")
+                continue
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
