@@ -298,22 +298,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         parent_pydm_group.height,
                         scale=scale,
                     )
-                pydm_group = PyDMFrame(
-                    name=obj.name if hasattr(obj, "name") else f"group_{id(obj)}",
-                    x=0,
-                    y=0,
-                    width=parser.ui.width,
-                    height=parser.ui.height,
-                )
-                logger.info(f"Created PyDMFrame: {pydm_group.name}")
 
                 print("skipped pydm_group")
-                """if parent_pydm_group:
-                    parent_pydm_group.add_child(pydm_group)
-                else:
-                    pydm_widgets.append(pydm_group)"""
 
-                # used_classes.add(type(pydm_group).__name__)
                 if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
                     curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
                 elif "visPv" in obj.properties:
@@ -336,7 +323,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 traverse_group(
                     obj,
                     color_list_dict,
-                    pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
                     pydm_widgets=pydm_widgets,
                     container_height=height,
                     scale=scale,
