@@ -47,7 +47,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
 
 def convert(input_path, output_path):
     try:
-        edm_parser = EDMFileParser(input_path)
+        edm_parser = EDMFileParser(input_path, output_path)
         pprint(edm_parser.ui, indent=2)
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:

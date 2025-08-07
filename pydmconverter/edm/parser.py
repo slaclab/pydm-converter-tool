@@ -58,7 +58,7 @@ class EDMFileParser:
     #    re.DOTALL | re.MULTILINE,
     # )
 
-    def __init__(self, file_path: str | Path):
+    def __init__(self, file_path: str | Path, output_file_path: str | Path):
         """Creates an instance of EDMFileParser for the given file_path
 
         Parameters
@@ -69,6 +69,7 @@ class EDMFileParser:
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
         self.file_path = file_path
+        self.output_file_path = output_file_path
 
         with open(file_path, "r") as file:
             self.text = file.read()

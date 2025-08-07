@@ -9,9 +9,6 @@ def generate_menumux_file(menumux_buttons: list[EDMObject], output_path: str | P
 
     add_menumux_indices(menumux_buttons)
 
-    print(menumux_buttons)
-    breakpoint()
-
     code = f"""from qtpy.QtWidgets import (
     QVBoxLayout, QComboBox, QWidget, QStackedLayout
 )

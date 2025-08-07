@@ -23,6 +23,7 @@ from pydmconverter.widgets import (
     PyDMScaleIndicator,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
+from pydmconverter.edm.menumux import generate_menumux_file
 import logging
 import math
 import os
@@ -108,6 +109,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "readPv": "channel",
     "nullPv": "channel",  # TODO: Add xpv and yPv
     "pv": "channel",
+    "visInvert": "visInvert",
     "value": "text",
     "fill": "brushFill",
     "fillColor": "brushColor",
@@ -274,6 +276,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
         # parent_vis_range: Optional[Tuple[int, int]] = None,
     ):
+        menu_mux_buttons = []
         if pydm_widgets is None:
             pydm_widgets = []
 
@@ -392,11 +395,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
             elif isinstance(obj, EDMObject):
                 widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
+                if obj.name.lower() == "menumuxclass":
+                    menu_mux_buttons.append(obj)
                 if not widget_type:
                     logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
                     log_unsupported_widget(obj.name)
                     continue
-
                 if obj.name.lower() == "activechoicebuttonclass" and (
                     "tabs" not in obj.properties or not obj.properties["tabs"]
                 ):
@@ -536,9 +540,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
             else:
                 logger.warning(f"Unknown object type: {type(obj)}. Skipping.")
 
-        return pydm_widgets
+        return pydm_widgets, menu_mux_buttons
 
-    pydm_widgets = traverse_group(parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui)
+    pydm_widgets, menu_mux_buttons = traverse_group(
+        parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui
+    )
+    generate_menumux_file(menu_mux_buttons, parser.output_file_path)
     return pydm_widgets, used_classes
 
 
