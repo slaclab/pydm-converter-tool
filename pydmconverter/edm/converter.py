@@ -47,7 +47,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
 
 def convert(input_path, output_path):
     try:
-        edm_parser = EDMFileParser(input_path)
+        edm_parser = EDMFileParser(input_path, output_path)
         pprint(edm_parser.ui, indent=2)
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:
@@ -114,8 +114,3 @@ def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
-
-        # print("Adding widget:", widget)
-        # print("  Children:", getattr(widget, 'children', []))
-        # if hasattr(widget, "children") and widget.children:
-        #    add_widgets_to_parent(widget.children, widget_element) #TODO: Make sure that this is redundant and causes replication

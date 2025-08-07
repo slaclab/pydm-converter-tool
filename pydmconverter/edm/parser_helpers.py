@@ -436,9 +436,7 @@ def replace_calc_and_loc_in_edm_content(
     encountered_calcs: Dict[str, Dict[str, str]] = {}
     encountered_locs: Dict[str, Dict[str, str]] = {}
 
-    # calc_pattern = re.compile(r"CALC\\\\[^(\s]+\([^)]*\)")  # TODO: May need to change to CALC\\+
     calc_pattern = re.compile(r'"(CALC\\\\[^"]+)"')
-    # calc_pattern = r'^CALC\\\\\{(.+?)\}\\\((.+)\)$'
 
     def replace_calc_match(match: re.Match) -> str:
         edm_pv = match.group(1)
@@ -803,18 +801,15 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
         color_info = get_color_by_index(color_data, fillColor)
     if not color_info:
         logger.warning(f"Could not find a color for fillColor '{fillColor}'. Using default gray.")
-        # return (0, 0, 0, 255)
-        return (128, 128, 128, 255)  # Default gray color
+        return (128, 128, 128, 255)
 
     rgb = color_info.get("rgb")
     if not rgb or len(rgb) < 3:
         logger.warning(f"Invalid RGB data for color '{fillColor}': {rgb}")
-        return (128, 128, 128, 255)  # Default gray color
-    # Extract RGB values
+        return (128, 128, 128, 255)
     red, green, blue = rgb[:3]
-    alpha = 255  # Default alpha value
+    alpha = 255
 
-    # Check if values need scaling (EDM often uses 0-65535 range)
     max_val = color_data.get("max", 256)
     rgbMax = max(rgb)
     if rgbMax > 256:
