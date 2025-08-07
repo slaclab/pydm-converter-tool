@@ -349,7 +349,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if not channel:
                         logger.warning("Could not find channel in object: {obj.name}")
                     else:
-                        tab_names = get_channel_tabs(channel)
+                        tab_names = None
+                        # tab_names = get_channel_tabs(channel)
                         widget_type = PyDMEnumButton
                         obj.properties["tab_names"] = tab_names
                         obj.properties["hide_on_disconnect_channel"] = channel
@@ -538,7 +539,8 @@ def create_off_button(widget: PyDMPushButton):
 def populate_tab_bar(obj: EDMObject, widget):
     tab_names = obj.properties.get("tabs", [])
     if not tab_names and widget.channel is not None:
-        tab_names = get_channel_tabs(widget.channel)
+        # tab_names = get_channel_tabs(widget.channel)
+        tab_names = None
     if not tab_names:
         logger.warning(f"No tab names found in {obj.name}. Skipping.")
         return

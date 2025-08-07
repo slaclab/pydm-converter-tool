@@ -109,6 +109,16 @@ class EDMFileParser:
             self.ui.width = size_properties["width"]
 
     def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
+        """Recursively parse the given text into a tree of EDMObjects and
+        EDMGroups. The parsed EDMObjects and EDMGroups are added to the
+        given parent_group, which is the root EDMGroup of the tree.
+        Parameters
+        ----------
+        text : str
+            Text from the file to be parsed
+        parent_group : EDMGroup
+            Parent EDMGroup to add the parsed EDMObjects and EDMGroups to
+        """
         pos = 0
         while pos < len(text):
             # Skip whitespace and comments

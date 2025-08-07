@@ -377,7 +377,7 @@ def loc_conversion(edm_string: str) -> str:
         "d": "float",
         "i": "int",
         "s": "str",
-        "e": "enum",  # mapping enum to int by default
+        "e": "enum",  # mapping enum to e by default
     }
 
     edm_type = type_char.lower()
