@@ -79,7 +79,7 @@ class EDMFileParser:
         self.ui = EDMGroup()
 
         self.parse_screen_properties()
-        self.trial_parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
+        self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
@@ -108,7 +108,7 @@ class EDMFileParser:
             self.ui.height = size_properties["height"]
             self.ui.width = size_properties["width"]
 
-    def trial_parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
+    def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
         pos = 0
         while pos < len(text):
             # Skip whitespace and comments
@@ -175,7 +175,7 @@ class EDMFileParser:
                 group = EDMGroup(**size_props)
                 group.properties = properties
 
-                self.trial_parse_objects_and_groups(group_body, group)
+                self.parse_objects_and_groups(group_body, group)
                 parent_group.add_object(group)
                 pos = group_end
                 continue
@@ -229,7 +229,7 @@ class EDMFileParser:
             screen_properties_end = match.end()
 
         num_pvs = properties["numPvs"]
-        self.trial_parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
+        self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
         if "orientation" in properties:
             self.reorient_symbol_groups(temp_group)
@@ -289,31 +289,12 @@ class EDMFileParser:
     def populate_symbol_pvs(
         self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
     ) -> None:
-        # min_values = properties["minValues"]
-        # max_values = properties["maxValues"]
         num_states = int(properties["numStates"])
         symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
             print(f"controlPvs: {properties['controlPvs']}")
             breakpoint()
-        # ranges = [[None, None] for _ in range(num_states)]
-        # for i in range(len(min_values)):
-        #    separated_value = min_values[i].split(" ")
-        #    if len(separated_value) == 1:
-        #        ranges[i][0] = separated_value[0]
-        #    elif len(separated_value) == 2:
-        #        ranges[int(separated_value[0])][0] = separated_value[1]
-        #    else:
-        #        raise ValueError(f"Malformed minValue attribute: {min_values}")
-        # for i in range(len(max_values)):
-        #    separated_value = max_values[i].split(" ")
-        #    if len(separated_value) == 1:
-        #        ranges[i][1] = separated_value[0]
-        #    elif len(separated_value) == 2:
-        #        ranges[int(separated_value[0])][1] = separated_value[1]
-        #    else:
-        #        raise ValueError(f"Malformed maxValue attribute: {max_values}")
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
@@ -344,39 +325,6 @@ class EDMFileParser:
                 pos = end_group_next + len("endGroup")
 
         return -1
-
-    """def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
-
-        pos = 0
-        while pos < len(text):
-            group_match = self.group_pattern.search(text, pos)
-            object_match = self.object_pattern.search(text, pos)
-
-            if object_match and (not group_match or object_match.start() < group_match.start()):
-                name = object_match.group(1)
-                object_text = object_match.group(2)
-                size_properties = self.get_size_properties(object_text)
-                properties = self.get_object_properties(object_text)
-
-                obj = EDMObject(name=name, properties=properties, **size_properties)
-                parent_group.add_object(obj)
-
-                pos = object_match.end()
-            elif group_match:
-                group_text = group_match.group(1)
-                size_properties = self.get_size_properties(group_text)
-
-                group = EDMGroup(**size_properties)
-                self.parse_objects_and_groups(group_text, group)
-                parent_group.add_object(group)
-
-                pos = group_match.end()
-            else:
-                print(f"Unmatched text starting at {pos}:\n{text[pos : pos + 200]}")
-                # breakpoint()
-                pos = text.find("\n", pos)
-                break
-    """
 
     @staticmethod
     def get_size_properties(text: str) -> dict[str, int]:
