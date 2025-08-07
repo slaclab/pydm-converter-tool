@@ -255,13 +255,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
 
     for pip_object in pip_objects:
-        # create_tabs(pip_object, parser.ui)
         create_embedded_tabs(pip_object, parser.ui)
-
-    # tab_objects = find_objects(parser.ui, "activechoicebuttonclass")
-    # for tab_object in tab_objects:
-    #    create_tabs(tab_object, parser.ui)
-    # create_embedded_tabs(tab_object, parser.ui)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -281,24 +275,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
             pydm_widgets = []
 
         for obj in edm_group.objects:
-            # if "visPv" in obj.properties:
-            #    child_vispvs = (parent_vispvs or []) + [obj.properties["visPv"]]
-            # else:
-            #    child_vispvs = list(parent_vispvs or [])
-            """if "visPv" in obj.properties:
-                child_vispvs = [obj.properties["visPv"]]
-            elif parent_vispvs:
-                child_vispvs = list(parent_vispvs)
-            else:
-                child_vispvs = []"""
-            # if "visPv" in obj.properties:
-            #    child_vispvs = [obj.properties["visPv"]]
-            # else:
-            #    child_vispvs = parent_vispvs[:] if parent_vispvs else []
-
-            # if child_vispvs:
-            #   setattr(widget, "visPvList", list(child_vispvs))
-
             if isinstance(obj, EDMGroup):
                 if parent_pydm_group is None:
                     x, y, width, height = transform_edm_to_pydm(
@@ -357,28 +333,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 else:
                     symbol_vispv = []
 
-                # if "visMin" in obj.properties and "visMax" in obj.properties:
-                #    curr_vis_range = [(obj.properties["visMin"], obj.properties["visMax"])]
-                # else:
-                #    curr_vis_range = []
-
-                # elif "visPv" in obj.properties:
-                # parent_vispvs = set()
-                #    parent_vispvs = [obj.properties["visPv"]]
-
-                """traverse_group(
-                    obj,
-                    color_list_dict,
-                    pydm_group,  # doing this instead so only going to central widget (gets rid of groups)
-                    pydm_widgets=None,
-                    container_height=height,
-                    scale=scale,
-                    offset_x=0,
-                    offset_y=0,
-                    central_widget=central_widget,
-                )"""
-                # print(parent_vispvs)
-                # breakpoint()
                 traverse_group(
                     obj,
                     color_list_dict,
@@ -476,7 +430,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         y_points = obj.properties["yPoints"]
                         abs_pts = [(int(x), int(y)) for x, y in zip(x_points, y_points)]
                         pen = int(obj.properties.get("lineWidth", 1))
-                        print(vars(obj))
                         startCoord = (obj.x, obj.y)
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen)
 
@@ -600,7 +553,6 @@ def populate_tab_bar(obj: EDMObject, widget):
     tab_names = obj.properties.get("tabs", [])
     if not tab_names and widget.channel is not None:
         tab_names = get_channel_tabs(widget.channel)
-        print(tab_names)
     if not tab_names:
         logger.warning(f"No tab names found in {obj.name}. Skipping.")
         return
@@ -708,9 +660,7 @@ def search_group(
                 if key.endswith(prop_name_suffix):
                     if value is not None and prop_val in value:  # prop_val == value
                         return obj
-        # else:
-        # print(obj.name)
-        # breakpoint()
+
     return None
 
 

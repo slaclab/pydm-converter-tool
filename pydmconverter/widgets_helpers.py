@@ -859,7 +859,7 @@ class MultiRule(XMLConvertible):
         )
         return output_string
 
-    def get_expression(self, index, show_on_true, visMin, visMax):
+    def get_expression(self, index, show_on_true, visMin, visMax):  # TODO: Can clean up with fstrings
         ch = f"ch[{index}]"
         if visMin is not None and visMax is not None:
             show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
@@ -890,7 +890,8 @@ class Rules(XMLConvertible):
                 rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
                 rule_list.append(rule_string)
             elif rule_type == "Visible":
-                rule_list.append(MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string())
+                rule_string = MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string()
+                rule_list.append(rule_string)
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
 
@@ -914,8 +915,6 @@ class RGBAStyleSheet(XMLConvertible):
 
     def to_xml(self):
         style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
-        # style = f"color: rgba(100, 0, 0, 0); background-color: transparent;"
-        # style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
         string_elem.text = style
@@ -1274,8 +1273,6 @@ class Tangible(XMLSerializableMixin):
     width: int = 0
     height: int = 0
     secretId: str = None
-    # visPvList: Optional[list] = None
-    # visPv: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1375,14 +1372,8 @@ class Controllable(Tangible):
                 self.rules.append(("Visible", group_channel, True, True, group_min, group_max))
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
-            # properties.append(Str("visPv", self.visPv).to_xml())
             self.rules.append(("Visible", self.visPv, True, True, self.visMin, self.visMax))
-            # properties.append(BoolRule("Enable", self.visPv, True, True).to_xml())
-        # if self.rules and self.visMin is not None and self.visMax is not None:
-        # properties.append(Rules(self.rules, float(self.visMin), float(self.visMax)).to_xml())
         properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
-        # elif self.rules:
-        #    properties.append(Rules(self.rules).to_xml())
         return properties
 
 
@@ -1575,9 +1566,6 @@ class PageHeader:
 
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)
-        # style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
-        # style_string = ET.SubElement(style_prop, "string")
-        # style_string.text = "background-color: rgba(187, 0, 0, 1.0)"
 
         central_widget = ET.SubElement(
             main_widget,

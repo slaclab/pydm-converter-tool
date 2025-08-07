@@ -114,8 +114,3 @@ def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
-
-        # print("Adding widget:", widget)
-        # print("  Children:", getattr(widget, 'children', []))
-        # if hasattr(widget, "children") and widget.children:
-        #    add_widgets_to_parent(widget.children, widget_element) #TODO: Make sure that this is redundant and causes replication

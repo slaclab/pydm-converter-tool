@@ -168,14 +168,6 @@ class QLabel(Legible, StyleSheetObject):
         if self.filename is not None and self.name.startswith("activePngClass"):
             properties.append(PixMap(self.filename).to_xml())
 
-        """if self.foreground_color is not None or self.background_color is not None:
-            styles: Dict[str, any] = {}
-            if self.foreground_color is not None:
-                styles["color"] = self.foreground_color
-            if self.background_color is not None and self.useDisplayBg is None:
-                styles["background-color"] = self.background_color
-            properties.append(StyleSheet(styles).to_xml())"""
-
         return properties
 
 
@@ -393,8 +385,6 @@ class QPushButton(
         """
         properties: List[ET.Element] = super().generate_properties()
 
-        # if self.text is not None:
-        #    properties.append(Str("text", self.text).to_xml())
         if self.auto_default is not None:
             properties.append(Bool("autoDefault", self.auto_default).to_xml())
         if self.default is not None:
@@ -410,10 +400,6 @@ class QPushButton(
         if self.checked is not None:
             properties.append(Bool("checked", self.checked).to_xml())
 
-        # print(vars(self))
-        # for prop in properties:
-        #    ET.dump(prop)
-        # breakpoint()
         return properties
 
 
@@ -847,13 +833,6 @@ class PyDMEnumComboBox(QComboBox, Alarmable, StyleSheetObject):
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
-        """if self.background_color is not None or self.foreground_color is not None:
-            styles: Dict[str, any] = {}
-            if self.background_color is not None:
-                styles["background-color"] = self.background_color
-            if self.background_color is not None:
-                styles["color"] = self.foreground_color
-            properties.append(StyleSheet(styles).to_xml())"""
         return properties
 
 
@@ -977,8 +956,6 @@ class PyDMEnumButton(Alarmable, Legible):
             properties.append(Int("verticalSpacing", self.vertical_spacing).to_xml())
         if self.checkable is not None:
             properties.append(Bool("checkable", self.checkable).to_xml())
-        # if self.tab_names is not None:
-        #    properties.append(StringList("items", self.tab_names).to_xml())
         return properties
 
 
@@ -1156,8 +1133,7 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         Converts file strings of .<type> to .ui
         """
         filename = ".".join(file_string.split(".")[:-1])
-        return f"{filename}.ui"
-        # return f"{".".join(file_string.split(".")[:-1])}.ui" #TODO: ask if this should be expanded or be turned into a Path
+        return f"{filename}.ui"  # TODO: ask if this should be expanded or be turned into a Path
 
 
 @dataclass
@@ -1312,7 +1288,6 @@ class QWidget(Alarmable):
         # properties: List[ET.Element] = super().generate_properties()
         properties: List[ET.Element] = []
 
-        # Add title property if it exists
         if self.title is not None:
             title_element = ET.Element("attribute", name="title")
             title_string_element = ET.Element("string")
@@ -1434,28 +1409,6 @@ class PyDMByteIndicator(Alarmable):
             properties.append(OnOffColor("off", *self.off_color).to_xml())
 
         return properties
-
-
-"""@dataclass
-class PyDMScaleIndicator(Alarmable, StyleSheetObject, Legible):
-
-
-    orientation: Optional[str] = None
-    indicatorColor: Optional[Tuple[int, int, int, int]] = None
-    flipScale: Optional[bool] = False
-
-    def generate_properties(self) -> List[ET.Element]:
-
-        properties: List[ET.Element] = super().generate_properties()
-
-        if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation).to_xml())
-        if self.indicatorColor is not None:
-            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
-        properties.append(Bool("flipScale", self.flipScale).to_xml())  # The bar will not show up without this attribute
-
-        return properties
-"""
 
 
 @dataclass
