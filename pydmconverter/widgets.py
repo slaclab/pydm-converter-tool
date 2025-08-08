@@ -505,6 +505,7 @@ class PyDMPushButton(PyDMPushButtonBase):
     on_label: Optional[str] = None
     off_label: Optional[str] = None
     is_off_button: Optional[bool] = None
+    is_freeze_button: Optional[bool] = None
     text: Optional[str] = None
     visMin: Optional[int] = None
     visMax: Optional[int] = None
@@ -534,6 +535,15 @@ class PyDMPushButton(PyDMPushButtonBase):
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[0]
 
+        if self.is_freeze_button is not None and not self.is_freeze_button:
+            self.channel = f"loc://FROZEN_STATE_{self.name}?type=int&amp;init=0"
+            self.rules.append(("Visible", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
+            self.rules.append(("Enable", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
+        elif self.is_freeze_button is not None and self.is_freeze_button:
+            self.channel = f"loc://FROZEN_STATE_{self.name}"
+            self.rules.append(("Visible", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
+            self.rules.append(("Enable", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
+
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
@@ -551,6 +561,10 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
         if self.on_label is not None:
             properties.append(Str("text", self.on_label).to_xml())
+        if self.is_freeze_button is not None and not self.is_freeze_button:
+            properties.append(Str("pressValue", "1").to_xml())
+        if self.is_freeze_button is not None and self.is_freeze_button:
+            properties.append(Str("pressValue", "0").to_xml())
 
         if (
             self.on_color is not None
