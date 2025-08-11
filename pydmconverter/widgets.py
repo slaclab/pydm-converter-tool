@@ -524,7 +524,7 @@ class PyDMPushButton(PyDMPushButtonBase):
             self.rules.append(RuleArguments("Visible", self.channel, False, show_button, None, None))
             self.rules.append(RuleArguments("Enable", self.channel, False, show_button, None, None))
             if self.text is None and self.channel is not None:
-                pv = PV(self.channel)
+                pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
 
@@ -653,9 +653,6 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Bool("allowMultipleExecutions", self.allow_multiple_executions).to_xml())
         if self.titles is not None:
             properties.append(Str("titles", self.titles).to_xml())
-        if self.command is not None:
-            print(self.command)
-            breakpoint()
             properties.append(StringList("command", self.command).to_xml())
         return properties
 
@@ -1547,4 +1544,16 @@ class PyDMScaleIndicator(Alarmable):
         properties.append(Bool("showValue", self.showValue).to_xml())
         properties.append(Bool("showLimits", self.showLimits).to_xml())
 
+        return properties
+
+
+@dataclass
+class PyDMSlider(Alarmable):
+    orientation: Optional[Str] = None
+
+    def generate_properties(self):
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.orientation is not None:
+            properties.append(Str("orientation", self.orientation))
         return properties

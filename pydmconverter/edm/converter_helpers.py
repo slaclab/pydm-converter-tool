@@ -21,6 +21,7 @@ from pydmconverter.widgets import (
     PyDMDrawingArc,
     PyDMWaveformPlot,
     PyDMScaleIndicator,
+    PyDMSlider,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
@@ -82,6 +83,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activesymbolclass": PyDMEmbeddedDisplay,
     "anasymbolclass": PyDMEmbeddedDisplay,
     "activefreezebuttonclass": PyDMPushButton,
+    "activesliderclass": PyDMSlider,
+    "activemotifsliderclass": PyDMSlider,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
