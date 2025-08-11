@@ -632,7 +632,7 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
     redirect_command_output: Optional[bool] = None
     allow_multiple_executions: Optional[bool] = None
     titles: Optional[str] = None
-    commands: Optional[str] = None
+    command: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -660,8 +660,10 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Bool("allowMultipleExecutions", self.allow_multiple_executions).to_xml())
         if self.titles is not None:
             properties.append(Str("titles", self.titles).to_xml())
-        if self.commands is not None:
-            properties.append(Str("commands", self.commands).to_xml())
+        if self.command is not None:
+            print(self.command)
+            breakpoint()
+            properties.append(StringList("command", self.command).to_xml())
         return properties
 
 

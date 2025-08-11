@@ -42,6 +42,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMDrawingArc": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMWaveformPlot": {"extends": "QWidget", "header": "pydm.widgets.waveformplot", "container": ""},
     "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
+    "PyDMShellCommand": {"extends": "QPushButton", "header": "pydm.widgets.shell_command", "container": ""},
 }
 
 
