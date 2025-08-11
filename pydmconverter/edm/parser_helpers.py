@@ -360,9 +360,17 @@ def loc_conversion(edm_string: str) -> str:
     # if "$(" in content and ")" in content:
     #    content = content.split(")", 1)[-1]
 
+    type_mapping = {
+        "d": "float",
+        "i": "int",
+        "s": "str",
+        "e": "enum",  # mapping enum to e by default
+    }
+
     try:
         name, type_and_value = content.split("=", 1)
         name = name.lstrip("\\")
+        type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
         raise ValueError("Invalid EDM format: Missing '=' separator")
 
@@ -370,37 +378,42 @@ def loc_conversion(edm_string: str) -> str:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
         try:
-            if type_and_value.startswith(
-                "d,"
-            ):  # TODO: Come back and find a cleaner way to deal with these edgecases once all edgecases are caught
-                type_and_value = type_and_value[2:]
-                float(type_and_value)
-                type_char = "d"
-            elif type_and_value.startswith("d"):
-                type_and_value = "0.0"
-                type_char = "d"
-            elif type_and_value.startswith("i,"):
-                type_and_value = type_and_value[2:]
-                int(type_and_value)
-                type_char = "i"
+            if (
+                len(type_and_value) > 1 and type_and_value[0] in type_mapping and type_and_value[1] == ","
+            ):  # ex. type_and_value=i,10
+                value = type_and_value[2:]
+                type_char = type_and_value[0]
+            elif type_and_value in type_mapping:  # value is one of the mapped characters
+                value = ""
+                type_char = type_and_value
             else:
                 int(type_and_value)  # testing if this is a proper int
                 value = type_and_value
                 type_char = "i"
+            """if type_and_value.startswith("d,"):
+                value = type_and_value[2:]
+                float(value)
+                type_char = "d"
+            elif type_and_value.startswith("i,"):
+                value = type_and_value[2:]
+                int(value)
+                type_char = "i"
+            elif type_and_value == "s,":
+                value = type_and_value[2:]
+                type_char = "s"
+            """
         except ValueError:
-            print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
-            print(name)
-            print(type_and_value)
-            breakpoint()
-            return None  # TODO: Come back and fix
-            # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
-
-    type_mapping = {
-        "d": "float",
-        "i": "int",
-        "s": "str",
-        "e": "enum",  # mapping enum to e by default
-    }
+            try:
+                float(type_and_value)
+                value = type_and_value
+                type_char = "d"
+            except ValueError:
+                print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+                print(f"name: {name}")
+                print(f"value: {type_and_value}")
+                breakpoint()
+                return None
+                # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
     pydm_type = type_mapping.get(edm_type)
