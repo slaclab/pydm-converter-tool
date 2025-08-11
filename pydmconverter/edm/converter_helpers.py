@@ -55,11 +55,11 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "": PyDMEnumButton
     "activemenubuttonclass": PyDMPushButton,  # "activemenubuttonclass": PyDMEnumComboBox,
     "activemessagebuttonclass": PyDMPushButton,
-    "activextextdspclass": PyDMLabel,
+    "activextextdspclass": PyDMLineEdit,
     "activepipclass": PyDMEmbeddedDisplay,
     "activeexitbuttonclass": QPushButton,
-    "shellcmdclass": QPushButton,  # may need to change
-    # "shellcmdclass": PyDMShellCommand,  # may need to change
+    # "shellcmdclass": QPushButton,  # may need to change
+    "shellcmdclass": PyDMShellCommand,
     "textupdateclass": PyDMLabel,
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
@@ -80,6 +80,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "xygraphclass": PyDMScatterPlot
     "activeindicatorclass": PyDMScaleIndicator,
     "activesymbolclass": PyDMEmbeddedDisplay,
+    "anasymbolclass": PyDMEmbeddedDisplay,
     "activefreezebuttonclass": PyDMPushButton,
 }
 
@@ -142,6 +143,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Command-related attributes
     "cmd": "command",
     "args": "arguments",
+    "command": "command",
+    "numCmds": "numCmds",
+    "commandLabel": "command_label",
     # Related display attributes
     "fileName": "filename",
     "macro": "macro",

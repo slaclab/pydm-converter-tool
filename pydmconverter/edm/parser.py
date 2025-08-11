@@ -183,7 +183,7 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
-                if name.lower() == "activesymbolclass":
+                if name.lower() == "activesymbolclass" or name.lower() == "anasymbolclass":
                     obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
                 else:
                     obj = EDMObject(name=name, properties=properties, **size_properties)
