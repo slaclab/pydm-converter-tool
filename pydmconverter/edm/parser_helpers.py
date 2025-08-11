@@ -145,6 +145,9 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     arg_list: List[str] = []
     if arg_string:
         arg_list = [arg.strip() for arg in arg_string.split(",")]
+        for i in range(len(arg_list)):
+            if arg_list[i].startswith("LOC\\"):
+                arg_list[i] = loc_conversion(arg_list[i])
 
     is_inline_expr = False
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
@@ -366,12 +369,18 @@ def loc_conversion(edm_string: str) -> str:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
         try:
+            if type_and_value.startswith("i,"):
+                type_and_value = type_and_value[2:]
             int(type_and_value)
             value = type_and_value
             type_char = "i"
         except ValueError:
+            print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+            print(name)
+            print(type_and_value)
+            breakpoint()
             return None  # TODO: Come back and fix
-        #    raise ValueError("Invalid EDM format: Missing ':' separator")
+            # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     type_mapping = {
         "d": "float",
@@ -450,7 +459,7 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')]
     loc_pattern = re.compile(r'"(LOC\\[^"]+)"')
 
     def replace_loc_match(match: re.Match) -> str:
