@@ -266,13 +266,12 @@ class EDMFileParser:
                                 int(sub_object.width) - int(sub_object.properties["xPoints"][i]) + int(sub_object.x)
                             )
                     sub_object.x = int(size_properties["x"]) - int(sub_object.x)
-        if orientation in ("rotateCW", "RotateCW"):
+        if orientation == "rotateCW":
             for sub_group in temp_group.objects:
                 group_cx = sub_group.x + sub_group.width / 2
                 group_cy = sub_group.y + sub_group.height / 2
 
                 for sub_object in sub_group.objects:
-                    print(sub_object)
                     if sub_object.name.lower() == "activearcclass":
                         sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) - 90) % 360)
 
@@ -282,14 +281,14 @@ class EDMFileParser:
                     rel_x = obj_cx - group_cx
                     rel_y = obj_cy - group_cy
 
-                    new_rel_x = rel_y
-                    new_rel_y = -rel_x
+                    new_rel_x = -rel_y
+                    new_rel_y = rel_x
 
                     new_cx = group_cx + new_rel_x
                     new_cy = group_cy + new_rel_y
 
-                    sub_object.x = new_cx - sub_object.height / 2  # width/height swap
-                    sub_object.y = new_cy - sub_object.width / 2
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
 
                     sub_object.width, sub_object.height = sub_object.height, sub_object.width
 
@@ -306,15 +305,46 @@ class EDMFileParser:
 
                             sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
                             sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
-                    print(group_cx, group_cy)
-                    print(sub_object)
-                    # breakpoint()
 
         if orientation == "rotateCCW":
             for sub_group in temp_group.objects:
+                group_cx = sub_group.x + sub_group.width / 2
+                group_cy = sub_group.y + sub_group.height / 2
+
                 for sub_object in sub_group.objects:
                     if sub_object.name.lower() == "activearcclass":
-                        sub_object.properties["startAngle"] = str(int(sub_object.properties["startAngle"]) + 90)
+                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) + 90) % 360)
+
+                    obj_cx = sub_object.x + sub_object.width / 2
+                    obj_cy = sub_object.y + sub_object.height / 2
+
+                    rel_x = obj_cx - group_cx
+                    rel_y = obj_cy - group_cy
+
+                    new_rel_x = rel_y
+                    new_rel_y = -rel_x
+
+                    new_cx = group_cx + new_rel_x
+                    new_cy = group_cy + new_rel_y
+
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
+
+                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
+
+                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            px = int(sub_object.properties["xPoints"][i])
+                            py = int(sub_object.properties["yPoints"][i])
+
+                            rel_px = px - group_cx
+                            rel_py = py - group_cy
+
+                            new_rel_px = rel_py
+                            new_rel_py = -rel_px
+
+                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
+                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
         while len(temp_group.objects) > len(ranges):
