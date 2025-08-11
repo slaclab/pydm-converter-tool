@@ -497,7 +497,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     pydm_widgets, menu_mux_buttons = traverse_group(
         parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui
     )
-    generate_menumux_file(menu_mux_buttons, parser.output_file_path)
+    if menu_mux_buttons:
+        generate_menumux_file(menu_mux_buttons, parser.output_file_path)
     return pydm_widgets, used_classes
 
 
