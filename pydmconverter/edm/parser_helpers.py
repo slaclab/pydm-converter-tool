@@ -369,11 +369,23 @@ def loc_conversion(edm_string: str) -> str:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
         try:
-            if type_and_value.startswith("i,"):
+            if type_and_value.startswith(
+                "d,"
+            ):  # TODO: Come back and find a cleaner way to deal with these edgecases once all edgecases are caught
                 type_and_value = type_and_value[2:]
-            int(type_and_value)
-            value = type_and_value
-            type_char = "i"
+                float(type_and_value)
+                type_char = "d"
+            elif type_and_value.startswith("d"):
+                type_and_value = "0.0"
+                type_char = "d"
+            elif type_and_value.startswith("i,"):
+                type_and_value = type_and_value[2:]
+                int(type_and_value)
+                type_char = "i"
+            else:
+                int(type_and_value)  # testing if this is a proper int
+                value = type_and_value
+                type_char = "i"
         except ValueError:
             print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
             print(name)
