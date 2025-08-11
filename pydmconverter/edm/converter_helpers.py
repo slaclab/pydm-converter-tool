@@ -419,7 +419,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
-                        abs_pts = [(int(x), int(y)) for x, y in zip(x_points, y_points)]
+                        abs_pts = [(int(float(x)), int(float(y))) for x, y in zip(x_points, y_points)]
                         pen = int(obj.properties.get("lineWidth", 1))
                         startCoord = (obj.x, obj.y)
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen)
@@ -748,8 +748,8 @@ def geom_and_local_points(abs_points, startCoord, pen_width: int = 1):
         logger.warning("abs_points is empty for PyDMDrawingPolyLine")  # TODO: Fix this
         return {}, []
     xs, ys = zip(*abs_points)
-    min_x, max_x = min(list(xs) + [startCoord[0]]), max(xs)
-    min_y, max_y = min(list(ys) + [startCoord[1]]), max(ys)
+    min_x, max_x = min(list(xs)), max(xs)  # TODO: Comeback and resolve which to use
+    min_y, max_y = min(list(ys)), max(ys)
 
     geom = {
         "x": min_x,
