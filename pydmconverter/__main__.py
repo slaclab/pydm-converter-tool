@@ -38,8 +38,12 @@ def run_cli(args: argparse.Namespace) -> None:
             output_path = output_path.with_suffix(".ui")
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
-        convert(str(input_path), str(output_path))
+<<<<<<< HEAD
+        convert(str(input_path), str(output_path), scrollable)
         copy_img_files(input_path.parent, output_path.parent)
+=======
+        convert(str(input_path), str(output_path), scrollable)
+>>>>>>> e05a08e (ENH: Added scrollable tag to cli)
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
