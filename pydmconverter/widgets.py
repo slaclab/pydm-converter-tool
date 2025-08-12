@@ -647,6 +647,8 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Str("environmentVariables", self.environment_variables).to_xml())
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
+        else:
+            properties.append(Bool("showIcon", False).to_xml())
         if self.redirect_command_output is not None:
             properties.append(Bool("redirectCommandOutput", self.redirect_command_output).to_xml())
         if self.allow_multiple_executions is not None:
@@ -700,6 +702,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties: List[ET.Element] = super().generate_properties()
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
+        else:
+            properties.append(Bool("showIcon", False).to_xml())
         # if self.filenames is not None:
         #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
@@ -710,9 +714,6 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
-        properties.append(
-            Bool("showIcon", False).to_xml()
-        )  # TODO: Make sre that this will not need to be shown in other examples
         if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
             properties.append(StringList("filenames", [converted_filename]).to_xml())
