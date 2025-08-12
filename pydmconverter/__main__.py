@@ -45,7 +45,9 @@ def run_cli(args: argparse.Namespace) -> None:
         output_path.mkdir(parents=True, exist_ok=True)
         files_found: int
         files_failed: list[str]
-        files_found, files_failed = convert_files_in_folder(input_path, output_path, input_file_type, override)
+        files_found, files_failed = convert_files_in_folder(
+            input_path, output_path, input_file_type, override, scrollable
+        )
 
         if files_found == 0:
             print(f"No {input_file_type} files found in {input_path}")
@@ -59,7 +61,7 @@ def run_cli(args: argparse.Namespace) -> None:
 
 
 def convert_files_in_folder(
-    input_path: Path, output_path: Path, input_file_type: str, override: bool
+    input_path: Path, output_path: Path, input_file_type: str, override: bool, scrollable: bool
 ) -> tuple[int, list[str]]:
     """Recursively runs convert on files in directory and subdirectories
 
@@ -93,7 +95,7 @@ def convert_files_in_folder(
             files_failed.append(str(file))
             logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
-            convert(file, output_file_path)
+            convert(file, output_file_path, scrollable)
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
