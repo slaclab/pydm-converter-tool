@@ -1539,7 +1539,7 @@ class Drawable(Tangible):
 
 
 class PageHeader:
-    def create_page_header(self, edm_parser):
+    def create_page_header(self, edm_parser, scrollable=False):
         ui_element = ET.Element("ui", attrib={"version": "4.0"})
 
         class_element = ET.SubElement(ui_element, "class")
@@ -1568,14 +1568,48 @@ class PageHeader:
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)
 
-        central_widget = ET.SubElement(
-            main_widget,
-            "widget",
-            attrib={
-                "class": "QWidget",
-                "name": "centralwidget",
-            },
-        )
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+            sa_geometry = ET.SubElement(scroll_area, "property", attrib={"name": "geometry"})
+            sa_rect = ET.SubElement(sa_geometry, "rect")
+            ET.SubElement(sa_rect, "x").text = "0"
+            ET.SubElement(sa_rect, "y").text = "0"
+            ET.SubElement(sa_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sa_rect, "height").text = str(edm_parser.ui.height)
+            widget_resizable = ET.SubElement(scroll_area, "property", attrib={"name": "widgetResizable"})
+            ET.SubElement(widget_resizable, "bool").text = "false"
+
+            scroll_contents = ET.SubElement(
+                scroll_area, "widget", attrib={"class": "QWidget", "name": "scrollAreaWidgetContents"}
+            )
+            sc_geometry = ET.SubElement(scroll_contents, "property", attrib={"name": "geometry"})
+            sc_rect = ET.SubElement(sc_geometry, "rect")
+            ET.SubElement(sc_rect, "x").text = "0"
+            ET.SubElement(sc_rect, "y").text = "0"
+            ET.SubElement(sc_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sc_rect, "height").text = str(edm_parser.ui.height)
+
+            central_widget = ET.SubElement(
+                scroll_contents,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
+        else:
+            central_widget = ET.SubElement(
+                main_widget,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
 
         return ui_element, central_widget
 
