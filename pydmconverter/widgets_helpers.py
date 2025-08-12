@@ -826,7 +826,7 @@ class MultiRule(XMLConvertible):
     rule_type: str
     rule_list: Optional[List[Tuple[str, str, bool, bool, int, int]]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
+    initial_value: Optional[bool] = False  # TODO: set to false to fix the extra enumbutton
     notes: Optional[str] = ""
 
     def to_string(self):
@@ -851,7 +851,8 @@ class MultiRule(XMLConvertible):
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
+            # f'"initial_value": "{self.initial_value}", '
+            f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -872,7 +873,7 @@ class MultiRule(XMLConvertible):
 
     def get_hide_on_disconnect_expression(self, index):
         ch = f"ch[{index}]"
-        return f"(True if {ch} is not None else False)"
+        return f"{ch}.connected"
 
 
 @dataclass
@@ -1371,10 +1372,17 @@ class Controllable(Tangible):
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
                 self.rules.append(("Visible", group_channel, False, self.visInvert is None, group_min, group_max))
-                # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
             self.rules.append(("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax))
-        properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
+
+        hidden_widgets = ["activeXTextDspClassnoedit", "activeButtonClass", "activeChoiceButtonClass, activeXTextClass"]
+        is_hidden = False
+        for elem in hidden_widgets:
+            if self.name.startswith(elem):
+                is_hidden = True
+        if not is_hidden:
+            self.channel = None
+        properties.append(Rules(self.rules, self.channel).to_xml())
         return properties
 
 
