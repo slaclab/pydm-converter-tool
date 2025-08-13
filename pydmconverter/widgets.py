@@ -644,6 +644,9 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             A list of XML elements representing the PyDMShellCommand properties.
         """
         properties: List[ET.Element] = super().generate_properties()
+        if self.visPvList is not None:
+            print(vars(self))
+            print(self.visPvList)
         if self.show_confirm_dialog is not None:
             properties.append(Bool("showConfirmDialog", self.show_confirm_dialog).to_xml())
         if self.confirm_message is not None:

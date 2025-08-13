@@ -1375,7 +1375,7 @@ class Controllable(Tangible):
         if self.visPv is not None:
             self.rules.append(("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax))
 
-        hidden_widgets = ["activeXTextDspClassnoedit", "activeButtonClass", "activeChoiceButtonClass, activeXTextClass"]
+        hidden_widgets = ["activeXTextDspClassnoedit", "activeChoiceButtonClass, activeXTextClass"]
         is_hidden = False
         for elem in hidden_widgets:
             if self.name.startswith(elem):
