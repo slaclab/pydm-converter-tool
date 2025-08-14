@@ -85,6 +85,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activefreezebuttonclass": PyDMPushButton,
     "activesliderclass": PyDMSlider,
     "activemotifsliderclass": PyDMSlider,
+    "mzxygraphclass": PyDMWaveformPlot,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {

@@ -1431,15 +1431,15 @@ class PyDMByteIndicator(Alarmable):
 
 @dataclass
 class PyDMWaveformPlot(Alarmable, StyleSheetObject):
-    x_channel: Optional[List[str]] = None
-    y_channel: Optional[List[str]] = None
+    x_channel: Optional[List[str]] = field(default_factory=list)
+    y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
     color: Optional[Tuple[int, int, int, int]] = None
     minXRange: Optional[int] = None
     minYRange: Optional[int] = None
     maxXRange: Optional[int] = None
     maxYRange: Optional[int] = None
-    plotColor: Optional[List[Tuple[int, int, int, int]]] = None
+    plotColor: Optional[List[Tuple[int, int, int, int]]] = field(default_factory=list)
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1458,21 +1458,28 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
-        if self.x_channel is not None or self.y_channel is not None:
+        if self.x_channel or self.y_channel:
             properties.append(StringList("curves", self.get_curve_strings()).to_xml())
         properties.append(Bool("useSharedAxis", True).to_xml())
 
         return properties
 
     def get_curve_strings(self) -> List[str]:
-        lists = [self.x_channel or [], self.y_channel or [], self.plotColor or []]
+        lists = [self.x_channel, self.y_channel, self.plotColor]
         max_len = max(len(lst) for lst in lists)
-        if self.x_channel is None:
-            self.x_channel = [""] * max_len
-        if self.y_channel is None:
-            self.y_channel = [""] * max_len
-        if self.plotColor is None:
-            self.plotColor = [""] * max_len
+        for i in range(max_len):
+            if len(self.x_channel) <= i:
+                self.x_channel.append("")
+            if len(self.y_channel) <= i:
+                self.y_channel.append("")
+            if len(self.plotColor) <= i:
+                self.plotColor.append("")
+        # if self.x_channel is None:
+        #    self.x_channel = [""] * max_len
+        # if self.y_channel is None:
+        #    self.y_channel = [""] * max_len
+        # if self.plotColor is None:
+        #    self.plotColor = [""] * max_len
         curve_string_list = []
         for i in range(max_len):
             curve_string = (
