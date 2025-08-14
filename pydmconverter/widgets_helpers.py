@@ -835,17 +835,17 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                use_enum = "type=enum" in channel
-                str_enum = str(use_enum).lower()
-                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": {str_enum}}}')
+                # use_enum = "type=enum" in channel
+                # str_enum = str(use_enum).lower()
+                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
                 expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
             expression_list.append(self.get_hide_on_disconnect_expression(new_index))
-            use_enum = "type=enum" in self.hide_on_disconnect_channel
-            str_enum = str(use_enum).lower()
+            # use_enum = "type=enum" in self.hide_on_disconnect_channel
+            # str_enum = str(use_enum).lower()
             channel_list.append(
-                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": {str_enum}}}'
+                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
             )
         if not expression_list:
             return ""
@@ -855,7 +855,7 @@ class MultiRule(XMLConvertible):
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
+            f'"initial_value": "false", '
             # f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
@@ -867,17 +867,21 @@ class MultiRule(XMLConvertible):
     def get_expression(self, index, show_on_true, visMin, visMax):  # TODO: Can clean up with fstrings
         ch = f"ch[{index}]"
         if visMin is not None and visMax is not None:
-            show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
-            show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+            # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
+            # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+            show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+            show_on_false_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
         else:
-            show_on_true_string = f"True if {ch}==1 else False"
-            show_on_false_string = f"True if {ch}!=1 else False"
+            # show_on_true_string = f"True if {ch}==1 else False"
+            # show_on_false_string = f"True if {ch}!=1 else False"
+            show_on_true_string = f"{ch}==1"
+            show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
 
         return show_on_true_string if show_on_true else show_on_false_string
 
     def get_hide_on_disconnect_expression(self, index):
         ch = f"ch[{index}]"
-        return f"{ch}.connected"
+        return f"{ch} is not None"
 
 
 @dataclass

@@ -364,7 +364,7 @@ def loc_conversion(edm_string: str) -> str:
         "d": "float",
         "i": "int",
         "s": "str",
-        "e": "enum",  # mapping enum to e by default
+        "e": "int",  # mapping enum to e by default
     }
 
     try:
@@ -428,7 +428,7 @@ def loc_conversion(edm_string: str) -> str:
         # an invisible widget with the definiation of a temp local pv would have to be added to the screen as well
         # temp_pv_string = "loc://temp?type=float&init=0.0"
 
-    elif pydm_type == "enum":
+    elif edm_type == "e":
         value_arr: List[str] = value.split(",")
         init: str = value_arr[0]
         enum_string: List[str] = value_arr[1:]

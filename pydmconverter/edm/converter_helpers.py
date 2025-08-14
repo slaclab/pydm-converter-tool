@@ -112,10 +112,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "indicatorPv": "channel",
     "filePv": "channel",
     "visPv": "visPv",
-    # "visPv": "channel", #TODO: vispvs become rules
     "colorPv": "channel",
     "readPv": "channel",
-    "nullPv": "channel",  # TODO: Add xpv and yPv
+    "nullPv": "channel",
     "pv": "channel",
     "visInvert": "visInvert",
     "value": "text",
@@ -172,7 +171,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "pressValue": "press_value",
     "releaseValue": "release_value",
     # Misc attributes
-    "onLabel": "on_label",  # TODO: may need to change later to accomidate for offLabel (but in all examples so far they are the same)
+    "onLabel": "on_label",
     "offLabel": "off_label",
     "arrows": "arrows",
     "fontAlign": "alignment",
