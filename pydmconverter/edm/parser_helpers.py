@@ -350,6 +350,7 @@ def loc_conversion(edm_string: str) -> str:
     ValueError
         If the EDM string does not start with 'LOC\\' or if it lacks the proper format.
     """
+    # if edm_string.startswith("LOC\\"):
     prefix = "LOC\\"
     if not edm_string.startswith(prefix):
         raise ValueError("Provided string does not start with 'LOC\\'")
@@ -502,8 +503,11 @@ def replace_calc_and_loc_in_edm_content(
                     full_url, short_url = "", ""
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
-        else:
-            return encountered_locs[edm_pv]["short"]
+        # else:
+        #    return encountered_locs[edm_pv]["short"]
+        elif "=" in edm_pv:
+            return encountered_locs[edm_pv]["full"]
+        return encountered_locs[edm_pv]["short"]
 
     new_content = loc_pattern.sub(replace_loc_match, new_content)
 

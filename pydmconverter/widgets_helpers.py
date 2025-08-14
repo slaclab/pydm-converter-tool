@@ -835,13 +835,17 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
+                use_enum = "type=enum" in channel
+                str_enum = str(use_enum).lower()
+                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": {str_enum}}}')
                 expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
             expression_list.append(self.get_hide_on_disconnect_expression(new_index))
+            use_enum = "type=enum" in self.hide_on_disconnect_channel
+            str_enum = str(use_enum).lower()
             channel_list.append(
-                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
+                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": {str_enum}}}'
             )
         if not expression_list:
             return ""
@@ -851,8 +855,8 @@ class MultiRule(XMLConvertible):
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            # f'"initial_value": "{self.initial_value}", '
-            f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
+            f'"initial_value": "{self.initial_value}", '
+            # f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
