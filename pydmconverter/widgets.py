@@ -1435,11 +1435,13 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
     color: Optional[Tuple[int, int, int, int]] = None
-    minXRange: Optional[int] = None
-    minYRange: Optional[int] = None
+    minXRange: Optional[int] = 0
+    minYRange: Optional[int] = 0
     maxXRange: Optional[int] = None
     maxYRange: Optional[int] = None
     plotColor: Optional[List[Tuple[int, int, int, int]]] = field(default_factory=list)
+    xLabel: Optional[str] = None
+    yLabel: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1458,10 +1460,41 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
+        if (
+            self.yLabel is not None and self.maxYRange is not None
+        ):  # NOTE: The axes must be generated before the curves for the curves to display
+            yAxisString = (
+                "{"
+                '"name": "Axis 1", '
+                '"orientation": "left", '
+                f'"label": "{self.yLabel}", '
+                f'"minRange": {self.minYRange}, '
+                f'"maxRange": {self.maxYRange}, '
+                '"autoRange": true, '
+                '"logMode": false'
+                "}"
+            )
         if self.x_channel or self.y_channel:
             properties.append(StringList("curves", self.get_curve_strings()).to_xml())
-        properties.append(Bool("useSharedAxis", True).to_xml())
+        if self.plot_name is not None:
+            properties.append(Str("title", self.plot_name).to_xml())
+        if self.xLabel is not None:
+            properties.append(StringList("xLabels", [self.xLabel]).to_xml())
+            # yAxis = {"name": "Axis 1", "orientation": "left", }
+            # yAxis = {}
+            """yAxisString = (
+                "{"
+               f"&quot;name&quot;: &quot;Axis 1&quot;, &quot;orientation&quot;: &quot;left&quot;, &quot;label&quot;: &quot;{self.yLabel}&quot;, &quot;minRange&quot;: {self.minYRange}, &quot;maxRange&quot;: {self.maxYRange}, &quot;autoRange&quot;: true, &quot;logMode&quot;: false"
+                "}"
+            )"""
 
+            properties.append(StringList("yAxes", [yAxisString]).to_xml())
+        # elif self.yLabel is not None or self.maxYRange is not None:
+        #    print("WaveformPlot needs to be updated")
+        #    print(vars(self))
+        #    breakpoint()
+
+        properties.append(Bool("useSharedAxis", True).to_xml())
         return properties
 
     def get_curve_strings(self) -> List[str]:
