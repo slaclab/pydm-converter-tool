@@ -1474,6 +1474,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 '"logMode": false'
                 "}"
             )
+            properties.append(StringList("yAxes", [yAxisString]).to_xml())
         if self.x_channel or self.y_channel:
             properties.append(StringList("curves", self.get_curve_strings()).to_xml())
         if self.plot_name is not None:
@@ -1487,8 +1488,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                f"&quot;name&quot;: &quot;Axis 1&quot;, &quot;orientation&quot;: &quot;left&quot;, &quot;label&quot;: &quot;{self.yLabel}&quot;, &quot;minRange&quot;: {self.minYRange}, &quot;maxRange&quot;: {self.maxYRange}, &quot;autoRange&quot;: true, &quot;logMode&quot;: false"
                 "}"
             )"""
-
-            properties.append(StringList("yAxes", [yAxisString]).to_xml())
         # elif self.yLabel is not None or self.maxYRange is not None:
         #    print("WaveformPlot needs to be updated")
         #    print(vars(self))
@@ -1521,7 +1520,8 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"x_channel": "{self.x_channel[i]}", '
                 f'"y_channel": "{self.y_channel[i]}", '
                 # f'"color": "rgba{str(self.plotColor[i])}"'
-                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}", '
+                f'"yAxisName": "Axis 1"'
                 "}"
             )
             curve_string_list.append(curve_string)
