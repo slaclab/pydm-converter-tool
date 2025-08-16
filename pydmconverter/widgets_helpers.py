@@ -385,7 +385,13 @@ class StringList(XMLConvertible):
                 raise TypeError(f"Expected string in StringList.items, got {type(item)}: {item}")
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
+            # print(item)
+            # breakpoint()
+            # string_el.text = self.escape_for_stringlist(item)
         return prop
+
+    def escape_for_stringlist(self, s: str) -> str:
+        return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @dataclass
@@ -837,11 +843,21 @@ class MultiRule(XMLConvertible):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
                 # use_enum = "type=enum" in channel
                 # str_enum = str(use_enum).lower()
+                replacement_init = None
+                if channel.startswith("loc://") and "init=${" in channel:
+                    replacement_init = channel[channel.find("init=") + len("init=") :]
+                    replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
+                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax, replacement_init))
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
-            expression_list.append(self.get_hide_on_disconnect_expression(new_index))
+            replacement_init = None
+            if self.hide_on_disconnect_channel.startswith("loc://") and "init=${" in self.hide_on_disconnect_channel:
+                replacement_init = self.hide_on_disconnect_channel[
+                    self.hide_on_disconnect_channel.find("init=") + len("init=") :
+                ]
+                replacement_init = replacement_init[: replacement_init.find("}") + 1]
+            expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
             # use_enum = "type=enum" in self.hide_on_disconnect_channel
             # str_enum = str(use_enum).lower()
             channel_list.append(
@@ -864,7 +880,11 @@ class MultiRule(XMLConvertible):
         )
         return output_string
 
-    def get_expression(self, index, show_on_true, visMin, visMax):  # TODO: Can clean up with fstrings
+    def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
+        # if init:
+        #    ch = init
+        # else:
+        #   ch = f"ch[{index}]"
         ch = f"ch[{index}]"
         if visMin is not None and visMax is not None:
             # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
@@ -879,9 +899,14 @@ class MultiRule(XMLConvertible):
 
         return show_on_true_string if show_on_true else show_on_false_string
 
-    def get_hide_on_disconnect_expression(self, index):
+    def get_hide_on_disconnect_expression(self, index, init):
+        # if init:
+        #    ch = init
+        # else:
+        #   ch = f"ch[{index}]"
         ch = f"ch[{index}]"
         return f"{ch} is not None"
+        # return f"bool({ch})"
 
 
 @dataclass
@@ -1383,10 +1408,10 @@ class Controllable(Tangible):
         if self.visPv is not None:
             self.rules.append(("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax))
 
-        hidden_widgets = ["activeXTextDspClassnoedit", "activeChoiceButtonClass, activeXTextClass"]
+        hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
         is_hidden = False
         for elem in hidden_widgets:
-            if self.name.startswith(elem):
+            if self.name.lower().startswith(elem):
                 is_hidden = True
         if not is_hidden:
             self.channel = None

@@ -162,6 +162,13 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "xRange": "x_range",
     "yRange": "y_range",
     "markerStyle": "marker_style",
+    "graphTitle": "plot_name",
+    "xMin": "minXRange",
+    "xMax": "maxXRange",
+    "yMin": "minYRange",
+    "yMax": "maxYRange",
+    "yLabel": "yLabel",
+    "xLabel": "xLabel",
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
