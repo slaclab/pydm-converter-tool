@@ -157,8 +157,8 @@ class QLabel(Legible, StyleSheetObject):
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
             properties.append(Bool("showUnits", self.show_units).to_xml())
-        elif self.name.startswith("TextupdateClass"):
-            properties.append(Bool("showUnits", "true").to_xml())
+        # elif self.name.startswith("TextupdateClass"):
+        #    properties.append(Bool("showUnits", "true").to_xml())
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
@@ -1442,6 +1442,9 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     plotColor: Optional[List[Tuple[int, int, int, int]]] = field(default_factory=list)
     xLabel: Optional[str] = None
     yLabel: Optional[str] = None
+    axisColor: Optional[Tuple[int, int, int, int]] = None
+    pointsize: Optional[int] = None
+    font = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1478,7 +1481,23 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         if self.x_channel or self.y_channel:
             properties.append(StringList("curves", self.get_curve_strings()).to_xml())
         if self.plot_name is not None:
-            properties.append(Str("title", self.plot_name).to_xml())
+            color = self.color or self.axisColor or (175, 175, 175, 255)
+            if self.font is not None:
+                size = self.font["pointsize"]
+            else:
+                size = 12
+            properties.append(
+                Str(
+                    "title",
+                    (
+                        f'<div style="text-align:center; color:{self.rgba_to_hex(*color)}; font-size:{size}pt;">'
+                        f"{self.plot_name}"
+                        "</div>"
+                    ),
+                ).to_xml()
+            )
+        if self.axisColor is not None:
+            properties.append(ColorObject("axisColor", *self.axisColor).to_xml())
         if self.xLabel is not None:
             properties.append(StringList("xLabels", [self.xLabel]).to_xml())
             # yAxis = {"name": "Axis 1", "orientation": "left", }

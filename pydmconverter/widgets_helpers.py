@@ -881,11 +881,14 @@ class MultiRule(XMLConvertible):
         return output_string
 
     def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
-        # if init:
-        #    ch = init
-        # else:
-        #   ch = f"ch[{index}]"
+        """
+        if init:
+           ch = init
+        else:
+          ch = f"ch[{index}]"
+        """
         ch = f"ch[{index}]"
+
         if visMin is not None and visMax is not None:
             # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
             # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
@@ -900,11 +903,14 @@ class MultiRule(XMLConvertible):
         return show_on_true_string if show_on_true else show_on_false_string
 
     def get_hide_on_disconnect_expression(self, index, init):
-        # if init:
-        #    ch = init
-        # else:
-        #   ch = f"ch[{index}]"
+        """
+        if init:
+           ch = init
+        else:
+          ch = f"ch[{index}]"
+        """
         ch = f"ch[{index}]"
+
         return f"{ch} is not None"
         # return f"bool({ch})"
 

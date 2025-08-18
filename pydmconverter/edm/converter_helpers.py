@@ -169,6 +169,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "yMax": "maxYRange",
     "yLabel": "yLabel",
     "xLabel": "xLabel",
+    "gridColor": "axisColor",
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
@@ -413,6 +414,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         "botShadowColor",
                         "indicatorColor",
                         "frozenBgColor",
+                        "gridColor",
                     }
                     if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
