@@ -188,6 +188,17 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "secretId": "secretId",
 }
 
+COLOR_ATTRIBUTES: set = {
+    "fgColor",
+    "bgColor",
+    "lineColor",
+    "offColor",
+    "onColor",
+    "topShadowColor",
+    "botShadowColor",
+    "indicatorColor",
+}
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -386,17 +397,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-                    color_attributes: set = {
-                        "fgColor",
-                        "bgColor",
-                        "lineColor",
-                        "offColor",
-                        "onColor",
-                        "topShadowColor",
-                        "botShadowColor",
-                        "indicatorColor",
-                    }
-                    if edm_attr in color_attributes:
+                    if edm_attr in COLOR_ATTRIBUTES:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                     if edm_attr == "plotColor":
                         color_list = []
