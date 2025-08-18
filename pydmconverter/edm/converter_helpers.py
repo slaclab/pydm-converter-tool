@@ -170,6 +170,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "yLabel": "yLabel",
     "xLabel": "xLabel",
     "gridColor": "axisColor",
+    "yAxisSrc": "yAxisSrc",
+    "xAxisSrc": "xAxisSrc",
     # Alarm sensitivity
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",

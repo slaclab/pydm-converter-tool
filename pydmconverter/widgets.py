@@ -220,7 +220,7 @@ class PyDMLabel(QLabel, Alarmable):
 
 
 @dataclass
-class PyDMLineEdit(Legible, Alarmable):
+class PyDMLineEdit(Legible, Alarmable, StyleSheetObject):
     """
     PyDMLineEdit represents a PyDMLineEdit widget with XML serialization capabilities.
     It extends Legible, and Alarmable to support additional features.
@@ -1445,6 +1445,8 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     axisColor: Optional[Tuple[int, int, int, int]] = None
     pointsize: Optional[int] = None
     font = None
+    yAxisSrc: Optional[str] = None
+    xAxisSrc: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1463,6 +1465,10 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
+        if self.yAxisSrc is not None and self.yAxisSrc == "fromUser":
+            self.auto_range = "false"
+        else:
+            self.auto_range = "true"
         if (
             self.yLabel is not None and self.maxYRange is not None
         ):  # NOTE: The axes must be generated before the curves for the curves to display
@@ -1473,7 +1479,19 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"label": "{self.yLabel}", '
                 f'"minRange": {self.minYRange}, '
                 f'"maxRange": {self.maxYRange}, '
-                '"autoRange": true, '
+                f'"autoRange": {self.auto_range}, '
+                '"logMode": false'
+                "}"
+            )
+            properties.append(StringList("yAxes", [yAxisString]).to_xml())
+        elif self.auto_range == "false" and self.minXRange is not None and self.minYRange is not None:
+            yAxisString = (
+                "{"
+                '"name": "Axis 1", '
+                '"orientation": "left", '
+                f'"minRange": {self.minYRange}, '
+                f'"maxRange": {self.maxYRange}, '
+                f'"autoRange": {self.auto_range}, '
                 '"logMode": false'
                 "}"
             )
@@ -1500,17 +1518,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(ColorObject("axisColor", *self.axisColor).to_xml())
         if self.xLabel is not None:
             properties.append(StringList("xLabels", [self.xLabel]).to_xml())
-            # yAxis = {"name": "Axis 1", "orientation": "left", }
-            # yAxis = {}
-            """yAxisString = (
-                "{"
-               f"&quot;name&quot;: &quot;Axis 1&quot;, &quot;orientation&quot;: &quot;left&quot;, &quot;label&quot;: &quot;{self.yLabel}&quot;, &quot;minRange&quot;: {self.minYRange}, &quot;maxRange&quot;: {self.maxYRange}, &quot;autoRange&quot;: true, &quot;logMode&quot;: false"
-                "}"
-            )"""
-        # elif self.yLabel is not None or self.maxYRange is not None:
-        #    print("WaveformPlot needs to be updated")
-        #    print(vars(self))
-        #    breakpoint()
 
         properties.append(Bool("useSharedAxis", True).to_xml())
         return properties
