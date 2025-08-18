@@ -74,8 +74,12 @@ class MenuMuxScreen(Display):
             macro_name, value_list = self.macro_mappings[combo_index][i]
             macro_value = value_list[selected_index]
             self.current_macros[macro_name] = macro_value
-        self.embedded.macros = json.dumps(self.current_macros)
-        self.embedded.filename = self.embedded.filename
+        #self.embedded.macros = json.dumps(self.current_macros)
+        #self.embedded.filename = self.embedded.filename
+
+        added_macros = json.dumps(self.current_macros)
+        self.embedded.set_macros_and_filename(self.embedded.filename, added_macros)
+        self.embedded.open_file()
 """
 
     with open(file_path, "w") as f:
