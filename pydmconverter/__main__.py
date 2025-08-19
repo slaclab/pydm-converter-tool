@@ -99,7 +99,9 @@ def convert_files_in_folder(
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
-        sub_found, sub_failed = convert_files_in_folder(subdir, output_path / subdir.name, input_file_type, override)
+        sub_found, sub_failed = convert_files_in_folder(
+            subdir, output_path / subdir.name, input_file_type, override, scrollable
+        )
         files_found += sub_found
         files_failed += sub_failed
 
