@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
-from pydmconverter.types import RGBA
+from pydmconverter.types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
@@ -22,7 +22,6 @@ from pydmconverter.widgets_helpers import (
     StringList,
 )
 import logging
-from epics import PV
 
 
 @dataclass
@@ -517,19 +516,19 @@ class PyDMPushButton(PyDMPushButtonBase):
             A list of XML elements representing the PyDMPushButton properties.
         """
         if self.is_off_button is not None and not self.is_off_button:
-            self.rules.append(("Visible", self.channel, False, True, None, None))
-            self.rules.append(("Enable", self.channel, False, True, None, None))
-            if self.text is None and self.channel is not None:
-                pv = PV(self.channel)
-                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
-                    self.text = pv.enum_strs[1]
+            self.rules.append(RuleArguments("Visible", self.channel, False, True, None, None))
+            self.rules.append(RuleArguments("Enable", self.channel, False, True, None, None))
+            # if self.text is None and self.channel is not None:
+            #    pv = PV(self.channel)
+            #    if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
+            #        self.text = pv.enum_strs[1]
         elif self.is_off_button is not None and self.is_off_button:
-            self.rules.append(("Visible", self.channel, False, False, None, None))
-            self.rules.append(("Enable", self.channel, False, False, None, None))
-            if self.text is None and self.channel is not None:
-                pv = PV(self.channel)
-                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
-                    self.text = pv.enum_strs[0]
+            self.rules.append(RuleArguments("Visible", self.channel, False, False, None, None))
+            self.rules.append(RuleArguments("Enable", self.channel, False, False, None, None))
+            # if self.text is None and self.channel is not None:
+            #    pv = PV(self.channel)
+            #    if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
+            #        self.text = pv.enum_strs[0]
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
