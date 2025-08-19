@@ -440,7 +440,7 @@ class EDMFileParser:
         """
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
-            match = re.search(rf"{prop[0]} (\d+)", text)
+            match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
             if not match:
                 continue
             size_properties[prop] = int(match.group(1))
