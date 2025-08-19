@@ -62,7 +62,6 @@ def run_cli(args: argparse.Namespace) -> None:
 
 
 def copy_img_files(input_path: Path, output_path: Path) -> None:
-    # img_files = list(input_path.glob("*.png")) + list(input_path.glob("*.gif")) + list(input_path.glob("*.jpg")) + list(input_path.glob("*.jpg"))
     for file in input_path.rglob("*"):
         if file.suffix.lower() in IMAGE_FILE_SUFFIXES:
             relative_path = file.relative_to(input_path)
