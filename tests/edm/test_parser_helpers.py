@@ -335,6 +335,9 @@ def test_parse_colors_list_complex(colors_list_file):
     """
     Test that parse_colors_list correctly parses a complex EDM colors.list file.
     """
+
+    # colors_list_file = os.getenv("COLORS_LIST_FILE")
+    colors_list_file = search_color_list()
     parsed = parse_colors_list(colors_list_file)
 
     print(parsed)

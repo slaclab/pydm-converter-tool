@@ -74,7 +74,7 @@ def parse_calc_list(calc_list_path: str) -> Dict[str, Tuple[Optional[str], Optio
     with open(calc_list_path, "r") as f:
         lines = [line.strip() for line in f]
 
-    i = 0
+    i = 1  # first line of file should be ignored
     while i < len(lines):
         line = lines[i]
 
@@ -114,7 +114,8 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
 
     EDM CALC PV examples:
       - 'CALC\\sum(pv1, pv2)'
-      - 'CALC\\{A+B}(pv1, pv2)'
+      - 'CALC\\\{A+B\}(pv1, pv2)'
+      - 'CALC\\\{(A)\}($(P)$(R)Acquire)'
 
     Parameters
     ----------
@@ -136,13 +137,10 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     ValueError
         If the given edm_pv string doesn't match the expected CALC syntax.
     """
-    pattern = r"^CALC\\([^(\s]+)\(([^)]*)\)$"
-    match = re.match(pattern, edm_pv.strip())
-    if not match:
-        raise ValueError(f"Invalid CALC PV syntax: '{edm_pv}'")
 
-    name_or_expr = match.group(1)
-    arg_string = match.group(2).strip()
+    expr_part, args_part = get_calc_groups(edm_pv)
+    name_or_expr = clean_escape_characters(expr_part)
+    arg_string = clean_escape_characters(args_part)
 
     arg_list: List[str] = []
     if arg_string:
@@ -154,6 +152,50 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
         name_or_expr = name_or_expr[1:-1]
 
     return name_or_expr, arg_list, is_inline_expr
+
+
+def get_calc_groups(edm_pv) -> Tuple[str]:
+    prefix = "CALC\\"
+    if not edm_pv.startswith(prefix):
+        raise ValueError(f"Not a CALC PV: {edm_pv}")
+
+    edm_pv = edm_pv[len(prefix) :]
+    depth = 0
+    end_idx = -1
+    for i in range(len(edm_pv) - 1, -1, -1):
+        if edm_pv[i] == ")":
+            depth += 1
+        elif edm_pv[i] == "(":
+            depth -= 1
+            if depth == 0:
+                end_idx = i
+                break
+
+    if end_idx == -1:
+        raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
+
+    return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
+
+
+def clean_escape_characters(expr: str) -> str:
+    """
+    Remove extra \ characters from CALC/LOC expressions.
+
+    Parameters
+    ----------
+    expression : str
+        The expression to be cleaned.
+
+    Returns
+    -------
+    str
+        The new expression with \s removed.
+    """
+    expr = expr.lstrip("\\")
+    expr = expr.replace(r"\{", "{").replace(r"\}", "}")
+    # TODO: If more \ removal cases are needed, add them here
+
+    return expr
 
 
 def apply_rewrite_rule(rewrite_rule: str, arg_list: List[str]) -> List[str]:
@@ -237,7 +279,6 @@ def translate_calc_pv_to_pydm(
     """
     if calc_dict is None:
         calc_dict = {}
-
     name_or_expr, arg_list, is_inline_expr = parse_calc_pv(edm_pv)
 
     if is_inline_expr:
@@ -246,8 +287,8 @@ def translate_calc_pv_to_pydm(
     else:
         calc_name = name_or_expr
         if calc_name not in calc_dict:
-            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. ")
-
+            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
             raise ValueError(f"Calculation '{calc_name}' in calc_dict has no expression defined.")
@@ -312,24 +353,31 @@ def loc_conversion(edm_string: str) -> str:
 
     content = edm_string[len(prefix) :]
 
-    if "$(" in content and ")" in content:
-        content = content.split(")", 1)[-1]
+    # if "$(" in content and ")" in content:
+    #    content = content.split(")", 1)[-1]
 
     try:
         name, type_and_value = content.split("=", 1)
+        name = name.lstrip("\\")
     except ValueError:
         raise ValueError("Invalid EDM format: Missing '=' separator")
 
     try:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
-        raise ValueError("Invalid EDM format: Missing ':' separator")
+        try:
+            int(type_and_value)
+            value = type_and_value
+            type_char = "i"
+        except ValueError:
+            return None  # TODO: Come back and fix
+        #    raise ValueError("Invalid EDM format: Missing ':' separator")
 
     type_mapping = {
         "d": "float",
         "i": "int",
         "s": "str",
-        "e": "int",  # mapping enum to int by default
+        "e": "enum",  # mapping enum to e by default
     }
 
     edm_type = type_char.lower()
@@ -345,6 +393,11 @@ def loc_conversion(edm_string: str) -> str:
         # an invisible widget with the definiation of a temp local pv would have to be added to the screen as well
         # temp_pv_string = "loc://temp?type=float&init=0.0"
 
+    elif pydm_type == "enum":
+        value_arr: List[str] = value.split(",")
+        init: str = value_arr[0]
+        enum_string: List[str] = value_arr[1:]
+        pydm_string = f"loc://{name}?type={pydm_type}&init={init}&enum_string={enum_string}"
     else:
         pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
 
@@ -383,10 +436,10 @@ def replace_calc_and_loc_in_edm_content(
     encountered_calcs: Dict[str, Dict[str, str]] = {}
     encountered_locs: Dict[str, Dict[str, str]] = {}
 
-    calc_pattern = re.compile(r"CALC\\[^(\s]+\([^)]*\)")
+    calc_pattern = re.compile(r'"(CALC\\\\[^"]+)"')
 
     def replace_calc_match(match: re.Match) -> str:
-        edm_pv = match.group(0)
+        edm_pv = match.group(1)
         if edm_pv not in encountered_calcs:
             full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
             short_url = full_url.split("?", 1)[0]
@@ -397,13 +450,22 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    loc_pattern = re.compile(r'LOC\\[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')
+    loc_pattern = re.compile(r'"(LOC\\[^"]+)"')
 
     def replace_loc_match(match: re.Match) -> str:
-        edm_pv = match.group(0)
+        edm_pv = match.group(1)
         if edm_pv not in encountered_locs:
-            full_url = loc_conversion(edm_pv)
-            short_url = full_url.split("?", 1)[0]
+            if "=" not in edm_pv:  # For case when calling pvs (with no =)
+                cleaned_pv = re.sub(r"^LOC\\+", "", edm_pv)
+                full_url = f"loc://{cleaned_pv}"
+                short_url = full_url
+            else:
+                full_url = loc_conversion(edm_pv)  # TODO: remove the ifs later
+                if full_url:
+                    short_url = full_url.split("?", 1)[0]
+                else:
+                    full_url, short_url = "", ""
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
         else:
@@ -708,30 +770,49 @@ def get_color_by_index(color_data: Dict[str, Any], index: str) -> Optional[Dict[
     return None
 
 
-def convert_fill_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[Tuple[int, int, int, int]]:
+def get_color_by_rgb(colorStr: str) -> Optional[Dict[str, Any]]:
     """
-    Convert the EDM 'fillColor' property into a tuple representing RGBA values.
+    Retrieve the color definition from color_data using an rgb string like 'rgb 0 0 0'.
+
+    Args:
+        colorStr (str): The color index string, e.g., 'rgb 0 0 0'.
+
+    Returns:
+        Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an 'rgb' key)
+                                  or None if not found.
+    """
+    color_list: list[str] = colorStr.split(" ")
+    output_dict = {}
+    output_dict["rgb"] = [int(s) for s in color_list[1:]]  # get ints from list excluding 'rgb' at index 0
+
+    return output_dict
+
+
+def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any]) -> Optional[Tuple[int, int, int, int]]:
+    """
+    Convert the EDM 'fillColor', 'bgColor', 'fgColor' property into a tuple representing RGBA values.
 
     Returns:
         Optional[Tuple[int, int, int, int]]: A tuple (red, green, blue, alpha) or None.
     """
-    color_info = get_color_by_index(color_data, fillColor)
+    if fillColor.startswith("rgb"):
+        color_info = get_color_by_rgb(fillColor)
+    else:
+        color_info = get_color_by_index(color_data, fillColor)
     if not color_info:
         logger.warning(f"Could not find a color for fillColor '{fillColor}'. Using default gray.")
-        return (128, 128, 128, 255)  # Default gray color
+        return (128, 128, 128, 255)
 
     rgb = color_info.get("rgb")
     if not rgb or len(rgb) < 3:
         logger.warning(f"Invalid RGB data for color '{fillColor}': {rgb}")
-        return (128, 128, 128, 255)  # Default gray color
-
-    # Extract RGB values
+        return (128, 128, 128, 255)
     red, green, blue = rgb[:3]
-    alpha = 255  # Default alpha value
+    alpha = 255
 
-    # Check if values need scaling (EDM often uses 0-65535 range)
     max_val = color_data.get("max", 256)
-    if max_val > 256:
+    rgbMax = max(rgb)
+    if rgbMax > 256:
         # Scale from 0-65535 to 0-255
         red = int(red * 255 / (max_val - 1))
         green = int(green * 255 / (max_val - 1))

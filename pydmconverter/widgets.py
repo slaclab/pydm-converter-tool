@@ -1,7 +1,27 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
-from pydmconverter.widgets_helpers import Int, Bool, Str, Drawable, Hidable, Alarmable, Legible, Color
+from typing import List, Optional, Tuple, Dict
+from pydmconverter.widgets_helpers import (
+    Int,
+    Bool,
+    Str,
+    Drawable,
+    Hidable,
+    Alarmable,
+    Legible,
+    TransparentBackground,
+    StyleSheet,
+    Alignment,
+    PixMap,
+    StyleSheetObject,
+    OnOffColor,
+    ColorObject,
+    Brush,
+    Enum,
+    StringList,
+)
+import logging
+from epics import PV
 
 
 @dataclass
@@ -88,12 +108,13 @@ class PyDMFrame(Alarmable):
             properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
         if self.disableOnDisconnect is not None:
             properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+        properties.append(TransparentBackground().to_xml())
 
         return properties
 
 
 @dataclass
-class QLabel(Legible):
+class QLabel(Legible, StyleSheetObject):
     """
     QLabel is a label widget that supports numerical precision, unit display,
     tool tip text, and a configurable frame shape.
@@ -116,6 +137,11 @@ class QLabel(Legible):
     show_units: Optional[bool] = None
     tool_tip: Optional[str] = None
     frame_shape: Optional[str] = None
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
+    alignment: Optional[str] = None
+    useDisplayBg: Optional[bool] = None
+    filename: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -131,10 +157,17 @@ class QLabel(Legible):
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
             properties.append(Bool("showUnits", self.show_units).to_xml())
+        elif self.name.startswith("TextupdateClass"):
+            properties.append(Bool("showUnits", "true").to_xml())
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
             properties.append(Str("frameShape", self.frame_shape).to_xml())
+        if self.alignment is not None:
+            properties.append(Alignment(self.alignment).to_xml())
+        if self.filename is not None and self.name.startswith("activePngClass"):
+            properties.append(PixMap(self.filename).to_xml())
+
         return properties
 
 
@@ -226,17 +259,32 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
     PyDMDrawingRectangle represents a drawable rectangle that supports XML serialization,
     alarm functionality, and can be hidden.
 
-    This class does not add any extra properties beyond those provided by its base classes.
-
     Attributes
     ----------
-    count : ClassVar[int]
-        A class variable tracking the number of PyDMDrawingRectangle instances.
+    indicatorColor: Optional[Tuple[int, int, int, int]]
+        The fill color for specifically activebar/slacbarclass rectangles
     """
+
+    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the drawable widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing geometry, pen, brush, and rotation properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+        if self.indicatorColor is not None:
+            properties.append(Brush(*self.indicatorColor, fill=True).to_xml())
+
+        return properties
 
 
 @dataclass
-class PyDMDrawingEllipse(Alarmable, Drawable, Hidable):
+class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
     """
     PyDMDrawingEllipse represents a drawable ellipse that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -251,7 +299,45 @@ class PyDMDrawingEllipse(Alarmable, Drawable, Hidable):
 
 
 @dataclass
-class QPushButton(Legible):
+class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
+    """
+    PyDMDrawingArc represents a drawable ellipse that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This class does not add any extra properties beyond those provided by its base classes.
+    """
+
+    startAngle: Optional[float] = None
+    spanAngle: Optional[int] = 180
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the drawable widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing arc properties.
+        """
+        self.x -= 4
+        self.width += 4  # TODO: Find a better solution
+        properties: List[ET.Element] = super().generate_properties()
+        if self.startAngle is not None:
+            properties.append(
+                Int("startAngle", int(self.startAngle)).to_xml()
+            )  # TODO: Maybe make a float class (probabaly unnecessary)
+        # if self.spanAngle is not None:
+        #    properties.append(Int("spanAngle", self.spanAngle))
+        # else:
+        properties.append(Int("spanAngle", self.spanAngle).to_xml())
+
+        return properties
+
+
+@dataclass
+class QPushButton(
+    Legible, StyleSheetObject
+):  # TODO: This creates a stylesheet for children classes but is overriden later (may need to remove to prevent repeated properties)
     """
     QPushButton is a button widget that supports text, icons, and various behavioral properties.
 
@@ -277,7 +363,6 @@ class QPushButton(Legible):
         A class variable tracking the number of QPushButton instances.
     """
 
-    text: Optional[str] = None
     auto_default: Optional[bool] = None
     default: Optional[bool] = None
     flat: Optional[bool] = None
@@ -300,8 +385,6 @@ class QPushButton(Legible):
         """
         properties: List[ET.Element] = super().generate_properties()
 
-        if self.text is not None:
-            properties.append(Str("text", self.text).to_xml())
         if self.auto_default is not None:
             properties.append(Bool("autoDefault", self.auto_default).to_xml())
         if self.default is not None:
@@ -372,6 +455,8 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
             properties.append(Str("password", self.password).to_xml())
         if self.protected_password is not None:
             properties.append(Str("protectedPassword", self.protected_password).to_xml())
+        if isinstance(self.name, str) and self.name.startswith("activeMenuButtonClass"):
+            properties.append(Str("text", "Menu").to_xml())
 
         return properties
 
@@ -408,6 +493,22 @@ class PyDMPushButton(PyDMPushButtonBase):
     release_value: Optional[str] = None
     relative_change: Optional[bool] = None
     write_when_release: Optional[bool] = None
+    on_color: Optional[Tuple[int, int, int, int]] = (
+        None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
+    )
+    off_color: Optional[Tuple[int, int, int, int]] = (
+        None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
+    )
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
+    useDisplayBg: Optional[bool] = None
+    on_label: Optional[str] = None
+    off_label: Optional[str] = None
+    is_off_button: Optional[bool] = None
+    text: Optional[str] = None
+    visMin: Optional[int] = None
+    visMax: Optional[int] = None
+    pressValue: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -418,6 +519,21 @@ class PyDMPushButton(PyDMPushButtonBase):
         List[ET.Element]
             A list of XML elements representing the PyDMPushButton properties.
         """
+        if self.is_off_button is not None and not self.is_off_button:
+            self.rules.append(("Visible", self.channel, False, True, None, None))
+            self.rules.append(("Enable", self.channel, False, True, None, None))
+            if self.text is None and self.channel is not None:
+                pv = PV(self.channel)
+                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
+                    self.text = pv.enum_strs[1]
+        elif self.is_off_button is not None and self.is_off_button:
+            self.rules.append(("Visible", self.channel, False, False, None, None))
+            self.rules.append(("Enable", self.channel, False, False, None, None))
+            if self.text is None and self.channel is not None:
+                pv = PV(self.channel)
+                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
+                    self.text = pv.enum_strs[0]
+
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
             properties.append(Bool("monitorDisp", self.monitor_disp).to_xml())
@@ -433,11 +549,39 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("relativeChange", self.relative_change).to_xml())
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
+        if self.on_label is not None:
+            properties.append(Str("text", self.on_label).to_xml())
+
+        if (
+            self.on_color is not None
+            or self.foreground_color is not None
+            or self.background_color is not None
+            or (
+                isinstance(self.name, str)
+                and (
+                    self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass")
+                )  # TODO: Eventually remove this whole stylesheet property
+            )
+        ):
+            styles: Dict[str, any] = {}
+            if self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"):
+                styles["border"] = "1px solid black"
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            if (
+                self.on_color is not None
+            ):  # TODO: find if on_color/background_color should take precedent (they are used for diff edm classes anyway) #TODO: Replace with OnOffColor class eventually
+                styles["background-color"] = self.on_color
+            elif self.background_color is not None and self.useDisplayBg is None:
+                styles["background-color"] = self.background_color
+            if self.on_color is not None and self.off_color != self.on_color:
+                logging.warning("on and off colors are different, need to modify code")
+            properties.append(StyleSheet(styles).to_xml())
         return properties
 
 
 @dataclass
-class PyDMShellCommand(PyDMPushButtonBase):
+class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
     """
     PyDMShellCommand extends PyDMPushButtonBase to execute shell commands.
 
@@ -535,6 +679,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
     macros: Optional[str] = None
     open_in_new_window: Optional[bool] = None
     follow_symlinks: Optional[bool] = None
+    displayFileName = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -548,17 +693,34 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties: List[ET.Element] = super().generate_properties()
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
-        if self.filenames is not None:
-            properties.append(Str("filenames", self.filenames).to_xml())
+        # if self.filenames is not None:
+        #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
             properties.append(Str("titles", self.titles).to_xml())
         if self.macros is not None:
             properties.append(Str("macros", self.macros).to_xml())
-        if self.open_in_new_window is not None:
-            properties.append(Bool("openInNewWindow", self.open_in_new_window).to_xml())
+        # if self.open_in_new_window is not None:
+        properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
+        properties.append(
+            Bool("showIcon", False).to_xml()
+        )  # TODO: Make sre that this will not need to be shown in other examples
+        if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
+            converted_filename = self.convert_filetype(self.displayFileName[0])
+            properties.append(StringList("filenames", [converted_filename]).to_xml())
         return properties
+
+    def convert_filetype(self, file_string: str) -> None:
+        """
+        Converts file strings of .<type> to .ui
+        """
+        filearr = file_string.split(".")
+        if len(filearr) > 1:
+            filename = ".".join(filearr[:-1])
+        else:
+            filename = file_string
+        return f"{filename}.ui"
 
 
 @dataclass
@@ -642,7 +804,7 @@ class QComboBox(Legible):
 
 
 @dataclass
-class PyDMEnumComboBox(QComboBox, Alarmable):
+class PyDMEnumComboBox(QComboBox, Alarmable, StyleSheetObject):
     """
     PyDMEnumComboBox extends QComboBox to support enumeration with additional properties.
 
@@ -735,13 +897,14 @@ class PyDMEnumButton(Alarmable, Legible):
     custom_order_comment: Optional[str] = None
     widget_type: Optional[str] = None
     orientation: Optional[str] = None
-    margin_top: Optional[int] = None
-    margin_bottom: Optional[int] = None
-    margin_left: Optional[int] = None
-    margin_right: Optional[int] = None
-    horizontal_spacing: Optional[int] = None
-    vertical_spacing: Optional[int] = None
+    margin_top: Optional[int] = 0
+    margin_bottom: Optional[int] = 0
+    margin_left: Optional[int] = 0
+    margin_right: Optional[int] = 0
+    horizontal_spacing: Optional[int] = 0
+    vertical_spacing: Optional[int] = 0
     checkable: Optional[bool] = None
+    tab_names: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -776,7 +939,9 @@ class PyDMEnumButton(Alarmable, Legible):
         if self.widget_type is not None:
             properties.append(Str("widgetType", self.widget_type).to_xml())
         if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation).to_xml())
+            properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
+        elif self.tab_names is not None:
+            properties.append(Enum("orientation", "Qt::Horizontal"))
         if self.margin_top is not None:
             properties.append(Int("marginTop", self.margin_top).to_xml())
         if self.margin_bottom is not None:
@@ -795,7 +960,7 @@ class PyDMEnumButton(Alarmable, Legible):
 
 
 @dataclass
-class PyDMDrawingLine(Legible, Drawable):
+class PyDMDrawingLine(Legible, Drawable, Alarmable):
     """
     PyDMDrawingLine represents a drawable line with arrow properties.
 
@@ -815,14 +980,15 @@ class PyDMDrawingLine(Legible, Drawable):
         Class variable tracking the number of PyDMDrawingLine instances.
     """
 
-    pen_color: Optional[Tuple[int, int, int]] = None
+    pen_color: Optional[Tuple[int, int, int]] = None  # maybe can remove
     pen_width: Optional[int] = None
-
     arrow_size: Optional[int] = None
     arrow_end_point: Optional[bool] = None
     arrow_start_point: Optional[bool] = None
     arrow_mid_point: Optional[bool] = None
     flip_mid_point_arrow: Optional[bool] = None
+    arrows: Optional[str] = None
+    penColor: Optional[Tuple[int, int, int, int]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -833,15 +999,13 @@ class PyDMDrawingLine(Legible, Drawable):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingLine properties.
         """
+        if self.arrows in ("to", "from", "both"):
+            self.brushFill = True
+            self.brushColor = self.penColor
+
         properties: List[ET.Element] = super().generate_properties()
-        if self.pen_color is not None:
-            r, g, b = self.pen_color
-            property = ET.Element("property", attrib={"name": "penColor", "stdset": "0"})
-            property.append(Color(r, g, b).to_xml())
-            properties.append(property)
         if self.pen_width is not None:
             properties.append(Int("penWidth", self.pen_width).to_xml())
-
         if self.arrow_size is not None:
             properties.append(Int("arrowSize", self.arrow_size).to_xml())
         if self.arrow_end_point is not None:
@@ -852,6 +1016,11 @@ class PyDMDrawingLine(Legible, Drawable):
             properties.append(Bool("arrowMidPoint", self.arrow_mid_point).to_xml())
         if self.flip_mid_point_arrow is not None:
             properties.append(Bool("flipMidPointArrow", self.flip_mid_point_arrow).to_xml())
+        if self.arrows is not None and (self.arrows == "both" or self.arrows == "to"):
+            properties.append(Bool("arrowStartPoint", True).to_xml())
+        if self.arrows is not None and (self.arrows == "both" or self.arrows == "from"):
+            properties.append(Bool("arrowEndPoint", True).to_xml())
+        properties.append(TransparentBackground().to_xml())
         return properties
 
 
@@ -869,6 +1038,8 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
     """
 
     points: Optional[List[str]] = None
+    arrows: Optional[str] = None
+    closePolygon: Optional[bool] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -879,16 +1050,492 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingPolyline properties.
         """
+        self.x -= 10
+        self.y -= 10
+        self.width += 20
+        self.height += (
+            20  # TODO: May need to come back and avoid hardcoding if it is possible to have non-arrow functions
+        )
         properties: List[ET.Element] = super().generate_properties()
-
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
             stringlist = ET.SubElement(points_prop, "stringlist")
-
             for point in self.points:
+                print(point)
+                point = ", ".join(str(int(x.strip()) + 10) for x in point.split(","))
                 string_el = ET.SubElement(stringlist, "string")
                 string_el.text = point
-
+            if self.closePolygon is not None:
+                startPoint = ", ".join(str(int(x.strip()) + 10) for x in self.points[0].split(","))
+                string_el = ET.SubElement(stringlist, "string")
+                string_el.text = startPoint
             properties.append(points_prop)
+        return properties
+
+
+@dataclass
+class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
+    """
+    PyDMEmbeddedDisplay embeds another UI file (display) inside the current display.
+
+    Attributes
+    ----------
+    filename : Optional[str]
+        The path to the embedded UI file.
+    macros : Optional[Dict[str, str]]
+        Macros to pass down to the embedded display.
+    visible : Optional[bool]
+        Whether the embedded display is visible.
+    """
+
+    filename: Optional[str] = None
+    macros: Optional[Dict[str, str]] = field(default_factory=dict)
+    visible: Optional[bool] = True
+    noscroll: Optional[bool] = True
+    background_color: Optional[bool] = None
+    foreground_color: Optional[bool] = None
+
+    def generate_properties(self) -> list:
+        """
+        Generate XML elements for PyDMEmbeddedDisplay properties.
+        """
+        properties = super().generate_properties()
+        if self.filename is not None:
+            converted_filename = self.convert_filetype(self.filename)
+            properties.append(Str("filename", converted_filename).to_xml())
+        if self.macros:
+            import json
+
+            macros_str = json.dumps(self.macros)
+            properties.append(Str("macros", macros_str).to_xml())
+        if self.visible is not None:
+            properties.append(Bool("visible", self.visible).to_xml())
+        if self.noscroll is not None:
+            scroll: Bool = not self.noscroll
+            properties.append(Bool("scrollable", scroll).to_xml())
+        if (
+            self.foreground_color is not None
+            or self.background_color is not None
+            or (isinstance(self.name, str) and self.name.startswith("activePipClass"))
+        ):
+            styles: Dict[str, any] = {}
+            if self.name.startswith("activePipClass"):
+                styles["border"] = "1px solid black"
+            if self.foreground_color is not None:
+                styles["color"] = self.foreground_color
+            elif self.background_color is not None:
+                styles["background-color"] = self.background_color
+            properties.append(StyleSheet(styles).to_xml())
+        return properties
+
+    def convert_filetype(self, file_string: str) -> None:
+        """
+        Converts file strings of .<type> to .ui
+        """
+        filename = ".".join(file_string.split(".")[:-1])
+        return f"{filename}.ui"  # TODO: ask if this should be expanded or be turned into a Path
+
+
+@dataclass
+class PyDMImageView(Alarmable):
+    """
+    PyDMImageView represents an image file to be inserted.
+
+    Attributes
+    ----------
+    filename : Optional[str]
+        A string representing the filename of the image file.
+    """
+
+    filename: Optional[str] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate PyDMImageView-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMImageView properties.
+        """
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.filename is not None:
+            properties.append(Str("filename", self.filename).to_xml())
+
+        return properties
+
+
+@dataclass
+class QTabWidget(Alarmable):
+    """
+    PyDMTabWidget is a container widget that can hold tabWidgets.
+    It inherits from Alarmable to support alarm-related features.
+
+    Attributes
+    ----------
+    frameShape : Optional[str]
+        The shape of the frame.
+    frameShadow : Optional[str]
+        The shadow style of the frame.
+    lineWidth : Optional[int]
+        The width of the frame's line.
+    midLineWidth : Optional[int]
+        The width of the mid-line of the frame.
+    disableOnDisconnect : Optional[bool]
+        If True, disables the frame on disconnect.
+    tabs : List[str]
+        A list of child tab widgets.
+    """
+
+    frameShape: Optional[str] = None
+    frameShadow: Optional[str] = None
+    lineWidth: Optional[int] = None
+    midLineWidth: Optional[int] = None
+    disableOnDisconnect: Optional[bool] = None
+
+    tabs: List[str] = field(default_factory=list)
+    children: List["PyDMFrame"] = field(default_factory=list)
+    embeddedHeight: Optional[int] = None
+    embeddedWidth: Optional[int] = None
+
+    def add_child(self, child) -> None:
+        """
+        Add a child widget to this frame's internal list.
+
+        Parameters
+        ----------
+        child : PyDMFrame
+            The child widget to add.
+
+        Returns
+        -------
+        None
+        """
+        self.children.append(child)
+
+    def to_xml(self) -> ET.Element:
+        """
+        Serialize the PyDMTabWidget and its children to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing this PyDMFrame and its children.
+        """
+        widget_el: ET.Element = super().to_xml()
+
+        for child in self.children:
+            widget_el.append(child.to_xml())
+
+        return widget_el
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate PyDMFrame-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of this PyDMFrame.
+        """
+        if self.embeddedHeight is not None:
+            self.height += self.embeddedHeight
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.frameShape is not None:
+            properties.append(Str("frameShape", self.frameShape).to_xml())
+        if self.frameShadow is not None:
+            properties.append(Str("frameShadow", self.frameShadow).to_xml())
+        if self.lineWidth is not None:
+            properties.append(Int("lineWidth", self.lineWidth).to_xml())
+        if self.midLineWidth is not None:
+            properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
+        if self.disableOnDisconnect is not None:
+            properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+
+        return properties
+
+
+@dataclass
+class QWidget(Alarmable):
+    """
+    QWidget is a base class for creating a QWidget that can be used
+    as a child in other PyDM widgets like PyDMTabWidget.
+
+    Attributes
+    ----------
+    title : Optional[str]
+        The title of the tab associated with this QWidget.
+    children : List[Alarmable]
+        The list of child widgets within this QWidget.
+    """
+
+    title: Optional[str] = None
+    children: List[Alarmable] = field(default_factory=list)
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate properties specific to the QWidget for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the properties of this QWidget.
+        """
+        # properties: List[ET.Element] = super().generate_properties()
+        properties: List[ET.Element] = []
+
+        if self.title is not None:
+            title_element = ET.Element("attribute", name="title")
+            title_string_element = ET.Element("string")
+            title_string_element.text = self.title
+            title_element.append(title_string_element)
+            properties.append(title_element)
+
+        return properties
+
+    def add_child(self, child) -> None:
+        """
+        Add a child widget to this frame's internal list.
+
+        Parameters
+        ----------
+        child : PyDMFrame
+            The child widget to add.
+
+        Returns
+        -------
+        None
+        """
+        self.children.append(child)
+
+    def to_xml(self) -> ET.Element:
+        """
+        Serialize the PyDMTabWidget and its children to an XML element.
+
+        Returns
+        -------
+        ET.Element
+            The XML element representing this PyDMFrame and its children.
+        """
+        widget_el: ET.Element = super().to_xml()
+
+        for child in self.children:
+            widget_el.append(child.to_xml())
+
+        return widget_el
+
+
+@dataclass
+class QTableWidget(Alarmable, Drawable, StyleSheetObject):
+    """
+    Represents a table widget with optional frame and line styling properties.
+
+    Attributes:
+        frameShape (Optional[str]): Shape of the frame (e.g., 'Box', 'Panel').
+        frameShadow (Optional[str]): Style of the frame's shadow (e.g., 'Raised').
+        lineWidth (Optional[int]): Width of the outer frame lines.
+        midLineWidth (Optional[int]): Width of the mid-line frame.
+        disableOnDisconnect (Optional[bool]): Whether to disable the widget if disconnected.
+    """
+
+    frameShape: Optional[str] = None
+    frameShadow: Optional[str] = None
+    lineWidth: Optional[int] = None
+    midLineWidth: Optional[int] = None
+    disableOnDisconnect: Optional[bool] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the widget's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.frameShape is not None:
+            properties.append(Str("frameShape", self.frameShape).to_xml())
+        if self.frameShadow is not None:
+            properties.append(Str("frameShadow", self.frameShadow).to_xml())
+        if self.lineWidth is not None:
+            properties.append(Int("lineWidth", self.lineWidth).to_xml())
+        if self.midLineWidth is not None:
+            properties.append(Int("midLineWidth", self.midLineWidth).to_xml())
+        if self.disableOnDisconnect is not None:
+            properties.append(Bool("disableOnDisconnect", self.disableOnDisconnect).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMByteIndicator(Alarmable):
+    """
+    Represents a widget that displays a multi-bit (byte) indicator.
+
+    Attributes:
+        numBits (Optional[int]): Number of bits to display.
+        showLabels (Optional[bool]): Whether to show bit labels.
+        on_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is on.
+        off_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is off.
+    """
+
+    numBits: Optional[int] = None
+    showLabels: Optional[bool] = None
+    on_color: Optional[Tuple[int, int, int, int]] = None
+    off_color: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the byte indicator's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
+
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.numBits is not None:
+            properties.append(Int("numBits", self.numBits).to_xml())
+        if self.showLabels is not None:
+            properties.append(Bool("showLabels", self.showLabels).to_xml())
+        if self.on_color is not None:
+            properties.append(OnOffColor("on", *self.on_color).to_xml())
+        if self.off_color is not None:
+            properties.append(OnOffColor("off", *self.off_color).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMWaveformPlot(Alarmable, StyleSheetObject):
+    x_channel: Optional[List[str]] = None
+    y_channel: Optional[List[str]] = None
+    plot_name: Optional[str] = None
+    color: Optional[Tuple[int, int, int, int]] = None
+    minXRange: Optional[int] = None
+    minYRange: Optional[int] = None
+    maxXRange: Optional[int] = None
+    maxYRange: Optional[int] = None
+    plotColor: Optional[List[Tuple[int, int, int, int]]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.plot_name is not None:
+            properties.append(
+                Str("name", self.plot_name).to_xml()
+            )  # Possibly overrides other name (may need to remove other name for plots)
+        if self.color is not None:
+            properties.append(ColorObject("color", *self.color).to_xml())
+        if self.minXRange is not None:
+            properties.append(Int("minXRange", self.minXRange).to_xml())
+        if self.minYRange is not None:
+            properties.append(Int("minYRange", self.minYRange).to_xml())
+        if self.maxXRange is not None:
+            properties.append(Int("maxXRange", self.maxXRange).to_xml())
+        if self.maxYRange is not None:
+            properties.append(Int("maxYRange", self.maxYRange).to_xml())
+        if self.x_channel is not None or self.y_channel is not None:
+            properties.append(StringList("curves", self.get_curve_strings()).to_xml())
+        properties.append(Bool("useSharedAxis", True).to_xml())
+
+        return properties
+
+    def get_curve_strings(self) -> List[str]:
+        lists = [self.x_channel or [], self.y_channel or [], self.plotColor or []]
+        max_len = max(len(lst) for lst in lists)
+        if self.x_channel is None:
+            self.x_channel = [""] * max_len
+        if self.y_channel is None:
+            self.y_channel = [""] * max_len
+        if self.plotColor is None:
+            self.plotColor = [""] * max_len
+        curve_string_list = []
+        for i in range(max_len):
+            curve_string = (
+                "{"
+                f'"name": "", '
+                f'"x_channel": "{self.x_channel[i]}", '
+                f'"y_channel": "{self.y_channel[i]}", '
+                # f'"color": "rgba{str(self.plotColor[i])}"'
+                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                "}"
+            )
+            curve_string_list.append(curve_string)
+        return curve_string_list
+
+    def rgba_to_hex(self, r, g, b, a=255):
+        """
+        Convert RGBA or RGB to a hex string in #RRGGBBAA format.
+
+        Args:
+            r (int): Red (0–255)
+            g (int): Green (0–255)
+            b (int): Blue (0–255)
+            a (int): Alpha (0–255), default is 255 (opaque)
+
+        Returns:
+            str: Hex color string like "#00e0e0"
+        """
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+
+@dataclass
+class PyDMScaleIndicator(Alarmable):
+    showUnits: Optional[bool] = None
+    showLimits: Optional[bool] = False
+    showValue: Optional[bool] = False
+    flipScale: Optional[bool] = None
+    precision: Optional[int] = None
+    # numDivisions: Optional[int] = None
+    minorTicks: Optional[int] = None
+    majorTicks: Optional[int] = None
+    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[Tuple[int, int, int, int]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the scale indicator's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """  # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
+        # self.height += 20
+        # self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.showUnits is not None:
+            properties.append(Bool("showUnits", self.showUnits).to_xml())
+        # if self.showLimits is not None:
+        #    properties.append(Bool("showLimits", self.showLimits).to_xml())
+        # if self.showValue is not None:
+        #    properties.append(Bool("showValue", self.showValue).to_xml())
+        if self.flipScale is not None:
+            properties.append(Bool("flipScale", self.flipScale).to_xml())
+        if self.precision is not None:
+            properties.append(Int("precision", self.precision).to_xml())
+        if self.minorTicks is not None or self.majorTicks is not None:
+            properties.append(Int("numDivisions", int(self.minorTicks or 0) + int(self.majorTicks or 0)).to_xml())
+        if self.indicatorColor is not None:
+            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
+        # if self.background_color is not None:
+        #    styles: Dict[str, any] = {}
+        #    styles["color"] = self.background_color
+        #    properties.append(StyleSheet(styles).to_xml())
+        if self.background_color is not None:
+            properties.append(ColorObject("backgroundColor", *self.background_color).to_xml())
+        if self.foreground_color is not None:
+            properties.append(ColorObject("tickColor", *self.foreground_color).to_xml())
+        properties.append(TransparentBackground().to_xml())
+        # properties.append(ColorObject("tickColor", 255, 255, 255).to_xml())
+        properties.append(Bool("showTicks", True).to_xml())
+        properties.append(Bool("showValue", self.showValue).to_xml())
+        properties.append(Bool("showLimits", self.showLimits).to_xml())
 
         return properties

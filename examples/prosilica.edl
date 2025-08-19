@@ -70,7 +70,7 @@ y 205
 w 350
 h 360
 lineColor rgb 0 0 0
-fillColor rgb 0 0 0
+fillColor rgb 187 187 187
 lineWidth 0
 endObjectProperties
 
@@ -944,7 +944,7 @@ y 340
 w 335
 h 365
 lineColor rgb 0 0 0
-fillColor rgb 0 0 0
+fillColor rgb 187 187 187
 lineWidth 0
 endObjectProperties
 
