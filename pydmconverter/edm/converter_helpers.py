@@ -737,8 +737,8 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-    # pointsize = math.floor(convert_pointsize(float(size_str), 100))
-    pointsize = new_convert_pointsize(float(size_str))
+    pointsize = math.floor(convert_pointsize(float(size_str), 100))
+    # pointsize = new_convert_pointsize(float(size_str))
 
     return {
         "family": family,
