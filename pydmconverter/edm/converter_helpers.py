@@ -61,6 +61,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "shellcmdclass": QPushButton,  # may need to change
     # "shellcmdclass": PyDMShellCommand,  # may need to change
     "textupdateclass": PyDMLabel,
+    "multilinetextupdateclass": PyDMLabel,
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
     "activebuttonclass": PyDMPushButton,
@@ -74,6 +75,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "activecoeftableclass": PyDMWaveformTable,
     "byteclass": PyDMByteIndicator,
     "textentryclass": PyDMLineEdit,
+    "multilinetextentryclass": PyDMLineEdit,
     "activextextdspclassnoedit": PyDMLabel,
     "activearcclass": PyDMDrawingArc,
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
