@@ -138,8 +138,6 @@ class QLabel(Legible, StyleSheetObject):
     show_units: Optional[bool] = None
     tool_tip: Optional[str] = None
     frame_shape: Optional[str] = None
-    foreground_color: Optional[RGBA] = None
-    background_color: Optional[RGBA] = None
     alignment: Optional[str] = None
     useDisplayBg: Optional[bool] = None
     filename: Optional[str] = None
@@ -279,7 +277,7 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
         """
         properties: List[ET.Element] = super().generate_properties()
         if self.indicatorColor is not None:
-            properties.append(Brush(*self.indicatorColor, fill=True).to_xml())
+            properties.append(Brush(*self.indicatorColor.to_tuple(), fill=True).to_xml())
 
         return properties
 
@@ -1402,9 +1400,9 @@ class PyDMByteIndicator(Alarmable):
         if self.showLabels is not None:
             properties.append(Bool("showLabels", self.showLabels).to_xml())
         if self.on_color is not None:
-            properties.append(OnOffColor("on", *self.on_color).to_xml())
+            properties.append(OnOffColor("on", *self.on_color.to_tuple()).to_xml())
         if self.off_color is not None:
-            properties.append(OnOffColor("off", *self.off_color).to_xml())
+            properties.append(OnOffColor("off", *self.off_color.to_tuple()).to_xml())
 
         return properties
 
@@ -1429,7 +1427,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 Str("name", self.plot_name).to_xml()
             )  # Possibly overrides other name (may need to remove other name for plots)
         if self.color is not None:
-            properties.append(ColorObject("color", *self.color).to_xml())
+            properties.append(ColorObject("color", *self.color.to_tuple()).to_xml())
         if self.minXRange is not None:
             properties.append(Int("minXRange", self.minXRange).to_xml())
         if self.minYRange is not None:
@@ -1461,7 +1459,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"x_channel": "{self.x_channel[i]}", '
                 f'"y_channel": "{self.y_channel[i]}", '
                 # f'"color": "rgba{str(self.plotColor[i])}"'
-                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                f'"color": "{self.rgba_to_hex(*self.plotColor[i].to_tuple())}"'
                 "}"
             )
             curve_string_list.append(curve_string)
@@ -1521,13 +1519,13 @@ class PyDMScaleIndicator(Alarmable):
         if self.minorTicks is not None or self.majorTicks is not None:
             properties.append(Int("numDivisions", int(self.minorTicks or 0) + int(self.majorTicks or 0)).to_xml())
         if self.indicatorColor is not None:
-            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
+            properties.append(ColorObject("indicatorColor", *self.indicatorColor.to_tuple()).to_xml())
         # if self.background_color is not None:
         #    styles: Dict[str, any] = {}
         #    styles["color"] = self.background_color
         #    properties.append(StyleSheet(styles).to_xml())
         if self.background_color is not None:
-            properties.append(ColorObject("backgroundColor", *self.background_color).to_xml())
+            properties.append(ColorObject("backgroundColor", *self.background_color.to_tuple()).to_xml())
         if self.foreground_color is not None:
             properties.append(ColorObject("tickColor", *self.foreground_color).to_xml())
         properties.append(TransparentBackground().to_xml())
