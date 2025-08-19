@@ -833,11 +833,9 @@ class MultiRule(XMLConvertible):
     def to_string(self):
         channel_list = []
         expression_list = []
-        print(self.rule_list)
-        breakpoint()
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
-                rule_type, channel, initial_value, show_on_true, visMin, visMax = rule.to_tuple()
+                rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
                 print(rule_type, channel, show_on_true)
                 breakpoint()
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
@@ -886,8 +884,6 @@ class Rules(XMLConvertible):
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
-        print(self.rules)
-        breakpoint()
         # bool_rule_types = set(["Visible", "Enable"])
         rule_list = []
         rule_variables = self.group_by_rules()
@@ -943,7 +939,7 @@ class StyleSheet(XMLConvertible):
 
     def _format_value(self, key: str, value: Any) -> str:
         if isinstance(value, RGBA) and key in ("color", "background-color"):
-            r, g, b, *a = value.to_tuple()
+            r, g, b, *a = value
             alpha = a[0] if a else 1.0
             return f"{key}: rgba({r}, {g}, {b}, {round(alpha, 2)});"
         return f"{key}: {value};"
@@ -1530,13 +1526,13 @@ class Drawable(Tangible):
         """
         properties: List[etree.Element] = super().generate_properties()
         if self.penColor is not None:
-            properties.append(PenColor(*self.penColor.to_tuple()).to_xml())
+            properties.append(PenColor(*self.penColor).to_xml())
         if self.penStyle is not None or self.penColor is not None:
             properties.append(PenStyle(style=self.penStyle).to_xml())
         if self.penWidth is not None:
             properties.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
-            properties.append(Brush(*self.brushColor.to_tuple(), fill=self.brushFill).to_xml())
+            properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
         if self.brushFill is None:
             properties.append(TransparentBackground().to_xml())
         if self.rotation is not None:
