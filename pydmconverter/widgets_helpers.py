@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
+from pydmconverter.types import RGBA
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -991,7 +992,7 @@ class TransparentBackground(XMLConvertible):
 class Curves(XMLConvertible):
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
-    plotColor: Optional[Tuple[int, int, int, int]] = None
+    plotColor: Optional[RGBA] = None
 
 
 @dataclass
@@ -1441,14 +1442,14 @@ class StyleSheetObject(Tangible):
 
     Attributes
     ----------
-    foreground_color : Optional[Tuple[int, int, int, int]]
+    foreground_color : Optional[RGBA]
         RGBA color tuple for the foreground (text) color.
-    background_color : Optional[Tuple[int, int, int, int]]
+    background_color : Optional[RGBA]
         RGBA color tuple for the background color.
     """
 
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
     useDisplayBg: Optional[bool] = None
     name: Optional[str] = ""
 
@@ -1480,8 +1481,8 @@ class StyleSheetObject(Tangible):
 
 @dataclass
 class OnOffObject(Tangible):
-    on_color: Optional[Tuple[int, int, int, int]] = None
-    off_color: Optional[Tuple[int, int, int, int]] = None
+    on_color: Optional[RGBA] = None
+    off_color: Optional[RGBA] = None
 
 
 @dataclass
@@ -1493,11 +1494,11 @@ class Drawable(Tangible):
     ----------
     penStyle : Optional[str]
         The style of the pen ('dash' for dashed, otherwise solid).
-    penColor : Optional[Tuple[int, int, int, int]]
+    penColor : Optional[RGBA]
         A tuple representing the pen color (red, green, blue, alpha).
     penWidth : Optional[int]
         The width of the pen.
-    brushColor : Optional[Tuple[int, int, int, int]]
+    brushColor : Optional[RGBA]
         A tuple representing the brush color (red, green, blue, alpha).
     brushFill : Optional[bool]
         Whether the brush should fill.
@@ -1506,9 +1507,9 @@ class Drawable(Tangible):
     """
 
     penStyle: Optional[str] = None
-    penColor: Optional[Tuple[int, int, int, int]] = None
+    penColor: Optional[RGBA] = None
     penWidth: Optional[int] = None
-    brushColor: Optional[Tuple[int, int, int, int]] = None
+    brushColor: Optional[RGBA] = None
     brushFill: Optional[bool] = None
     rotation: Optional[float] = None
 
