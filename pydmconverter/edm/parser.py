@@ -84,9 +84,11 @@ class EDMFileParser:
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text = self.text.replace("$(!W)", "")
         self.text = self.text.replace("$(!A)", "")  # remove global macros TODO: May need to use later
-        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        # pattern = r"\\*\$\(([^)]+)\)"
+        # self.text = re.sub(pattern, r"${\1}", self.text)
         return self.text
 
     def parse_screen_properties(self) -> None:
@@ -223,13 +225,17 @@ class EDMFileParser:
         num_pvs = properties["numPvs"]
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
+        self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
             self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
-        ranges = self.generate_pv_ranges(properties)
+        if "minValues" not in properties or "maxValues" not in properties:
+            ranges = None
+        else:
+            ranges = self.generate_pv_ranges(properties)
         self.remove_extra_groups(temp_group, ranges)
         if num_pvs == 0 or num_pvs == "0":
             self.remove_symbol_groups(temp_group, ranges)
-        else:
+        elif ranges is not None:
             self.populate_symbol_pvs(temp_group, properties, ranges)
         return temp_group
 
@@ -349,6 +355,9 @@ class EDMFileParser:
                             sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        if ranges is None:
+            temp_group.objects = temp_group.objects[:1]
+            return
         while len(temp_group.objects) > len(ranges):
             print(f"removed symbol group: {temp_group.objects.pop()}")
 
@@ -388,7 +397,7 @@ class EDMFileParser:
         self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
     ) -> None:
         num_states = int(properties["numStates"])
-        symbol_channel = properties["controlPvs"][0]
+        # symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
             print(f"controlPvs: {properties['controlPvs']}")
@@ -398,7 +407,14 @@ class EDMFileParser:
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
-            temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+            # temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+
+    def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
+        symbol_channel = properties["controlPvs"][0]
+        for sub_group in temp_group.objects:
+            for sub_object in sub_group.objects:
+                sub_object.properties["isSymbol"] = True
+                sub_object.properties["symbolChannel"] = symbol_channel
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""

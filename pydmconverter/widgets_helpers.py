@@ -1392,6 +1392,8 @@ class Controllable(Tangible):
     visMax: Optional[int] = None
     text = None
     hide_on_disconnect_channel: Optional[str] = None
+    isSymbol: Optional[bool] = None
+    symbolChannel: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1416,12 +1418,17 @@ class Controllable(Tangible):
 
         hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
         is_hidden = False
+
         for elem in hidden_widgets:
             if self.name.lower().startswith(elem):
                 is_hidden = True
-        if not is_hidden:
-            self.channel = None
-        properties.append(Rules(self.rules, self.channel).to_xml())
+        if is_hidden:
+            hidden_channel = self.channel
+        elif self.isSymbol is not None:
+            hidden_channel = self.symbolChannel
+        else:
+            hidden_channel = None
+        properties.append(Rules(self.rules, hidden_channel).to_xml())
         return properties
 
 

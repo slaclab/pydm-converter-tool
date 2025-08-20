@@ -206,6 +206,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "nullColor": "nullColor",
     "closePolygon": "closePolygon",
     "secretId": "secretId",
+    "isSymbol": "isSymbol",
 }
 
 # Configure logging
