@@ -157,7 +157,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     return name_or_expr, arg_list, is_inline_expr
 
 
-def get_calc_groups(edm_pv) -> Tuple[str]:
+def get_calc_groups(edm_pv: str) -> Tuple[str]:
     prefix = "CALC\\"
     if not edm_pv.startswith(prefix):
         raise ValueError(f"Not a CALC PV: {edm_pv}")
@@ -175,7 +175,12 @@ def get_calc_groups(edm_pv) -> Tuple[str]:
                 break
 
     if end_idx == -1:
-        raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
+        print(
+            f"Fixing Invalid CALC PV format (unbalanced parens): {edm_pv}"
+        )  # TODO: Comeback to see if I should fix this in EDM too
+        edm_pv += ")"
+        end_idx = edm_pv.rfind("(")
+        # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
 
     return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
 
