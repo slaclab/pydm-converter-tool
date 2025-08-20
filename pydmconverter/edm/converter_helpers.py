@@ -520,21 +520,42 @@ def should_delete_overlapping(
     group: EDMGroup,
     curr_obj: EDMObject,
     overlapping_name: str = "relateddisplayclass",
-    percentage_overlapping: float = 95,
+    percentage_overlapping: float = 80,
 ) -> bool:
     overlap_type_widgets = find_objects(group, overlapping_name)
-    for widget in overlap_type_widgets:
+    for widget in (
+        overlap_type_widgets
+    ):  # maybe need to improve conditional but I wanted to have it skip needless calculations if percent overlap == 100
         if (
-            widget.x == curr_obj.x
-            and widget.y == curr_obj.y
-            and widget.width == curr_obj.width
-            and widget.height == curr_obj.height
+            (
+                percentage_overlapping == 100
+                and widget.x == curr_obj.x
+                and widget.y == curr_obj.y
+                and widget.width == curr_obj.width
+                and widget.height == curr_obj.height
+            )
+            or (percentage_overlapping != 100 and calculate_widget_overlap(curr_obj, widget) > percentage_overlapping)
             and "value" not in widget.properties
             and "value" in curr_obj.properties
         ):
             widget.properties["value"] = curr_obj.properties["value"]
             return True
     return False
+
+
+def calculate_widget_overlap(widget1: EDMObject, widget2: EDMObject) -> float:
+    overlap_x1 = max(widget1.x, widget2.x)
+    overlap_x2 = min(widget1.x + widget1.width, widget2.x + widget2.width)
+    overlap_y1 = max(widget1.y, widget2.y)
+    overlap_y2 = min(widget1.y + widget1.height, widget2.y + widget2.height)
+    if overlap_x1 >= overlap_x2 or overlap_y1 >= overlap_y2:
+        return 0
+    overlap_area = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+    widget1_area = widget1.width * widget1.height
+    widget2_area = widget2.width * widget2.height
+    percent_area_1 = overlap_area / widget1_area * 100
+    percent_area_2 = overlap_area / widget2_area * 100
+    return min(percent_area_1, percent_area_2)
 
 
 def delete_object_in_group(group: EDMGroup, deleted: EDMObject):
