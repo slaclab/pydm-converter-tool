@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMFrame": {"extends": "QFrame", "header": "pydm.widgets.frame", "container": "1"},
-    "PyDMDrawingRectangle": {"extends": "QLabel", "header": "pydm.widgets.drawing", "container": ""},
-    "PyDMDrawingEllipse": {"extends": "QLabel", "header": "pydm.widgets.drawing", "container": ""},
-    "PyDMDrawingLine": {"extends": "QLabel", "header": "pydm.widgets.drawing", "container": ""},
+    "PyDMDrawingRectangle": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
+    "PyDMDrawingEllipse": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
+    "PyDMDrawingLine": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMDrawingPolyline": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMLabel": {"extends": "QLabel", "header": "pydm.widgets.label", "container": ""},
     "PyDMEnumComboBox": {"extends": "QComboBox", "header": "pydm.widgets.enum_combo_box", "container": ""},
