@@ -273,9 +273,15 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     color_list_dict = parse_colors_list(color_list_filepath)
 
     pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
-
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
+
+    text_objects = find_objects(
+        parser.ui, "activextextclass"
+    )  # TODO: If this gets too large, make into a helper function
+    for text_object in text_objects:
+        if should_delete_overlapping(parser.ui, text_object, "relateddisplayclass"):
+            delete_object_in_group(parser.ui, text_object)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -495,12 +501,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if obj.properties.get("autoSize", False):
                     widget.autoSize = True
 
-                """if parent_pydm_group:
-                    parent_pydm_group.add_child(widget)
-                    logger.info(f"Added {widget.name} to parent {parent_pydm_group.name}")
-                else:
-                    pydm_widgets.append(widget)
-                    logger.info(f"Added {widget.name} to root")"""
                 pydm_widgets.append(widget)
                 logger.info(f"Added {widget.name} to root")
             else:
@@ -514,6 +514,36 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     if menu_mux_buttons:
         generate_menumux_file(menu_mux_buttons, parser.output_file_path)
     return pydm_widgets, used_classes
+
+
+def should_delete_overlapping(
+    group: EDMGroup,
+    curr_obj: EDMObject,
+    overlapping_name: str = "relateddisplayclass",
+    percentage_overlapping: float = 95,
+) -> bool:
+    overlap_type_widgets = find_objects(group, overlapping_name)
+    for widget in overlap_type_widgets:
+        if (
+            widget.x == curr_obj.x
+            and widget.y == curr_obj.y
+            and widget.width == curr_obj.width
+            and widget.height == curr_obj.height
+            and "value" not in widget.properties
+            and "value" in curr_obj.properties
+        ):
+            widget.properties["value"] = curr_obj.properties["value"]
+            return True
+    return False
+
+
+def delete_object_in_group(group: EDMGroup, deleted: EDMObject):
+    for i in range(len(group.objects)):
+        if isinstance(group.objects[i], EDMGroup):
+            delete_object_in_group(group.objects[i], deleted)
+        elif group.objects[i] == deleted:
+            group.objects.pop(i)
+            return
 
 
 def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
