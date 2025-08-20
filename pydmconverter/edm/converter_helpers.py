@@ -483,6 +483,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget.height = max(1, int(height))
 
                 if type(widget).__name__ == "PyDMPushButton" and (
+                    "offLabel" in obj.properties and "onLabel" not in obj.properties
+                ):
+                    setattr(widget, "text", obj.properties["offLabel"])
+                elif type(widget).__name__ == "PyDMPushButton" and (
                     ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
                     or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
                 ):
