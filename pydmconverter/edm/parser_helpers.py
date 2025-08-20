@@ -163,6 +163,10 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
         raise ValueError(f"Not a CALC PV: {edm_pv}")
 
     edm_pv = edm_pv[len(prefix) :]
+    if "(" not in edm_pv and ")" not in edm_pv:
+        return edm_pv, ""
+
+    edm_pv = edm_pv[len(prefix) :]
     depth = 0
     end_idx = -1
     for i in range(len(edm_pv) - 1, -1, -1):
@@ -181,7 +185,6 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
         edm_pv += ")"
         end_idx = edm_pv.rfind("(")
         # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
-
     return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
 
 
