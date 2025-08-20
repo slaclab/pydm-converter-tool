@@ -21,7 +21,6 @@ from pydmconverter.widgets_helpers import (
     StringList,
 )
 import logging
-from epics import PV
 
 
 @dataclass
@@ -523,17 +522,21 @@ class PyDMPushButton(PyDMPushButtonBase):
         if self.is_off_button is not None and not self.is_off_button:
             self.rules.append(("Visible", self.channel, False, True, None, None))
             self.rules.append(("Enable", self.channel, False, True, None, None))
+            """
             if self.text is None and self.channel is not None:
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[1]
+            """
         elif self.is_off_button is not None and self.is_off_button:
             self.rules.append(("Visible", self.channel, False, False, None, None))
             self.rules.append(("Enable", self.channel, False, False, None, None))
+            """
             if self.text is None and self.channel is not None:
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[0]
+            """
 
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
@@ -724,7 +727,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
-        if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
+        if (
+            self.displayFileName is not None and self.displayFileName
+        ):  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
             properties.append(StringList("filenames", [converted_filename]).to_xml())
         return properties
