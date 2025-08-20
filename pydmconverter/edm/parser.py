@@ -97,7 +97,7 @@ class EDMFileParser:
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
-            size_properties = self.get_size_properties(screen_prop_text)
+            size_properties = self.get_size_properties(screen_prop_text, strict=True)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
@@ -425,7 +425,7 @@ class EDMFileParser:
         return -1
 
     @staticmethod
-    def get_size_properties(text: str) -> dict[str, int]:
+    def get_size_properties(text: str, strict: bool = False) -> dict[str, int]:
         """Get the size properties from the given text (x, y, width, height)
 
         Parameters
@@ -441,6 +441,8 @@ class EDMFileParser:
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
             match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
+            if not match and strict:
+                raise ValueError(f"Missing required property '{prop}' in widget.")
             if not match:
                 continue
             size_properties[prop] = int(match.group(1))
