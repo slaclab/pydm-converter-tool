@@ -902,8 +902,8 @@ class Rules(XMLConvertible):
         bool_rule_types = ["Visible", "Enable"]
         rule_variables = {key: [] for key in bool_rule_types}
         for rule in self.rules:
-            if rule.channel in rule_variables:
-                rule_variables[rule.channel].append(rule)
+            if rule.rule_type in rule_variables:
+                rule_variables[rule.rule_type].append(rule)
         for rule_name in rule_variables.keys():  # removes repeated tuples
             rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
