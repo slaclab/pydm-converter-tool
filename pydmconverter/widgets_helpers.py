@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
+from pydmconverter.types import RGBA, RuleArguments
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -824,7 +825,7 @@ class BoolRule(XMLConvertible):
 @dataclass
 class MultiRule(XMLConvertible):
     rule_type: str
-    rule_list: Optional[List[Tuple[str, str, bool, bool, int, int]]] = None
+    rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
     initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
     notes: Optional[str] = ""
@@ -835,6 +836,8 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+                print(rule_type, channel, show_on_true)
+                breakpoint()
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
                 expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
         if self.hide_on_disconnect_channel is not None:
@@ -877,7 +880,7 @@ class MultiRule(XMLConvertible):
 
 @dataclass
 class Rules(XMLConvertible):
-    rules: List[Tuple[str, str, bool, bool, int, int]]
+    rules: List[RuleArguments]
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
@@ -899,8 +902,8 @@ class Rules(XMLConvertible):
         bool_rule_types = ["Visible", "Enable"]
         rule_variables = {key: [] for key in bool_rule_types}
         for rule in self.rules:
-            if rule[0] in rule_variables:
-                rule_variables[rule[0]].append(rule)
+            if rule.rule_type in rule_variables:
+                rule_variables[rule.rule_type].append(rule)
         for rule_name in rule_variables.keys():  # removes repeated tuples
             rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
@@ -935,7 +938,7 @@ class StyleSheet(XMLConvertible):
     styles: Dict[str, Any]
 
     def _format_value(self, key: str, value: Any) -> str:
-        if isinstance(value, tuple) and key in ("color", "background-color"):
+        if isinstance(value, RGBA) and key in ("color", "background-color"):
             r, g, b, *a = value
             alpha = a[0] if a else 1.0
             return f"{key}: rgba({r}, {g}, {b}, {round(alpha, 2)});"
@@ -991,7 +994,7 @@ class TransparentBackground(XMLConvertible):
 class Curves(XMLConvertible):
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
-    plotColor: Optional[Tuple[int, int, int, int]] = None
+    plotColor: Optional[RGBA] = None
 
 
 @dataclass
@@ -1369,10 +1372,10 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
-                self.rules.append(("Visible", group_channel, True, True, group_min, group_max))
+                self.rules.append(RuleArguments("Visible", group_channel, True, True, group_min, group_max))
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
-            self.rules.append(("Visible", self.visPv, True, True, self.visMin, self.visMax))
+            self.rules.append(RuleArguments("Visible", self.visPv, True, True, self.visMin, self.visMax))
         properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
         return properties
 
@@ -1441,14 +1444,14 @@ class StyleSheetObject(Tangible):
 
     Attributes
     ----------
-    foreground_color : Optional[Tuple[int, int, int, int]]
+    foreground_color : Optional[RGBA]
         RGBA color tuple for the foreground (text) color.
-    background_color : Optional[Tuple[int, int, int, int]]
+    background_color : Optional[RGBA]
         RGBA color tuple for the background color.
     """
 
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
     useDisplayBg: Optional[bool] = None
     name: Optional[str] = ""
 
@@ -1480,8 +1483,8 @@ class StyleSheetObject(Tangible):
 
 @dataclass
 class OnOffObject(Tangible):
-    on_color: Optional[Tuple[int, int, int, int]] = None
-    off_color: Optional[Tuple[int, int, int, int]] = None
+    on_color: Optional[RGBA] = None
+    off_color: Optional[RGBA] = None
 
 
 @dataclass
@@ -1493,11 +1496,11 @@ class Drawable(Tangible):
     ----------
     penStyle : Optional[str]
         The style of the pen ('dash' for dashed, otherwise solid).
-    penColor : Optional[Tuple[int, int, int, int]]
+    penColor : Optional[RGBA]
         A tuple representing the pen color (red, green, blue, alpha).
     penWidth : Optional[int]
         The width of the pen.
-    brushColor : Optional[Tuple[int, int, int, int]]
+    brushColor : Optional[RGBA]
         A tuple representing the brush color (red, green, blue, alpha).
     brushFill : Optional[bool]
         Whether the brush should fill.
@@ -1506,9 +1509,9 @@ class Drawable(Tangible):
     """
 
     penStyle: Optional[str] = None
-    penColor: Optional[Tuple[int, int, int, int]] = None
+    penColor: Optional[RGBA] = None
     penWidth: Optional[int] = None
-    brushColor: Optional[Tuple[int, int, int, int]] = None
+    brushColor: Optional[RGBA] = None
     brushFill: Optional[bool] = None
     rotation: Optional[float] = None
 
