@@ -343,7 +343,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     symbol_vispv = [
                         (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
                     ]
-                    # breakpoint()
                 else:
                     symbol_vispv = []
 
@@ -705,6 +704,9 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     string_list = searched_arr[-1]
     channel_list = string_list[1:-1].split(", ")
     tab_names = [item.strip("'") for item in channel_list]
+    for i in range(len(tab_names)):
+        if not tab_names[i]:
+            tab_names.pop(i)
     tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
         return False
