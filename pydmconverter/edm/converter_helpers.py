@@ -487,12 +487,15 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 ):
                     setattr(widget, "text", obj.properties["offLabel"])
                 elif type(widget).__name__ == "PyDMPushButton" and (
-                    ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
-                    or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    (
+                        ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+                        or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    )
+                    and hasattr(widget, "channel")
+                    and widget.channel is not None
                 ):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
-
                 if obj.name.lower() == "activefreezebuttonclass":
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
