@@ -730,8 +730,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         if (
             self.displayFileName is not None and self.displayFileName
         ):  # TODO: Come back and find out why sometimes an empty list
-            converted_filename = self.convert_filetype(self.displayFileName[0])
-            properties.append(StringList("filenames", [converted_filename]).to_xml())
+            # converted_filename = self.convert_filetype(self.displayFileName[0])
+            converted_filenames = list(map(self.convert_filetype, self.displayFileName))
+            properties.append(StringList("filenames", converted_filenames).to_xml())
         return properties
 
     def convert_filetype(self, file_string: str) -> None:
