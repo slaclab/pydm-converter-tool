@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
+from pydmconverter.types import RGBA
 
 logger = logging.getLogger(__name__)
 
@@ -863,7 +864,8 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
         green = int(green * 255 / (max_val - 1))
         blue = int(blue * 255 / (max_val - 1))
 
-    result = (red, green, blue, alpha)
+    # result = (red, green, blue, alpha)
+    result = RGBA(r=red, g=green, b=blue, a=alpha)
     logger.info(f"Converted {fillColor} to color: {result}")
 
     return result
