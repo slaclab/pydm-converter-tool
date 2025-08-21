@@ -458,10 +458,15 @@ class EDMFileParser:
         for prop in ["x", "y", "width", "height"]:
             match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
             if not match:
-                match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
+                """match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
-                size_properties[prop] = match_macro.group(1)
+                size_properties[prop] = match_macro.group(1)"""
+                print(
+                    f"Missing size property (likely a macro): {prop}"
+                )  # TODO: Come back and use the improved solution
+                size_properties[prop] = 1
+                # raise ValueError(f"Missing required property '{prop}' in widget.")
             else:
                 size_properties[prop] = int(match.group(1))
 
