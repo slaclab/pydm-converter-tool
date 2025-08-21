@@ -139,6 +139,8 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     """
 
     expr_part, args_part = get_calc_groups(edm_pv)
+    print(expr_part, args_part)
+    breakpoint()
     name_or_expr = clean_escape_characters(expr_part)
     arg_string = clean_escape_characters(args_part)
 
@@ -166,7 +168,6 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
     if "(" not in edm_pv and ")" not in edm_pv:
         return edm_pv, ""
 
-    edm_pv = edm_pv[len(prefix) :]
     depth = 0
     end_idx = -1
     for i in range(len(edm_pv) - 1, -1, -1):
