@@ -40,6 +40,10 @@ def run_cli(args: argparse.Namespace) -> None:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         convert(str(input_path), str(output_path), scrollable)
     else:
+        if not input_file_type:
+            raise AttributeError(
+                "No file type given. When converting directories, use this format: [Input_Dir] [Output_Dir] [File_Type]"
+            )
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
         output_path.mkdir(parents=True, exist_ok=True)
@@ -112,6 +116,7 @@ def convert_files_in_folder(
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
+                breakpoint()
                 continue
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]

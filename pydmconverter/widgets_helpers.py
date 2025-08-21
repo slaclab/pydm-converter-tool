@@ -1629,8 +1629,12 @@ class PageHeader:
         rect = ET.SubElement(geometry, "rect")
         ET.SubElement(rect, "x").text = "0"
         ET.SubElement(rect, "y").text = "0"
-        ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
-        ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
+        if scrollable:  # Setting max values for the screen to be initially
+            ET.SubElement(rect, "width").text = str(min(edm_parser.ui.width, 120))
+            ET.SubElement(rect, "height").text = str(min(edm_parser.ui.height, 80))
+        else:
+            ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
 
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
