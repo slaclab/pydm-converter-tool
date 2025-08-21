@@ -3,6 +3,9 @@ from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
 from pydmconverter.types import RGBA, RuleArguments
+import logging
+
+logger = logging.getLogger(__name__)
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -353,7 +356,7 @@ class Str(XMLConvertible):
     """
 
     name: str
-    string: str
+    string: str | bool
 
     def to_xml(self) -> etree.Element:
         """
@@ -364,6 +367,10 @@ class Str(XMLConvertible):
         etree.Element
             The XML element representing the string.
         """
+        if (
+            isinstance(self.string, bool) and self.string
+        ):  # This came from edgecases with strings having empty values and were converted into bool True
+            self.string = ""
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
         if isinstance(self.string, list):
@@ -1327,7 +1334,7 @@ class Tangible(XMLSerializableMixin):
         properties: List[etree.Element] = []
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         if self.secretId is not None:
-            properties.append(Str("secretId", self.secretId))
+            properties.append(Str("secretId", self.secretId).to_xml())
             breakpoint()
         return properties
 
@@ -1407,6 +1414,11 @@ class Controllable(Tangible):
         """
         properties: List[etree.Element] = super().generate_properties()
         if self.channel is not None:
+            if isinstance(self.channel, List):
+                if len(self.channel) > 1:
+                    logger.warning(f"This channel was given multiple pvs: {self.channel}, using the first channel")
+                self.channel = self.channel[0]
+
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
