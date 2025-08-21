@@ -22,7 +22,6 @@ from pydmconverter.widgets_helpers import (
     StringList,
 )
 import logging
-from epics import PV
 
 
 @dataclass
@@ -519,22 +518,24 @@ class PyDMPushButton(PyDMPushButtonBase):
         """
         if self.is_off_button is not None:
             show_button = not self.is_off_button
-            enum_index = 0 if self.is_off_button else 1
 
             self.rules.append(RuleArguments("Visible", self.channel, False, show_button, None, None))
             self.rules.append(RuleArguments("Enable", self.channel, False, show_button, None, None))
+            """
+            enum_index = 0 if self.is_off_button else 1
             if self.text is None and self.channel is not None:
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
-        if self.is_freeze_button is not None and not self.is_freeze_button:
+            """
+        if self.is_freeze_button is not None and not self.is_freeze_button:  # TODO: Clean this up
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
-            self.rules.append(("Visible", "loc://FROZEN_STATE", False, False, None, None))
-            self.rules.append(("Enable", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
         elif self.is_freeze_button is not None and self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE"
-            self.rules.append(("Visible", "loc://FROZEN_STATE", False, True, None, None))
-            self.rules.append(("Enable", "loc://FROZEN_STATE", False, True, None, None))
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, True, None, None))
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
@@ -954,7 +955,7 @@ class PyDMEnumButton(Alarmable, Legible):
         if self.orientation is not None:
             properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
         elif self.tab_names is not None:
-            properties.append(Enum("orientation", "Qt::Horizontal"))
+            properties.append(Enum("orientation", "Qt::Horizontal").to_xml())
         if self.margin_top is not None:
             properties.append(Int("marginTop", self.margin_top).to_xml())
         if self.margin_bottom is not None:
@@ -1627,5 +1628,6 @@ class PyDMSlider(Alarmable):
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation))
+            # properties.append(Str("orientation", self.orientation))
+            properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
         return properties
