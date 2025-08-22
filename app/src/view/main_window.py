@@ -9,7 +9,7 @@ import os
 from time import sleep
 from typing import List
 from pydm import Display
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Slot, QCoreApplication
 from qtpy.QtWidgets import (
     QFileDialog,
     QTableWidget,
@@ -133,6 +133,13 @@ class MainWindow(Display):
         """Opens file dialog to allow user to select output folder."""
         dialog = OutputSelectDialog(self.options_model, self)
         dialog.exec_()
+        table_widget: QTableWidget = self.ui.table_widget
+        output_folder = self.options_model.output_folder
+        for row in range(table_widget.rowCount()):
+            input_file = table_widget.item(row, 0).text()
+            base_name = os.path.splitext(os.path.basename(input_file))[0]
+            new_output_path = os.path.join(output_folder, f"{base_name}.ui")
+            table_widget.setItem(row, 1, QTableWidgetItem(new_output_path))
 
     @Slot()
     def on_options_button_clicked(self) -> None:
@@ -166,6 +173,7 @@ class MainWindow(Display):
             except Exception as msg:
                 print(msg)
                 table_widget.setItem(row, 2, QTableWidgetItem("Failed"))
+            QCoreApplication.processEvents()
 
             """parser = self.app_model.parsers[file_type](input_file)
             if parser.ui:
