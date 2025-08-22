@@ -6,7 +6,6 @@ Attaches additional functionality to the main window view
 
 import fnmatch
 import os
-from pprint import pprint
 from time import sleep
 from typing import List
 from pydm import Display
@@ -22,6 +21,7 @@ from model.app_model import AppModel
 from model.options_model import OptionsModel
 from view.options_window import OptionsWindow
 from view.output_select_dialog import OutputSelectDialog
+import pydmconverter.__main__
 
 
 class MainWindow(Display):
@@ -157,10 +157,15 @@ class MainWindow(Display):
         table_widget: QTableWidget = self.ui.table_widget
         for row in range(table_widget.rowCount()):
             input_file = table_widget.item(row, 0).text()
+            output_file = table_widget.item(row, 1).text()
             file_type = os.path.splitext(input_file)[1].lower()
-            parser = self.app_model.parsers[file_type](input_file)
+            override = True
+            pydmconverter.__main__.run(input_file, output_file, file_type, override)
+
+            """parser = self.app_model.parsers[file_type](input_file)
             if parser.ui:
                 # TODO: instead of printing, pass the object to the xml writer
                 # This would also be the place to report checks on converter success
                 pprint(parser.ui, indent=2)
                 table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
+            """
