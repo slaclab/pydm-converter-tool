@@ -18,7 +18,7 @@ def run_gui() -> None:
     subprocess.run(["bash", "launch_gui.sh"], check=True)
 
 
-def run(input_file, output_file, input_file_type, override):
+def run(input_file, output_file, input_file_type=".edl", override=False):
     input_path: Path = Path(input_file)
     output_path: Path = Path(output_file)
 
