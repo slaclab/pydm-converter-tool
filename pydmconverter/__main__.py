@@ -29,7 +29,6 @@ def run(input_file, output_file, input_file_type=".edl", override=False):
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         copy_img_files(input_path.parent, output_path.parent)
         convert(str(input_path), str(output_path))
-
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type

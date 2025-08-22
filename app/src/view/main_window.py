@@ -160,6 +160,18 @@ class MainWindow(Display):
         table_widget.setRowCount(0)
 
     @Slot()
+    def on_clear_converted_button_clicked(self) -> None:
+        """Removes all converted rows from table (and leaves unconverted or failed rows)"""
+        table_widget: QTableWidget = self.ui.table_widget
+        print(table_widget.rowCount())
+        for i in range(
+            table_widget.rowCount() - 1, -1, -1
+        ):  # iterate backwards to make deletion indexing issues easier
+            conversion_status = table_widget.item(i, 2).text()
+            if conversion_status == "Converted":
+                table_widget.removeRow(i)
+
+    @Slot()
     def on_convert_button_clicked(self) -> None:
         table_widget: QTableWidget = self.ui.table_widget
         for row in range(table_widget.rowCount()):
