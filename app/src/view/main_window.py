@@ -22,6 +22,10 @@ from model.options_model import OptionsModel
 from view.options_window import OptionsWindow
 from view.output_select_dialog import OutputSelectDialog
 import pydmconverter.__main__
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(Display):
@@ -163,7 +167,6 @@ class MainWindow(Display):
     def on_clear_converted_button_clicked(self) -> None:
         """Removes all converted rows from table (and leaves unconverted or failed rows)"""
         table_widget: QTableWidget = self.ui.table_widget
-        print(table_widget.rowCount())
         for i in range(
             table_widget.rowCount() - 1, -1, -1
         ):  # iterate backwards to make deletion indexing issues easier
@@ -180,10 +183,10 @@ class MainWindow(Display):
             file_type = os.path.splitext(input_file)[1].lower()
             try:
                 pydmconverter.__main__.run(input_file, output_file, file_type, override=True)
-                print(f"converted {input_file} to {output_file}")
+                logger.debug(f"converted {input_file} to {output_file}")
                 table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
             except Exception as msg:
-                print(msg)
+                logger.debug(msg)
                 table_widget.setItem(row, 2, QTableWidgetItem("Failed"))
             QCoreApplication.processEvents()
 
