@@ -1389,12 +1389,12 @@ class Controllable(Tangible):
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
                 self.rules.append(
-                    RuleArguments("Visible", group_channel, True, self.visInvert is None, group_min, group_max)
+                    RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
                 )
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
             self.rules.append(
-                RuleArguments("Visible", self.visPv, True, self.visInvert is None, self.visMin, self.visMax)
+                RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
         properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
         return properties
