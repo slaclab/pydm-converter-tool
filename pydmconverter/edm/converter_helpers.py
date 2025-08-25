@@ -326,7 +326,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     symbol_vispv = [
                         (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
                     ]
-                    # breakpoint()
                 else:
                     symbol_vispv = []
 

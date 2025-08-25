@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
-from pydmconverter.types import RGBA, RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -851,8 +851,6 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                print(rule_type, channel, show_on_true)
-                breakpoint()
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
                 expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
         if self.hide_on_disconnect_channel is not None:
