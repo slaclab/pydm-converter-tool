@@ -86,6 +86,9 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activesliderclass": PyDMSlider,
     "activemotifsliderclass": PyDMSlider,
     "mzxygraphclass": PyDMWaveformPlot,
+    "regtextupdateclass": PyDMLabel,
+    "activetriumfsliderclass": PyDMSlider,
+    "activeupdownbuttonclass": PyDMPushButton,  # TODO: Need to find a more exact mapping but can't find a good edm screen to test with (all updown buttons are hidden)
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
