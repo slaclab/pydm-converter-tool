@@ -386,7 +386,13 @@ class StringList(XMLConvertible):
                 raise TypeError(f"Expected string in StringList.items, got {type(item)}: {item}")
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
+            # print(item)
+            # breakpoint()
+            # string_el.text = self.escape_for_stringlist(item)
         return prop
+
+    def escape_for_stringlist(self, s: str) -> str:
+        return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @dataclass
@@ -827,7 +833,7 @@ class MultiRule(XMLConvertible):
     rule_type: str
     rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
+    initial_value: Optional[bool] = False  # TODO: set to false to fix the extra enumbutton
     notes: Optional[str] = ""
 
     def to_string(self):
@@ -836,13 +842,25 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                print(rule_type, channel, show_on_true)
-                breakpoint()
+                # use_enum = "type=enum" in channel
+                # str_enum = str(use_enum).lower()
+                replacement_init = None
+                if channel.startswith("loc://") and "init=${" in channel:
+                    replacement_init = channel[channel.find("init=") + len("init=") :]
+                    replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
+                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax, replacement_init))
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
-            expression_list.append(self.get_hide_on_disconnect_expression(new_index))
+            replacement_init = None
+            if self.hide_on_disconnect_channel.startswith("loc://") and "init=${" in self.hide_on_disconnect_channel:
+                replacement_init = self.hide_on_disconnect_channel[
+                    self.hide_on_disconnect_channel.find("init=") + len("init=") :
+                ]
+                replacement_init = replacement_init[: replacement_init.find("}") + 1]
+            expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
+            # use_enum = "type=enum" in self.hide_on_disconnect_channel
+            # str_enum = str(use_enum).lower()
             channel_list.append(
                 f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
             )
@@ -854,7 +872,8 @@ class MultiRule(XMLConvertible):
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
+            f'"initial_value": "false", '
+            # f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -862,20 +881,39 @@ class MultiRule(XMLConvertible):
         )
         return output_string
 
-    def get_expression(self, index, show_on_true, visMin, visMax):  # TODO: Can clean up with fstrings
-        ch = f"ch[{index}]"
-        if visMin is not None and visMax is not None:
-            show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
-            show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+    def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
+        """
+        if init:
+           ch = init
         else:
-            show_on_true_string = f"True if {ch}==1 else False"
-            show_on_false_string = f"True if {ch}!=1 else False"
+          ch = f"ch[{index}]"
+        """
+        ch = f"ch[{index}]"
+
+        if visMin is not None and visMax is not None:
+            # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
+            # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+            show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+            show_on_false_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+        else:
+            # show_on_true_string = f"True if {ch}==1 else False"
+            # show_on_false_string = f"True if {ch}!=1 else False"
+            show_on_true_string = f"{ch}==1"
+            show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
 
         return show_on_true_string if show_on_true else show_on_false_string
 
-    def get_hide_on_disconnect_expression(self, index):
+    def get_hide_on_disconnect_expression(self, index, init):
+        """
+        if init:
+           ch = init
+        else:
+          ch = f"ch[{index}]"
+        """
         ch = f"ch[{index}]"
-        return f"(True if {ch} is not None else False)"
+
+        return f"{ch} is not None"
+        # return f"bool({ch})"
 
 
 @dataclass
@@ -888,9 +926,9 @@ class Rules(XMLConvertible):
         rule_list = []
         rule_variables = self.group_by_rules()
 
-        for rule_type, value in rule_variables.items():
-            if value:
-                rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
+        for rule_type, rule_var_list in rule_variables.items():
+            if rule_var_list:
+                rule_string = MultiRule(rule_type, rule_var_list, self.hide_on_disconnect_channel).to_string()
                 rule_list.append(rule_string)
             elif rule_type == "Visible":
                 rule_string = MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string()
@@ -1349,11 +1387,14 @@ class Controllable(Tangible):
     pydm_tool_tip: Optional[str] = None
     visPvList: Optional[List[Tuple[str, int, int]]] = None
     visPv: Optional[str] = None
+    visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
     visMin: Optional[int] = None
     visMax: Optional[int] = None
     text = None
     hide_on_disconnect_channel: Optional[str] = None
+    isSymbol: Optional[bool] = None
+    symbolChannel: Optional[str] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1372,11 +1413,27 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
-                self.rules.append(RuleArguments("Visible", group_channel, True, True, group_min, group_max))
-                # properties.append(BoolRule("Enable", elem, True, True).to_xml())
+                self.rules.append(
+                    RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
+                )
         if self.visPv is not None:
-            self.rules.append(RuleArguments("Visible", self.visPv, True, True, self.visMin, self.visMax))
-        properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
+            self.rules.append(
+                RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
+            )
+
+        hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
+        is_hidden = False
+
+        for elem in hidden_widgets:
+            if self.name.lower().startswith(elem):
+                is_hidden = True
+        if is_hidden:
+            hidden_channel = self.channel
+        elif self.isSymbol is not None:
+            hidden_channel = self.symbolChannel
+        else:
+            hidden_channel = None
+        properties.append(Rules(self.rules, hidden_channel).to_xml())
         return properties
 
 
@@ -1541,7 +1598,7 @@ class Drawable(Tangible):
 
 
 class PageHeader:
-    def create_page_header(self, edm_parser):
+    def create_page_header(self, edm_parser, scrollable=False):
         ui_element = ET.Element("ui", attrib={"version": "4.0"})
 
         class_element = ET.SubElement(ui_element, "class")
@@ -1570,14 +1627,48 @@ class PageHeader:
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)
 
-        central_widget = ET.SubElement(
-            main_widget,
-            "widget",
-            attrib={
-                "class": "QWidget",
-                "name": "centralwidget",
-            },
-        )
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+            sa_geometry = ET.SubElement(scroll_area, "property", attrib={"name": "geometry"})
+            sa_rect = ET.SubElement(sa_geometry, "rect")
+            ET.SubElement(sa_rect, "x").text = "0"
+            ET.SubElement(sa_rect, "y").text = "0"
+            ET.SubElement(sa_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sa_rect, "height").text = str(edm_parser.ui.height)
+            widget_resizable = ET.SubElement(scroll_area, "property", attrib={"name": "widgetResizable"})
+            ET.SubElement(widget_resizable, "bool").text = "false"
+
+            scroll_contents = ET.SubElement(
+                scroll_area, "widget", attrib={"class": "QWidget", "name": "scrollAreaWidgetContents"}
+            )
+            sc_geometry = ET.SubElement(scroll_contents, "property", attrib={"name": "geometry"})
+            sc_rect = ET.SubElement(sc_geometry, "rect")
+            ET.SubElement(sc_rect, "x").text = "0"
+            ET.SubElement(sc_rect, "y").text = "0"
+            ET.SubElement(sc_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sc_rect, "height").text = str(edm_parser.ui.height)
+
+            central_widget = ET.SubElement(
+                scroll_contents,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
+        else:
+            central_widget = ET.SubElement(
+                main_widget,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
 
         return ui_element, central_widget
 

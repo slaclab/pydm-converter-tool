@@ -146,6 +146,9 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     arg_list: List[str] = []
     if arg_string:
         arg_list = [arg.strip() for arg in arg_string.split(",")]
+        for i in range(len(arg_list)):
+            if arg_list[i].startswith("LOC\\"):
+                arg_list[i] = loc_conversion(arg_list[i])
 
     is_inline_expr = False
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
@@ -155,12 +158,15 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     return name_or_expr, arg_list, is_inline_expr
 
 
-def get_calc_groups(edm_pv) -> Tuple[str]:
+def get_calc_groups(edm_pv: str) -> Tuple[str]:
     prefix = "CALC\\"
     if not edm_pv.startswith(prefix):
         raise ValueError(f"Not a CALC PV: {edm_pv}")
 
     edm_pv = edm_pv[len(prefix) :]
+    if "(" not in edm_pv and ")" not in edm_pv:
+        return edm_pv, ""
+
     depth = 0
     end_idx = -1
     for i in range(len(edm_pv) - 1, -1, -1):
@@ -173,8 +179,12 @@ def get_calc_groups(edm_pv) -> Tuple[str]:
                 break
 
     if end_idx == -1:
-        raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
-
+        print(
+            f"Fixing Invalid CALC PV format (unbalanced parens): {edm_pv}"
+        )  # TODO: Comeback to see if I should fix this in EDM too
+        edm_pv += ")"
+        end_idx = edm_pv.rfind("(")
+        # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
     return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
 
 
@@ -348,6 +358,7 @@ def loc_conversion(edm_string: str) -> str:
     ValueError
         If the EDM string does not start with 'LOC\\' or if it lacks the proper format.
     """
+    # if edm_string.startswith("LOC\\"):
     prefix = "LOC\\"
     if not edm_string.startswith(prefix):
         raise ValueError("Provided string does not start with 'LOC\\'")
@@ -357,9 +368,17 @@ def loc_conversion(edm_string: str) -> str:
     # if "$(" in content and ")" in content:
     #    content = content.split(")", 1)[-1]
 
+    type_mapping = {
+        "d": "float",
+        "i": "int",
+        "s": "str",
+        "e": "int",  # mapping enum to e by default
+    }
+
     try:
         name, type_and_value = content.split("=", 1)
         name = name.lstrip("\\")
+        type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
         raise ValueError("Invalid EDM format: Missing '=' separator")
 
@@ -367,19 +386,42 @@ def loc_conversion(edm_string: str) -> str:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
         try:
-            int(type_and_value)
-            value = type_and_value
-            type_char = "i"
+            if (
+                len(type_and_value) > 1 and type_and_value[0] in type_mapping and type_and_value[1] == ","
+            ):  # ex. type_and_value=i,10
+                value = type_and_value[2:]
+                type_char = type_and_value[0]
+            elif type_and_value in type_mapping:  # value is one of the mapped characters
+                value = ""
+                type_char = type_and_value
+            else:
+                int(type_and_value)  # testing if this is a proper int
+                value = type_and_value
+                type_char = "i"
+            """if type_and_value.startswith("d,"):
+                value = type_and_value[2:]
+                float(value)
+                type_char = "d"
+            elif type_and_value.startswith("i,"):
+                value = type_and_value[2:]
+                int(value)
+                type_char = "i"
+            elif type_and_value == "s,":
+                value = type_and_value[2:]
+                type_char = "s"
+            """
         except ValueError:
-            return None  # TODO: Come back and fix
-        #    raise ValueError("Invalid EDM format: Missing ':' separator")
-
-    type_mapping = {
-        "d": "float",
-        "i": "int",
-        "s": "str",
-        "e": "enum",  # mapping enum to e by default
-    }
+            try:
+                float(type_and_value)
+                value = type_and_value
+                type_char = "d"
+            except ValueError:
+                print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+                print(f"name: {name}")
+                print(f"value: {type_and_value}")
+                breakpoint()
+                return None
+                # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
     pydm_type = type_mapping.get(edm_type)
@@ -394,7 +436,7 @@ def loc_conversion(edm_string: str) -> str:
         # an invisible widget with the definiation of a temp local pv would have to be added to the screen as well
         # temp_pv_string = "loc://temp?type=float&init=0.0"
 
-    elif pydm_type == "enum":
+    elif edm_type == "e":
         value_arr: List[str] = value.split(",")
         init: str = value_arr[0]
         enum_string: List[str] = value_arr[1:]
@@ -451,7 +493,7 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')]
     loc_pattern = re.compile(r'"(LOC\\[^"]+)"')
 
     def replace_loc_match(match: re.Match) -> str:
@@ -469,8 +511,11 @@ def replace_calc_and_loc_in_edm_content(
                     full_url, short_url = "", ""
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
-        else:
-            return encountered_locs[edm_pv]["short"]
+        # else:
+        #    return encountered_locs[edm_pv]["short"]
+        elif "=" in edm_pv:
+            return encountered_locs[edm_pv]["full"]
+        return encountered_locs[edm_pv]["short"]
 
     new_content = loc_pattern.sub(replace_loc_match, new_content)
 

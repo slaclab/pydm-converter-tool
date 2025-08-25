@@ -82,9 +82,13 @@ class EDMFileParser:
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def modify_text(self, file_path) -> str:  # unnecessary return
-        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        self.text = self.text.replace("$(!W)", "")
+        self.text = self.text.replace("$(!A)", "")  # remove global macros TODO: May need to use later
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        # pattern = r"\\*\$\(([^)]+)\)"
+        # self.text = re.sub(pattern, r"${\1}", self.text)
         return self.text
 
     def parse_screen_properties(self) -> None:
@@ -95,7 +99,7 @@ class EDMFileParser:
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
-            size_properties = self.get_size_properties(screen_prop_text)
+            size_properties = self.get_size_properties(screen_prop_text, strict=True)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
@@ -183,7 +187,7 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
-                if name.lower() == "activesymbolclass":
+                if name.lower() == "activesymbolclass" or name.lower() == "anasymbolclass":
                     obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
                 else:
                     obj = EDMObject(name=name, properties=properties, **size_properties)
@@ -221,13 +225,17 @@ class EDMFileParser:
         num_pvs = properties["numPvs"]
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
+        self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
-            self.reorient_symbol_groups(temp_group)
-        ranges = self.generate_pv_ranges(properties)
+            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
+        if "minValues" not in properties or "maxValues" not in properties:
+            ranges = None
+        else:
+            ranges = self.generate_pv_ranges(properties)
         self.remove_extra_groups(temp_group, ranges)
         if num_pvs == 0 or num_pvs == "0":
             self.remove_symbol_groups(temp_group, ranges)
-        else:
+        elif ranges is not None:
             self.populate_symbol_pvs(temp_group, properties, ranges)
         return temp_group
 
@@ -236,11 +244,120 @@ class EDMFileParser:
             for sub_object in sub_group.objects:
                 sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
                 sub_object.y = sub_object.y - sub_group.y + size_properties["y"]
+            sub_group.x = size_properties["x"]
+            sub_group.y = size_properties[
+                "y"
+            ]  # The group resizing is needed to reorient symbol groups for rotations later
 
-    def reorient_symbol_groups(self, temp_group: EDMGroup, properties) -> None:
-        print()  # TODO: need to finish
+    def reorient_symbol_groups(self, temp_group: EDMGroup, orientation, size_properties) -> None:
+        if orientation == "FlipV":
+            for sub_group in temp_group.objects:
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
+                        sub_object.properties["totalAngle"] = str(-int(sub_object.properties["totalAngle"]))
+                    if sub_object.name.lower() == "activelineclass":
+                        for i in range(len(sub_object.properties["yPoints"])):
+                            sub_object.properties["yPoints"][i] = str(
+                                int(sub_object.height) - int(sub_object.properties["yPoints"][i]) + int(sub_object.y)
+                            )
+                    sub_object.y = int(sub_object.height) + int(sub_object.y) - int(sub_group.height)
+
+        if orientation == "FlipH":
+            for sub_group in temp_group.objects:
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
+                    if sub_object.name.lower() == "activelineclass":
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            sub_object.properties["xPoints"][i] = str(
+                                int(sub_object.width) - int(sub_object.properties["xPoints"][i]) + int(sub_object.x)
+                            )
+                    sub_object.x = int(size_properties["x"]) - int(sub_object.x)
+        if orientation == "rotateCW":
+            for sub_group in temp_group.objects:
+                group_cx = sub_group.x + sub_group.width / 2
+                group_cy = sub_group.y + sub_group.height / 2
+
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) - 90) % 360)
+
+                    obj_cx = sub_object.x + sub_object.width / 2
+                    obj_cy = sub_object.y + sub_object.height / 2
+
+                    rel_x = obj_cx - group_cx
+                    rel_y = obj_cy - group_cy
+
+                    new_rel_x = -rel_y
+                    new_rel_y = rel_x
+
+                    new_cx = group_cx + new_rel_x
+                    new_cy = group_cy + new_rel_y
+
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
+
+                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
+
+                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            px = int(sub_object.properties["xPoints"][i])
+                            py = int(sub_object.properties["yPoints"][i])
+
+                            rel_px = px - group_cx
+                            rel_py = py - group_cy
+
+                            new_rel_px = rel_py
+                            new_rel_py = -rel_px
+
+                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
+                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
+
+        if orientation == "rotateCCW":
+            for sub_group in temp_group.objects:
+                group_cx = sub_group.x + sub_group.width / 2
+                group_cy = sub_group.y + sub_group.height / 2
+
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) + 90) % 360)
+
+                    obj_cx = sub_object.x + sub_object.width / 2
+                    obj_cy = sub_object.y + sub_object.height / 2
+
+                    rel_x = obj_cx - group_cx
+                    rel_y = obj_cy - group_cy
+
+                    new_rel_x = rel_y
+                    new_rel_y = -rel_x
+
+                    new_cx = group_cx + new_rel_x
+                    new_cy = group_cy + new_rel_y
+
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
+
+                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
+
+                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            px = int(sub_object.properties["xPoints"][i])
+                            py = int(sub_object.properties["yPoints"][i])
+
+                            rel_px = px - group_cx
+                            rel_py = py - group_cy
+
+                            new_rel_px = rel_py
+                            new_rel_py = -rel_px
+
+                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
+                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        if ranges is None:
+            temp_group.objects = temp_group.objects[:1]
+            return
         while len(temp_group.objects) > len(ranges):
             print(f"removed symbol group: {temp_group.objects.pop()}")
 
@@ -280,17 +397,24 @@ class EDMFileParser:
         self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
     ) -> None:
         num_states = int(properties["numStates"])
-        symbol_channel = properties["controlPvs"][0]
+        # symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
             print(f"controlPvs: {properties['controlPvs']}")
-            breakpoint()
+            # breakpoint()
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
-            temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+            # temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+
+    def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
+        symbol_channel = properties["controlPvs"][0]
+        for sub_group in temp_group.objects:
+            for sub_object in sub_group.objects:
+                sub_object.properties["isSymbol"] = True
+                sub_object.properties["symbolChannel"] = symbol_channel
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
@@ -317,7 +441,7 @@ class EDMFileParser:
         return -1
 
     @staticmethod
-    def get_size_properties(text: str) -> dict[str, int]:
+    def get_size_properties(text: str, strict: bool = False) -> dict[str, int]:
         """Get the size properties from the given text (x, y, width, height)
 
         Parameters
@@ -332,7 +456,9 @@ class EDMFileParser:
         """
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
-            match = re.search(rf"{prop[0]} (\d+)", text)
+            match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
+            if not match and strict:
+                raise ValueError(f"Missing required property '{prop}' in widget.")
             if not match:
                 continue
             size_properties[prop] = int(match.group(1))
