@@ -1590,6 +1590,10 @@ class PageHeader:
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
         title_string.text = "PyDM Screen"
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
         if scrollable:
             print("Creating scrollable PyDM window")
             layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
