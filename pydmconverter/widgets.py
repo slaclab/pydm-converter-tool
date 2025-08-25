@@ -529,13 +529,13 @@ class PyDMPushButton(PyDMPushButtonBase):
                     self.text = pv.enum_strs[enum_index]
 
         if self.is_freeze_button is not None and not self.is_freeze_button:
-            self.channel = f"loc://FROZEN_STATE_{self.name}?type=int&amp;init=0"
-            self.rules.append(RuleArguments("Visible", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
-            self.rules.append(RuleArguments("Enable", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
+            self.channel = "loc://FROZEN_STATE?type=int&init=0"
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
         elif self.is_freeze_button is not None and self.is_freeze_button:
-            self.channel = f"loc://FROZEN_STATE_{self.name}"
-            self.rules.append(RuleArguments("Visible", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
-            self.rules.append(RuleArguments("Enable", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
+            self.channel = "loc://FROZEN_STATE"
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, True, None, None))
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
@@ -558,7 +558,8 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Str("pressValue", "1").to_xml())
         if self.is_freeze_button is not None and self.is_freeze_button:
             properties.append(Str("pressValue", "0").to_xml())
-
+        # if self.text is not None and self.on_label is None:
+        #    properties.append(Str("text", self.text).to_xml()) #TODO: check for conflicts with on_label
         if (
             self.on_color is not None
             or self.foreground_color is not None

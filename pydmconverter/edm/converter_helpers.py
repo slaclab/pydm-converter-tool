@@ -94,7 +94,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "font": "font",
     "label": "text",
     "buttonLabel": "text",
-    "freezeLabel": "freezeLabel",
+    "frozenLabel": "frozenLabel",
     "frozenBgColor": "frozen_background_color",
     "tooltip": "PyDMToolTip",
     "visible": "visible",
@@ -553,8 +553,8 @@ def create_freeze_button(
     """
     freeze_button = copy.deepcopy(widget)
     freeze_button.name = widget.name + "_freeze"
-    if hasattr(widget, "freezeLabel"):
-        freeze_button.text = widget.freezeLabel
+    if hasattr(widget, "frozenLabel"):
+        freeze_button.text = widget.frozenLabel
     if hasattr(widget, "frozen_background_color"):
         freeze_button.background_color = widget.frozen_background_color
     setattr(freeze_button, "is_freeze_button", True)
