@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
-from pydmconverter.types import RGBA, RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
