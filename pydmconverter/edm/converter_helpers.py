@@ -207,6 +207,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "closePolygon": "closePolygon",
     "secretId": "secretId",
     "isSymbol": "isSymbol",
+    "limitsFromDb": "limitsFromDb",
+    "showValue": "showValueLabel",
+    "showLimits": "showLimitLabels",
 }
 
 # Configure logging

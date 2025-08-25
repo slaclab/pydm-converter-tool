@@ -1622,10 +1622,26 @@ class PyDMScaleIndicator(Alarmable):
 @dataclass
 class PyDMSlider(Alarmable):
     orientation: Optional[Str] = None
+    limitsFromDb: Optional[bool] = None
+    showLimitLabels: Optional[bool] = None
+    showValueLabel: Optional[bool] = None
+    min: Optional[int] = None
+    max: Optional[int] = None
 
     def generate_properties(self):
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation))
+            properties.append(Str("orientation", self.orientation).to_xml())
+        if self.limitsFromDb is not None:
+            properties.append(Bool("userDefinedLimits", not self.limitsFromDb).to_xml())
+        if not self.showLimitLabels:
+            properties.append(Bool("showLimitLabels", False).to_xml())
+        if not self.showValueLabel:
+            properties.append(Bool("showValueLabel", False).to_xml())
+        if self.min is not None:
+            properties.append(Int("userMinimum", self.min).to_xml())
+        if self.max is not None:
+            properties.append(Int("userMaximum", self.max).to_xml())
+
         return properties
