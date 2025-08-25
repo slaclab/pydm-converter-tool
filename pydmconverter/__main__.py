@@ -31,6 +31,7 @@ def run_cli(args: argparse.Namespace) -> None:
     output_path: Path = Path(args.output_file)
     input_file_type: str = args.output_type
     override: bool = args.override
+    scrollable: bool = args.scrollable
 
     if input_path.is_file():
         if output_path.suffix != ".ui":
@@ -45,7 +46,9 @@ def run_cli(args: argparse.Namespace) -> None:
         output_path.mkdir(parents=True, exist_ok=True)
         files_found: int
         files_failed: list[str]
-        files_found, files_failed = convert_files_in_folder(input_path, output_path, input_file_type, override)
+        files_found, files_failed = convert_files_in_folder(
+            input_path, output_path, input_file_type, override, scrollable
+        )
 
         if files_found == 0:
             print(f"No {input_file_type} files found in {input_path}")
@@ -70,7 +73,7 @@ def copy_img_files(input_path: Path, output_path: Path) -> None:
 
 
 def convert_files_in_folder(
-    input_path: Path, output_path: Path, input_file_type: str, override: bool
+    input_path: Path, output_path: Path, input_file_type: str, override: bool, scrollable: bool
 ) -> tuple[int, list[str]]:
     """Recursively runs convert on files in directory and subdirectories
 
@@ -111,10 +114,18 @@ def convert_files_in_folder(
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
                 continue
+            try:
+                convert(file, output_file_path)
+            except Exception as e:
+                files_failed.append(str(file))
+                logging.warning(f"Failed to convert {file}: {e}")
+                continue
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
-        sub_found, sub_failed = convert_files_in_folder(subdir, output_path / subdir.name, input_file_type, override)
+        sub_found, sub_failed = convert_files_in_folder(
+            subdir, output_path / subdir.name, input_file_type, override, scrollable
+        )
         files_found += sub_found
         files_failed += sub_failed
 
@@ -163,6 +174,12 @@ def main() -> None:
     parser.add_argument("output_file", nargs="?", metavar="FILE")
     parser.add_argument("output_type", nargs="?", metavar="FILE TYPE")
     parser.add_argument("--override", "-o", action="store_true", help="Override the output file if it already exists")
+    parser.add_argument(
+        "--scrollable",
+        "-s",
+        action="store_true",
+        help="create scrollable pydm windows that replicate edm windows (may cause spacing issues for embedded displays)",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     if args.input_file:

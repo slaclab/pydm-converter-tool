@@ -530,12 +530,12 @@ class PyDMPushButton(PyDMPushButtonBase):
 
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = f"loc://FROZEN_STATE_{self.name}?type=int&amp;init=0"
-            self.rules.append(("Visible", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
-            self.rules.append(("Enable", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
+            self.rules.append(RuleArguments("Visible", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
+            self.rules.append(RuleArguments("Enable", f"loc://FROZEN_STATE_{self.name}", False, True, None, None))
         elif self.is_freeze_button is not None and self.is_freeze_button:
             self.channel = f"loc://FROZEN_STATE_{self.name}"
-            self.rules.append(("Visible", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
-            self.rules.append(("Enable", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
+            self.rules.append(RuleArguments("Visible", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", f"loc://FROZEN_STATE_{self.name}", False, False, None, None))
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
