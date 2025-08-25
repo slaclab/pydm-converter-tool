@@ -888,9 +888,9 @@ class Rules(XMLConvertible):
         rule_list = []
         rule_variables = self.group_by_rules()
 
-        for rule_type, value in rule_variables.items():
-            if value:
-                rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
+        for rule_type, rule_var_list in rule_variables.items():
+            if rule_var_list:
+                rule_string = MultiRule(rule_type, rule_var_list, self.hide_on_disconnect_channel).to_string()
                 rule_list.append(rule_string)
             elif rule_type == "Visible":
                 rule_string = MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string()
@@ -1349,6 +1349,7 @@ class Controllable(Tangible):
     pydm_tool_tip: Optional[str] = None
     visPvList: Optional[List[Tuple[str, int, int]]] = None
     visPv: Optional[str] = None
+    visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
     visMin: Optional[int] = None
     visMax: Optional[int] = None
@@ -1372,10 +1373,14 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
-                self.rules.append(RuleArguments("Visible", group_channel, True, True, group_min, group_max))
+                self.rules.append(
+                    RuleArguments("Visible", group_channel, True, self.visInvert is None, group_min, group_max)
+                )
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
-            self.rules.append(RuleArguments("Visible", self.visPv, True, True, self.visMin, self.visMax))
+            self.rules.append(
+                RuleArguments("Visible", self.visPv, True, self.visInvert is None, self.visMin, self.visMax)
+            )
         properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
         return properties
 

@@ -80,6 +80,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "xygraphclass": PyDMScatterPlot
     "activeindicatorclass": PyDMScaleIndicator,
     "activesymbolclass": PyDMEmbeddedDisplay,
+    "activefreezebuttonclass": PyDMPushButton,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -93,6 +94,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "font": "font",
     "label": "text",
     "buttonLabel": "text",
+    "freezeLabel": "freezeLabel",
+    "frozenBgColor": "frozen_background_color",
     "tooltip": "PyDMToolTip",
     "visible": "visible",
     "noScroll": "noscroll",
@@ -395,6 +398,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         "topShadowColor",
                         "botShadowColor",
                         "indicatorColor",
+                        "frozenBgColor",
                     }
                     if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
@@ -460,6 +464,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 ):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
+
+                if obj.name.lower() == "activefreezebuttonclass":
+                    freeze_button = create_freeze_button(widget)
+                    pydm_widgets.append(freeze_button)
 
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
                     pad = widget.pen_width or 1
@@ -534,6 +542,26 @@ def create_off_button(widget: PyDMPushButton):
     logger.info(f"Created off-button: {off_button.name} based on {widget.name}")
 
     return off_button
+
+
+def create_freeze_button(
+    widget: PyDMPushButton,
+):  # TODO: Can find a way to combine with create_off_button to reduce redundancy
+    """
+    Given a PyDMPushButton converted from an activefreezebuttonclass, clone it into a "freeze" version.
+    Modifies relevant visual attributes and appends a flag to identify it.
+    """
+    freeze_button = copy.deepcopy(widget)
+    freeze_button.name = widget.name + "_freeze"
+    if hasattr(widget, "freezeLabel"):
+        freeze_button.text = widget.freezeLabel
+    if hasattr(widget, "frozen_background_color"):
+        freeze_button.background_color = widget.frozen_background_color
+    setattr(freeze_button, "is_freeze_button", True)
+    setattr(widget, "is_freeze_button", False)
+    logger.info(f"Created off-button: {freeze_button.name} based on {widget.name}")
+
+    return freeze_button
 
 
 def populate_tab_bar(obj: EDMObject, widget):
