@@ -665,6 +665,7 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     i = 1
     prevColor = None
     ctrl_attributes = []
+    extra_sliders = []
     while f"ctrl{i}Pv" in object.properties:
         if f"ctrl{i}Color" in object.properties:
             currColor = object.properties[f"ctrl{i}Color"]
@@ -679,13 +680,13 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
         setattr(widget, "indicatorColor", ctrl_attributes[0][1])
         for j in range(1, len(ctrl_attributes)):
             curr_slider = copy.deepcopy(widget)
-            setattr(curr_slider, "x", curr_slider.x + curr_slider.height * j)
+            curr_slider.name = widget.name + f"_{j}"
+            setattr(curr_slider, "y", curr_slider.y + curr_slider.height * j)
             setattr(curr_slider, "channel", ctrl_attributes[j][0])
-            setattr()
-            print(curr_slider)
-
-        print(ctrl_attributes)
-        breakpoint()
+            setattr(curr_slider, "indicatorColor", ctrl_attributes[j][1])
+            logger.info(f"Created multi-slider: {curr_slider.name} based on {widget.name}")
+            extra_sliders.append(curr_slider)
+    return extra_sliders
 
 
 def populate_tab_bar(obj: EDMObject, widget):
