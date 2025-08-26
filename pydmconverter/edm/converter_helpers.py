@@ -660,7 +660,8 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
     Modifies the height and channel of the current slider
     """
-    print(object)
+    # print(object)
+    # print(widget)
     i = 1
     prevColor = None
     ctrl_attributes = []
@@ -672,14 +673,19 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
         ctrl_attributes.append((object.properties[f"ctrl{i}Pv"], currColor))
         prevColor = currColor
         i += 1
-    setattr(
-        widget,
-        "height",
-    )
-    # for j in range(1, len(ctrl_attributes)):
+    if ctrl_attributes:
+        setattr(widget, "height", widget.height // len(ctrl_attributes))
+        setattr(widget, "channel", ctrl_attributes[0][0])
+        setattr(widget, "indicatorColor", ctrl_attributes[0][1])
+        for j in range(1, len(ctrl_attributes)):
+            curr_slider = copy.deepcopy(widget)
+            setattr(curr_slider, "x", curr_slider.x + curr_slider.height * j)
+            setattr(curr_slider, "channel", ctrl_attributes[j][0])
+            setattr()
+            print(curr_slider)
 
-    print(ctrl_attributes)
-    breakpoint()
+        print(ctrl_attributes)
+        breakpoint()
 
 
 def populate_tab_bar(obj: EDMObject, widget):
