@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
+from pydmconverter.custom_types import RGBA, RuleArguments
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -18,6 +19,8 @@ class XMLConvertible:
     to_string() -> str
         Return a formatted string representation of the XML element.
     """
+
+    secretId: str = None
 
     secretId: str = None
 
@@ -69,6 +72,7 @@ class XMLSerializableMixin(XMLConvertible):
 
     name: Optional[str] = None
     count: ClassVar[int] = 1
+    secretId: str = None
     secretId: str = None
 
     def __post_init__(self) -> None:
@@ -164,6 +168,7 @@ class Font(XMLConvertible):
     """
 
     family: Optional[str] = None
+    family: Optional[str] = None
     pointsize: Optional[int] = None
     weight: Optional[int] = None
     bold: Optional[bool] = None
@@ -180,6 +185,9 @@ class Font(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "font"})
         font: etree.Element = etree.SubElement(prop, "font")
+        if self.family is not None:
+            family_tag: etree.Element = etree.SubElement(font, "family")
+            family_tag.text = str(self.family)
         if self.family is not None:
             family_tag: etree.Element = etree.SubElement(font, "family")
             family_tag.text = str(self.family)
@@ -365,6 +373,8 @@ class Str(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
+        if isinstance(self.string, list):
+            raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         if isinstance(self.string, list):
             raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         string_tag.text = self.string
@@ -571,9 +581,10 @@ class PyDMToolTip(XMLConvertible):
         return prop
 
 
-"""@dataclass
-class StyleSheet(XMLConvertible):
+""" @ dataclass
 
+
+class StyleSheet(XMLConvertible):
     lines: List[str]
 
     def to_xml(self) -> etree.Element:
@@ -581,6 +592,7 @@ class StyleSheet(XMLConvertible):
         string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
         string_elem.text = "\n".join(self.lines)
         return top
+
 """
 
 
@@ -652,6 +664,10 @@ class Alignment(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
         set_tag: etree.Element = etree.SubElement(prop, "set")
+        if self.alignment == "center":
+            set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
+        else:
+            set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         if self.alignment == "center":
             set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
         else:
@@ -824,7 +840,7 @@ class BoolRule(XMLConvertible):
 @dataclass
 class MultiRule(XMLConvertible):
     rule_type: str
-    rule_list: Optional[List[Tuple[str, str, bool, bool, int, int]]] = None
+    rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
     initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
     notes: Optional[str] = ""
@@ -877,7 +893,7 @@ class MultiRule(XMLConvertible):
 
 @dataclass
 class Rules(XMLConvertible):
-    rules: List[Tuple[str, str, bool, bool, int, int]]
+    rules: List[RuleArguments]
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
@@ -885,9 +901,9 @@ class Rules(XMLConvertible):
         rule_list = []
         rule_variables = self.group_by_rules()
 
-        for rule_type, value in rule_variables.items():
-            if value:
-                rule_string = MultiRule(rule_type, value, self.hide_on_disconnect_channel).to_string()
+        for rule_type, rule_var_list in rule_variables.items():
+            if rule_var_list:
+                rule_string = MultiRule(rule_type, rule_var_list, self.hide_on_disconnect_channel).to_string()
                 rule_list.append(rule_string)
             elif rule_type == "Visible":
                 rule_string = MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string()
@@ -899,26 +915,11 @@ class Rules(XMLConvertible):
         bool_rule_types = ["Visible", "Enable"]
         rule_variables = {key: [] for key in bool_rule_types}
         for rule in self.rules:
-            if rule[0] in rule_variables:
-                rule_variables[rule[0]].append(rule)
+            if rule.rule_type in rule_variables:
+                rule_variables[rule.rule_type].append(rule)
         for rule_name in rule_variables.keys():  # removes repeated tuples
             rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
-
-
-@dataclass
-class RGBAStyleSheet(XMLConvertible):
-    red: int
-    green: int
-    blue: int
-    alpha: int = 255
-
-    def to_xml(self):
-        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
-        prop = ET.Element("property", {"name": "styleSheet"})
-        string_elem = ET.SubElement(prop, "string")
-        string_elem.text = style
-        return prop
 
 
 @dataclass
@@ -935,7 +936,7 @@ class StyleSheet(XMLConvertible):
     styles: Dict[str, Any]
 
     def _format_value(self, key: str, value: Any) -> str:
-        if isinstance(value, tuple) and key in ("color", "background-color"):
+        if isinstance(value, RGBA) and key in ("color", "background-color"):
             r, g, b, *a = value
             alpha = a[0] if a else 1.0
             return f"{key}: rgba({r}, {g}, {b}, {round(alpha, 2)});"
@@ -991,7 +992,22 @@ class TransparentBackground(XMLConvertible):
 class Curves(XMLConvertible):
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
-    plotColor: Optional[Tuple[int, int, int, int]] = None
+    plotColor: Optional[RGBA] = None
+
+
+@dataclass
+class RGBAStyleSheet(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
 
 
 @dataclass
@@ -1346,6 +1362,7 @@ class Controllable(Tangible):
     pydm_tool_tip: Optional[str] = None
     visPvList: Optional[List[Tuple[str, int, int]]] = None
     visPv: Optional[str] = None
+    visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
     visMin: Optional[int] = None
     visMax: Optional[int] = None
@@ -1369,10 +1386,14 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
-                self.rules.append(("Visible", group_channel, True, True, group_min, group_max))
+                self.rules.append(
+                    RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
+                )
                 # properties.append(BoolRule("Enable", elem, True, True).to_xml())
         if self.visPv is not None:
-            self.rules.append(("Visible", self.visPv, True, True, self.visMin, self.visMax))
+            self.rules.append(
+                RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
+            )
         properties.append(Rules(self.rules, self.hide_on_disconnect_channel).to_xml())
         return properties
 
@@ -1441,14 +1462,14 @@ class StyleSheetObject(Tangible):
 
     Attributes
     ----------
-    foreground_color : Optional[Tuple[int, int, int, int]]
+    foreground_color : Optional[RGBA]
         RGBA color tuple for the foreground (text) color.
-    background_color : Optional[Tuple[int, int, int, int]]
+    background_color : Optional[RGBA]
         RGBA color tuple for the background color.
     """
 
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
     useDisplayBg: Optional[bool] = None
     name: Optional[str] = ""
 
@@ -1480,8 +1501,8 @@ class StyleSheetObject(Tangible):
 
 @dataclass
 class OnOffObject(Tangible):
-    on_color: Optional[Tuple[int, int, int, int]] = None
-    off_color: Optional[Tuple[int, int, int, int]] = None
+    on_color: Optional[RGBA] = None
+    off_color: Optional[RGBA] = None
 
 
 @dataclass
@@ -1493,11 +1514,11 @@ class Drawable(Tangible):
     ----------
     penStyle : Optional[str]
         The style of the pen ('dash' for dashed, otherwise solid).
-    penColor : Optional[Tuple[int, int, int, int]]
+    penColor : Optional[RGBA]
         A tuple representing the pen color (red, green, blue, alpha).
     penWidth : Optional[int]
         The width of the pen.
-    brushColor : Optional[Tuple[int, int, int, int]]
+    brushColor : Optional[RGBA]
         A tuple representing the brush color (red, green, blue, alpha).
     brushFill : Optional[bool]
         Whether the brush should fill.
@@ -1506,9 +1527,9 @@ class Drawable(Tangible):
     """
 
     penStyle: Optional[str] = None
-    penColor: Optional[Tuple[int, int, int, int]] = None
+    penColor: Optional[RGBA] = None
     penWidth: Optional[int] = None
-    brushColor: Optional[Tuple[int, int, int, int]] = None
+    brushColor: Optional[RGBA] = None
     brushFill: Optional[bool] = None
     rotation: Optional[float] = None
 
@@ -1538,7 +1559,7 @@ class Drawable(Tangible):
 
 
 class PageHeader:
-    def create_page_header(self, edm_parser):
+    def create_page_header(self, edm_parser, scrollable=False):
         ui_element = ET.Element("ui", attrib={"version": "4.0"})
 
         class_element = ET.SubElement(ui_element, "class")
@@ -1557,8 +1578,12 @@ class PageHeader:
         rect = ET.SubElement(geometry, "rect")
         ET.SubElement(rect, "x").text = "0"
         ET.SubElement(rect, "y").text = "0"
-        ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
-        ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
+        if scrollable:  # Setting max values for the screen to be initially
+            ET.SubElement(rect, "width").text = str(min(edm_parser.ui.width, 120))
+            ET.SubElement(rect, "height").text = str(min(edm_parser.ui.height, 80))
+        else:
+            ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
 
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
@@ -1567,14 +1592,69 @@ class PageHeader:
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)
 
-        central_widget = ET.SubElement(
-            main_widget,
-            "widget",
-            attrib={
-                "class": "QWidget",
-                "name": "centralwidget",
-            },
-        )
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+            sa_geometry = ET.SubElement(scroll_area, "property", attrib={"name": "geometry"})
+            sa_rect = ET.SubElement(sa_geometry, "rect")
+            ET.SubElement(sa_rect, "x").text = "0"
+            ET.SubElement(sa_rect, "y").text = "0"
+            ET.SubElement(sa_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sa_rect, "height").text = str(edm_parser.ui.height)
+            widget_resizable = ET.SubElement(scroll_area, "property", attrib={"name": "widgetResizable"})
+            ET.SubElement(widget_resizable, "bool").text = "false"
+
+            scroll_contents = ET.SubElement(
+                scroll_area, "widget", attrib={"class": "QWidget", "name": "scrollAreaWidgetContents"}
+            )
+            sc_geometry = ET.SubElement(scroll_contents, "property", attrib={"name": "geometry"})
+            sc_rect = ET.SubElement(sc_geometry, "rect")
+            ET.SubElement(sc_rect, "x").text = "0"
+            ET.SubElement(sc_rect, "y").text = "0"
+            ET.SubElement(sc_rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(sc_rect, "height").text = str(edm_parser.ui.height)
+
+            central_widget = ET.SubElement(
+                scroll_contents,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
+        else:
+            central_widget = ET.SubElement(
+                main_widget,
+                "widget",
+                attrib={
+                    "class": "QWidget",
+                    "name": "centralwidget",
+                },
+            )
 
         return ui_element, central_widget
 

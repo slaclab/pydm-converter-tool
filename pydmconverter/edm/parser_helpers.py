@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
+from pydmconverter.custom_types import RGBA
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,9 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     arg_list: List[str] = []
     if arg_string:
         arg_list = [arg.strip() for arg in arg_string.split(",")]
+        for i in range(len(arg_list)):
+            if arg_list[i].startswith("LOC\\"):
+                arg_list[i] = loc_conversion(arg_list[i])
 
     is_inline_expr = False
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
@@ -356,9 +360,17 @@ def loc_conversion(edm_string: str) -> str:
     # if "$(" in content and ")" in content:
     #    content = content.split(")", 1)[-1]
 
+    type_mapping = {
+        "d": "float",
+        "i": "int",
+        "s": "str",
+        "e": "enum",  # mapping enum to e by default
+    }
+
     try:
         name, type_and_value = content.split("=", 1)
         name = name.lstrip("\\")
+        type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
         raise ValueError("Invalid EDM format: Missing '=' separator")
 
@@ -366,19 +378,42 @@ def loc_conversion(edm_string: str) -> str:
         type_char, value = type_and_value.split(":", 1)
     except ValueError:
         try:
-            int(type_and_value)
-            value = type_and_value
-            type_char = "i"
+            if (
+                len(type_and_value) > 1 and type_and_value[0] in type_mapping and type_and_value[1] == ","
+            ):  # ex. type_and_value=i,10
+                value = type_and_value[2:]
+                type_char = type_and_value[0]
+            elif type_and_value in type_mapping:  # value is one of the mapped characters
+                value = ""
+                type_char = type_and_value
+            else:
+                int(type_and_value)  # testing if this is a proper int
+                value = type_and_value
+                type_char = "i"
+            """if type_and_value.startswith("d,"):
+                value = type_and_value[2:]
+                float(value)
+                type_char = "d"
+            elif type_and_value.startswith("i,"):
+                value = type_and_value[2:]
+                int(value)
+                type_char = "i"
+            elif type_and_value == "s,":
+                value = type_and_value[2:]
+                type_char = "s"
+            """
         except ValueError:
-            return None  # TODO: Come back and fix
-        #    raise ValueError("Invalid EDM format: Missing ':' separator")
-
-    type_mapping = {
-        "d": "float",
-        "i": "int",
-        "s": "str",
-        "e": "enum",  # mapping enum to e by default
-    }
+            try:
+                float(type_and_value)
+                value = type_and_value
+                type_char = "d"
+            except ValueError:
+                print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+                print(f"name: {name}")
+                print(f"value: {type_and_value}")
+                breakpoint()
+                return None
+                # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
     pydm_type = type_mapping.get(edm_type)
@@ -450,7 +485,7 @@ def replace_calc_and_loc_in_edm_content(
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 
-    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')
+    # loc_pattern = re.compile(r'LOC\\+[^=]+=[dies]:[^"]*')]
     loc_pattern = re.compile(r'"(LOC\\[^"]+)"')
 
     def replace_loc_match(match: re.Match) -> str:
@@ -818,7 +853,8 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
         green = int(green * 255 / (max_val - 1))
         blue = int(blue * 255 / (max_val - 1))
 
-    result = (red, green, blue, alpha)
+    # result = (red, green, blue, alpha)
+    result = RGBA(r=red, g=green, b=blue, a=alpha)
     logger.info(f"Converted {fillColor} to color: {result}")
 
     return result

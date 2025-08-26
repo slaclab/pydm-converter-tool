@@ -1,6 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Dict
+from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
@@ -137,8 +138,6 @@ class QLabel(Legible, StyleSheetObject):
     show_units: Optional[bool] = None
     tool_tip: Optional[str] = None
     frame_shape: Optional[str] = None
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
     alignment: Optional[str] = None
     useDisplayBg: Optional[bool] = None
     filename: Optional[str] = None
@@ -261,11 +260,11 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
 
     Attributes
     ----------
-    indicatorColor: Optional[Tuple[int, int, int, int]]
+    indicatorColor: Optional[RGBA]
         The fill color for specifically activebar/slacbarclass rectangles
     """
 
-    indicatorColor: Optional[Tuple[int, int, int, int]] = None
+    indicatorColor: Optional[RGBA] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -493,18 +492,17 @@ class PyDMPushButton(PyDMPushButtonBase):
     release_value: Optional[str] = None
     relative_change: Optional[bool] = None
     write_when_release: Optional[bool] = None
-    on_color: Optional[Tuple[int, int, int, int]] = (
+    on_color: Optional[RGBA] = None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
+    off_color: Optional[RGBA] = (
         None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
     )
-    off_color: Optional[Tuple[int, int, int, int]] = (
-        None  # TODO: clean up where these attributes are called to a parent to reduce redundancy
-    )
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
+    foreground_color: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
     useDisplayBg: Optional[bool] = None
     on_label: Optional[str] = None
     off_label: Optional[str] = None
     is_off_button: Optional[bool] = None
+    is_freeze_button: Optional[bool] = None
     text: Optional[str] = None
     visMin: Optional[int] = None
     visMax: Optional[int] = None
@@ -519,20 +517,34 @@ class PyDMPushButton(PyDMPushButtonBase):
         List[ET.Element]
             A list of XML elements representing the PyDMPushButton properties.
         """
-        if self.is_off_button is not None and not self.is_off_button:
-            self.rules.append(("Visible", self.channel, False, True, None, None))
-            self.rules.append(("Enable", self.channel, False, True, None, None))
+        if self.is_off_button is not None:
+            show_button = not self.is_off_button
+            enum_index = 0 if self.is_off_button else 1
+
+            self.rules.append(RuleArguments("Visible", self.channel, False, show_button, None, None))
+            self.rules.append(RuleArguments("Enable", self.channel, False, show_button, None, None))
             if self.text is None and self.channel is not None:
-                pv = PV(self.channel)
+                pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
-                    self.text = pv.enum_strs[1]
-        elif self.is_off_button is not None and self.is_off_button:
-            self.rules.append(("Visible", self.channel, False, False, None, None))
-            self.rules.append(("Enable", self.channel, False, False, None, None))
-            if self.text is None and self.channel is not None:
-                pv = PV(self.channel)
-                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
-                    self.text = pv.enum_strs[0]
+                    self.text = pv.enum_strs[enum_index]
+
+        if self.is_freeze_button is not None and not self.is_freeze_button:
+            self.channel = "loc://FROZEN_STATE?type=int&init=0"
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
+        elif self.is_freeze_button is not None and self.is_freeze_button:
+            self.channel = "loc://FROZEN_STATE"
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, True, None, None))
+
+        if self.is_freeze_button is not None and not self.is_freeze_button:
+            self.channel = "loc://FROZEN_STATE?type=int&init=0"
+            self.rules.append(("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(("Enable", "loc://FROZEN_STATE", False, False, None, None))
+        elif self.is_freeze_button is not None and self.is_freeze_button:
+            self.channel = "loc://FROZEN_STATE"
+            self.rules.append(("Visible", "loc://FROZEN_STATE", False, True, None, None))
+            self.rules.append(("Enable", "loc://FROZEN_STATE", False, True, None, None))
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
@@ -551,7 +563,12 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
         if self.on_label is not None:
             properties.append(Str("text", self.on_label).to_xml())
-
+        if self.is_freeze_button is not None and not self.is_freeze_button:
+            properties.append(Str("pressValue", "1").to_xml())
+        if self.is_freeze_button is not None and self.is_freeze_button:
+            properties.append(Str("pressValue", "0").to_xml())
+        # if self.text is not None and self.on_label is None:
+        #    properties.append(Str("text", self.text).to_xml()) #TODO: check for conflicts with on_label
         if (
             self.on_color is not None
             or self.foreground_color is not None
@@ -617,7 +634,7 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
     redirect_command_output: Optional[bool] = None
     allow_multiple_executions: Optional[bool] = None
     titles: Optional[str] = None
-    commands: Optional[str] = None
+    command: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -639,14 +656,15 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Str("environmentVariables", self.environment_variables).to_xml())
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
+        else:
+            properties.append(Bool("showIcon", False).to_xml())
         if self.redirect_command_output is not None:
             properties.append(Bool("redirectCommandOutput", self.redirect_command_output).to_xml())
         if self.allow_multiple_executions is not None:
             properties.append(Bool("allowMultipleExecutions", self.allow_multiple_executions).to_xml())
         if self.titles is not None:
             properties.append(Str("titles", self.titles).to_xml())
-        if self.commands is not None:
-            properties.append(Str("commands", self.commands).to_xml())
+            properties.append(StringList("command", self.command).to_xml())
         return properties
 
 
@@ -693,6 +711,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties: List[ET.Element] = super().generate_properties()
         if self.show_icon is not None:
             properties.append(Bool("showIcon", self.show_icon).to_xml())
+        else:
+            properties.append(Bool("showIcon", False).to_xml())
         # if self.filenames is not None:
         #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
@@ -703,9 +723,6 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
-        properties.append(
-            Bool("showIcon", False).to_xml()
-        )  # TODO: Make sre that this will not need to be shown in other examples
         if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
             converted_filename = self.convert_filetype(self.displayFileName[0])
             properties.append(StringList("filenames", [converted_filename]).to_xml())
@@ -980,7 +997,6 @@ class PyDMDrawingLine(Legible, Drawable, Alarmable):
         Class variable tracking the number of PyDMDrawingLine instances.
     """
 
-    pen_color: Optional[Tuple[int, int, int]] = None  # maybe can remove
     pen_width: Optional[int] = None
     arrow_size: Optional[int] = None
     arrow_end_point: Optional[bool] = None
@@ -988,7 +1004,7 @@ class PyDMDrawingLine(Legible, Drawable, Alarmable):
     arrow_mid_point: Optional[bool] = None
     flip_mid_point_arrow: Optional[bool] = None
     arrows: Optional[str] = None
-    penColor: Optional[Tuple[int, int, int, int]] = None
+    penColor: Optional[RGBA] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1380,14 +1396,14 @@ class PyDMByteIndicator(Alarmable):
     Attributes:
         numBits (Optional[int]): Number of bits to display.
         showLabels (Optional[bool]): Whether to show bit labels.
-        on_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is on.
-        off_color (Optional[Tuple[int, int, int, int]]): RGBA color when a bit is off.
+        on_color (Optional[RGBA]): RGBA color when a bit is on.
+        off_color (Optional[RGBA]): RGBA color when a bit is off.
     """
 
     numBits: Optional[int] = None
     showLabels: Optional[bool] = None
-    on_color: Optional[Tuple[int, int, int, int]] = None
-    off_color: Optional[Tuple[int, int, int, int]] = None
+    on_color: Optional[RGBA] = None
+    off_color: Optional[RGBA] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1416,12 +1432,12 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     x_channel: Optional[List[str]] = None
     y_channel: Optional[List[str]] = None
     plot_name: Optional[str] = None
-    color: Optional[Tuple[int, int, int, int]] = None
+    color: Optional[RGBA] = None
     minXRange: Optional[int] = None
     minYRange: Optional[int] = None
     maxXRange: Optional[int] = None
     maxYRange: Optional[int] = None
-    plotColor: Optional[List[Tuple[int, int, int, int]]] = None
+    plotColor: Optional[List[RGBA]] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1495,9 +1511,9 @@ class PyDMScaleIndicator(Alarmable):
     # numDivisions: Optional[int] = None
     minorTicks: Optional[int] = None
     majorTicks: Optional[int] = None
-    indicatorColor: Optional[Tuple[int, int, int, int]] = None
-    background_color: Optional[Tuple[int, int, int, int]] = None
-    foreground_color: Optional[Tuple[int, int, int, int]] = None
+    indicatorColor: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
+    foreground_color: Optional[RGBA] = None
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1538,4 +1554,16 @@ class PyDMScaleIndicator(Alarmable):
         properties.append(Bool("showValue", self.showValue).to_xml())
         properties.append(Bool("showLimits", self.showLimits).to_xml())
 
+        return properties
+
+
+@dataclass
+class PyDMSlider(Alarmable):
+    orientation: Optional[Str] = None
+
+    def generate_properties(self):
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.orientation is not None:
+            properties.append(Str("orientation", self.orientation))
         return properties
