@@ -156,8 +156,14 @@ class Row(XMLConvertible):
         prop: etree.Element = etree.SubElement(row, "property", attrib={"name": "text"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
         string_tag.text = self.value
-        row.append(Font("Helvetica", 5, 50).to_xml())
+        row.append(Font("Helvetica", 5, 50, False).to_xml())
         return row
+
+
+@dataclass
+class Column:
+    def to_xml(self) -> etree.Element:
+        return etree.Element("column")
 
 
 @dataclass
@@ -1434,7 +1440,12 @@ class Controllable(Tangible):
                 RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
 
-        hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
+        hidden_widgets = [
+            "activextextdspclassnoedit",
+            "activechoicebuttonclass, activextextclass",
+            "mzxygraphclass",
+            "activerampbuttonclass",
+        ]
         is_hidden = False
 
         for elem in hidden_widgets:

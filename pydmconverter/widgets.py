@@ -21,6 +21,7 @@ from pydmconverter.widgets_helpers import (
     Enum,
     StringList,
     Row,
+    Column,
 )
 import logging
 from epics import PV
@@ -1581,6 +1582,7 @@ class PyDMWaveformTable(Alarmable):
             rowList = self.rowLabels.split(", ")
             for row in rowList:
                 properties.append(Row(row).to_xml())
+            properties.append(Column().to_xml())
 
         return properties
 
