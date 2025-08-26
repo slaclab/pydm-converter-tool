@@ -436,7 +436,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         "frozenBgColor",
                         "gridColor",
                     }
-                    if edm_attr in color_attributes:
+                    if edm_attr in color_attributes or (edm_attr.startswith("ctrl") and edm_attr.endswith("Color")):
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                     if edm_attr == "plotColor":
                         color_list = []
@@ -508,6 +508,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if obj.name.lower() == "activefreezebuttonclass":
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
+
+                if obj.name.lower() == "mmvclass":
+                    generated_sliders = create_multi_sliders(widget, obj)
+                    for slider in generated_sliders:
+                        pydm_widgets.append(slider)
 
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
                     pad = widget.pen_width or 1
@@ -648,6 +653,33 @@ def create_freeze_button(
     logger.info(f"Created off-button: {freeze_button.name} based on {widget.name}")
 
     return freeze_button
+
+
+def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
+    """
+    Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
+    Modifies the height and channel of the current slider
+    """
+    print(object)
+    i = 1
+    prevColor = None
+    ctrl_attributes = []
+    while f"ctrl{i}Pv" in object.properties:
+        if f"ctrl{i}Color" in object.properties:
+            currColor = object.properties[f"ctrl{i}Color"]
+        else:
+            currColor = prevColor
+        ctrl_attributes.append((object.properties[f"ctrl{i}Pv"], currColor))
+        prevColor = currColor
+        i += 1
+    setattr(
+        widget,
+        "height",
+    )
+    # for j in range(1, len(ctrl_attributes)):
+
+    print(ctrl_attributes)
+    breakpoint()
 
 
 def populate_tab_bar(obj: EDMObject, widget):
