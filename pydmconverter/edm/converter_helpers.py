@@ -21,6 +21,7 @@ from pydmconverter.widgets import (
     PyDMDrawingArc,
     PyDMWaveformPlot,
     PyDMScaleIndicator,
+    PyDMSlider,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
@@ -55,11 +56,11 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "": PyDMEnumButton
     "activemenubuttonclass": PyDMPushButton,  # "activemenubuttonclass": PyDMEnumComboBox,
     "activemessagebuttonclass": PyDMPushButton,
-    "activextextdspclass": PyDMLabel,
+    "activextextdspclass": PyDMLineEdit,
     "activepipclass": PyDMEmbeddedDisplay,
     "activeexitbuttonclass": QPushButton,
-    "shellcmdclass": QPushButton,  # may need to change
-    # "shellcmdclass": PyDMShellCommand,  # may need to change
+    # "shellcmdclass": QPushButton,  # may need to change
+    "shellcmdclass": PyDMShellCommand,
     "textupdateclass": PyDMLabel,
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
@@ -80,6 +81,10 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "xygraphclass": PyDMScatterPlot
     "activeindicatorclass": PyDMScaleIndicator,
     "activesymbolclass": PyDMEmbeddedDisplay,
+    "anasymbolclass": PyDMEmbeddedDisplay,
+    "activefreezebuttonclass": PyDMPushButton,
+    "activesliderclass": PyDMSlider,
+    "activemotifsliderclass": PyDMSlider,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -93,6 +98,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "font": "font",
     "label": "text",
     "buttonLabel": "text",
+    "frozenLabel": "frozenLabel",
+    "frozenBgColor": "frozen_background_color",
     "tooltip": "PyDMToolTip",
     "visible": "visible",
     "noScroll": "noscroll",
@@ -139,6 +146,9 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Command-related attributes
     "cmd": "command",
     "args": "arguments",
+    "command": "command",
+    "numCmds": "numCmds",
+    "commandLabel": "command_label",
     # Related display attributes
     "fileName": "filename",
     "macro": "macro",
@@ -394,6 +404,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         "topShadowColor",
                         "botShadowColor",
                         "indicatorColor",
+                        "frozenBgColor",
                     }
                     if edm_attr in color_attributes:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
@@ -414,7 +425,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
-                        abs_pts = [(int(x), int(y)) for x, y in zip(x_points, y_points)]
+                        abs_pts = [(int(float(x)), int(float(y))) for x, y in zip(x_points, y_points)]
                         pen = int(obj.properties.get("lineWidth", 1))
                         startCoord = (obj.x, obj.y)
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen)
@@ -460,6 +471,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
 
+                if obj.name.lower() == "activefreezebuttonclass":
+                    freeze_button = create_freeze_button(widget)
+                    pydm_widgets.append(freeze_button)
+
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
                     pad = widget.pen_width or 1
                     widget.width = int(widget.width) + pad
@@ -484,7 +499,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     pydm_widgets, menu_mux_buttons = traverse_group(
         parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui
     )
-    generate_menumux_file(menu_mux_buttons, parser.output_file_path)
+    if menu_mux_buttons:
+        generate_menumux_file(menu_mux_buttons, parser.output_file_path)
     return pydm_widgets, used_classes
 
 
@@ -533,6 +549,26 @@ def create_off_button(widget: PyDMPushButton):
     logger.info(f"Created off-button: {off_button.name} based on {widget.name}")
 
     return off_button
+
+
+def create_freeze_button(
+    widget: PyDMPushButton,
+):  # TODO: Can find a way to combine with create_off_button to reduce redundancy
+    """
+    Given a PyDMPushButton converted from an activefreezebuttonclass, clone it into a "freeze" version.
+    Modifies relevant visual attributes and appends a flag to identify it.
+    """
+    freeze_button = copy.deepcopy(widget)
+    freeze_button.name = widget.name + "_freeze"
+    if hasattr(widget, "frozenLabel"):
+        freeze_button.text = widget.frozenLabel
+    if hasattr(widget, "frozen_background_color"):
+        freeze_button.background_color = widget.frozen_background_color
+    setattr(freeze_button, "is_freeze_button", True)
+    setattr(widget, "is_freeze_button", False)
+    logger.info(f"Created off-button: {freeze_button.name} based on {widget.name}")
+
+    return freeze_button
 
 
 def populate_tab_bar(obj: EDMObject, widget):
@@ -719,8 +755,8 @@ def geom_and_local_points(abs_points, startCoord, pen_width: int = 1):
         logger.warning("abs_points is empty for PyDMDrawingPolyLine")  # TODO: Fix this
         return {}, []
     xs, ys = zip(*abs_points)
-    min_x, max_x = min(list(xs) + [startCoord[0]]), max(xs)
-    min_y, max_y = min(list(ys) + [startCoord[1]]), max(ys)
+    min_x, max_x = min(list(xs)), max(xs)  # TODO: Comeback and resolve which to use
+    min_y, max_y = min(list(ys)), max(ys)
 
     geom = {
         "x": min_x,

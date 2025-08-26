@@ -42,10 +42,12 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMDrawingArc": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMWaveformPlot": {"extends": "QWidget", "header": "pydm.widgets.waveformplot", "container": ""},
     "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
+    "PyDMShellCommand": {"extends": "QPushButton", "header": "pydm.widgets.shell_command", "container": ""},
+    "PyDMSlider": {"extends": "QWidget", "header": "pydm.widgets.slider", "container": ""},
 }
 
 
-def convert(input_path, output_path):
+def convert(input_path, output_path, scrollable=False):
     try:
         edm_parser = EDMFileParser(input_path, output_path)
         pprint(edm_parser.ui, indent=2)
@@ -60,7 +62,7 @@ def convert(input_path, output_path):
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
     page_header = PageHeader()
-    ui_element, central_widget = page_header.create_page_header(edm_parser)
+    ui_element, central_widget = page_header.create_page_header(edm_parser, scrollable)
 
     if isinstance(edm_parser.ui, EDMObject) and "bgColor" in edm_parser.ui.properties:
         bg_color = edm_parser.ui.properties["bgColor"]

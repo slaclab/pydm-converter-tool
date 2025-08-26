@@ -24,7 +24,6 @@ class MenuMuxScreen(Display):
 
         self.muxes = []
         self.menumux_buttons = {menumux_buttons}
-        menumux_buttons = {menumux_buttons}
         self.macro_mappings = []  # Each entry: (macro_name, [value0, value1, ...])
         self.current_macros = dict()  # Dict of current macros to apply
 
@@ -39,7 +38,7 @@ class MenuMuxScreen(Display):
         self.embedded.filename = "{str(output_path)}"
         self.stack_layout.addWidget(self.embedded)
 
-        for i, obj in enumerate(menumux_buttons):
+        for i, obj in enumerate(self.menumux_buttons):
             combo = QComboBox(self.container)
             combo.setFixedHeight(obj.height)
             combo.setFixedWidth(obj.width)
@@ -47,16 +46,21 @@ class MenuMuxScreen(Display):
             combo.raise_()
 
             # Get symbol and values for first index
-            macro_name = obj.properties["symbolIndices"][0][0]
-            values = obj.properties["valueIndices"][0]
+            macro_names_list = obj.properties["symbolIndices"]
+            values_list = obj.properties["valueIndices"]
+            symbols = obj.properties["symbolTag"]
 
-            combo.addItems(values)
+            combo.addItems(symbols)
             combo.currentIndexChanged.connect(
                 lambda selected_index, combo_index=i: self.update_display(combo_index, selected_index)
             )
 
             self.muxes.append(combo)
-            self.macro_mappings.append((macro_name, values))
+            #self.macro_mappings.append((macro_name, values))
+            inner_mapping = []
+            for i in range(len(macro_names_list)):
+                inner_mapping.append((macro_names_list[i][0], values_list[i]))
+            self.macro_mappings.append(inner_mapping)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.container)
@@ -66,9 +70,10 @@ class MenuMuxScreen(Display):
             self.update_display(j, 0)
 
     def update_display(self, combo_index, selected_index):
-        macro_name, value_list = self.macro_mappings[combo_index]
-        macro_value = value_list[selected_index]
-        self.current_macros[macro_name] = macro_value
+        for i in range(len(self.macro_mappings[combo_index])):
+            macro_name, value_list = self.macro_mappings[combo_index][i]
+            macro_value = value_list[selected_index]
+            self.current_macros[macro_name] = macro_value
         self.embedded.macros = json.dumps(self.current_macros)
         self.embedded.filename = self.embedded.filename
 """

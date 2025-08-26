@@ -183,7 +183,7 @@ class EDMFileParser:
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
-                if name.lower() == "activesymbolclass":
+                if name.lower() == "activesymbolclass" or name.lower() == "anasymbolclass":
                     obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
                 else:
                     obj = EDMObject(name=name, properties=properties, **size_properties)
@@ -222,7 +222,7 @@ class EDMFileParser:
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
         if "orientation" in properties:
-            self.reorient_symbol_groups(temp_group)
+            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
         ranges = self.generate_pv_ranges(properties)
         self.remove_extra_groups(temp_group, ranges)
         if num_pvs == 0 or num_pvs == "0":
@@ -236,9 +236,115 @@ class EDMFileParser:
             for sub_object in sub_group.objects:
                 sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
                 sub_object.y = sub_object.y - sub_group.y + size_properties["y"]
+            sub_group.x = size_properties["x"]
+            sub_group.y = size_properties[
+                "y"
+            ]  # The group resizing is needed to reorient symbol groups for rotations later
 
-    def reorient_symbol_groups(self, temp_group: EDMGroup, properties) -> None:
-        print()  # TODO: need to finish
+    def reorient_symbol_groups(self, temp_group: EDMGroup, orientation, size_properties) -> None:
+        if orientation == "FlipV":
+            for sub_group in temp_group.objects:
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
+                        sub_object.properties["totalAngle"] = str(-int(sub_object.properties["totalAngle"]))
+                    if sub_object.name.lower() == "activelineclass":
+                        for i in range(len(sub_object.properties["yPoints"])):
+                            sub_object.properties["yPoints"][i] = str(
+                                int(sub_object.height) - int(sub_object.properties["yPoints"][i]) + int(sub_object.y)
+                            )
+                    sub_object.y = int(sub_object.height) + int(sub_object.y) - int(sub_group.height)
+
+        if orientation == "FlipH":
+            for sub_group in temp_group.objects:
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
+                    if sub_object.name.lower() == "activelineclass":
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            sub_object.properties["xPoints"][i] = str(
+                                int(sub_object.width) - int(sub_object.properties["xPoints"][i]) + int(sub_object.x)
+                            )
+                    sub_object.x = int(size_properties["x"]) - int(sub_object.x)
+        if orientation == "rotateCW":
+            for sub_group in temp_group.objects:
+                group_cx = sub_group.x + sub_group.width / 2
+                group_cy = sub_group.y + sub_group.height / 2
+
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) - 90) % 360)
+
+                    obj_cx = sub_object.x + sub_object.width / 2
+                    obj_cy = sub_object.y + sub_object.height / 2
+
+                    rel_x = obj_cx - group_cx
+                    rel_y = obj_cy - group_cy
+
+                    new_rel_x = -rel_y
+                    new_rel_y = rel_x
+
+                    new_cx = group_cx + new_rel_x
+                    new_cy = group_cy + new_rel_y
+
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
+
+                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
+
+                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            px = int(sub_object.properties["xPoints"][i])
+                            py = int(sub_object.properties["yPoints"][i])
+
+                            rel_px = px - group_cx
+                            rel_py = py - group_cy
+
+                            new_rel_px = rel_py
+                            new_rel_py = -rel_px
+
+                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
+                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
+
+        if orientation == "rotateCCW":
+            for sub_group in temp_group.objects:
+                group_cx = sub_group.x + sub_group.width / 2
+                group_cy = sub_group.y + sub_group.height / 2
+
+                for sub_object in sub_group.objects:
+                    if sub_object.name.lower() == "activearcclass":
+                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) + 90) % 360)
+
+                    obj_cx = sub_object.x + sub_object.width / 2
+                    obj_cy = sub_object.y + sub_object.height / 2
+
+                    rel_x = obj_cx - group_cx
+                    rel_y = obj_cy - group_cy
+
+                    new_rel_x = rel_y
+                    new_rel_y = -rel_x
+
+                    new_cx = group_cx + new_rel_x
+                    new_cy = group_cy + new_rel_y
+
+                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
+                    sub_object.y = int(new_cy - sub_object.width // 2)
+
+                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
+
+                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
+                        for i in range(len(sub_object.properties["xPoints"])):
+                            px = int(sub_object.properties["xPoints"][i])
+                            py = int(sub_object.properties["yPoints"][i])
+
+                            rel_px = px - group_cx
+                            rel_py = py - group_cy
+
+                            new_rel_px = rel_py
+                            new_rel_py = -rel_px
+
+                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
+                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
         while len(temp_group.objects) > len(ranges):
@@ -283,7 +389,6 @@ class EDMFileParser:
         symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
-            print(f"controlPvs: {properties['controlPvs']}")
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
