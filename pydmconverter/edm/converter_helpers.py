@@ -91,6 +91,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activetriumfsliderclass": PyDMSlider,
     "activeupdownbuttonclass": PyDMPushButton,  # TODO: Need to find a more exact mapping but can't find a good edm screen to test with (all updown buttons are hidden)
     "activecoeftableclass": PyDMWaveformTable,
+    "activerampbuttonclass": PyDMPushButton,  # TODO: Same here
+    "mmvclass": PyDMSlider,  # TODO: Find a better mapping for multiple indicators in one slider
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
