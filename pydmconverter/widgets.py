@@ -1568,6 +1568,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
 @dataclass
 class PyDMWaveformTable(Alarmable):
     rowLabels: Optional[Str] = None
+    font: dict = field(default_factory=dict)
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1581,7 +1582,7 @@ class PyDMWaveformTable(Alarmable):
         if self.rowLabels is not None:
             rowList = self.rowLabels.split(", ")
             for row in rowList:
-                properties.append(Row(row).to_xml())
+                properties.append(Row(row, self.font).to_xml())
             properties.append(Column().to_xml())
 
         return properties

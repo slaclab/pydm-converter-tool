@@ -150,19 +150,40 @@ class XMLSerializableMixin(XMLConvertible):
 @dataclass
 class Row(XMLConvertible):
     value: Optional[str]
+    font: dict = field(default_factory=dict)
 
     def to_xml(self) -> etree.Element:
+        """
+        Convert the Row properties to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the font.
+        """
         row: etree.Element = etree.Element("row")
         prop: etree.Element = etree.SubElement(row, "property", attrib={"name": "text"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
         string_tag.text = self.value
-        row.append(Font("Helvetica", 5, 50, False).to_xml())
+        row.append(Font(**self.font).to_xml())
         return row
 
 
 @dataclass
 class Column:
+    """
+    Represents end </column> tag for tables.
+    """
+
     def to_xml(self) -> etree.Element:
+        """
+        Generates a Column XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing a column.
+        """
         return etree.Element("column")
 
 
