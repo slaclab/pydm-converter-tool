@@ -792,7 +792,8 @@ def parse_font_string(font_str: str) -> dict:
     into a dictionary for a PyDM widget.
     This is just an example parser—adjust as needed.
     """
-    print("fonts", font_str)
+    if not font_str:
+        font_str = "helvetica-medium-r-12.0"
     parts = font_str.split("-")
     family = parts[0].capitalize()
     bold = "bold" in parts[1].lower()

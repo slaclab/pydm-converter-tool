@@ -378,14 +378,13 @@ def loc_conversion(edm_string: str) -> str:
 
     try:
         name, type_and_value = content.split("=", 1)
-        print(name.lstrip("\\"))
-        breakpoint()
         name = name.lstrip("\\")
         type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
         name = content.lstrip("\\")
         return f"loc://{name}"
         # raise ValueError("Invalid EDM format: Missing '=' separator")
+    print(type_and_value, "here343")
 
     try:
         type_char, value = type_and_value.split(":", 1)
@@ -420,15 +419,17 @@ def loc_conversion(edm_string: str) -> str:
                 float(type_and_value)
                 value = type_and_value
                 type_char = "d"
+                print("here342")
             except ValueError:
                 print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
                 print(f"name: {name}")
                 print(f"value: {type_and_value}")
-                breakpoint()
-                return None
-                # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
+                raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
+    if edm_type.isdigit():
+        value = edm_type
+        edm_type = "i"
     pydm_type = type_mapping.get(edm_type)
     if pydm_type is None:
         raise ValueError(f"Unsupported type character: {type_char}")
