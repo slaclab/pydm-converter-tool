@@ -9,7 +9,10 @@ from pydmconverter.edm.parser_helpers import (
     search_color_list,
     replace_calc_and_loc_in_edm_content,
 )
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
 
@@ -71,8 +74,13 @@ class EDMFileParser:
         self.file_path = file_path
         self.output_file_path = output_file_path
 
-        with open(file_path, "r") as file:
-            self.text = file.read()
+        try:
+            with open(file_path, "r") as file:
+                self.text = file.read()
+        except UnicodeDecodeError as e:
+            logger.warning(f"Could not read file as UTF-8 (bad byte at {e.start}): {e}. Switching to Latin-1...")
+            with open(file_path, "r", encoding="latin-1") as file:
+                self.text = file.read()
         self.modify_text(file_path)
 
         self.screen_properties_end = 0
@@ -410,7 +418,10 @@ class EDMFileParser:
             # temp_group.objects[i].properties["symbolChannel"] = symbol_channel
 
     def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
-        symbol_channel = properties["controlPvs"][0]
+        if "controlPvs" in properties:
+            symbol_channel = properties["controlPvs"][0]
+        else:
+            symbol_channel = None
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
                 sub_object.properties["isSymbol"] = True

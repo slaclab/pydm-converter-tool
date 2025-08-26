@@ -298,8 +298,9 @@ def translate_calc_pv_to_pydm(
     else:
         calc_name = name_or_expr
         if calc_name not in calc_dict:
-            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
-            # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            # raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            return "failed CALC"
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
             raise ValueError(f"Calculation '{calc_name}' in calc_dict has no expression defined.")
@@ -377,10 +378,14 @@ def loc_conversion(edm_string: str) -> str:
 
     try:
         name, type_and_value = content.split("=", 1)
+        print(name.lstrip("\\"))
+        breakpoint()
         name = name.lstrip("\\")
         type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
-        raise ValueError("Invalid EDM format: Missing '=' separator")
+        name = content.lstrip("\\")
+        return f"loc://{name}"
+        # raise ValueError("Invalid EDM format: Missing '=' separator")
 
     try:
         type_char, value = type_and_value.split(":", 1)
