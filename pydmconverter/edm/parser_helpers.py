@@ -2,7 +2,7 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
-from pydmconverter.types import RGBA
+from pydmconverter.custom_types import RGBA
 
 logger = logging.getLogger(__name__)
 

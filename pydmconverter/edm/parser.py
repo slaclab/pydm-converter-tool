@@ -400,8 +400,6 @@ class EDMFileParser:
         # symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
-            print(f"controlPvs: {properties['controlPvs']}")
-            # breakpoint()
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
