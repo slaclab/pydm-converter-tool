@@ -22,6 +22,7 @@ from pydmconverter.widgets import (
     PyDMWaveformPlot,
     PyDMScaleIndicator,
     PyDMSlider,
+    PyDMWaveformTable,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
@@ -89,6 +90,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "regtextupdateclass": PyDMLabel,
     "activetriumfsliderclass": PyDMSlider,
     "activeupdownbuttonclass": PyDMPushButton,  # TODO: Need to find a more exact mapping but can't find a good edm screen to test with (all updown buttons are hidden)
+    "activecoeftableclass": PyDMWaveformTable,
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -213,6 +215,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "limitsFromDb": "limitsFromDb",
     "showValue": "showValueLabel",
     "showLimits": "showLimitLabels",
+    "labels": "rowLabels",
 }
 
 # Configure logging

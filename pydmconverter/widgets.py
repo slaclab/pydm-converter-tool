@@ -20,6 +20,7 @@ from pydmconverter.widgets_helpers import (
     Brush,
     Enum,
     StringList,
+    Row,
 )
 import logging
 from epics import PV
@@ -1561,6 +1562,27 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             str: Hex color string like "#00e0e0"
         """
         return f"#{r:02x}{g:02x}{b:02x}"
+
+
+@dataclass
+class PyDMWaveformTable(Alarmable):
+    rowLabels: Optional[Str] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the pydmwaveformtable's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.rowLabels is not None:
+            rowList = self.rowLabels.split(", ")
+            for row in rowList:
+                properties.append(Row(row).to_xml())
+
+        return properties
 
 
 @dataclass

@@ -44,6 +44,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMScaleIndicator": {"extends": "QWidget", "header": "pydm.widgets.scale", "container": ""},
     "PyDMShellCommand": {"extends": "QPushButton", "header": "pydm.widgets.shell_command", "container": ""},
     "PyDMSlider": {"extends": "QWidget", "header": "pydm.widgets.slider", "container": ""},
+    "PyDMWaveformTable": {"extends": "QTableWidget", "header": "pydm.widgets.waveformtable", "container": ""},
 }
 
 

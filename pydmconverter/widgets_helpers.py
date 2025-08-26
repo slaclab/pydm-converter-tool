@@ -148,6 +148,19 @@ class XMLSerializableMixin(XMLConvertible):
 
 
 @dataclass
+class Row(XMLConvertible):
+    value: Optional[str]
+
+    def to_xml(self) -> etree.Element:
+        row: etree.Element = etree.Element("row")
+        prop: etree.Element = etree.SubElement(row, "property", attrib={"name": "text"})
+        string_tag: etree.Element = etree.SubElement(prop, "string")
+        string_tag.text = self.value
+        row.append(Font("Helvetica", 5, 50).to_xml())
+        return row
+
+
+@dataclass
 class Font(XMLConvertible):
     """
     Represents font properties for a widget.
