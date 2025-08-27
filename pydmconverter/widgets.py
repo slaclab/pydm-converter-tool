@@ -1527,12 +1527,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 self.y_channel.append("")
             if len(self.plotColor) <= i:
                 self.plotColor.append("")
-        # if self.x_channel is None:
-        #    self.x_channel = [""] * max_len
-        # if self.y_channel is None:
-        #    self.y_channel = [""] * max_len
-        # if self.plotColor is None:
-        #    self.plotColor = [""] * max_len
         curve_string_list = []
         for i in range(max_len):
             curve_string = (

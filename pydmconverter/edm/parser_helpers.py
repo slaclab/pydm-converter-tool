@@ -140,7 +140,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     """
 
     expr_part, args_part = get_calc_groups(edm_pv)
-    name_or_expr = clean_escape_characters(expr_part)
+    name_or_expr = clean_escape_characters(expr_part).strip()
     arg_string = clean_escape_characters(args_part)
 
     arg_list: List[str] = []
@@ -154,7 +154,6 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
         is_inline_expr = True
         name_or_expr = name_or_expr[1:-1]
-
     return name_or_expr, arg_list, is_inline_expr
 
 
@@ -297,10 +296,13 @@ def translate_calc_pv_to_pydm(
         identifier = "inline_expr"
     else:
         calc_name = name_or_expr
+        if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
+            calc_name = "sum"
         if calc_name not in calc_dict:
-            # raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
-            logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
-            return "failed CALC"
+            print(calc_dict)
+            raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            # return "failed CALC"
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
             raise ValueError(f"Calculation '{calc_name}' in calc_dict has no expression defined.")
@@ -384,7 +386,6 @@ def loc_conversion(edm_string: str) -> str:
         name = content.lstrip("\\")
         return f"loc://{name}"
         # raise ValueError("Invalid EDM format: Missing '=' separator")
-    print(type_and_value, "here343")
 
     try:
         type_char, value = type_and_value.split(":", 1)
@@ -419,9 +420,8 @@ def loc_conversion(edm_string: str) -> str:
                 float(type_and_value)
                 value = type_and_value
                 type_char = "d"
-                print("here342")
             except ValueError:
-                print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+                # print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
                 print(f"name: {name}")
                 print(f"value: {type_and_value}")
                 raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
@@ -432,7 +432,15 @@ def loc_conversion(edm_string: str) -> str:
         edm_type = "i"
     pydm_type = type_mapping.get(edm_type)
     if pydm_type is None:
-        raise ValueError(f"Unsupported type character: {type_char}")
+        # logger.warning(f"Unsupported type character: {type_char}")
+        # return f"No loc here"
+        if edm_type and len(edm_type) > 1:
+            edm_type = "s"
+            value = type_and_value
+            print(type_and_value)
+            breakpoint()
+        else:
+            raise ValueError(f"Unsupported type character: {type_char}")
 
     if value.strip().upper() == "RAND()":
         raise NotImplementedError("Special function RAND() is not supported yet.")
