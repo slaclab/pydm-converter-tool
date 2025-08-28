@@ -427,7 +427,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-
                     if edm_attr in COLOR_ATTRIBUTES:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                     if edm_attr == "plotColor":
@@ -803,7 +802,6 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-
     # pointsize = convert_pointsize(float(size_str))
     # NOTE: This line is commented because of how I observed fastx displays pointsize. In browser mode, the conversion from pixelsize to pointsize is 0.75. In desktop mode, the conversion is ~0.51
     # TODO: Find which version is accurate to how pydm is used and use that function

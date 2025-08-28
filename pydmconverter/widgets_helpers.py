@@ -1424,7 +1424,6 @@ class Controllable(Tangible):
             self.rules.append(
                 RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
-
         hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
         is_hidden = False
 
