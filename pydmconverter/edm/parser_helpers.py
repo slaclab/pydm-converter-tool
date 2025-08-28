@@ -315,6 +315,7 @@ def translate_calc_pv_to_pydm(
 
         identifier = calc_name
 
+    expression = reformat_calc_expression(expression)
     letters = "ABCDEFGHIJKL"
     var_map = {}
     for i, arg in enumerate(arg_list):
@@ -331,9 +332,13 @@ def translate_calc_pv_to_pydm(
 
     query_str = "&".join(query_pairs)
     pydm_calc_address = f"calc://{identifier}?{query_str}"
-    # pydm_calc_address = f"calc://{calc_name}?{query_str}"
 
     return pydm_calc_address
+
+
+def reformat_calc_expression(exp):
+    exp = exp.replace("^", "**")
+    return exp
 
 
 def loc_conversion(edm_string: str) -> str:
