@@ -10,11 +10,47 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
+IMAGE_FILE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif"}
+
+
 def run_gui() -> None:
     """
     launch the PyDMConverter gui
     """
-    subprocess.run(["pydm", "--hide-nav-bar", "--hide-menu-bar", "view/main_window.py"])
+    # subprocess.run(["pydm", "--hide-nav-bar", "--hide-menu-bar", "view/main_window.py"])
+    subprocess.run(["bash", "launch_gui.sh"], check=True)
+
+
+def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False):
+    input_path: Path = Path(input_file)
+    output_path: Path = Path(output_file)
+
+    if input_path.is_file():
+        if output_path.suffix != ".ui":
+            output_path = output_path.with_suffix(".ui")
+        if output_path.is_file() and not override:
+            raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
+        copy_img_files(input_path.parent, output_path.parent)
+        convert(str(input_path), str(output_path), scrollable)
+    else:
+        if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
+            input_file_type = "." + input_file_type
+        output_path.mkdir(parents=True, exist_ok=True)
+        files_found: int
+        files_failed: list[str]
+        files_found, files_failed = convert_files_in_folder(
+            input_path, output_path, input_file_type, override, scrollable
+        )
+
+        if files_found == 0:
+            print(f"No {input_file_type} files found in {input_path}")
+        else:
+            print(f"{files_found - len(files_failed)} {input_file_type} files converted from {input_path}")
+        if files_failed:
+            print(
+                f"{len(files_failed)} files failed to convert to prevent overriding current files. Use --override or -o to overwrite these files."
+            )
+            print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
 
 
 def run_cli(args: argparse.Namespace) -> None:
@@ -27,18 +63,22 @@ def run_cli(args: argparse.Namespace) -> None:
         Parsed command-line arguments
     """
     logging.info(f"Running CLI with arguments: {args}")
-    input_path: Path = Path(args.input_file)
-    output_path: Path = Path(args.output_file)
+    input_file: str = args.input_file
+    output_file: str = args.output_file
     input_file_type: str = args.output_type
     override: bool = args.override
     scrollable: bool = args.scrollable
+    run(input_file, output_file, input_file_type, override, scrollable)
 
+
+"""
     if input_path.is_file():
         if output_path.suffix != ".ui":
             output_path = output_path.with_suffix(".ui")
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         convert(str(input_path), str(output_path), scrollable)
+        copy_img_files(input_path.parent, output_path.parent)
     else:
         if not input_file_type:
             raise AttributeError(
@@ -62,17 +102,18 @@ def run_cli(args: argparse.Namespace) -> None:
                 f"{len(files_failed)} files failed to convert to prevent overriding current files. Use --override or -o to overwrite these files."
             )
             print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
+"""
 
 
 def copy_img_files(input_path: Path, output_path: Path) -> None:
-    img_files = list(input_path.glob("*.png")) + list(input_path.glob("*.gif"))
-    for file in img_files:
-        relative_path = file.relative_to(input_path)
-        output_file_path = output_path / relative_path
+    for file in input_path.rglob("*"):
+        if file.suffix.lower() in IMAGE_FILE_SUFFIXES:
+            relative_path = file.relative_to(input_path)
+            output_file_path = output_path / relative_path
 
-        output_file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file, "rb") as src, open(output_file_path, "wb") as dst:
-            dst.write(src.read())
+            output_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file, "rb") as src, open(output_file_path, "wb") as dst:
+                dst.write(src.read())
 
 
 def convert_files_in_folder(

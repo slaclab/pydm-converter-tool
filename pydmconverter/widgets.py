@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
-from pydmconverter.types import RGBA, RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
     Bool,
@@ -155,8 +155,6 @@ class QLabel(Legible, StyleSheetObject):
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
             properties.append(Bool("showUnits", self.show_units).to_xml())
-        # elif self.name.startswith("TextupdateClass"):
-        #    properties.append(Bool("showUnits", "true").to_xml())
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
@@ -637,9 +635,6 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             A list of XML elements representing the PyDMShellCommand properties.
         """
         properties: List[ET.Element] = super().generate_properties()
-        if self.visPvList is not None:
-            print(vars(self))
-            print(self.visPvList)
         if self.show_confirm_dialog is not None:
             properties.append(Bool("showConfirmDialog", self.show_confirm_dialog).to_xml())
         if self.confirm_message is not None:
@@ -1534,7 +1529,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"name": "", '
                 f'"x_channel": "{self.x_channel[i]}", '
                 f'"y_channel": "{self.y_channel[i]}", '
-                # f'"color": "rgba{str(self.plotColor[i])}"'
                 f'"color": "{self.rgba_to_hex(*self.plotColor[i])}", '
                 f'"yAxisName": "Axis 1"'
                 "}"

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
-from pydmconverter.types import RGBA, RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,8 @@ class XMLConvertible:
     to_string() -> str
         Return a formatted string representation of the XML element.
     """
+
+    secretId: str = None
 
     secretId: str = None
 
@@ -73,6 +75,7 @@ class XMLSerializableMixin(XMLConvertible):
 
     name: Optional[str] = None
     count: ClassVar[int] = 1
+    secretId: str = None
     secretId: str = None
 
     def __post_init__(self) -> None:
@@ -168,6 +171,7 @@ class Font(XMLConvertible):
     """
 
     family: Optional[str] = None
+    family: Optional[str] = None
     pointsize: Optional[int] = None
     weight: Optional[int] = None
     bold: Optional[bool] = None
@@ -184,6 +188,9 @@ class Font(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "font"})
         font: etree.Element = etree.SubElement(prop, "font")
+        if self.family is not None:
+            family_tag: etree.Element = etree.SubElement(font, "family")
+            family_tag.text = str(self.family)
         if self.family is not None:
             family_tag: etree.Element = etree.SubElement(font, "family")
             family_tag.text = str(self.family)
@@ -375,6 +382,8 @@ class Str(XMLConvertible):
         string_tag: etree.Element = etree.SubElement(prop, "string")
         if isinstance(self.string, list):
             raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
+        if isinstance(self.string, list):
+            raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         string_tag.text = self.string
         return prop
 
@@ -393,13 +402,7 @@ class StringList(XMLConvertible):
                 raise TypeError(f"Expected string in StringList.items, got {type(item)}: {item}")
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
-            # print(item)
-            # breakpoint()
-            # string_el.text = self.escape_for_stringlist(item)
         return prop
-
-    def escape_for_stringlist(self, s: str) -> str:
-        return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @dataclass
@@ -585,9 +588,10 @@ class PyDMToolTip(XMLConvertible):
         return prop
 
 
-"""@dataclass
-class StyleSheet(XMLConvertible):
+""" @ dataclass
 
+
+class StyleSheet(XMLConvertible):
     lines: List[str]
 
     def to_xml(self) -> etree.Element:
@@ -595,6 +599,7 @@ class StyleSheet(XMLConvertible):
         string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
         string_elem.text = "\n".join(self.lines)
         return top
+
 """
 
 
@@ -666,6 +671,10 @@ class Alignment(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
         set_tag: etree.Element = etree.SubElement(prop, "set")
+        if self.alignment == "center":
+            set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
+        else:
+            set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         if self.alignment == "center":
             set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
         else:
@@ -840,7 +849,7 @@ class MultiRule(XMLConvertible):
     rule_type: str
     rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = False  # TODO: set to false to fix the extra enumbutton
+    initial_value: Optional[bool] = False
     notes: Optional[str] = ""
 
     def to_string(self):
@@ -849,8 +858,6 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                # use_enum = "type=enum" in channel
-                # str_enum = str(use_enum).lower()
                 replacement_init = None
                 if channel.startswith("loc://") and "init=${" in channel:
                     replacement_init = channel[channel.find("init=") + len("init=") :]
@@ -866,8 +873,6 @@ class MultiRule(XMLConvertible):
                 ]
                 replacement_init = replacement_init[: replacement_init.find("}") + 1]
             expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
-            # use_enum = "type=enum" in self.hide_on_disconnect_channel
-            # str_enum = str(use_enum).lower()
             channel_list.append(
                 f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
             )
@@ -880,7 +885,6 @@ class MultiRule(XMLConvertible):
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
             f'"initial_value": "false", '
-            # f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -898,29 +902,18 @@ class MultiRule(XMLConvertible):
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:
-            # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
-            # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
             show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
-            show_on_false_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+            show_on_false_string = f"float({ch}) < {visMin} or float({ch}) >= {visMax}"
         else:
-            # show_on_true_string = f"True if {ch}==1 else False"
-            # show_on_false_string = f"True if {ch}!=1 else False"
             show_on_true_string = f"{ch}==1"
             show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
 
         return show_on_true_string if show_on_true else show_on_false_string
 
     def get_hide_on_disconnect_expression(self, index, init):
-        """
-        if init:
-           ch = init
-        else:
-          ch = f"ch[{index}]"
-        """
         ch = f"ch[{index}]"
 
         return f"{ch} is not None"
-        # return f"bool({ch})"
 
 
 @dataclass
@@ -929,7 +922,6 @@ class Rules(XMLConvertible):
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
-        # bool_rule_types = set(["Visible", "Enable"])
         rule_list = []
         rule_variables = self.group_by_rules()
 
@@ -952,21 +944,6 @@ class Rules(XMLConvertible):
         for rule_name in rule_variables.keys():  # removes repeated tuples
             rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
-
-
-@dataclass
-class RGBAStyleSheet(XMLConvertible):
-    red: int
-    green: int
-    blue: int
-    alpha: int = 255
-
-    def to_xml(self):
-        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
-        prop = ET.Element("property", {"name": "styleSheet"})
-        string_elem = ET.SubElement(prop, "string")
-        string_elem.text = style
-        return prop
 
 
 @dataclass
@@ -1040,6 +1017,21 @@ class Curves(XMLConvertible):
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
     plotColor: Optional[RGBA] = None
+
+
+@dataclass
+class RGBAStyleSheet(XMLConvertible):
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
 
 
 @dataclass
@@ -1639,6 +1631,27 @@ class PageHeader:
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
         title_string.text = "PyDM Screen"
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
 
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)

@@ -91,7 +91,9 @@ class EDMFileParser:
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text = self.text.replace("$(!W)", "")
-        self.text = self.text.replace("$(!A)", "")  # remove global macros TODO: May need to use later
+        self.text = self.text.replace(
+            "$(!A)", ""
+        )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
@@ -408,8 +410,6 @@ class EDMFileParser:
         # symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
-            print(f"controlPvs: {properties['controlPvs']}")
-            # breakpoint()
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
