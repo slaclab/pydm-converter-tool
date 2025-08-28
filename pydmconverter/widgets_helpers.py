@@ -934,7 +934,7 @@ class MultiRule(XMLConvertible):
             # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
             # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
             show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
-            show_on_false_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+            show_on_false_string = f"float({ch}) < {visMin} or float({ch}) >= {visMax}"
         else:
             # show_on_true_string = f"True if {ch}==1 else False"
             # show_on_false_string = f"True if {ch}!=1 else False"
