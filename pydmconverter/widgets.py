@@ -517,16 +517,16 @@ class PyDMPushButton(PyDMPushButtonBase):
         """
         if self.is_off_button is not None:
             show_button = not self.is_off_button
-            enum_index = 0 if self.is_off_button else 1
 
             self.rules.append(RuleArguments("Visible", self.channel, False, show_button, None, None))
             self.rules.append(RuleArguments("Enable", self.channel, False, show_button, None, None))
+            enum_index = 0 if self.is_off_button else 1
             if self.text is None and self.channel is not None:
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
 
-        if self.is_freeze_button is not None and not self.is_freeze_button:
+        if self.is_freeze_button is not None and not self.is_freeze_button:  # TODO: Clean this up
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
             self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
@@ -534,15 +534,6 @@ class PyDMPushButton(PyDMPushButtonBase):
             self.channel = "loc://FROZEN_STATE"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
             self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, True, None, None))
-
-        if self.is_freeze_button is not None and not self.is_freeze_button:
-            self.channel = "loc://FROZEN_STATE?type=int&init=0"
-            self.rules.append(("Visible", "loc://FROZEN_STATE", False, False, None, None))
-            self.rules.append(("Enable", "loc://FROZEN_STATE", False, False, None, None))
-        elif self.is_freeze_button is not None and self.is_freeze_button:
-            self.channel = "loc://FROZEN_STATE"
-            self.rules.append(("Visible", "loc://FROZEN_STATE", False, True, None, None))
-            self.rules.append(("Enable", "loc://FROZEN_STATE", False, True, None, None))
 
         properties: List[ET.Element] = super().generate_properties()
         if self.monitor_disp is not None:
@@ -721,9 +712,11 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
-        if self.displayFileName is not None:  # TODO: Come back and find out why sometimes an empty list
-            converted_filename = self.convert_filetype(self.displayFileName[0])
-            properties.append(StringList("filenames", [converted_filename]).to_xml())
+        if (
+            self.displayFileName is not None and self.displayFileName
+        ):  # TODO: Come back and find out why sometimes an empty list
+            converted_filenames = list(map(self.convert_filetype, self.displayFileName))
+            properties.append(StringList("filenames", converted_filenames).to_xml())
         return properties
 
     def convert_filetype(self, file_string: str) -> None:
@@ -956,7 +949,7 @@ class PyDMEnumButton(Alarmable, Legible):
         if self.orientation is not None:
             properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
         elif self.tab_names is not None:
-            properties.append(Enum("orientation", "Qt::Horizontal"))
+            properties.append(Enum("orientation", "Qt::Horizontal").to_xml())
         if self.margin_top is not None:
             properties.append(Int("marginTop", self.margin_top).to_xml())
         if self.margin_bottom is not None:
@@ -1427,6 +1420,47 @@ class PyDMByteIndicator(Alarmable):
 
 @dataclass
 class PyDMWaveformPlot(Alarmable, StyleSheetObject):
+    """
+    Represents a PyDM widget that displays a waveform plot (XY graph).
+
+    This widget can be bound to one or more X and Y data channels.
+
+    Attributes
+    ----------
+    x_channel : Optional[List[str]]
+        List of process variable (PV) names for the X-axis data.
+    y_channel : Optional[List[str]]
+        List of PV names for the Y-axis data.
+    plot_name : Optional[str]
+        Title of the plot.
+    color : Optional[RGBA]
+        Default RGBA color for the plot.
+    minXRange : Optional[int]
+        Minimum value for the X-axis.
+    minYRange : Optional[int]
+        Minimum value for the Y-axis.
+    maxXRange : Optional[int]
+        Maximum value for the X-axis.
+    maxYRange : Optional[int]
+        Maximum value for the Y-axis.
+    plotColor : Optional[List[RGBA]]
+        List of colors for individual curves.
+    xLabel : Optional[str]
+        Label for the X-axis.
+    yLabel : Optional[str]
+        Label for the Y-axis.
+    axisColor : Optional[RGBA]
+        Color of the axis lines.
+    pointsize : Optional[int]
+        Font size for labels and titles.
+    font : Optional[dict]
+        Font properties (e.g., {"pointsize": 12}).
+    yAxisSrc : Optional[str]
+        Source of Y-axis scaling ("fromUser" disables auto-range).
+    xAxisSrc : Optional[str]
+        Source of X-axis scaling.
+    """
+
     x_channel: Optional[List[str]] = field(default_factory=list)
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
@@ -1445,6 +1479,12 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     xAxisSrc: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the waveform plot's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
         properties: List[ET.Element] = super().generate_properties()
 
         if self.plot_name is not None:
@@ -1519,6 +1559,18 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         return properties
 
     def get_curve_strings(self) -> List[str]:
+        """
+        Build JSON-like strings representing individual curve configurations.
+
+        Ensures that the x_channel, y_channel, and plotColor lists are padded
+        to equal length before constructing curve entries.
+
+        Returns
+        -------
+        List[str]
+            A list of JSON-style strings, one for each curve in the plot.
+        """
+
         lists = [self.x_channel, self.y_channel, self.plotColor]
         max_len = max(len(lst) for lst in lists)
         for i in range(max_len):
@@ -1560,6 +1612,33 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
 
 @dataclass
 class PyDMScaleIndicator(Alarmable):
+    """
+    Represents a PyDM widget that displays a scale indicator.
+
+    Attributes
+    ----------
+    showUnits : Optional[bool]
+        Whether to display units next to the scale.
+    showLimits : Optional[bool]
+        Whether to display min/max limits.
+    showValue : Optional[bool]
+        Whether to display the current value.
+    flipScale : Optional[bool]
+        Whether to reverse the scale orientation.
+    precision : Optional[int]
+        Number of decimal places for displayed values.
+    minorTicks : Optional[int]
+        Number of minor tick marks.
+    majorTicks : Optional[int]
+        Number of major tick marks.
+    indicatorColor : Optional[RGBA]
+        Color of the indicator line.
+    background_color : Optional[RGBA]
+        Background color of the scale widget.
+    foreground_color : Optional[RGBA]
+        Color of tick marks.
+    """
+
     showUnits: Optional[bool] = None
     showLimits: Optional[bool] = False
     showValue: Optional[bool] = False
@@ -1574,11 +1653,13 @@ class PyDMScaleIndicator(Alarmable):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generates a list of XML elements representing the scale indicator's properties.
+        Generates a list of XML elements representing the pydmscaleindicator's properties.
 
         Returns:
             List[ET.Element]: List of XML elements for serialization.
-        """  # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
+        """
+
+        # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
         # self.height += 20
         # self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
         properties: List[ET.Element] = super().generate_properties()
@@ -1616,11 +1697,27 @@ class PyDMScaleIndicator(Alarmable):
 
 @dataclass
 class PyDMSlider(Alarmable):
+    """
+    Represents a PyDM slider widget for adjusting values interactively.
+
+    Attributes
+    ----------
+    orientation : Optional[str]
+        Slider orientation ("Horizontal" or "Vertical").
+    """
+
     orientation: Optional[Str] = None
 
     def generate_properties(self):
+        """
+        Generates a list of XML elements representing the slider's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
-            properties.append(Str("orientation", self.orientation))
+            # properties.append(Str("orientation", self.orientation))
+            properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
         return properties

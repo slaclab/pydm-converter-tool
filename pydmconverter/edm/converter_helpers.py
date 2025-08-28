@@ -208,6 +208,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "nullColor": "nullColor",
     "closePolygon": "closePolygon",
     "secretId": "secretId",
+    "isSymbol": "isSymbol",
 }
 
 COLOR_ATTRIBUTES: set = {
@@ -288,9 +289,15 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     color_list_dict = parse_colors_list(color_list_filepath)
 
     pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
-
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
+
+    text_objects = find_objects(
+        parser.ui, "activextextclass"
+    )  # TODO: If this gets too large, make into a helper function
+    for text_object in text_objects:
+        if should_delete_overlapping(parser.ui, text_object, "relateddisplayclass"):
+            delete_object_in_group(parser.ui, text_object)
 
     def traverse_group(
         edm_group: EDMGroup,
@@ -420,7 +427,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-
                     if edm_attr in COLOR_ATTRIBUTES:
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                     if edm_attr == "plotColor":
@@ -480,12 +486,19 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 widget.height = max(1, int(height))
 
                 if type(widget).__name__ == "PyDMPushButton" and (
-                    ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
-                    or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    "offLabel" in obj.properties and "onLabel" not in obj.properties
+                ):
+                    setattr(widget, "text", obj.properties["offLabel"])
+                elif type(widget).__name__ == "PyDMPushButton" and (
+                    (
+                        ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+                        or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    )
+                    and hasattr(widget, "channel")
+                    and widget.channel is not None
                 ):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
-
                 if obj.name.lower() == "activefreezebuttonclass":
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
@@ -498,12 +511,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if obj.properties.get("autoSize", False):
                     widget.autoSize = True
 
-                """if parent_pydm_group:
-                    parent_pydm_group.add_child(widget)
-                    logger.info(f"Added {widget.name} to parent {parent_pydm_group.name}")
-                else:
-                    pydm_widgets.append(widget)
-                    logger.info(f"Added {widget.name} to root")"""
                 pydm_widgets.append(widget)
                 logger.info(f"Added {widget.name} to root")
             else:
@@ -517,6 +524,57 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     if menu_mux_buttons:
         generate_menumux_file(menu_mux_buttons, parser.output_file_path)
     return pydm_widgets, used_classes
+
+
+def should_delete_overlapping(
+    group: EDMGroup,
+    curr_obj: EDMObject,
+    overlapping_name: str = "relateddisplayclass",
+    percentage_overlapping: float = 80,
+) -> bool:
+    overlap_type_widgets = find_objects(group, overlapping_name)
+    for widget in (
+        overlap_type_widgets
+    ):  # maybe need to improve conditional but I wanted to have it skip needless calculations if percent overlap == 100
+        if (
+            (
+                percentage_overlapping == 100
+                and widget.x == curr_obj.x
+                and widget.y == curr_obj.y
+                and widget.width == curr_obj.width
+                and widget.height == curr_obj.height
+            )
+            or (percentage_overlapping != 100 and calculate_widget_overlap(curr_obj, widget) > percentage_overlapping)
+            and "value" not in widget.properties
+            and "value" in curr_obj.properties
+        ):
+            widget.properties["value"] = curr_obj.properties["value"]
+            return True
+    return False
+
+
+def calculate_widget_overlap(widget1: EDMObject, widget2: EDMObject) -> float:
+    overlap_x1 = max(widget1.x, widget2.x)
+    overlap_x2 = min(widget1.x + widget1.width, widget2.x + widget2.width)
+    overlap_y1 = max(widget1.y, widget2.y)
+    overlap_y2 = min(widget1.y + widget1.height, widget2.y + widget2.height)
+    if overlap_x1 >= overlap_x2 or overlap_y1 >= overlap_y2:
+        return 0
+    overlap_area = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+    widget1_area = widget1.width * widget1.height
+    widget2_area = widget2.width * widget2.height
+    percent_area_1 = overlap_area / widget1_area * 100
+    percent_area_2 = overlap_area / widget2_area * 100
+    return min(percent_area_1, percent_area_2)
+
+
+def delete_object_in_group(group: EDMGroup, deleted: EDMObject):
+    for i in range(len(group.objects)):
+        if isinstance(group.objects[i], EDMGroup):
+            delete_object_in_group(group.objects[i], deleted)
+        elif group.objects[i] == deleted:
+            group.objects.pop(i)
+            return
 
 
 def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
@@ -652,6 +710,9 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     string_list = searched_arr[-1]
     channel_list = string_list[1:-1].split(", ")
     tab_names = [item.strip("'") for item in channel_list]
+    for i in range(len(tab_names)):
+        if not tab_names[i]:
+            tab_names.pop(i)
     tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
         return False
@@ -734,13 +795,13 @@ def parse_font_string(font_str: str) -> dict:
     into a dictionary for a PyDM widget.
     This is just an example parser—adjust as needed.
     """
-    print("fonts", font_str)
+    if not font_str:
+        font_str = "helvetica-medium-r-12.0"
     parts = font_str.split("-")
     family = parts[0].capitalize()
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-
     # pointsize = convert_pointsize(float(size_str))
     # NOTE: This line is commented because of how I observed fastx displays pointsize. In browser mode, the conversion from pixelsize to pointsize is 0.75. In desktop mode, the conversion is ~0.51
     # TODO: Find which version is accurate to how pydm is used and use that function

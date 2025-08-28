@@ -9,7 +9,10 @@ from pydmconverter.edm.parser_helpers import (
     search_color_list,
     replace_calc_and_loc_in_edm_content,
 )
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
 
@@ -71,8 +74,13 @@ class EDMFileParser:
         self.file_path = file_path
         self.output_file_path = output_file_path
 
-        with open(file_path, "r") as file:
-            self.text = file.read()
+        try:
+            with open(file_path, "r") as file:
+                self.text = file.read()
+        except UnicodeDecodeError as e:
+            logger.warning(f"Could not read file as UTF-8 (bad byte at {e.start}): {e}. Switching to Latin-1...")
+            with open(file_path, "r", encoding="latin-1") as file:
+                self.text = file.read()
         self.modify_text(file_path)
 
         self.screen_properties_end = 0
@@ -83,10 +91,12 @@ class EDMFileParser:
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text = self.text.replace("$(!W)", "")
-        self.text = self.text.replace("$(!A)", "")  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
-        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        self.text = self.text.replace(
+            "$(!A)", ""
+        )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
         return self.text
 
     def parse_screen_properties(self) -> None:
@@ -197,7 +207,26 @@ class EDMFileParser:
                 print(f"Unrecognized text at pos {pos}: '{snippet}'")
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
-    def get_symbol_group(self, properties: dict[str, bool | str | list[str]], size_properties: dict[str, int]):
+    def get_symbol_group(
+        self, properties: dict[str, bool | str | list[str]], size_properties: dict[str, int]
+    ) -> EDMGroup:
+        """
+        Generate an EDMGroup made up of child EDMGroups each representing a symbol.
+        These EDMGroups are mapped from the inner groups within the activesymbolclass
+        embedded file.
+
+        Parameters
+        ----------
+        properties : dict[str, bool | str | list[str]]
+            The activesymbolclass properties used to generate the output EDM Group
+        size_properties : dict[str, int]
+            The coordinate and size_properties of the activesymbolclass
+
+        Returns
+        ----------
+        EDMGroup
+            A group representing a collection of ActiveSymbolclass groups
+        """
         embedded_file = properties.get("file")
         if not embedded_file:
             print("No embedded file specified in properties.")
@@ -223,17 +252,33 @@ class EDMFileParser:
         num_pvs = properties["numPvs"]
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
+        self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
             self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
-        ranges = self.generate_pv_ranges(properties)
+        if "minValues" not in properties or "maxValues" not in properties:
+            ranges = None
+        else:
+            ranges = self.generate_pv_ranges(properties)
         self.remove_extra_groups(temp_group, ranges)
         if num_pvs == 0 or num_pvs == "0":
             self.remove_symbol_groups(temp_group, ranges)
-        else:
+        elif ranges is not None:
             self.populate_symbol_pvs(temp_group, properties, ranges)
         return temp_group
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
+        """
+        Given a group of symbol groups, modify the coordinates of each
+        object within the symbol groupsto be in relation to the coordinates
+        of the new file rather than from the embedded file.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            The EDMGroup making up each symbol group whose objects will be modified
+        size_properties : dict[str, int]
+            The coordinate and size_properties of the activesymbolclass
+        """
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
                 sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
@@ -243,7 +288,26 @@ class EDMFileParser:
                 "y"
             ]  # The group resizing is needed to reorient symbol groups for rotations later
 
-    def reorient_symbol_groups(self, temp_group: EDMGroup, orientation, size_properties) -> None:
+    def reorient_symbol_groups(self, temp_group: EDMGroup, orientation: str, size_properties: dict[str, int]) -> None:
+        """
+        Given a group of symbol groups, change the orientation of each object
+        within the symbol groups (rotateCW, rotateCCW, FlipV, FlipH) either
+        flipping or rotating these objects about their respective symbol group.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            The EDMGroup making up each symbol group whose objects will be modified
+        orientation : str
+            The orientation instruction to flip or rotate
+        size_properties : dict[str, int]
+            The coordinate and size_properties of the activesymbolclass
+
+        Returns
+        ----------
+        EDMGroup
+            A group representing a collection of ActiveSymbolclass groups
+        """
         if orientation == "FlipV":
             for sub_group in temp_group.objects:
                 for sub_object in sub_group.objects:
@@ -349,10 +413,37 @@ class EDMFileParser:
                             sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        """
+        Given a group of symbol groups, remove extra groups that are outside
+        of the ranges given. (if there are more groups than ranges, the extra
+        groups are removed) Also, if there are no ranges, only include the first
+        group.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            The EDMGroup making up each symbol group whose objects will be modified
+        ranges: list[list[str]]
+            A list encompassing the ranges (mainly the len(ranges) is important)
+        """
+        if ranges is None:
+            temp_group.objects = temp_group.objects[:1]
+            return
         while len(temp_group.objects) > len(ranges):
             print(f"removed symbol group: {temp_group.objects.pop()}")
 
     def remove_symbol_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
+        """
+        Given a group of symbol groups, remove all groups whose ranges do not include 1.
+        (This is done when no pvs are given and only the "1" group should be displayed)
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            The EDMGroup making up each symbol group whose objects will be modified
+        ranges: list[list[str]]
+            A list encompassing the ranges (mainly the len(ranges) is important)
+        """
         for i in range(
             len(ranges) - 1, -1, -1
         ):  # going backwards so I do not need to change indices when deleting objects
@@ -361,7 +452,23 @@ class EDMFileParser:
             if float(min_range) > 1 or float(max_range) <= 1:
                 temp_group.objects.pop(i)
 
-    def generate_pv_ranges(self, properties: dict[str, bool | str | list[str]]) -> None:
+    def generate_pv_ranges(
+        self, properties: dict[str, bool | str | list[str]]
+    ) -> list[list[int, int]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
+        """
+        Given minValues and maxValues (through properties), generate the ranges
+        that the min/maxValues represent.
+
+        Parameters
+        ----------
+        properties: dict[str, bool | str | list[str]]
+            Object properties from the activesymbolclass
+
+        Returns
+        ----------
+        list[list[int, int]]
+            The list of pv ranges
+        """
         min_values = properties["minValues"]
         max_values = properties["maxValues"]
         num_states = int(properties["numStates"])
@@ -387,8 +494,21 @@ class EDMFileParser:
     def populate_symbol_pvs(
         self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
     ) -> None:
+        """
+        Given a group of symbol groups, add visPvs to each group based on their
+        respective ranges. This will determine which group will appear based on
+        the value of the pv connected to this activeSymbolClass.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            Group of groups whose objects will be modified
+        properties: dict[str, bool | str | list[str]]
+            Object properties from the activesymbolclass
+        ranges: list[list[str]]
+            The ranges taht determine the visPv ranges
+        """
         num_states = int(properties["numStates"])
-        symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
         for i in range(
@@ -396,7 +516,27 @@ class EDMFileParser:
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
-            temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+
+    def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
+        """
+        Add properties to each sub object within a symbol group. (isSymbol and symbolChannel)
+        These are used to determine if the symbol should hide when symbolChannel is disconnected.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            Group of groups whose objects will be modified
+        properties: dict[str, bool | str | list[str]]
+            Object properties from the activesymbolclass
+        """
+        if "controlPvs" in properties:
+            symbol_channel = properties["controlPvs"][0]
+        else:
+            symbol_channel = None
+        for sub_group in temp_group.objects:
+            for sub_object in sub_group.objects:
+                sub_object.properties["isSymbol"] = True
+                sub_object.properties["symbolChannel"] = symbol_channel
 
     def find_matching_end_group(self, text: str, begin_group_pos: int) -> int:
         """Find the matching endGroup for a beginGroup, handling nested groups"""
@@ -438,10 +578,19 @@ class EDMFileParser:
         """
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
-            match = re.search(rf"{prop[0]} (\d+)", text)
+            match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
             if not match:
-                continue
-            size_properties[prop] = int(match.group(1))
+                """match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
+                if not match_macro:
+                    raise ValueError(f"Missing required property '{prop}' in widget.")
+                size_properties[prop] = match_macro.group(1)"""
+                print(
+                    f"Missing size property (likely a macro): {prop}"
+                )  # TODO: Come back and use the improved solution
+                size_properties[prop] = 1
+                # raise ValueError(f"Missing required property '{prop}' in widget.")
+            else:
+                size_properties[prop] = int(match.group(1))
 
         return size_properties
 
