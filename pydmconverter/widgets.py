@@ -1420,6 +1420,47 @@ class PyDMByteIndicator(Alarmable):
 
 @dataclass
 class PyDMWaveformPlot(Alarmable, StyleSheetObject):
+    """
+    Represents a PyDM widget that displays a waveform plot (XY graph).
+
+    This widget can be bound to one or more X and Y data channels.
+
+    Attributes
+    ----------
+    x_channel : Optional[List[str]]
+        List of process variable (PV) names for the X-axis data.
+    y_channel : Optional[List[str]]
+        List of PV names for the Y-axis data.
+    plot_name : Optional[str]
+        Title of the plot.
+    color : Optional[RGBA]
+        Default RGBA color for the plot.
+    minXRange : Optional[int]
+        Minimum value for the X-axis.
+    minYRange : Optional[int]
+        Minimum value for the Y-axis.
+    maxXRange : Optional[int]
+        Maximum value for the X-axis.
+    maxYRange : Optional[int]
+        Maximum value for the Y-axis.
+    plotColor : Optional[List[RGBA]]
+        List of colors for individual curves.
+    xLabel : Optional[str]
+        Label for the X-axis.
+    yLabel : Optional[str]
+        Label for the Y-axis.
+    axisColor : Optional[RGBA]
+        Color of the axis lines.
+    pointsize : Optional[int]
+        Font size for labels and titles.
+    font : Optional[dict]
+        Font properties (e.g., {"pointsize": 12}).
+    yAxisSrc : Optional[str]
+        Source of Y-axis scaling ("fromUser" disables auto-range).
+    xAxisSrc : Optional[str]
+        Source of X-axis scaling.
+    """
+
     x_channel: Optional[List[str]] = field(default_factory=list)
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
@@ -1438,6 +1479,12 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     xAxisSrc: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the waveform plot's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
         properties: List[ET.Element] = super().generate_properties()
 
         if self.plot_name is not None:
@@ -1512,6 +1559,18 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         return properties
 
     def get_curve_strings(self) -> List[str]:
+        """
+        Build JSON-like strings representing individual curve configurations.
+
+        Ensures that the x_channel, y_channel, and plotColor lists are padded
+        to equal length before constructing curve entries.
+
+        Returns
+        -------
+        List[str]
+            A list of JSON-style strings, one for each curve in the plot.
+        """
+
         lists = [self.x_channel, self.y_channel, self.plotColor]
         max_len = max(len(lst) for lst in lists)
         for i in range(max_len):
@@ -1553,6 +1612,33 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
 
 @dataclass
 class PyDMScaleIndicator(Alarmable):
+    """
+    Represents a PyDM widget that displays a scale indicator.
+
+    Attributes
+    ----------
+    showUnits : Optional[bool]
+        Whether to display units next to the scale.
+    showLimits : Optional[bool]
+        Whether to display min/max limits.
+    showValue : Optional[bool]
+        Whether to display the current value.
+    flipScale : Optional[bool]
+        Whether to reverse the scale orientation.
+    precision : Optional[int]
+        Number of decimal places for displayed values.
+    minorTicks : Optional[int]
+        Number of minor tick marks.
+    majorTicks : Optional[int]
+        Number of major tick marks.
+    indicatorColor : Optional[RGBA]
+        Color of the indicator line.
+    background_color : Optional[RGBA]
+        Background color of the scale widget.
+    foreground_color : Optional[RGBA]
+        Color of tick marks.
+    """
+
     showUnits: Optional[bool] = None
     showLimits: Optional[bool] = False
     showValue: Optional[bool] = False
@@ -1567,11 +1653,13 @@ class PyDMScaleIndicator(Alarmable):
 
     def generate_properties(self) -> List[ET.Element]:
         """
-        Generates a list of XML elements representing the scale indicator's properties.
+        Generates a list of XML elements representing the pydmscaleindicator's properties.
 
         Returns:
             List[ET.Element]: List of XML elements for serialization.
-        """  # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
+        """
+
+        # The "flipScale" property should be included, as scaleIndicator does not load properly without it.
         # self.height += 20
         # self.y -= 10  # TODO: Find a better way to just get the bottom (can create a frame that cuts off the top)
         properties: List[ET.Element] = super().generate_properties()
@@ -1609,9 +1697,24 @@ class PyDMScaleIndicator(Alarmable):
 
 @dataclass
 class PyDMSlider(Alarmable):
+    """
+    Represents a PyDM slider widget for adjusting values interactively.
+
+    Attributes
+    ----------
+    orientation : Optional[str]
+        Slider orientation ("Horizontal" or "Vertical").
+    """
+
     orientation: Optional[Str] = None
 
     def generate_properties(self):
+        """
+        Generates a list of XML elements representing the slider's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
