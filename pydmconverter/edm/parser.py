@@ -97,8 +97,6 @@ class EDMFileParser:
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
-        # pattern = r"\\*\$\(([^)]+)\)"
-        # self.text = re.sub(pattern, r"${\1}", self.text)
         return self.text
 
     def parse_screen_properties(self) -> None:
@@ -407,7 +405,6 @@ class EDMFileParser:
         self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]], ranges: list[list[str]]
     ) -> None:
         num_states = int(properties["numStates"])
-        # symbol_channel = properties["controlPvs"][0]
         if len(properties["controlPvs"]) > 1:
             print(f"This symbol object has more than one pV: {properties}")
         for i in range(
@@ -415,7 +412,6 @@ class EDMFileParser:
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
-            # temp_group.objects[i].properties["symbolChannel"] = symbol_channel
 
     def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
         if "controlPvs" in properties:

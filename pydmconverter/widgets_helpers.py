@@ -893,12 +893,6 @@ class MultiRule(XMLConvertible):
         return output_string
 
     def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
-        """
-        if init:
-           ch = init
-        else:
-          ch = f"ch[{index}]"
-        """
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:

@@ -178,9 +178,9 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
                 break
 
     if end_idx == -1:
-        print(
+        logger.info(
             f"Fixing Invalid CALC PV format (unbalanced parens): {edm_pv}"
-        )  # TODO: Comeback to see if I should fix this in EDM too
+        )  # TODO: Comeback to see if I should fix this in the EDM file too
         edm_pv += ")"
         end_idx = edm_pv.rfind("(")
         # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
