@@ -82,6 +82,8 @@ class EDMFileParser:
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def modify_text(self, file_path) -> str:  # unnecessary return
+        self.text = self.text.replace("$(!W)", "")
+        self.text = self.text.replace("$(!A)", "")  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
         self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)

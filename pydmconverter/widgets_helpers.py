@@ -842,7 +842,7 @@ class MultiRule(XMLConvertible):
     rule_type: str
     rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = True  # TODO: set to false to fix the extra enumbutton
+    initial_value: Optional[bool] = False
     notes: Optional[str] = ""
 
     def to_string(self):
@@ -851,11 +851,21 @@ class MultiRule(XMLConvertible):
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+                replacement_init = None
+                if channel.startswith("loc://") and "init=${" in channel:
+                    replacement_init = channel[channel.find("init=") + len("init=") :]
+                    replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax))
+                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax, replacement_init))
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
-            expression_list.append(self.get_hide_on_disconnect_expression(new_index))
+            replacement_init = None
+            if self.hide_on_disconnect_channel.startswith("loc://") and "init=${" in self.hide_on_disconnect_channel:
+                replacement_init = self.hide_on_disconnect_channel[
+                    self.hide_on_disconnect_channel.find("init=") + len("init=") :
+                ]
+                replacement_init = replacement_init[: replacement_init.find("}") + 1]
+            expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
             channel_list.append(
                 f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
             )
@@ -867,7 +877,7 @@ class MultiRule(XMLConvertible):
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
+            f'"initial_value": "false", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -875,20 +885,28 @@ class MultiRule(XMLConvertible):
         )
         return output_string
 
-    def get_expression(self, index, show_on_true, visMin, visMax):  # TODO: Can clean up with fstrings
-        ch = f"ch[{index}]"
-        if visMin is not None and visMax is not None:
-            show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
-            show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
+    def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
+        """
+        if init:
+           ch = init
         else:
-            show_on_true_string = f"True if {ch}==1 else False"
-            show_on_false_string = f"True if {ch}!=1 else False"
+          ch = f"ch[{index}]"
+        """
+        ch = f"ch[{index}]"
+
+        if visMin is not None and visMax is not None:
+            show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
+            show_on_false_string = f"float({ch}) < {visMin} or float({ch}) >= {visMax}"
+        else:
+            show_on_true_string = f"{ch}==1"
+            show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
 
         return show_on_true_string if show_on_true else show_on_false_string
 
-    def get_hide_on_disconnect_expression(self, index):
+    def get_hide_on_disconnect_expression(self, index, init):
         ch = f"ch[{index}]"
-        return f"(True if {ch} is not None else False)"
+
+        return f"{ch} is not None"
 
 
 @dataclass
@@ -897,7 +915,6 @@ class Rules(XMLConvertible):
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
-        # bool_rule_types = set(["Visible", "Enable"])
         rule_list = []
         rule_variables = self.group_by_rules()
 
@@ -1386,6 +1403,18 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
+                self.rules.append(RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max))
+        if self.visPv is not None:
+            self.rules.append(RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax))
+
+        hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
+        is_hidden = False
+        for elem in hidden_widgets:
+            if self.name.lower().startswith(elem):
+                is_hidden = True
+        if not is_hidden:
+            self.channel = None
+        properties.append(Rules(self.rules, self.channel).to_xml())
                 self.rules.append(
                     RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
                 )

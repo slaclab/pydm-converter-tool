@@ -156,8 +156,6 @@ class QLabel(Legible, StyleSheetObject):
             properties.append(Int("precision", self.precision).to_xml())
         if self.show_units is not None:
             properties.append(Bool("showUnits", self.show_units).to_xml())
-        elif self.name.startswith("TextupdateClass"):
-            properties.append(Bool("showUnits", "true").to_xml())
         if self.tool_tip is not None:
             properties.append(Str("toolTip", self.tool_tip).to_xml())
         if self.frame_shape is not None:
@@ -219,7 +217,7 @@ class PyDMLabel(QLabel, Alarmable):
 
 
 @dataclass
-class PyDMLineEdit(Legible, Alarmable):
+class PyDMLineEdit(Legible, Alarmable, StyleSheetObject):
     """
     PyDMLineEdit represents a PyDMLineEdit widget with XML serialization capabilities.
     It extends Legible, and Alarmable to support additional features.
@@ -1429,15 +1427,22 @@ class PyDMByteIndicator(Alarmable):
 
 @dataclass
 class PyDMWaveformPlot(Alarmable, StyleSheetObject):
-    x_channel: Optional[List[str]] = None
-    y_channel: Optional[List[str]] = None
+    x_channel: Optional[List[str]] = field(default_factory=list)
+    y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
     color: Optional[RGBA] = None
-    minXRange: Optional[int] = None
-    minYRange: Optional[int] = None
+    minXRange: Optional[int] = 0
+    minYRange: Optional[int] = 0
     maxXRange: Optional[int] = None
     maxYRange: Optional[int] = None
-    plotColor: Optional[List[RGBA]] = None
+    plotColor: Optional[List[RGBA]] = field(default_factory=list)
+    xLabel: Optional[str] = None
+    yLabel: Optional[str] = None
+    axisColor: Optional[RGBA] = None
+    pointsize: Optional[int] = None
+    font = None
+    yAxisSrc: Optional[str] = None
+    xAxisSrc: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
@@ -1456,21 +1461,73 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Int("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Int("maxYRange", self.maxYRange).to_xml())
-        if self.x_channel is not None or self.y_channel is not None:
+        if self.yAxisSrc is not None and self.yAxisSrc == "fromUser":
+            self.auto_range = "false"
+        else:
+            self.auto_range = "true"
+        if (
+            self.yLabel is not None and self.maxYRange is not None
+        ):  # NOTE: The axes must be generated before the curves for the curves to display
+            yAxisString = (
+                "{"
+                '"name": "Axis 1", '
+                '"orientation": "left", '
+                f'"label": "{self.yLabel}", '
+                f'"minRange": {self.minYRange}, '
+                f'"maxRange": {self.maxYRange}, '
+                f'"autoRange": {self.auto_range}, '
+                '"logMode": false'
+                "}"
+            )
+            properties.append(StringList("yAxes", [yAxisString]).to_xml())
+        elif self.auto_range == "false" and self.minXRange is not None and self.minYRange is not None:
+            yAxisString = (
+                "{"
+                '"name": "Axis 1", '
+                '"orientation": "left", '
+                f'"minRange": {self.minYRange}, '
+                f'"maxRange": {self.maxYRange}, '
+                f'"autoRange": {self.auto_range}, '
+                '"logMode": false'
+                "}"
+            )
+            properties.append(StringList("yAxes", [yAxisString]).to_xml())
+        if self.x_channel or self.y_channel:
             properties.append(StringList("curves", self.get_curve_strings()).to_xml())
-        properties.append(Bool("useSharedAxis", True).to_xml())
+        if self.plot_name is not None:
+            color = self.color or self.axisColor or (175, 175, 175, 255)
+            if self.font is not None:
+                size = self.font["pointsize"]
+            else:
+                size = 12
+            properties.append(
+                Str(
+                    "title",
+                    (
+                        f'<div style="text-align:center; color:{self.rgba_to_hex(*color)}; font-size:{size}pt;">'
+                        f"{self.plot_name}"
+                        "</div>"
+                    ),
+                ).to_xml()
+            )
+        if self.axisColor is not None:
+            properties.append(ColorObject("axisColor", *self.axisColor).to_xml())
+        if self.xLabel is not None:
+            properties.append(StringList("xLabels", [self.xLabel]).to_xml())
 
+        properties.append(Bool("useSharedAxis", True).to_xml())
         return properties
 
     def get_curve_strings(self) -> List[str]:
-        lists = [self.x_channel or [], self.y_channel or [], self.plotColor or []]
+        lists = [self.x_channel, self.y_channel, self.plotColor]
         max_len = max(len(lst) for lst in lists)
-        if self.x_channel is None:
-            self.x_channel = [""] * max_len
-        if self.y_channel is None:
-            self.y_channel = [""] * max_len
-        if self.plotColor is None:
-            self.plotColor = [""] * max_len
+        for i in range(max_len):
+            if len(self.x_channel) <= i:
+                self.x_channel.append("")
+            if len(self.y_channel) <= i:
+                self.y_channel.append("")
+            if len(self.plotColor) <= i:
+                self.plotColor.append("")
         curve_string_list = []
         for i in range(max_len):
             curve_string = (
@@ -1478,8 +1535,8 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 f'"name": "", '
                 f'"x_channel": "{self.x_channel[i]}", '
                 f'"y_channel": "{self.y_channel[i]}", '
-                # f'"color": "rgba{str(self.plotColor[i])}"'
-                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}"'
+                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}", '
+                f'"yAxisName": "Axis 1"'
                 "}"
             )
             curve_string_list.append(curve_string)
