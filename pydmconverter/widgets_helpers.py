@@ -390,6 +390,17 @@ class Str(XMLConvertible):
 
 @dataclass
 class StringList(XMLConvertible):
+    """
+    Represents a property containing a list of strings.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    items : List[str]
+        A list of string values.
+    """
+
     name: str
     items: List[str]
 
@@ -586,21 +597,6 @@ class PyDMToolTip(XMLConvertible):
         string_elem: etree.Element = etree.SubElement(prop, "string")
         string_elem.text = self.PyDMToolTip
         return prop
-
-
-""" @ dataclass
-
-
-class StyleSheet(XMLConvertible):
-    lines: List[str]
-
-    def to_xml(self) -> etree.Element:
-        top: etree.Element = etree.Element("property", attrib={"name": "styleSheet"})
-        string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
-        string_elem.text = "\n".join(self.lines)
-        return top
-
-"""
 
 
 @dataclass
@@ -808,6 +804,27 @@ class Color(XMLConvertible):
 
 @dataclass
 class BoolRule(XMLConvertible):
+    """
+    Represents a simple boolean rule for widget properties.
+
+    Attributes
+    ----------
+    rule_type : str
+        The type of rule (e.g., "Visible", "Enable").
+    channel : str
+        The channel address used as input for the rule.
+    initial_value : bool, optional
+        The default value for the rule when no condition is met. Defaults to True.
+    show_on_true : bool, optional
+        Determines whether the rule evaluates to true when the condition is satisfied. Defaults to True.
+    visMin : int, optional
+        Minimum threshold value for a channel to be considered "active". Used for range-based visibility rules.
+    visMax : int, optional
+        Maximum threshold value for a channel to be considered "active". Used for range-based visibility rules.
+    notes : str, optional
+        Additional metadata or notes about the rule.
+    """
+
     rule_type: str
     channel: str
     initial_value: Optional[bool] = True
@@ -817,6 +834,14 @@ class BoolRule(XMLConvertible):
     notes: Optional[str] = ""
 
     def to_string(self):
+        """
+        Convert the rule properties to a string.
+
+        Returns
+        -------
+        str
+            A string representing the rule.
+        """
         if self.visMin is not None and self.visMax is not None:
             show_on_true_string = f"True if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else False"
             show_on_false_string = f"False if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else True"
@@ -846,6 +871,24 @@ class BoolRule(XMLConvertible):
 
 @dataclass
 class MultiRule(XMLConvertible):
+    """
+    Represents a compound rule composed of multiple conditions.
+
+    Attributes
+    ----------
+    rule_type : str
+        The type of rule (e.g., "Visible", "Enable").
+    rule_list : list of RuleArguments, optional
+        A list of rule argument tuples, where each tuple contains:
+        (rule_type, channel, initial_value, show_on_true, visMin, visMax).
+    hide_on_disconnect_channel : str, optional
+        An additional channel used to hide the widget if it disconnects.
+    initial_value : bool, optional
+        Default value for the rule when no conditions are satisfied. Defaults to False.
+    notes : str, optional
+        Additional metadata or notes about the rule.
+    """
+
     rule_type: str
     rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
@@ -853,6 +896,15 @@ class MultiRule(XMLConvertible):
     notes: Optional[str] = ""
 
     def to_string(self):
+        """
+        Convert the rule properties to a string.
+
+        Returns
+        -------
+        str
+            A string representing the rule.
+        """
+
         channel_list = []
         expression_list = []
         if self.rule_list is not None:
@@ -893,6 +945,28 @@ class MultiRule(XMLConvertible):
         return output_string
 
     def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
+        """
+        Build a conditional expression string for a specific channel.
+
+        Parameters
+        ----------
+        index : int
+            The index of the channel in the rule list.
+        show_on_true : bool
+            Whether the expression should evaluate to true on match.
+        visMin : int, optional
+            Minimum threshold value for range-based conditions.
+        visMax : int, optional
+            Maximum threshold value for range-based conditions.
+        init : str, optional
+            Replacement initialization value for the channel, if applicable.
+
+        Returns
+        -------
+        str
+            A string representing the conditional expression for the given channel.
+        """
+
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:
@@ -905,6 +979,20 @@ class MultiRule(XMLConvertible):
         return show_on_true_string if show_on_true else show_on_false_string
 
     def get_hide_on_disconnect_expression(self, index, init):
+        """
+        Build an expression that ensures the widget is hidden if a channel disconnects.
+
+        Parameters
+        ----------
+        index : int
+            The index of the disconnect channel in the channel list.
+
+        Returns
+        -------
+        str
+            An expression string that evaluates true when the channel is connected.
+        """
+
         ch = f"ch[{index}]"
 
         return f"{ch} is not None"
@@ -912,10 +1000,31 @@ class MultiRule(XMLConvertible):
 
 @dataclass
 class Rules(XMLConvertible):
+    """
+    Represents a collection of rules grouped by type.
+
+    Attributes
+    ----------
+    rules : list of RuleArguments
+        A list of rule argument tuples, where each tuple contains:
+        (rule_type, channel, initial_value, show_on_true, visMin, visMax).
+    hide_on_disconnect_channel : str, optional
+        An additional channel used to hide widgets if it disconnects.
+    """
+
     rules: List[RuleArguments]
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
+        """
+        Convert the collection of rules into an XML element.
+
+        Returns
+        -------
+        etree.Element
+            An XML element representing all grouped rules.
+        """
+
         rule_list = []
         rule_variables = self.group_by_rules()
 
@@ -930,6 +1039,16 @@ class Rules(XMLConvertible):
         return Str("rules", output_string).to_xml()
 
     def group_by_rules(self):
+        """
+        Group rules by their rule type, removing duplicates.
+
+        Returns
+        -------
+        dict of str to list of RuleArguments
+            A dictionary where the keys are rule types (e.g., "Visible", "Enable"),
+            and the values are lists of unique rules for that type.
+        """
+
         bool_rule_types = ["Visible", "Enable"]
         rule_variables = {key: [] for key in bool_rule_types}
         for rule in self.rules:
@@ -983,12 +1102,34 @@ class StyleSheet(XMLConvertible):
 
 @dataclass
 class RGBABackgroundSheet(XMLConvertible):  # eventually combine with rgbastylesheet
+    """
+    Represents a background style sheet with an RGBA (Red, Green, Blue, Alpha) color.
+
+    Attributes:
+        red : int
+            Red component of the background color (0–255).
+        green : int
+            Green component of the background color (0–255).
+        blue : int
+            Blue component of the background color (0–255).
+        alpha : int
+            Alpha transparency value (0–255).
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
 
     def to_xml(self):
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the background stylesheet.
+        """
         style = f"background-color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
@@ -998,7 +1139,20 @@ class RGBABackgroundSheet(XMLConvertible):  # eventually combine with rgbastyles
 
 @dataclass
 class TransparentBackground(XMLConvertible):
+    """
+    Represents a stylesheet that gives an object no background.
+    """
+
     def to_xml(self):
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the background stylesheet.
+        """
+
         style = "background-color: transparent;"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
@@ -1008,6 +1162,18 @@ class TransparentBackground(XMLConvertible):
 
 @dataclass
 class Curves(XMLConvertible):
+    """
+    Represents a curve for a PyDMWaveformPlot.
+
+    Attributes:
+        x_channel : str
+            The channel for x values
+        y_channel : str
+            The channel for y values
+        plotColor : RGBA
+            The color given to the curve
+    """
+
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
     plotColor: Optional[RGBA] = None
@@ -1015,12 +1181,35 @@ class Curves(XMLConvertible):
 
 @dataclass
 class RGBAStyleSheet(XMLConvertible):
+    """
+    Represents a background style sheet with an RGBA (Red, Green, Blue, Alpha) color.
+
+    Attributes:
+        red : int
+            Red component of the background color (0–255).
+        green : int
+            Green component of the background color (0–255).
+        blue : int
+            Blue component of the background color (0–255).
+        alpha : int
+            Alpha transparency value (0–255).
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
 
     def to_xml(self):
+        """
+        Convert the stylesheet into an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the image.
+        """
+
         style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
