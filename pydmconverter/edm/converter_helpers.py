@@ -62,6 +62,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "shellcmdclass": QPushButton,  # may need to change
     "shellcmdclass": PyDMShellCommand,
     "textupdateclass": PyDMLabel,
+    "multilinetextupdateclass": PyDMLabel,
     "relateddisplayclass": PyDMRelatedDisplayButton,  # QPushButton,
     "activexregtextclass": PyDMLabel,
     "activebuttonclass": PyDMPushButton,
@@ -75,6 +76,7 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     # "activecoeftableclass": PyDMWaveformTable,
     "byteclass": PyDMByteIndicator,
     "textentryclass": PyDMLineEdit,
+    "multilinetextentryclass": PyDMLineEdit,
     "activextextdspclassnoedit": PyDMLabel,
     "activearcclass": PyDMDrawingArc,
     "xygraphclass": PyDMWaveformPlot,  # TODO: Going to need to add PyDMScatterplot for when there are xPvs and yPvs
@@ -196,6 +198,17 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "nullColor": "nullColor",
     "closePolygon": "closePolygon",
     "secretId": "secretId",
+}
+
+COLOR_ATTRIBUTES: set = {
+    "fgColor",
+    "bgColor",
+    "lineColor",
+    "offColor",
+    "onColor",
+    "topShadowColor",
+    "botShadowColor",
+    "indicatorColor",
 }
 
 # Configure logging
@@ -395,18 +408,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                             continue
                     if edm_attr == "value":
                         value = get_string_value(value)
-                    color_attributes: set = {
-                        "fgColor",
-                        "bgColor",
-                        "lineColor",
-                        "offColor",
-                        "onColor",
-                        "topShadowColor",
-                        "botShadowColor",
-                        "indicatorColor",
-                        "frozenBgColor",
-                    }
-                    if edm_attr in color_attributes:
+                    if edm_attr in COLOR_ATTRIBUTES:
+
                         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
                     if edm_attr == "plotColor":
                         color_list = []
@@ -725,7 +728,9 @@ def parse_font_string(font_str: str) -> dict:
     bold = "bold" in parts[1].lower()
     italic = "i" in parts[2].lower() or "o" in parts[2].lower()
     size_str = parts[-1]
-    # pointsize = math.floor(convert_pointsize(float(size_str), 100))
+    # pointsize = convert_pointsize(float(size_str))
+    # NOTE: This line is commented because of how I observed fastx displays pointsize. In browser mode, the conversion from pixelsize to pointsize is 0.75. In desktop mode, the conversion is ~0.51
+    # TODO: Find which version is accurate to how pydm is used and use that function
     pointsize = new_convert_pointsize(float(size_str))
 
     return {
@@ -739,10 +744,10 @@ def parse_font_string(font_str: str) -> dict:
 
 def convert_pointsize(pixel_size, dpi: float = 96):
     """
-    Convert the edm pizelsize to pydm pointsize (default is 96)
+    Convert the edm pizelsize to pydm pointsize (multiply by 0.75)
     """
     point_size = pixel_size * 72 / dpi
-    return point_size
+    return math.floor(point_size)
 
 
 def new_convert_pointsize(pixel_size):

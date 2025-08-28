@@ -10,6 +10,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
+IMAGE_FILE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif"}
+
+
 def run_gui() -> None:
     """
     launch the PyDMConverter gui
@@ -96,14 +99,14 @@ def run_cli(args: argparse.Namespace) -> None:
 
 
 def copy_img_files(input_path: Path, output_path: Path) -> None:
-    img_files = list(input_path.glob("*.png")) + list(input_path.glob("*.gif"))
-    for file in img_files:
-        relative_path = file.relative_to(input_path)
-        output_file_path = output_path / relative_path
+    for file in input_path.rglob("*"):
+        if file.suffix.lower() in IMAGE_FILE_SUFFIXES:
+            relative_path = file.relative_to(input_path)
+            output_file_path = output_path / relative_path
 
-        output_file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file, "rb") as src, open(output_file_path, "wb") as dst:
-            dst.write(src.read())
+            output_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file, "rb") as src, open(output_file_path, "wb") as dst:
+                dst.write(src.read())
 
 
 def convert_files_in_folder(
