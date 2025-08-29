@@ -527,11 +527,11 @@ class PyDMPushButton(PyDMPushButtonBase):
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
-                    
+
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
-            self.rules.append((RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
-            self.rules.append((RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append((RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None)))
+            self.rules.append((RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None)))
         elif self.is_freeze_button is not None and self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
@@ -1465,7 +1465,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     xAxisSrc : Optional[str]
         Source of X-axis scaling.
     """
-                              
+
     x_channel: Optional[List[str]] = field(default_factory=list)
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
@@ -1564,7 +1564,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         return properties
 
     def get_curve_strings(self) -> List[str]:
-
         """
         Build JSON-like strings representing individual curve configurations.
 
