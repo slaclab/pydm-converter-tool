@@ -220,6 +220,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "showValue": "showValueLabel",
     "showLimits": "showLimitLabels",
     "labels": "rowLabels",
+}
 
 COLOR_ATTRIBUTES: set = {
     "fgColor",
