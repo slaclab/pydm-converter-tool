@@ -235,7 +235,6 @@ COLOR_ATTRIBUTES: set = {
     "gridColor",
 }
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

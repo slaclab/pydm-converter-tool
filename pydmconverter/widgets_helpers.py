@@ -453,9 +453,6 @@ class StringList(XMLConvertible):
                 raise TypeError(f"Expected string in StringList.items, got {type(item)}: {item}")
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
-            # print(item)
-            # breakpoint()
-            # string_el.text = self.escape_for_stringlist(item)
         return prop
 
     def escape_for_stringlist(self, s: str) -> str:
@@ -1224,6 +1221,7 @@ class Curves(XMLConvertible):
     y_channel: Optional[str] = None
     plotColor: Optional[RGBA] = None
 
+
 @dataclass
 class RGBAStyleSheet(XMLConvertible):
     """
@@ -1653,7 +1651,7 @@ class Controllable(Tangible):
             self.rules.append(
                 RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
-            
+
         hidden_widgets = [
             "activextextdspclassnoedit",
             "activechoicebuttonclass, activextextclass",

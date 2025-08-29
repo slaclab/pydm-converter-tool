@@ -558,8 +558,6 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Str("pressValue", "1").to_xml())
         if self.is_freeze_button is not None and self.is_freeze_button:
             properties.append(Str("pressValue", "0").to_xml())
-        # if self.text is not None and self.on_label is None:
-        #    properties.append(Str("text", self.text).to_xml()) #TODO: check for conflicts with on_label
         if (
             self.on_color is not None
             or self.foreground_color is not None
@@ -637,9 +635,6 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             A list of XML elements representing the PyDMShellCommand properties.
         """
         properties: List[ET.Element] = super().generate_properties()
-        if self.visPvList is not None:
-            print(vars(self))
-            print(self.visPvList)
         if self.show_confirm_dialog is not None:
             properties.append(Bool("showConfirmDialog", self.show_confirm_dialog).to_xml())
         if self.confirm_message is not None:
