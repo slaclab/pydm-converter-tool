@@ -20,6 +20,8 @@ from pydmconverter.widgets_helpers import (
     Brush,
     Enum,
     StringList,
+    Row,
+    Column,
 )
 import logging
 from epics import PV
@@ -525,8 +527,7 @@ class PyDMPushButton(PyDMPushButtonBase):
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
-
-        if self.is_freeze_button is not None and not self.is_freeze_button:  # TODO: Clean this up
+        if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
             self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
@@ -556,8 +557,6 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Str("pressValue", "1").to_xml())
         if self.is_freeze_button is not None and self.is_freeze_button:
             properties.append(Str("pressValue", "0").to_xml())
-        # if self.text is not None and self.on_label is None:
-        #    properties.append(Str("text", self.text).to_xml()) #TODO: check for conflicts with on_label
         if (
             self.on_color is not None
             or self.foreground_color is not None
@@ -1580,6 +1579,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 self.y_channel.append("")
             if len(self.plotColor) <= i:
                 self.plotColor.append("")
+
         curve_string_list = []
         for i in range(max_len):
             curve_string = (
@@ -1608,6 +1608,29 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             str: Hex color string like "#00e0e0"
         """
         return f"#{r:02x}{g:02x}{b:02x}"
+
+
+@dataclass
+class PyDMWaveformTable(Alarmable):
+    rowLabels: Optional[Str] = None
+    font: dict = field(default_factory=dict)
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generates a list of XML elements representing the pydmwaveformtable's properties.
+
+        Returns:
+            List[ET.Element]: List of XML elements for serialization.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.rowLabels is not None:
+            rowList = self.rowLabels.split(", ")
+            for row in rowList:
+                properties.append(Row(row, self.font).to_xml())
+            properties.append(Column().to_xml())
+
+        return properties
 
 
 @dataclass
@@ -1707,6 +1730,11 @@ class PyDMSlider(Alarmable):
     """
 
     orientation: Optional[Str] = None
+    limitsFromDb: Optional[bool] = None
+    showLimitLabels: Optional[bool] = None
+    showValueLabel: Optional[bool] = None
+    min: Optional[int] = None
+    max: Optional[int] = None
 
     def generate_properties(self):
         """
@@ -1718,6 +1746,16 @@ class PyDMSlider(Alarmable):
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
-            # properties.append(Str("orientation", self.orientation))
             properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
+        if self.limitsFromDb is not None:
+            properties.append(Bool("userDefinedLimits", not self.limitsFromDb).to_xml())
+        if not self.showLimitLabels:
+            properties.append(Bool("showLimitLabels", False).to_xml())
+        if not self.showValueLabel:
+            properties.append(Bool("showValueLabel", False).to_xml())
+        if self.min is not None:
+            properties.append(Int("userMinimum", self.min).to_xml())
+        if self.max is not None:
+            properties.append(Int("userMaximum", self.max).to_xml())
+
         return properties

@@ -22,6 +22,7 @@ from pydmconverter.widgets import (
     PyDMWaveformPlot,
     PyDMScaleIndicator,
     PyDMSlider,
+    PyDMWaveformTable,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
@@ -88,6 +89,12 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawin
     "activesliderclass": PyDMSlider,
     "activemotifsliderclass": PyDMSlider,
     "mzxygraphclass": PyDMWaveformPlot,
+    "regtextupdateclass": PyDMLabel,
+    "activetriumfsliderclass": PyDMSlider,
+    "activeupdownbuttonclass": PyDMPushButton,  # TODO: Need to find a more exact mapping but can't find a good edm screen to test with (all updown buttons are hidden)
+    "activecoeftableclass": PyDMWaveformTable,
+    "activerampbuttonclass": PyDMPushButton,  # TODO: Same here
+    "mmvclass": PyDMSlider,  # TODO: Find a better mapping for multiple indicators in one slider
 }
 
 EDM_TO_PYDM_ATTRIBUTES = {
@@ -209,6 +216,10 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "closePolygon": "closePolygon",
     "secretId": "secretId",
     "isSymbol": "isSymbol",
+    "limitsFromDb": "limitsFromDb",
+    "showValue": "showValueLabel",
+    "showLimits": "showLimitLabels",
+    "labels": "rowLabels",
 }
 
 COLOR_ATTRIBUTES: set = {
@@ -224,7 +235,6 @@ COLOR_ATTRIBUTES: set = {
     "gridColor",
 }
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -503,6 +513,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
 
+                if obj.name.lower() == "mmvclass":
+                    generated_sliders = create_multi_sliders(widget, obj)
+                    for slider in generated_sliders:
+                        pydm_widgets.append(slider)
+
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
                     pad = widget.pen_width or 1
                     widget.width = int(widget.width) + pad
@@ -642,6 +657,38 @@ def create_freeze_button(
     logger.info(f"Created off-button: {freeze_button.name} based on {widget.name}")
 
     return freeze_button
+
+
+def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
+    """
+    Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
+    Modifies the height and channel of the current slider
+    """
+    i = 1
+    prevColor = None
+    ctrl_attributes = []
+    extra_sliders = []
+    while f"ctrl{i}Pv" in object.properties:
+        if f"ctrl{i}Color" in object.properties:
+            currColor = object.properties[f"ctrl{i}Color"]
+        else:
+            currColor = prevColor
+        ctrl_attributes.append((object.properties[f"ctrl{i}Pv"], currColor))
+        prevColor = currColor
+        i += 1
+    if ctrl_attributes:
+        setattr(widget, "height", widget.height // len(ctrl_attributes))
+        setattr(widget, "channel", ctrl_attributes[0][0])
+        setattr(widget, "indicatorColor", ctrl_attributes[0][1])
+        for j in range(1, len(ctrl_attributes)):
+            curr_slider = copy.deepcopy(widget)
+            curr_slider.name = widget.name + f"_{j}"
+            setattr(curr_slider, "y", curr_slider.y + curr_slider.height * j)
+            setattr(curr_slider, "channel", ctrl_attributes[j][0])
+            setattr(curr_slider, "indicatorColor", ctrl_attributes[j][1])
+            logger.info(f"Created multi-slider: {curr_slider.name} based on {widget.name}")
+            extra_sliders.append(curr_slider)
+    return extra_sliders
 
 
 def populate_tab_bar(obj: EDMObject, widget):

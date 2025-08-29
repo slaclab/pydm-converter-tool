@@ -91,6 +91,7 @@ class EDMFileParser:
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         self.text = self.text.replace("$(!W)", "")
+
         self.text = self.text.replace(
             "$(!A)", ""
         )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
@@ -107,7 +108,7 @@ class EDMFileParser:
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
-            size_properties = self.get_size_properties(screen_prop_text)
+            size_properties = self.get_size_properties(screen_prop_text, strict=True)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
@@ -533,6 +534,7 @@ class EDMFileParser:
             symbol_channel = properties["controlPvs"][0]
         else:
             symbol_channel = None
+
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
                 sub_object.properties["isSymbol"] = True
@@ -563,7 +565,7 @@ class EDMFileParser:
         return -1
 
     @staticmethod
-    def get_size_properties(text: str) -> dict[str, int]:
+    def get_size_properties(text: str, strict: bool = False) -> dict[str, int]:
         """Get the size properties from the given text (x, y, width, height)
 
         Parameters
@@ -579,6 +581,9 @@ class EDMFileParser:
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
             match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
+            if not match and strict:
+                raise ValueError(f"Missing required property '{prop}' in widget.")
+
             if not match:
                 """match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
                 if not match_macro:

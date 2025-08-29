@@ -154,6 +154,46 @@ class XMLSerializableMixin(XMLConvertible):
 
 
 @dataclass
+class Row(XMLConvertible):
+    value: Optional[str]
+    font: dict = field(default_factory=dict)
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the Row properties to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the font.
+        """
+        row: etree.Element = etree.Element("row")
+        prop: etree.Element = etree.SubElement(row, "property", attrib={"name": "text"})
+        string_tag: etree.Element = etree.SubElement(prop, "string")
+        string_tag.text = self.value
+        row.append(Font(**self.font).to_xml())
+        return row
+
+
+@dataclass
+class Column:
+    """
+    Represents end </column> tag for tables.
+    """
+
+    def to_xml(self) -> etree.Element:
+        """
+        Generates a Column XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing a column.
+        """
+        return etree.Element("column")
+
+
+@dataclass
 class Font(XMLConvertible):
     """
     Represents font properties for a widget.
@@ -414,6 +454,9 @@ class StringList(XMLConvertible):
             string_el = etree.SubElement(stringlist, "string")
             string_el.text = item
         return prop
+
+    def escape_for_stringlist(self, s: str) -> str:
+        return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @dataclass
@@ -1603,11 +1646,18 @@ class Controllable(Tangible):
                 self.rules.append(
                     RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
                 )
+
         if self.visPv is not None:
             self.rules.append(
                 RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
-        hidden_widgets = ["activextextdspclassnoedit", "activechoicebuttonclass, activextextclass", "mzxygraphclass"]
+
+        hidden_widgets = [
+            "activextextdspclassnoedit",
+            "activechoicebuttonclass, activextextclass",
+            "mzxygraphclass",
+            "activerampbuttonclass",
+        ]
         is_hidden = False
 
         for elem in hidden_widgets:
