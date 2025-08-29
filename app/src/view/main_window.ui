@@ -192,6 +192,26 @@ color: rgb(255,255,255);
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="clear_converted_button">
+         <property name="text">
+          <string>Clear Converted</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../../resources/file_x.png</normaloff>../../resources/file_x.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="convert_button">
          <property name="text">
           <string>Convert</string>

@@ -6,11 +6,10 @@ Attaches additional functionality to the main window view
 
 import fnmatch
 import os
-from pprint import pprint
 from time import sleep
 from typing import List
 from pydm import Display
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Slot, QCoreApplication
 from qtpy.QtWidgets import (
     QFileDialog,
     QTableWidget,
@@ -22,6 +21,11 @@ from model.app_model import AppModel
 from model.options_model import OptionsModel
 from view.options_window import OptionsWindow
 from view.output_select_dialog import OutputSelectDialog
+import pydmconverter.__main__
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(Display):
@@ -133,6 +137,13 @@ class MainWindow(Display):
         """Opens file dialog to allow user to select output folder."""
         dialog = OutputSelectDialog(self.options_model, self)
         dialog.exec_()
+        table_widget: QTableWidget = self.ui.table_widget
+        output_folder = self.options_model.output_folder
+        for row in range(table_widget.rowCount()):
+            input_file = table_widget.item(row, 0).text()
+            base_name = os.path.splitext(os.path.basename(input_file))[0]
+            new_output_path = os.path.join(output_folder, f"{base_name}.ui")
+            table_widget.setItem(row, 1, QTableWidgetItem(new_output_path))
 
     @Slot()
     def on_options_button_clicked(self) -> None:
@@ -153,14 +164,36 @@ class MainWindow(Display):
         table_widget.setRowCount(0)
 
     @Slot()
+    def on_clear_converted_button_clicked(self) -> None:
+        """Removes all converted rows from table (and leaves unconverted or failed rows)"""
+        table_widget: QTableWidget = self.ui.table_widget
+        for i in range(
+            table_widget.rowCount() - 1, -1, -1
+        ):  # iterate backwards to make deletion indexing issues easier
+            conversion_status = table_widget.item(i, 2).text()
+            if conversion_status == "Converted":
+                table_widget.removeRow(i)
+
+    @Slot()
     def on_convert_button_clicked(self) -> None:
         table_widget: QTableWidget = self.ui.table_widget
         for row in range(table_widget.rowCount()):
             input_file = table_widget.item(row, 0).text()
+            output_file = table_widget.item(row, 1).text()
             file_type = os.path.splitext(input_file)[1].lower()
-            parser = self.app_model.parsers[file_type](input_file)
+            try:
+                pydmconverter.__main__.run(input_file, output_file, file_type, override=True)
+                logger.debug(f"converted {input_file} to {output_file}")
+                table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
+            except Exception as msg:
+                logger.debug(msg)
+                table_widget.setItem(row, 2, QTableWidgetItem("Failed"))
+            QCoreApplication.processEvents()
+
+            """parser = self.app_model.parsers[file_type](input_file)
             if parser.ui:
                 # TODO: instead of printing, pass the object to the xml writer
                 # This would also be the place to report checks on converter success
                 pprint(parser.ui, indent=2)
                 table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
+            """

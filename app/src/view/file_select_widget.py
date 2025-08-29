@@ -42,6 +42,7 @@ class FileSelectWidget(QWidget):
             self.path_lineedit.setText(self.path)
         self.file_dialog_button = QPushButton("...")
         self.file_dialog_button.clicked.connect(self.file_dialog_button_clicked)
+        self.setFixedHeight(50)
 
         main_layout.addWidget(self.path_lineedit)
         main_layout.addWidget(self.file_dialog_button)

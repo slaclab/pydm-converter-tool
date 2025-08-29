@@ -2,7 +2,10 @@ from dataclasses import dataclass, field, fields
 from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
-from pydmconverter.types import RGBA, RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
+import logging
+
+logger = logging.getLogger(__name__)
 
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
@@ -19,6 +22,8 @@ class XMLConvertible:
     to_string() -> str
         Return a formatted string representation of the XML element.
     """
+
+    secretId: str = None
 
     secretId: str = None
 
@@ -70,6 +75,7 @@ class XMLSerializableMixin(XMLConvertible):
 
     name: Optional[str] = None
     count: ClassVar[int] = 1
+    secretId: str = None
     secretId: str = None
 
     def __post_init__(self) -> None:
@@ -205,6 +211,7 @@ class Font(XMLConvertible):
     """
 
     family: Optional[str] = None
+    family: Optional[str] = None
     pointsize: Optional[int] = None
     weight: Optional[int] = None
     bold: Optional[bool] = None
@@ -221,6 +228,9 @@ class Font(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "font"})
         font: etree.Element = etree.SubElement(prop, "font")
+        if self.family is not None:
+            family_tag: etree.Element = etree.SubElement(font, "family")
+            family_tag.text = str(self.family)
         if self.family is not None:
             family_tag: etree.Element = etree.SubElement(font, "family")
             family_tag.text = str(self.family)
@@ -393,7 +403,7 @@ class Str(XMLConvertible):
     """
 
     name: str
-    string: str
+    string: str | bool
 
     def to_xml(self) -> etree.Element:
         """
@@ -404,8 +414,14 @@ class Str(XMLConvertible):
         etree.Element
             The XML element representing the string.
         """
+        if (
+            isinstance(self.string, bool) and self.string
+        ):  # This came from edgecases with strings having empty values and were converted into bool True
+            self.string = ""
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
+        if isinstance(self.string, list):
+            raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         if isinstance(self.string, list):
             raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         string_tag.text = self.string
@@ -414,6 +430,17 @@ class Str(XMLConvertible):
 
 @dataclass
 class StringList(XMLConvertible):
+    """
+    Represents a property containing a list of strings.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    items : List[str]
+        A list of string values.
+    """
+
     name: str
     items: List[str]
 
@@ -618,19 +645,6 @@ class PyDMToolTip(XMLConvertible):
         return prop
 
 
-"""@dataclass
-class StyleSheet(XMLConvertible):
-
-    lines: List[str]
-
-    def to_xml(self) -> etree.Element:
-        top: etree.Element = etree.Element("property", attrib={"name": "styleSheet"})
-        string_elem: etree.Element = etree.SubElement(top, "string", attrib={"notr": "true"})
-        string_elem.text = "\n".join(self.lines)
-        return top
-"""
-
-
 @dataclass
 class CustomWidget(XMLConvertible):
     """
@@ -699,6 +713,10 @@ class Alignment(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
         set_tag: etree.Element = etree.SubElement(prop, "set")
+        if self.alignment == "center":
+            set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
+        else:
+            set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         if self.alignment == "center":
             set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
         else:
@@ -832,6 +850,27 @@ class Color(XMLConvertible):
 
 @dataclass
 class BoolRule(XMLConvertible):
+    """
+    Represents a simple boolean rule for widget properties.
+
+    Attributes
+    ----------
+    rule_type : str
+        The type of rule (e.g., "Visible", "Enable").
+    channel : str
+        The channel address used as input for the rule.
+    initial_value : bool, optional
+        The default value for the rule when no condition is met. Defaults to True.
+    show_on_true : bool, optional
+        Determines whether the rule evaluates to true when the condition is satisfied. Defaults to True.
+    visMin : int, optional
+        Minimum threshold value for a channel to be considered "active". Used for range-based visibility rules.
+    visMax : int, optional
+        Maximum threshold value for a channel to be considered "active". Used for range-based visibility rules.
+    notes : str, optional
+        Additional metadata or notes about the rule.
+    """
+
     rule_type: str
     channel: str
     initial_value: Optional[bool] = True
@@ -841,6 +880,14 @@ class BoolRule(XMLConvertible):
     notes: Optional[str] = ""
 
     def to_string(self):
+        """
+        Convert the rule properties to a string.
+
+        Returns
+        -------
+        str
+            A string representing the rule.
+        """
         if self.visMin is not None and self.visMax is not None:
             show_on_true_string = f"True if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else False"
             show_on_false_string = f"False if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else True"
@@ -870,20 +917,45 @@ class BoolRule(XMLConvertible):
 
 @dataclass
 class MultiRule(XMLConvertible):
+    """
+    Represents a compound rule composed of multiple conditions.
+
+    Attributes
+    ----------
+    rule_type : str
+        The type of rule (e.g., "Visible", "Enable").
+    rule_list : list of RuleArguments, optional
+        A list of rule argument tuples, where each tuple contains:
+        (rule_type, channel, initial_value, show_on_true, visMin, visMax).
+    hide_on_disconnect_channel : str, optional
+        An additional channel used to hide the widget if it disconnects.
+    initial_value : bool, optional
+        Default value for the rule when no conditions are satisfied. Defaults to False.
+    notes : str, optional
+        Additional metadata or notes about the rule.
+    """
+
     rule_type: str
     rule_list: Optional[List[RuleArguments]] = None
     hide_on_disconnect_channel: Optional[str] = None
-    initial_value: Optional[bool] = False  # TODO: set to false to fix the extra enumbutton
+    initial_value: Optional[bool] = False
     notes: Optional[str] = ""
 
     def to_string(self):
+        """
+        Convert the rule properties to a string.
+
+        Returns
+        -------
+        str
+            A string representing the rule.
+        """
+
         channel_list = []
         expression_list = []
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
                 rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
-                # use_enum = "type=enum" in channel
-                # str_enum = str(use_enum).lower()
                 replacement_init = None
                 if channel.startswith("loc://") and "init=${" in channel:
                     replacement_init = channel[channel.find("init=") + len("init=") :]
@@ -899,8 +971,6 @@ class MultiRule(XMLConvertible):
                 ]
                 replacement_init = replacement_init[: replacement_init.find("}") + 1]
             expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
-            # use_enum = "type=enum" in self.hide_on_disconnect_channel
-            # str_enum = str(use_enum).lower()
             channel_list.append(
                 f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
             )
@@ -913,7 +983,6 @@ class MultiRule(XMLConvertible):
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
             f'"initial_value": "false", '
-            # f'"initial_value": "{self.hide_on_disconnect_channel is None}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -923,21 +992,33 @@ class MultiRule(XMLConvertible):
 
     def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
         """
-        if init:
-           ch = init
-        else:
-          ch = f"ch[{index}]"
+        Build a conditional expression string for a specific channel.
+
+        Parameters
+        ----------
+        index : int
+            The index of the channel in the rule list.
+        show_on_true : bool
+            Whether the expression should evaluate to true on match.
+        visMin : int, optional
+            Minimum threshold value for range-based conditions.
+        visMax : int, optional
+            Maximum threshold value for range-based conditions.
+        init : str, optional
+            Replacement initialization value for the channel, if applicable.
+
+        Returns
+        -------
+        str
+            A string representing the conditional expression for the given channel.
         """
+
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:
-            # show_on_true_string = f"True if float({ch}) >= {visMin} and float({ch}) < {visMax} else False"
-            # show_on_false_string = f"False if float({ch}) >= {visMin} and float({ch}) < {visMax} else True"
             show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
             show_on_false_string = f"float({ch}) < {visMin} or float({ch}) >= {visMax}"
         else:
-            # show_on_true_string = f"True if {ch}==1 else False"
-            # show_on_false_string = f"True if {ch}!=1 else False"
             show_on_true_string = f"{ch}==1"
             show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
 
@@ -945,24 +1026,51 @@ class MultiRule(XMLConvertible):
 
     def get_hide_on_disconnect_expression(self, index, init):
         """
-        if init:
-           ch = init
-        else:
-          ch = f"ch[{index}]"
+        Build an expression that ensures the widget is hidden if a channel disconnects.
+
+        Parameters
+        ----------
+        index : int
+            The index of the disconnect channel in the channel list.
+
+        Returns
+        -------
+        str
+            An expression string that evaluates true when the channel is connected.
         """
+
         ch = f"ch[{index}]"
 
         return f"{ch} is not None"
-        # return f"bool({ch})"
 
 
 @dataclass
 class Rules(XMLConvertible):
+    """
+    Represents a collection of rules grouped by type.
+
+    Attributes
+    ----------
+    rules : list of RuleArguments
+        A list of rule argument tuples, where each tuple contains:
+        (rule_type, channel, initial_value, show_on_true, visMin, visMax).
+    hide_on_disconnect_channel : str, optional
+        An additional channel used to hide widgets if it disconnects.
+    """
+
     rules: List[RuleArguments]
     hide_on_disconnect_channel: Optional[str] = None
 
     def to_xml(self):
-        # bool_rule_types = set(["Visible", "Enable"])
+        """
+        Convert the collection of rules into an XML element.
+
+        Returns
+        -------
+        etree.Element
+            An XML element representing all grouped rules.
+        """
+
         rule_list = []
         rule_variables = self.group_by_rules()
 
@@ -977,6 +1085,16 @@ class Rules(XMLConvertible):
         return Str("rules", output_string).to_xml()
 
     def group_by_rules(self):
+        """
+        Group rules by their rule type, removing duplicates.
+
+        Returns
+        -------
+        dict of str to list of RuleArguments
+            A dictionary where the keys are rule types (e.g., "Visible", "Enable"),
+            and the values are lists of unique rules for that type.
+        """
+
         bool_rule_types = ["Visible", "Enable"]
         rule_variables = {key: [] for key in bool_rule_types}
         for rule in self.rules:
@@ -985,21 +1103,6 @@ class Rules(XMLConvertible):
         for rule_name in rule_variables.keys():  # removes repeated tuples
             rule_variables[rule_name] = list(set(rule_variables[rule_name]))
         return rule_variables
-
-
-@dataclass
-class RGBAStyleSheet(XMLConvertible):
-    red: int
-    green: int
-    blue: int
-    alpha: int = 255
-
-    def to_xml(self):
-        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
-        prop = ET.Element("property", {"name": "styleSheet"})
-        string_elem = ET.SubElement(prop, "string")
-        string_elem.text = style
-        return prop
 
 
 @dataclass
@@ -1045,12 +1148,34 @@ class StyleSheet(XMLConvertible):
 
 @dataclass
 class RGBABackgroundSheet(XMLConvertible):  # eventually combine with rgbastylesheet
+    """
+    Represents a background style sheet with an RGBA (Red, Green, Blue, Alpha) color.
+
+    Attributes:
+        red : int
+            Red component of the background color (0–255).
+        green : int
+            Green component of the background color (0–255).
+        blue : int
+            Blue component of the background color (0–255).
+        alpha : int
+            Alpha transparency value (0–255).
+    """
+
     red: int
     green: int
     blue: int
     alpha: int = 255
 
     def to_xml(self):
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the background stylesheet.
+        """
         style = f"background-color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)});"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
@@ -1060,7 +1185,20 @@ class RGBABackgroundSheet(XMLConvertible):  # eventually combine with rgbastyles
 
 @dataclass
 class TransparentBackground(XMLConvertible):
+    """
+    Represents a stylesheet that gives an object no background.
+    """
+
     def to_xml(self):
+        """
+        Convert the stylesheet to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the background stylesheet.
+        """
+
         style = "background-color: transparent;"
         prop = ET.Element("property", {"name": "styleSheet"})
         string_elem = ET.SubElement(prop, "string")
@@ -1070,9 +1208,58 @@ class TransparentBackground(XMLConvertible):
 
 @dataclass
 class Curves(XMLConvertible):
+    """
+    Represents a curve for a PyDMWaveformPlot.
+
+    Attributes:
+        x_channel : str
+            The channel for x values
+        y_channel : str
+            The channel for y values
+        plotColor : RGBA
+            The color given to the curve
+    """
+
     x_channel: Optional[str] = None
     y_channel: Optional[str] = None
     plotColor: Optional[RGBA] = None
+
+@dataclass
+class RGBAStyleSheet(XMLConvertible):
+    """
+    Represents a background style sheet with an RGBA (Red, Green, Blue, Alpha) color.
+
+    Attributes:
+        red : int
+            Red component of the background color (0–255).
+        green : int
+            Green component of the background color (0–255).
+        blue : int
+            Blue component of the background color (0–255).
+        alpha : int
+            Alpha transparency value (0–255).
+    """
+
+    red: int
+    green: int
+    blue: int
+    alpha: int = 255
+
+    def to_xml(self):
+        """
+        Convert the stylesheet into an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the image.
+        """
+
+        style = f"color: rgba({self.red}, {self.green}, {self.blue}, {round(self.alpha / 255, 2)}); background-color: transparent;"
+        prop = ET.Element("property", {"name": "styleSheet"})
+        string_elem = ET.SubElement(prop, "string")
+        string_elem.text = style
+        return prop
 
 
 @dataclass
@@ -1367,7 +1554,7 @@ class Tangible(XMLSerializableMixin):
         properties: List[etree.Element] = []
         properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
         if self.secretId is not None:
-            properties.append(Str("secretId", self.secretId))
+            properties.append(Str("secretId", self.secretId).to_xml())
             breakpoint()
         return properties
 
@@ -1447,6 +1634,11 @@ class Controllable(Tangible):
         """
         properties: List[etree.Element] = super().generate_properties()
         if self.channel is not None:
+            if isinstance(self.channel, List):
+                if len(self.channel) > 1:
+                    logger.warning(f"This channel was given multiple pvs: {self.channel}, using the first channel")
+                self.channel = self.channel[0]
+
             properties.append(Channel(self.channel).to_xml())
         if self.pydm_tool_tip is not None:
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
@@ -1456,11 +1648,12 @@ class Controllable(Tangible):
                 self.rules.append(
                     RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
                 )
+
         if self.visPv is not None:
             self.rules.append(
                 RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
             )
-
+            
         hidden_widgets = [
             "activextextdspclassnoedit",
             "activechoicebuttonclass, activextextclass",
@@ -1662,12 +1855,37 @@ class PageHeader:
         rect = ET.SubElement(geometry, "rect")
         ET.SubElement(rect, "x").text = "0"
         ET.SubElement(rect, "y").text = "0"
-        ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
-        ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
+        if scrollable:  # Setting max values for the screen to be initially
+            ET.SubElement(rect, "width").text = str(min(edm_parser.ui.width, 120))
+            ET.SubElement(rect, "height").text = str(min(edm_parser.ui.height, 80))
+        else:
+            ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
+            ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
 
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
         title_string.text = "PyDM Screen"
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        if scrollable:
+            print("Creating scrollable PyDM window")
+            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
+            layout_item = ET.SubElement(layout, "item")
+            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
+
+        screen_properties: dict[str, str] = edm_parser.ui.properties
+        self.add_screen_properties(main_widget, screen_properties)
 
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)
