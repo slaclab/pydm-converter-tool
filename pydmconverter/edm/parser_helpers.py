@@ -296,7 +296,7 @@ def translate_calc_pv_to_pydm(
     if is_inline_expr:
         expression = name_or_expr
         # identifier = "inline_expr"
-        identifier = ",".join(arg_list)
+        identifier = f"calc_{hash(edm_pv)}"
     else:
         calc_name = name_or_expr
         if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
