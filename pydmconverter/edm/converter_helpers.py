@@ -665,8 +665,6 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
     Modifies the height and channel of the current slider
     """
-    # print(object)
-    # print(widget)
     i = 1
     prevColor = None
     ctrl_attributes = []
