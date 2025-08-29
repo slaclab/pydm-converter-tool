@@ -140,7 +140,7 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     """
 
     expr_part, args_part = get_calc_groups(edm_pv)
-    name_or_expr = clean_escape_characters(expr_part)
+    name_or_expr = clean_escape_characters(expr_part).strip()
     arg_string = clean_escape_characters(args_part)
 
     arg_list: List[str] = []
@@ -154,7 +154,6 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
         is_inline_expr = True
         name_or_expr = name_or_expr[1:-1]
-
     return name_or_expr, arg_list, is_inline_expr
 
 
@@ -179,9 +178,10 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
                 break
 
     if end_idx == -1:
-        print(
+        logger.info(
             f"Fixing Invalid CALC PV format (unbalanced parens): {edm_pv}"
-        )  # TODO: Comeback to see if I should fix this in EDM too
+        )  # TODO: Comeback to see if I should fix this in the EDM file too
+
         edm_pv += ")"
         end_idx = edm_pv.rfind("(")
         # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
@@ -297,9 +297,13 @@ def translate_calc_pv_to_pydm(
         identifier = "inline_expr"
     else:
         calc_name = name_or_expr
+        if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
+            calc_name = "sum"
         if calc_name not in calc_dict:
+            print(calc_dict)
             raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
             # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
+            # return "failed CALC"
         rewrite_rule, expression = calc_dict[calc_name]
         if expression is None:
             raise ValueError(f"Calculation '{calc_name}' in calc_dict has no expression defined.")
@@ -372,7 +376,7 @@ def loc_conversion(edm_string: str) -> str:
         "d": "float",
         "i": "int",
         "s": "str",
-        "e": "int",  # mapping enum to e by default
+        "e": "int",  # mapping enum to int
     }
 
     try:
@@ -380,7 +384,9 @@ def loc_conversion(edm_string: str) -> str:
         name = name.lstrip("\\")
         type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
     except ValueError:
-        raise ValueError("Invalid EDM format: Missing '=' separator")
+        name = content.lstrip("\\")
+        return f"loc://{name}"
+        # raise ValueError("Invalid EDM format: Missing '=' separator")
 
     try:
         type_char, value = type_and_value.split(":", 1)
@@ -416,17 +422,26 @@ def loc_conversion(edm_string: str) -> str:
                 value = type_and_value
                 type_char = "d"
             except ValueError:
-                print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
+                # print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
                 print(f"name: {name}")
                 print(f"value: {type_and_value}")
-                breakpoint()
-                return None
-                # raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
+                raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
+    if edm_type.isdigit():
+        value = edm_type
+        edm_type = "i"
     pydm_type = type_mapping.get(edm_type)
     if pydm_type is None:
-        raise ValueError(f"Unsupported type character: {type_char}")
+        # logger.warning(f"Unsupported type character: {type_char}")
+        # return f"No loc here"
+        if edm_type and len(edm_type) > 1:
+            edm_type = "s"
+            value = type_and_value
+            print(type_and_value)
+            breakpoint()
+        else:
+            raise ValueError(f"Unsupported type character: {type_char}")
 
     if value.strip().upper() == "RAND()":
         raise NotImplementedError("Special function RAND() is not supported yet.")
@@ -511,8 +526,6 @@ def replace_calc_and_loc_in_edm_content(
                     full_url, short_url = "", ""
             encountered_locs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
-        # else:
-        #    return encountered_locs[edm_pv]["short"]
         elif "=" in edm_pv:
             return encountered_locs[edm_pv]["full"]
         return encountered_locs[edm_pv]["short"]

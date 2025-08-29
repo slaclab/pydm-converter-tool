@@ -220,7 +220,6 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "showValue": "showValueLabel",
     "showLimits": "showLimitLabels",
     "labels": "rowLabels",
-}
 
 COLOR_ATTRIBUTES: set = {
     "fgColor",
@@ -501,12 +500,15 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 ):
                     setattr(widget, "text", obj.properties["offLabel"])
                 elif type(widget).__name__ == "PyDMPushButton" and (
-                    ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
-                    or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    (
+                        ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+                        or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+                    )
+                    and hasattr(widget, "channel")
+                    and widget.channel is not None
                 ):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
-
                 if obj.name.lower() == "activefreezebuttonclass":
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
@@ -757,6 +759,9 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     string_list = searched_arr[-1]
     channel_list = string_list[1:-1].split(", ")
     tab_names = [item.strip("'") for item in channel_list]
+    for i in range(len(tab_names)):
+        if not tab_names[i]:
+            tab_names.pop(i)
     tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
     if tab_widget is None:
         return False
@@ -839,7 +844,8 @@ def parse_font_string(font_str: str) -> dict:
     into a dictionary for a PyDM widget.
     This is just an example parser—adjust as needed.
     """
-    print("fonts", font_str)
+    if not font_str:
+        font_str = "helvetica-medium-r-12.0"
     parts = font_str.split("-")
     family = parts[0].capitalize()
     bold = "bold" in parts[1].lower()

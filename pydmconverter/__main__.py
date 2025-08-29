@@ -21,7 +21,7 @@ def run_gui() -> None:
     subprocess.run(["bash", "launch_gui.sh"], check=True)
 
 
-def run(input_file, output_file, input_file_type=".edl", override=False):
+def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False):
     input_path: Path = Path(input_file)
     output_path: Path = Path(output_file)
 
@@ -31,14 +31,16 @@ def run(input_file, output_file, input_file_type=".edl", override=False):
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         copy_img_files(input_path.parent, output_path.parent)
-        convert(str(input_path), str(output_path))
+        convert(str(input_path), str(output_path), scrollable)
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
         output_path.mkdir(parents=True, exist_ok=True)
         files_found: int
         files_failed: list[str]
-        files_found, files_failed = convert_files_in_folder(input_path, output_path, input_file_type, override)
+        files_found, files_failed = convert_files_in_folder(
+            input_path, output_path, input_file_type, override, scrollable
+        )
 
         if files_found == 0:
             print(f"No {input_file_type} files found in {input_path}")
@@ -66,7 +68,8 @@ def run_cli(args: argparse.Namespace) -> None:
     input_file_type: str = args.output_type
     override: bool = args.override
     scrollable: bool = args.scrollable
-    run(input_file, output_file, input_file_type, override)
+    run(input_file, output_file, input_file_type, override, scrollable)
+
 
 """
     if input_path.is_file():
@@ -77,6 +80,10 @@ def run_cli(args: argparse.Namespace) -> None:
         convert(str(input_path), str(output_path), scrollable)
         copy_img_files(input_path.parent, output_path.parent)
     else:
+        if not input_file_type:
+            raise AttributeError(
+                "No file type given. When converting directories, use this format: [Input_Dir] [Output_Dir] [File_Type]"
+            )
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
         output_path.mkdir(parents=True, exist_ok=True)
@@ -150,6 +157,7 @@ def convert_files_in_folder(
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
+                breakpoint()
                 continue
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
