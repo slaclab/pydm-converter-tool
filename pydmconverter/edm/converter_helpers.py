@@ -220,6 +220,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "showValue": "showValueLabel",
     "showLimits": "showLimitLabels",
     "labels": "rowLabels",
+}
 
 COLOR_ATTRIBUTES: set = {
     "fgColor",
@@ -234,7 +235,6 @@ COLOR_ATTRIBUTES: set = {
     "gridColor",
 }
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -664,8 +664,6 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
     Modifies the height and channel of the current slider
     """
-    # print(object)
-    # print(widget)
     i = 1
     prevColor = None
     ctrl_attributes = []

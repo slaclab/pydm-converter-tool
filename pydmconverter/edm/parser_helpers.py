@@ -362,7 +362,6 @@ def loc_conversion(edm_string: str) -> str:
     ValueError
         If the EDM string does not start with 'LOC\\' or if it lacks the proper format.
     """
-    # if edm_string.startswith("LOC\\"):
     prefix = "LOC\\"
     if not edm_string.startswith(prefix):
         raise ValueError("Provided string does not start with 'LOC\\'")

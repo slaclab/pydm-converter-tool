@@ -527,11 +527,11 @@ class PyDMPushButton(PyDMPushButtonBase):
                 pv = PV(self.channel, connection_timeout=0.5)
                 if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
                     self.text = pv.enum_strs[enum_index]
-                    
+
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
-            self.rules.append((RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
-            self.rules.append((RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
         elif self.is_freeze_button is not None and self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
@@ -558,8 +558,6 @@ class PyDMPushButton(PyDMPushButtonBase):
             properties.append(Str("pressValue", "1").to_xml())
         if self.is_freeze_button is not None and self.is_freeze_button:
             properties.append(Str("pressValue", "0").to_xml())
-        # if self.text is not None and self.on_label is None:
-        #    properties.append(Str("text", self.text).to_xml()) #TODO: check for conflicts with on_label
         if (
             self.on_color is not None
             or self.foreground_color is not None
@@ -637,9 +635,6 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             A list of XML elements representing the PyDMShellCommand properties.
         """
         properties: List[ET.Element] = super().generate_properties()
-        if self.visPvList is not None:
-            print(vars(self))
-            print(self.visPvList)
         if self.show_confirm_dialog is not None:
             properties.append(Bool("showConfirmDialog", self.show_confirm_dialog).to_xml())
         if self.confirm_message is not None:
@@ -1465,7 +1460,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     xAxisSrc : Optional[str]
         Source of X-axis scaling.
     """
-                              
+
     x_channel: Optional[List[str]] = field(default_factory=list)
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
@@ -1564,7 +1559,6 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         return properties
 
     def get_curve_strings(self) -> List[str]:
-
         """
         Build JSON-like strings representing individual curve configurations.
 
