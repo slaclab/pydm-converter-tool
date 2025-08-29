@@ -530,8 +530,8 @@ class PyDMPushButton(PyDMPushButtonBase):
                     
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
-            self.rules.append((RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
-            self.rules.append((RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
+            self.rules.append(RuleArguments("Enable", "loc://FROZEN_STATE", False, False, None, None))
         elif self.is_freeze_button is not None and self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, True, None, None))
