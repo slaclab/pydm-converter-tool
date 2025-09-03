@@ -1853,37 +1853,21 @@ class PageHeader:
         rect = ET.SubElement(geometry, "rect")
         ET.SubElement(rect, "x").text = "0"
         ET.SubElement(rect, "y").text = "0"
+
+        """
         if scrollable:  # Setting max values for the screen to be initially
             ET.SubElement(rect, "width").text = str(min(edm_parser.ui.width, 120))
             ET.SubElement(rect, "height").text = str(min(edm_parser.ui.height, 80))
         else:
             ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
             ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
+        """
 
+        ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
+        ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
         window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
         title_string = ET.SubElement(window_title, "string")
         title_string.text = "PyDM Screen"
-
-        screen_properties: dict[str, str] = edm_parser.ui.properties
-        self.add_screen_properties(main_widget, screen_properties)
-
-        if scrollable:
-            print("Creating scrollable PyDM window")
-            layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
-            layout_item = ET.SubElement(layout, "item")
-            scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
-
-        screen_properties: dict[str, str] = edm_parser.ui.properties
-        self.add_screen_properties(main_widget, screen_properties)
-
-        screen_properties: dict[str, str] = edm_parser.ui.properties
-        self.add_screen_properties(main_widget, screen_properties)
-
-        screen_properties: dict[str, str] = edm_parser.ui.properties
-        self.add_screen_properties(main_widget, screen_properties)
-
-        screen_properties: dict[str, str] = edm_parser.ui.properties
-        self.add_screen_properties(main_widget, screen_properties)
 
         screen_properties: dict[str, str] = edm_parser.ui.properties
         self.add_screen_properties(main_widget, screen_properties)

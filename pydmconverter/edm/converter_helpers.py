@@ -852,7 +852,7 @@ def parse_font_string(font_str: str) -> dict:
     # pointsize = convert_pointsize(float(size_str))
     # NOTE: This line is commented because of how I observed fastx displays pointsize. In browser mode, the conversion from pixelsize to pointsize is 0.75. In desktop mode, the conversion is ~0.51
     # TODO: Find which version is accurate to how pydm is used and use that function
-    pointsize = new_convert_pointsize(float(size_str))
+    pointsize = convert_pointsize(float(size_str))
 
     return {
         "family": family,
