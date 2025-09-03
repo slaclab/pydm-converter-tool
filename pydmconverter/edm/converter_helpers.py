@@ -703,10 +703,11 @@ def populate_tab_bar(obj: EDMObject, widget):
     if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
         file_list = obj.properties["displayFileName"]
         for index, tab_name in enumerate(tab_names):
+            widget_name = tab_name.replace('/', '')
             child_widget = QWidget(title=tab_name)
             widget.add_child(child_widget)
             embedded_widget = PyDMEmbeddedDisplay(
-                name=f"{tab_name}_embedded",
+                name=f"{widget_name}_embedded",
                 x=0,
                 y=0,
                 filename=file_list[index],
@@ -755,8 +756,15 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
         return False
     # channel_name = searched_arr[0]
     string_list = searched_arr[-1]
-    channel_list = string_list[1:-1].split(", ")
-    tab_names = [item.strip("'") for item in channel_list]
+
+    if string_list.startswith('[') and string_list.endswith(']'):
+        # It's a list 
+        channel_list = string_list[1:-1].split(", ")
+        tab_names = [item.strip("'") for item in channel_list]
+    else:
+        # It's a single string 
+        tab_names = [string_list.strip("'")]
+
     for i in range(len(tab_names)):
         if not tab_names[i]:
             tab_names.pop(i)
