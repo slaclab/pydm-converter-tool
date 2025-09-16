@@ -6,6 +6,8 @@ nav:
   - Home: index.md
   - Getting Started:
     - installation.md
+  - User Guide: user_guide.md 
+    - Arguments: arguments.md
   - Developer Reference:
     - reference/index.md
     - reference/pydm-converter-tool.md
@@ -18,6 +20,7 @@ nav:
     - reference/custom_types.md
     - reference/widgets_helpers.md
     - reference/widgets.md
+
 
 
 theme:
