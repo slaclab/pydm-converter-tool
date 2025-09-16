@@ -4,6 +4,8 @@ repo_name: slaclab/pydm-converter-tool
 
 nav:
   - Home: index.md
+  - User Guide: user_guide.md 
+  - Arguments: arguments.md
 
 theme:
   name: material
