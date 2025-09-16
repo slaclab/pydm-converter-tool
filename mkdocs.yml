@@ -6,8 +6,9 @@ nav:
   - Home: index.md
   - Getting Started:
     - installation.md
-  - User Guide: user_guide.md 
-    - Arguments: arguments.md
+  - User Guide:
+    - user_guide.md
+    - arguments.md
   - Developer Reference:
     - reference/index.md
     - reference/pydm-converter-tool.md

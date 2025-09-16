@@ -6,14 +6,14 @@ Below, you'll find a detailed overview of each available argument to help you us
 
 `-o` or `--override`
 
-This argument allows users to override the output file if it already exists. Most often this will be used with the scroll bar argument if it appears a screen exceeds the screen. This will replace the file with a new converted file. 
+This argument allows users to override the output file if it already exists. Most often this will be used with the scroll bar argument if it appears a screen exceeds the screen. This will replace the file with a new converted file.
 
 
 ## Scroll Bars
 
 `-s` or `--scrollable`
 
-This argument adds scroll bars to converted screens. It will ad a horizontal and vertical scroll bar. If this argument is not included, the screen will not contain a scroll bar. 
+This argument adds scroll bars to converted screens. It will ad a horizontal and vertical scroll bar. If this argument is not included, the screen will not contain a scroll bar.
 
 ## Help
 

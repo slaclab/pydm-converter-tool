@@ -1,3 +1,3 @@
-# Widgets Helpers 
+# Widgets Helpers
 
 ::: widgets_helpers

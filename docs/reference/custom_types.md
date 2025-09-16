@@ -1,3 +1,3 @@
-# Custom Types 
+# Custom Types
 
 ::: custom_types

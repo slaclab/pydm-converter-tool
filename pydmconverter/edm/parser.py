@@ -1,7 +1,6 @@
 import re
 import os
 from pathlib import Path
-from pprint import pprint
 from dataclasses import dataclass, field
 from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
