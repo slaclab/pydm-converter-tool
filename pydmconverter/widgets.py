@@ -1594,18 +1594,25 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             curve_string_list.append(curve_string)
         return curve_string_list
 
-    def rgba_to_hex(self, r, g, b, a=255):
+    def rgba_to_hex(self, r, g, b, a=255) -> str:
         """
         Convert RGBA or RGB to a hex string in #RRGGBBAA format.
 
-        Args:
-            r (int): Red (0–255)
-            g (int): Green (0–255)
-            b (int): Blue (0–255)
-            a (int): Alpha (0–255), default is 255 (opaque)
+        Parameters
+        ----------
+        r : int
+            Red component (0–255)
+        g : int
+            Green component (0–255)
+        b : int
+            Blue component (0–255)
+        a : int, optional
+            Alpha component (0–255), default is 255 (opaque)
 
-        Returns:
-            str: Hex color string like "#00e0e0"
+        Returns
+        -------
+        str
+            Hex color string like "#00e0e0"
         """
         return f"#{r:02x}{g:02x}{b:02x}"
 
@@ -1740,8 +1747,10 @@ class PyDMSlider(Alarmable):
         """
         Generates a list of XML elements representing the slider's properties.
 
-        Returns:
-            List[ET.Element]: List of XML elements for serialization.
+        Returns
+        -------
+        List[ET.Element]
+            List of XML elements for serialization.
         """
         properties: List[ET.Element] = super().generate_properties()
 

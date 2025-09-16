@@ -584,7 +584,7 @@ class EDMFileParser:
                 raise ValueError(f"Missing required property '{prop}' in widget.")
 
             if not match:
-                """match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
+                """match_macro = re.search(rf"^{prop[0]}\\s+(\\$\\{{[A-Za-z_][A-Za-z0-9_]*\\}})", text, re.M)
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
                 size_properties[prop] = match_macro.group(1)"""

@@ -47,13 +47,14 @@ def parse_calc_list(calc_list_path: str) -> Dict[str, Tuple[Optional[str], Optio
     calculation names to a tuple of (rewrite_rule, expression).
 
     The file format typically looks like:
+        ```
         CALC1 ...
         # ...
         <calc_name>
         [@rewrite_rule]
         <expression>
         # ...
-
+        ```
     Parameters
     ----------
     calc_list_path : str
@@ -115,8 +116,8 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
 
     EDM CALC PV examples:
       - 'CALC\\sum(pv1, pv2)'
-      - 'CALC\\\{A+B\}(pv1, pv2)'
-      - 'CALC\\\{(A)\}($(P)$(R)Acquire)'
+      - 'CALC\\\\{A+B\\}(pv1, pv2)'
+      - 'CALC\\\\{(A)\\}($(P)$(R)Acquire)'
 
     Parameters
     ----------
@@ -190,7 +191,7 @@ def get_calc_groups(edm_pv: str) -> Tuple[str]:
 
 def clean_escape_characters(expr: str) -> str:
     """
-    Remove extra \ characters from CALC/LOC expressions.
+    Remove extra \' characters from CALC/LOC expressions.
 
     Parameters
     ----------
@@ -200,7 +201,7 @@ def clean_escape_characters(expr: str) -> str:
     Returns
     -------
     str
-        The new expression with \s removed.
+        The new expression with \\s removed.
     """
     expr = expr.lstrip("\\")
     expr = expr.replace(r"\{", "{").replace(r"\}", "}")
@@ -534,20 +535,25 @@ def replace_calc_and_loc_in_edm_content(
     return new_content, encountered_calcs, encountered_locs
 
 
-def search_color_list(cli_color_file=None):
+def search_color_list(cli_color_file=None) -> str | None:
     """
     Attempt to find the EDM color file by the following priority:
-      1. CLI argument (cli_color_file), if provided.
-      2. EDMCOLORFILE env variable (absolute path).
-      3. EDMFILES env variable + "colors.list".
-      4. Default path: "/etc/edm/colors.list".
 
-    Args:
-        cli_color_file (str or None): A file path passed via command line argument.
-          If this is provided and valid, it overrides other checks.
+    1. CLI argument (cli_color_file), if provided.
+    2. EDMCOLORFILE env variable (absolute path).
+    3. EDMFILES env variable + "colors.list".
+    4. Default path: "/etc/edm/colors.list".
 
-    Returns:
-        str or None: The path to the EDM color file if found, else None.
+    Parameters
+    ----------
+    cli_color_file : str or None, optional
+        A file path passed via command line argument.
+        If this is provided and valid, it overrides other checks.
+
+    Returns
+    -------
+    str or None
+        The path to the EDM color file if found, else None.
     """
     if cli_color_file and os.path.isfile(cli_color_file):
         return cli_color_file
