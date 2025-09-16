@@ -12,6 +12,7 @@ authors = [
   { name = "Ryan McClanahan"},
   { name = "Alexander Ng"},
   { name = "Logan Somoza"},
+  { name = "Alexandria Ikuma"},
   { name = "Yekta Yazar", email = "yazar@slac.stanford.edu"}
 ]
 keywords = ["PyDM", "converter", "GUI"]
