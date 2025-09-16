@@ -4,8 +4,6 @@ repo_name: slaclab/pydm-converter-tool
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - installation.md
   - User Guide:
     - user_guide.md
     - arguments.md
@@ -54,6 +52,7 @@ extra:
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
+  - md_in_html
 
 plugins:
   - search
