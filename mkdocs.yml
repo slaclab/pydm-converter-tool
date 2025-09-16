@@ -4,6 +4,21 @@ repo_name: slaclab/pydm-converter-tool
 
 nav:
   - Home: index.md
+  - Getting Started:
+    - installation.md
+  - Developer Reference:
+    - reference/index.md
+    - reference/pydm-converter-tool.md
+    - edm:
+      - reference/edm/converter_helpers.md
+      - reference/edm/converter.md
+      - reference/edm/menumux.md
+      - reference/edm/parser_helpers.md
+      - reference/edm/parser.md
+    - reference/custom_types.md
+    - reference/widgets_helpers.md
+    - reference/widgets.md
+
 
 theme:
   name: material
@@ -38,3 +53,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [pydmconverter]

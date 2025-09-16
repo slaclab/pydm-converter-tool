@@ -680,9 +680,3 @@ class EDMFileParser:
         if not check_sequential(indices):
             return lines
         return values
-
-
-if __name__ == "__main__":
-    """Startup code to test the EDMFileParser class"""
-    parser = EDMFileParser(Path("../../examples/all_bsy0_main_with_groups.edl"))
-    pprint(parser.ui, indent=2)
