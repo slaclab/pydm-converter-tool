@@ -1,7 +1,6 @@
 import re
 import os
 from pathlib import Path
-from pprint import pprint
 from dataclasses import dataclass, field
 from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
@@ -585,7 +584,7 @@ class EDMFileParser:
                 raise ValueError(f"Missing required property '{prop}' in widget.")
 
             if not match:
-                """match_macro = re.search(rf"^{prop[0]}\s+(\$\{{[A-Za-z_][A-Za-z0-9_]*\}})", text, re.M)
+                """match_macro = re.search(rf"^{prop[0]}\\s+(\\$\\{{[A-Za-z_][A-Za-z0-9_]*\\}})", text, re.M)
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
                 size_properties[prop] = match_macro.group(1)"""
@@ -680,9 +679,3 @@ class EDMFileParser:
         if not check_sequential(indices):
             return lines
         return values
-
-
-if __name__ == "__main__":
-    """Startup code to test the EDMFileParser class"""
-    parser = EDMFileParser(Path("../../examples/all_bsy0_main_with_groups.edl"))
-    pprint(parser.ui, indent=2)

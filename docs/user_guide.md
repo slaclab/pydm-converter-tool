@@ -3,7 +3,7 @@
 ##Prerequisites
 
 
-## Clone the Repository 
+## Clone the Repository
 ``` bash
 git clone https://github.com/slaclab/pydm-converter-tool.git
 ```
@@ -17,11 +17,11 @@ conda activate pydm
 
 # How to Run the Converter
 
-This outlines the two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the [Arguments] page.  
+This outlines the two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the [Arguments] page.
 
   [Arguments]: arguments.md
 
-## For individual files  
+## For individual files
 When using the converter on a single file, the command line is:
 ``` bash
 pydmconverter '/path/old_file.edl' 'new_file_name.ui' `
@@ -37,7 +37,7 @@ To convert EDM file called "file.edl" to PYDM file called "file.ui" :
 ``` bash
 pydmconverter /afs/slac/g/lcls/edm/file.edl file.ui`
 ```
-To convert EDM files in a folder called "edm" to PYDM file in the current folder : 
+To convert EDM files in a folder called "edm" to PYDM file in the current folder :
 ``` bash
 pydmconverter /afs/slac/g/lcls/edm . .edl`
 ```
