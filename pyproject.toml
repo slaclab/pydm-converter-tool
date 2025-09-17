@@ -3,7 +3,7 @@ requires = ["setuptools>=64.0", "setuptools_scm[toml]"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pydm-converter-tool"
+name = "PyDMConverter"
 description = "converter to generate pydm .ui files from other display managers."
 readme = "README.md"
 authors = [
