@@ -4,6 +4,7 @@ from typing import List, Optional, Dict
 from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
+    Float,
     Bool,
     Str,
     Drawable,
@@ -325,9 +326,6 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
             properties.append(
                 Int("startAngle", int(self.startAngle)).to_xml()
             )  # TODO: Maybe make a float class (probabaly unnecessary)
-        # if self.spanAngle is not None:
-        #    properties.append(Int("spanAngle", self.spanAngle))
-        # else:
         properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
         return properties
@@ -1464,10 +1462,10 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
     y_channel: Optional[List[str]] = field(default_factory=list)
     plot_name: Optional[str] = None
     color: Optional[RGBA] = None
-    minXRange: Optional[int] = 0
-    minYRange: Optional[int] = 0
-    maxXRange: Optional[int] = None
-    maxYRange: Optional[int] = None
+    minXRange: Optional[float] = 0
+    minYRange: Optional[float] = 0
+    maxXRange: Optional[float] = None
+    maxYRange: Optional[float] = None
     plotColor: Optional[List[RGBA]] = field(default_factory=list)
     xLabel: Optional[str] = None
     yLabel: Optional[str] = None
@@ -1493,13 +1491,13 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         if self.color is not None:
             properties.append(ColorObject("color", *self.color).to_xml())
         if self.minXRange is not None:
-            properties.append(Int("minXRange", self.minXRange).to_xml())
+            properties.append(Float("minXRange", self.minXRange).to_xml())
         if self.minYRange is not None:
-            properties.append(Int("minYRange", self.minYRange).to_xml())
+            properties.append(Float("minYRange", self.minYRange).to_xml())
         if self.maxXRange is not None:
-            properties.append(Int("maxXRange", self.maxXRange).to_xml())
+            properties.append(Float("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
-            properties.append(Int("maxYRange", self.maxYRange).to_xml())
+            properties.append(Float("maxYRange", self.maxYRange).to_xml())
         if self.yAxisSrc is not None and self.yAxisSrc == "fromUser":
             self.auto_range = "false"
         else:
