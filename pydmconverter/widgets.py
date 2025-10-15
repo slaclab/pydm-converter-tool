@@ -4,7 +4,7 @@ from typing import List, Optional, Dict
 from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
-    Float,
+    Double,
     Bool,
     Str,
     Drawable,
@@ -324,7 +324,7 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
         properties: List[ET.Element] = super().generate_properties()
         if self.startAngle is not None:
             properties.append(
-                Int("startAngle", int(self.startAngle)).to_xml()
+                Double("startAngle", self.startAngle).to_xml()
             )  # TODO: Maybe make a float class (probabaly unnecessary)
         properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
@@ -1491,13 +1491,13 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         if self.color is not None:
             properties.append(ColorObject("color", *self.color).to_xml())
         if self.minXRange is not None:
-            properties.append(Float("minXRange", self.minXRange).to_xml())
+            properties.append(Double("minXRange", self.minXRange).to_xml())
         if self.minYRange is not None:
-            properties.append(Float("minYRange", self.minYRange).to_xml())
+            properties.append(Double("minYRange", self.minYRange).to_xml())
         if self.maxXRange is not None:
-            properties.append(Float("maxXRange", self.maxXRange).to_xml())
+            properties.append(Double("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
-            properties.append(Float("maxYRange", self.maxYRange).to_xml())
+            properties.append(Double("maxYRange", self.maxYRange).to_xml())
         if self.yAxisSrc is not None and self.yAxisSrc == "fromUser":
             self.auto_range = "false"
         else:

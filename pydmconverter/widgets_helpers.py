@@ -390,9 +390,9 @@ class Int(XMLConvertible):
 
 
 @dataclass
-class Float(XMLConvertible):
+class Double(XMLConvertible):
     """
-    Represents a float property.
+    Represents a double/float property.
 
     Attributes
     ----------
