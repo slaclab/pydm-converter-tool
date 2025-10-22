@@ -1581,7 +1581,7 @@ class Tangible(XMLSerializableMixin):
             A list containing the geometry property.
         """
         properties: List[etree.Element] = []
-        properties.append(Geometry(self.x, self.y, self.width, self.height).to_xml())
+        properties.append(Geometry(self.x, self.y, max(self.width, 2), max(self.height, 2)).to_xml())
         if self.secretId is not None:
             properties.append(Str("secretId", self.secretId).to_xml())
             breakpoint()
