@@ -390,6 +390,37 @@ class Int(XMLConvertible):
 
 
 @dataclass
+class Double(XMLConvertible):
+    """
+    Represents a double/float property.
+
+    Attributes
+    ----------
+    name : str
+        The name of the property.
+    value : float
+        The decimal value.
+    """
+
+    name: str
+    value: float = 0.0
+
+    def to_xml(self) -> etree.Element:
+        """
+        Convert the float property to an XML element.
+
+        Returns
+        -------
+        etree.Element
+            The XML element representing the float (converted to double).
+        """
+        prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
+        double_tag: etree.Element = etree.SubElement(prop, "double")  # Need to use double because float is unsupported
+        double_tag.text = str(self.value)
+        return prop
+
+
+@dataclass
 class Str(XMLConvertible):
     """
     Represents a string property.
