@@ -1959,4 +1959,6 @@ class PageHeader:
         if "bgColor" in properties:
             style_prop = ET.SubElement(main_widget, "property", attrib={"name": "styleSheet"})
             style_string = ET.SubElement(style_prop, "string")
-            style_string.text = f"background-color: rgba{properties['bgColor']}"
+
+            central_bg_dict = {"background-color": properties["bgColor"]}
+            style_string.text = f"{StyleSheet(central_bg_dict).to_style_string()}"
