@@ -162,6 +162,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # Related display attributes
     "fileName": "filename",
     "macro": "macro",
+    "symbols": "macro",  # EDM related display buttons use "symbols" for macros
     "file": "filename",
     "useDisplayBg": "useDisplayBg",
     # Scatter plot attributes
