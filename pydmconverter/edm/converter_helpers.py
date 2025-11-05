@@ -161,8 +161,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "commandLabel": "command_label",
     # Related display attributes
     "fileName": "filename",
-    "macro": "macro",
-    "symbols": "macro",  # EDM related display buttons use "symbols" for macros
+    "macro": "macros",
+    "symbols": "macros",  # EDM related display buttons use "symbols" for macros
     "file": "filename",
     "useDisplayBg": "useDisplayBg",
     # Scatter plot attributes
@@ -427,7 +427,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                     if edm_attr == "font":
                         value = parse_font_string(value)
-                    if edm_attr == "macro":
+                    if edm_attr in ("macro", "symbols"):
                         # Handle macro conversion
                         if isinstance(value, list):
                             # Multiple displays with different macros (e.g., for PyDMRelatedDisplayButton)
