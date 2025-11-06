@@ -5,6 +5,7 @@ from pydmconverter.widgets import (
     PyDMDrawingEllipse,
     PyDMDrawingLine,
     PyDMDrawingPolyline,
+    PyDMDrawingIrregularPolygon,
     PyDMLabel,
     PyDMLineEdit,
     PyDMPushButton,
@@ -279,6 +280,46 @@ def transform_nested_widget(
     return int(relative_x), int(relative_y), int(child_width), int(child_height)
 
 
+def get_polyline_widget_type(obj: EDMObject) -> type:
+    """
+    Determine if an activelineclass should be PyDMDrawingPolyline or PyDMDrawingIrregularPolygon.
+
+    Returns PyDMDrawingIrregularPolygon if the polyline is:
+    - Closed (first point == last point OR closePolygon is set) AND
+    - Has fill color
+
+    Otherwise returns PyDMDrawingPolyline.
+
+    Parameters
+    ----------
+    obj : EDMObject
+        The EDM object to analyze
+
+    Returns
+    -------
+    type
+        Either PyDMDrawingIrregularPolygon or PyDMDrawingPolyline
+    """
+    has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
+    has_fill_color = "fillColor" in obj.properties
+    is_closed = obj.properties.get("closePolygon") is True
+
+    # Check if first and last points match
+    if not is_closed and "xPoints" in obj.properties and "yPoints" in obj.properties:
+        x_pts = obj.properties["xPoints"]
+        y_pts = obj.properties["yPoints"]
+        if len(x_pts) > 1 and len(y_pts) > 1:
+            # Check if first and last points are the same
+            is_closed = x_pts[0] == x_pts[-1] and y_pts[0] == y_pts[-1]
+
+    # Use IrregularPolygon if it's closed AND has fill/fillColor
+    if (has_fill or has_fill_color) and is_closed:
+        logger.info("Converting closed filled polyline to PyDMDrawingIrregularPolygon")
+        return PyDMDrawingIrregularPolygon
+    else:
+        return PyDMDrawingPolyline
+
+
 def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
@@ -385,7 +426,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 )
 
             elif isinstance(obj, EDMObject):
-                widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
+                # Special handling for activelineclass - determine if it should be Polyline or IrregularPolygon
+                if obj.name.lower() == "activelineclass":
+                    widget_type = get_polyline_widget_type(obj)
+                else:
+                    widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
+
                 if obj.name.lower() == "menumuxclass":
                     menu_mux_buttons.append(obj)
                 if not widget_type:
@@ -452,7 +498,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if obj.name.lower() == "activechoicebuttonclass" and widget_type == QTabWidget:
                     populate_tab_bar(obj, widget)
-                if obj.name.lower() == "activelineclass" and isinstance(widget, PyDMDrawingPolyline):
+                if obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
@@ -462,8 +508,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen)
 
                         widget.points = point_strings
-                        widget.pen_width = pen
-                        widget.pen_color = (0, 0, 0)
+                        widget.penWidth = pen
+                        widget.penColor = (0, 0, 0, 255)
                         # widget.x, widget.y = geom["x"], geom["y"]
                         # widget.width       = geom["width"]
                         # widget.height      = geom["height"]
@@ -518,12 +564,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     for slider in generated_sliders:
                         pydm_widgets.append(slider)
 
-                if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline)):
-                    pad = widget.pen_width or 1
+                if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
+                    pad = widget.penWidth or 1
                     widget.width = int(widget.width) + pad
                     widget.height = int(widget.height) + pad
 
-                if obj.properties.get("autoSize", False):
+                if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
                     widget.autoSize = True
 
                 pydm_widgets.append(widget)

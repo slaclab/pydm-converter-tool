@@ -1078,6 +1078,53 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
 
 
 @dataclass
+class PyDMDrawingIrregularPolygon(Drawable, Hidable):
+    """
+    PyDMDrawingIrregularPolygon represents a filled irregular polygon defined by points.
+    The first and last points must be the same to close the shape, creating a defined
+    inside and outside that can be filled with color.
+
+    Attributes
+    ----------
+    points : Optional[List[str]]
+        A list of point strings in the format "x, y". First and last points should match
+        to close the polygon.
+    count : ClassVar[int]
+        Class variable tracking the number of PyDMDrawingIrregularPolygon instances.
+    """
+
+    points: Optional[List[str]] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate PyDMDrawingIrregularPolygon-specific properties for XML serialization.
+
+        Returns
+        -------
+        List[ET.Element]
+            A list of XML elements representing the PyDMDrawingIrregularPolygon properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.points is not None:
+            points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
+            stringlist = ET.SubElement(points_prop, "stringlist")
+
+            for point in self.points:
+                string_el = ET.SubElement(stringlist, "string")
+                string_el.text = point
+
+            # Ensure polygon is closed (first point == last point)
+            if self.points and self.points[0] != self.points[-1]:
+                string_el = ET.SubElement(stringlist, "string")
+                string_el.text = self.points[0]  # Add first point again to close
+
+            properties.append(points_prop)
+
+        return properties
+
+
+@dataclass
 class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
     """
     PyDMEmbeddedDisplay embeds another UI file (display) inside the current display.

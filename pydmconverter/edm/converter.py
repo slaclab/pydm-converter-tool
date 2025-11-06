@@ -13,6 +13,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
     "PyDMDrawingEllipse": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMDrawingLine": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMDrawingPolyline": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
+    "PyDMDrawingIrregularPolygon": {"extends": "QWidget", "header": "pydm.widgets.drawing", "container": ""},
     "PyDMLabel": {"extends": "QLabel", "header": "pydm.widgets.label", "container": ""},
     "PyDMEnumComboBox": {"extends": "QComboBox", "header": "pydm.widgets.enum_combo_box", "container": ""},
     "PyDMPushButton": {"extends": "QPushButton", "header": "pydm.widgets.pushbutton", "container": ""},
