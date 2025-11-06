@@ -730,6 +730,76 @@ def get_channel_tabs(channel: str, timeout: float = 0.5) -> List[str]:
     return None
 
 
+def count_loc_variable_instances(group: EDMGroup, channel_name: str) -> int:
+    """
+    Count how many times a location variable channel appears in the widget tree.
+
+    Parameters
+    ----------
+    group : EDMGroup
+        The group to search within
+    channel_name : str
+        The channel name to search for (e.g., "loc://myVar")
+
+    Returns
+    -------
+    int
+        Number of instances found
+    """
+    count = 0
+
+    def search_recursive(g: EDMGroup):
+        nonlocal count
+        for obj in g.objects:
+            if isinstance(obj, EDMGroup):
+                search_recursive(obj)
+            elif hasattr(obj, "properties"):
+                # Check all properties for the channel
+                for key, value in obj.properties.items():
+                    if isinstance(value, str) and channel_name in value:
+                        count += 1
+                        break  # Count this object once
+
+    search_recursive(group)
+    return count
+
+
+def create_hidden_frame_for_loc_variable(loc_variable: str, central_widget: EDMGroup) -> None:
+    """
+    Create a hidden PyDMFrame with the location variable to satisfy
+    the minimum 2-instance requirement for embedded tabs.
+
+    The frame is invisible and positioned at (0,0) with 0 size so it
+    doesn't interfere with clicks or disrupt the UI.
+
+    Parameters
+    ----------
+    loc_variable : str
+        The location variable (e.g., "loc://myVar?init=['tab1', 'tab2']")
+    central_widget : EDMGroup
+        The central widget group to add the hidden frame to
+    """
+    channel_name = loc_variable.split("?")[0]
+
+    # Create a minimal EDMObject for a hidden frame
+    hidden_frame = EDMObject(
+        name="Group",  # Will become PyDMFrame
+        properties={
+            "visPv": channel_name,  # Link to location variable
+            "visInvert": True,  # Inverted visibility = always hidden
+            "visMin": 0,
+            "visMax": 1,
+        },
+        x=0,
+        y=0,
+        width=0,  # Zero size - won't interfere with clicks
+        height=0,
+    )
+
+    central_widget.add_object(hidden_frame)
+    logger.info(f"Created hidden PyDMFrame for location variable: {channel_name}")
+
+
 def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     """
     If needed, creates tabs from local variables of this embedded display.
@@ -745,15 +815,30 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
         Returns true if embedded tabs added, returns false if unable to create embedded tabs
     """
     searched_arr = None
+    loc_variable = None
+    channel_name = None
+
     print(obj.properties.items())
     for prop_name, prop_val in obj.properties.items():
         if isinstance(prop_val, str) and (
             "loc://" in prop_val or "LOC\\" in prop_val
         ):  # TODO: is it possible to have multiple loc\\ in the same embedded display?
             searched_arr = prop_val.split("=")
+            loc_variable = prop_val  # Save full location variable string
             channel_name = prop_val.split("?")[0]
+
     if int(obj.properties["numDsps"]) <= 1 or searched_arr is None:
         return False
+
+    # Check if location variable only appears once - if so, create hidden frame
+    if loc_variable and channel_name:
+        instance_count = count_loc_variable_instances(central_widget, channel_name)
+
+        if instance_count < 2:
+            logger.info(f"Location variable {channel_name} only appears {instance_count} time(s)")
+            logger.info("Creating hidden PyDMFrame to satisfy minimum instance requirement")
+            create_hidden_frame_for_loc_variable(loc_variable, central_widget)
+
     # channel_name = searched_arr[0]
     string_list = searched_arr[-1]
 
