@@ -1054,31 +1054,22 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingPolyline properties.
         """
-        self.x -= 10
-        self.y -= 10
-        self.width += 20
-        self.height += (
-            20  # TODO: May need to come back and avoid hardcoding if it is possible to have non-arrow functions
-        )
         properties: List[ET.Element] = super().generate_properties()
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
             stringlist = ET.SubElement(points_prop, "stringlist")
             for point in self.points:
-                print(point)
-                point = ", ".join(str(int(x.strip()) + 10) for x in point.split(","))
                 string_el = ET.SubElement(stringlist, "string")
-                string_el.text = point
+                string_el.text = point  # Use points as-is, no offset adjustment
             if self.closePolygon is not None:
-                startPoint = ", ".join(str(int(x.strip()) + 10) for x in self.points[0].split(","))
                 string_el = ET.SubElement(stringlist, "string")
-                string_el.text = startPoint
+                string_el.text = self.points[0]  # Close polygon with first point
             properties.append(points_prop)
         return properties
 
 
 @dataclass
-class PyDMDrawingIrregularPolygon(Drawable, Hidable):
+class PyDMDrawingIrregularPolygon(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingIrregularPolygon represents a filled irregular polygon defined by points.
     The first and last points must be the same to close the shape, creating a defined
@@ -1105,6 +1096,12 @@ class PyDMDrawingIrregularPolygon(Drawable, Hidable):
             A list of XML elements representing the PyDMDrawingIrregularPolygon properties.
         """
         properties: List[ET.Element] = super().generate_properties()
+
+        # Always add transparent background for widget itself (not the polygon fill)
+        # This ensures the rectangular widget background doesn't obstruct other widgets
+        # The polygon shape will still be filled via the brush property
+        from pydmconverter.widgets_helpers import TransparentBackground
+        properties.append(TransparentBackground().to_xml())
 
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
