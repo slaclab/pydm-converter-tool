@@ -601,7 +601,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                         widget.points = point_strings
                         widget.penWidth = pen
-                        widget.penColor = (0, 0, 0, 255)
+                        # Only set default black pen color if not already set from EDM properties
+                        if widget.penColor is None:
+                            widget.penColor = (0, 0, 0, 255)
 
                         # Set fill color for IrregularPolygon
                         if isinstance(widget, PyDMDrawingIrregularPolygon):
