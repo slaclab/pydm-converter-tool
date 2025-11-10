@@ -30,6 +30,7 @@ import logging
 import math
 import os
 import copy
+import json
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
     # Graphics widgets
@@ -160,7 +161,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "commandLabel": "command_label",
     # Related display attributes
     "fileName": "filename",
-    "macro": "macro",
+    "macro": "macros",
+    "symbols": "macros",  # EDM related display buttons use "symbols" for macros
     "file": "filename",
     "useDisplayBg": "useDisplayBg",
     # Scatter plot attributes
@@ -425,6 +427,27 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                     if edm_attr == "font":
                         value = parse_font_string(value)
+                    if edm_attr in ("macro", "symbols"):
+                        # Handle macro conversion
+                        if isinstance(value, list):
+                            # Multiple displays with different macros (e.g., for PyDMRelatedDisplayButton)
+                            parsed_macros = []
+                            for macro_str in value:
+                                macro_dict = parse_edm_macros(macro_str)
+                                parsed_macros.append(json.dumps(macro_dict))
+                            # For PyDMRelatedDisplayButton, join with newlines
+                            value = "\n".join(parsed_macros) if parsed_macros else None
+                            logger.info(f"Converted macro list to: {value}")
+                        elif isinstance(value, str):
+                            # Single macro string - parse and convert to dict
+                            macro_dict = parse_edm_macros(value)
+                            if isinstance(widget, PyDMEmbeddedDisplay):
+                                # PyDMEmbeddedDisplay expects a dict
+                                value = macro_dict
+                            else:
+                                # PyDMRelatedDisplayButton expects a JSON string
+                                value = json.dumps(macro_dict) if macro_dict else None
+                            logger.info(f"Converted macro string to: {value}")
                     if edm_attr == "fillColor":
                         original_value = value
                         color_tuple = convert_color_property_to_qcolor(value, color_data=color_list_dict)
@@ -834,6 +857,63 @@ def get_string_value(value: list) -> str:
     Takes in a value string and joins each element into a string separated by a new line
     """
     return "\n".join(value)
+
+
+def parse_edm_macros(macro_string: str) -> dict:
+    """
+    Parse an EDM macro string into a dictionary for PyDM widgets.
+
+    EDM macros are in the format: "KEY1=value1,KEY2=value2,KEY3=value3"
+    This function converts them to a Python dict: {"KEY1": "value1", "KEY2": "value2", "KEY3": "value3"}
+
+    Parameters
+    ----------
+    macro_string : str
+        The EDM macro string to parse (e.g., "P=CAMR:LI20:110,R=:ASYN")
+
+    Returns
+    -------
+    dict
+        A dictionary containing the parsed macro key-value pairs.
+        Returns an empty dict if the input is empty or None.
+
+    Examples
+    --------
+    >>> parse_edm_macros("P=CAMR:LI20:110,R=:ASYN")
+    {'P': 'CAMR:LI20:110', 'R': ':ASYN'}
+    >>> parse_edm_macros("DEVICE=IOC:SYS0:1")
+    {'DEVICE': 'IOC:SYS0:1'}
+    >>> parse_edm_macros("")
+    {}
+    """
+    if not macro_string or not isinstance(macro_string, str):
+        return {}
+
+    macro_dict = {}
+    macro_string = macro_string.strip()
+
+    if not macro_string:
+        return {}
+
+    # Split by comma to get individual key=value pairs
+    pairs = macro_string.split(",")
+
+    for pair in pairs:
+        pair = pair.strip()
+        if "=" in pair:
+            key, value = pair.split("=", 1)  # Split on first '=' only
+            key = key.strip()
+            value = value.strip()
+            # Remove quotes if present
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            if value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+            macro_dict[key] = value
+        else:
+            logger.warning(f"Invalid macro pair format: '{pair}' in macro string: '{macro_string}'")
+
+    return macro_dict
 
 
 def parse_font_string(font_str: str) -> dict:
