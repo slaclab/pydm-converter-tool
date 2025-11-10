@@ -1675,12 +1675,12 @@ class Controllable(Tangible):
             for elem in self.visPvList:
                 group_channel, group_min, group_max = elem
                 self.rules.append(
-                    RuleArguments("Visible", group_channel, False, self.visInvert is None, group_min, group_max)
+                    RuleArguments("Visible", group_channel, False, not self.visInvert if self.visInvert is not None else True, group_min, group_max)
                 )
 
         if self.visPv is not None:
             self.rules.append(
-                RuleArguments("Visible", self.visPv, False, self.visInvert is None, self.visMin, self.visMax)
+                RuleArguments("Visible", self.visPv, False, not self.visInvert if self.visInvert is not None else True, self.visMin, self.visMax)
             )
 
         hidden_widgets = [
