@@ -20,6 +20,7 @@ from pydmconverter.widgets import (
     QTableWidget,
     PyDMByteIndicator,
     PyDMDrawingArc,
+    PyDMDrawingPie,
     PyDMWaveformPlot,
     PyDMScaleIndicator,
     PyDMSlider,
@@ -320,6 +321,34 @@ def get_polyline_widget_type(obj: EDMObject) -> type:
         return PyDMDrawingPolyline
 
 
+def get_arc_widget_type(obj: EDMObject) -> type:
+    """
+    Determine if an activearcclass should be PyDMDrawingPie or PyDMDrawingArc.
+
+    Returns PyDMDrawingPie if the arc has fill enabled.
+    Otherwise returns PyDMDrawingArc.
+
+    Parameters
+    ----------
+    obj : EDMObject
+        The EDM object to analyze
+
+    Returns
+    -------
+    type
+        Either PyDMDrawingPie or PyDMDrawingArc
+    """
+    has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
+    has_fill_color = "fillColor" in obj.properties
+
+    # Use PyDMDrawingPie if it has fill/fillColor
+    if has_fill or has_fill_color:
+        logger.info("Converting filled arc to PyDMDrawingPie")
+        return PyDMDrawingPie
+    else:
+        return PyDMDrawingArc
+
+
 def widgets_overlap(widget1, widget2) -> bool:
     """
     Check if two widgets overlap based on their geometry (x, y, width, height).
@@ -514,6 +543,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 # Special handling for activelineclass - determine if it should be Polyline or IrregularPolygon
                 if obj.name.lower() == "activelineclass":
                     widget_type = get_polyline_widget_type(obj)
+                # Special handling for activearcclass - determine if it should be Pie or Arc
+                elif obj.name.lower() == "activearcclass":
+                    widget_type = get_arc_widget_type(obj)
                 else:
                     widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
 
@@ -712,6 +744,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         widget.width = min_width
                     if widget.height < min_height:
                         widget.height = min_height
+
+                # Enable alarm-sensitive content for all filled drawing widgets
+                # This makes the fill color visible in PyDM
+                if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
+                    if hasattr(widget, 'brushColor') and widget.brushColor is not None:
+                        widget.alarm_sensitive_content = True
+                        logger.info(f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible")
 
                 if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
                     widget.autoSize = True
