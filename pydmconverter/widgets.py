@@ -319,13 +319,42 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
         List[etree.Element]
             A list containing arc properties.
         """
-        self.x -= 4
-        self.width += 4  # TODO: Find a better solution
         properties: List[ET.Element] = super().generate_properties()
         if self.startAngle is not None:
             properties.append(
                 Double("startAngle", self.startAngle).to_xml()
             )  # TODO: Maybe make a float class (probabaly unnecessary)
+        properties.append(Int("spanAngle", self.spanAngle).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMDrawingPie(Alarmable, Drawable, Hidable, StyleSheetObject):
+    """
+    PyDMDrawingPie represents a filled pie/wedge shape that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This is used for EDM arcs that have fill enabled.
+    """
+
+    startAngle: Optional[float] = None
+    spanAngle: Optional[int] = 180
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the pie widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing pie properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+        if self.startAngle is not None:
+            properties.append(
+                Double("startAngle", self.startAngle).to_xml()
+            )
         properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
         return properties
@@ -1061,9 +1090,14 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
             for point in self.points:
                 string_el = ET.SubElement(stringlist, "string")
                 string_el.text = point  # Use points as-is, no offset adjustment
-            if self.closePolygon is not None:
-                string_el = ET.SubElement(stringlist, "string")
-                string_el.text = self.points[0]  # Close polygon with first point
+
+            # If closePolygon is True, add the first point at the end to close the shape
+            if self.closePolygon is True:
+                # Only add closing point if first and last are different
+                if self.points and self.points[0] != self.points[-1]:
+                    string_el = ET.SubElement(stringlist, "string")
+                    string_el.text = self.points[0]  # Close polygon with first point
+
             properties.append(points_prop)
         return properties
 

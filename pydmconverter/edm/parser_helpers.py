@@ -70,7 +70,7 @@ def parse_calc_list(calc_list_path: str) -> Dict[str, Tuple[Optional[str], Optio
     """
     calc_dict: Dict[str, Tuple[Optional[str], Optional[str]]] = {}
 
-    if not os.path.isfile(calc_list_path):
+    if calc_list_path is None or not os.path.isfile(calc_list_path):
         return calc_dict
 
     with open(calc_list_path, "r") as f:
@@ -658,6 +658,9 @@ def parse_colors_list(filepath: str) -> Dict[str, Any]:
         "menumap": [],
         "alarm": {},
     }
+
+    if filepath is None:
+        return parsed_data
 
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
