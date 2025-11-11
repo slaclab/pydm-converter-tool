@@ -627,7 +627,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                         arrow_size = 0
                         if "arrows" in obj.properties and obj.properties["arrows"] in ("to", "from", "both"):
-                            arrow_size = int(15 * scale)  
+                            arrow_size = int(15 * scale)
 
                         startCoord = (obj.x, obj.y)
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen, arrow_size)
@@ -642,7 +642,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                                 widget.brushFill = True
                                 logger.info(f"IrregularPolygon has explicit brushColor: {widget.brushColor}")
                             else:
-                                widget.brushColor = (255, 255, 255, 255)  
+                                widget.brushColor = (255, 255, 255, 255)
                                 widget.brushFill = True
                                 logger.info(
                                     "Setting default white fill color for IrregularPolygon (no fillColor specified)"
@@ -720,7 +720,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         )
                         pad = pad + alarm_border_pad
 
-                    min_dim = max(pad * 2, 3)  
+                    min_dim = max(pad * 2, 3)
 
                     if widget.width < min_dim:
                         widget.width = min_dim
@@ -733,8 +733,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         widget.height = int(widget.height) + pad
 
                 if isinstance(widget, PyDMLabel):
-                    min_width = 20  
-                    min_height = 14  
+                    min_width = 20
+                    min_height = 14
 
                     if widget.width < min_width:
                         widget.width = min_width
@@ -1010,16 +1010,16 @@ def create_hidden_frame_for_loc_variable(loc_variable: str, central_widget: EDMG
     channel_name = loc_variable.split("?")[0]
 
     hidden_frame = EDMObject(
-        name="Group",  
+        name="Group",
         properties={
-            "visPv": channel_name,  
-            "visInvert": True, 
+            "visPv": channel_name,
+            "visInvert": True,
             "visMin": 0,
             "visMax": 1,
         },
         x=0,
         y=0,
-        width=0, 
+        width=0,
         height=0,
     )
 
@@ -1193,7 +1193,7 @@ def parse_edm_macros(macro_string: str) -> dict:
     for pair in pairs:
         pair = pair.strip()
         if "=" in pair:
-            key, value = pair.split("=", 1)  
+            key, value = pair.split("=", 1)
             key = key.strip()
             value = value.strip()
             if value.startswith('"') and value.endswith('"'):

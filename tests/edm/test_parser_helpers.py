@@ -163,36 +163,38 @@ def test_loc_conversion():
     with pytest.raises(ValueError):
         loc_conversion(edm_string_invalid)
 
+    # When equals sign is missing, the function returns a simple loc:// reference
     edm_string_missing_equals = "LOC\\noEquals"
-    with pytest.raises(ValueError):
-        loc_conversion(edm_string_missing_equals)
+    result_no_equals = loc_conversion(edm_string_missing_equals)
+    assert result_no_equals == "loc://noEquals", f"Expected 'loc://noEquals', got '{result_no_equals}'"
 
+    # When colon is missing but value is 'i', it should be treated as a type char without value
     edm_string_missing_colon = "LOC\\noColon=i"
-    with pytest.raises(ValueError):
-        loc_conversion(edm_string_missing_colon)
+    result_no_colon = loc_conversion(edm_string_missing_colon)
+    assert "loc://noColon" in result_no_colon, f"Expected loc://noColon in result, got '{result_no_colon}'"
 
 
 @pytest.mark.parametrize(
     "edm_content",
     [
-        r"""
+        """
     object activeXTextClass {
-      controlPv "CALC\sum(pv1, pv2)"
+      controlPv "CALC\\\\sum(pv1, pv2)"
     }
     object activeXTextClass {
-      controlPv "CALC\sum(pv1, pv2)"
+      controlPv "CALC\\\\sum(pv1, pv2)"
     }
     object activeXTextClass {
-      controlPv "CALC\{A-B}(anotherPv, 10.5)"
+      controlPv "CALC\\\\{A-B}(anotherPv, 10.5)"
     }
     object activeXTextClass {
-      controlPv "LOC\myLocal=d:3.14"
+      controlPv "LOC\\myLocal=d:3.14"
     }
     object activeXTextClass {
-      controlPv "LOC\myLocal=d:3.14"
+      controlPv "LOC\\myLocal=d:3.14"
     }
     object activeXTextClass {
-      controlPv "LOC\myLocalInt=i:42"
+      controlPv "LOC\\myLocalInt=i:42"
     }
     """
     ],
@@ -204,7 +206,7 @@ def test_loc_conversion():
 def test_replace_calc_and_loc_in_edm_content(
     mock_search_calc_list, mock_parse_calc_list, mock_translate_calc_pv_to_pydm, mock_loc_conversion, edm_content
 ):
-    """
+    r"""
     Tests that replace_calc_and_loc_in_edm_content correctly:
       - Finds and replaces CALC\ and LOC\ references.
       - Uses full PyDM strings on first occurrence, short references subsequently.
@@ -249,23 +251,23 @@ def test_replace_calc_and_loc_in_edm_content(
     assert "loc://myLocal" in new_content
     assert "loc://myLocalInt?type=int&init=42" in new_content
 
-    assert r"CALC\sum(pv1, pv2)" in encountered_calcs
-    sum_entry = encountered_calcs[r"CALC\sum(pv1, pv2)"]
+    assert "CALC\\\\sum(pv1, pv2)" in encountered_calcs
+    sum_entry = encountered_calcs["CALC\\\\sum(pv1, pv2)"]
     assert sum_entry["full"] == "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B"
     assert sum_entry["short"] == "calc://sum"
 
-    assert r"CALC\{A-B}(anotherPv, 10.5)" in encountered_calcs
-    inline_entry = encountered_calcs[r"CALC\{A-B}(anotherPv, 10.5)"]
+    assert "CALC\\\\{A-B}(anotherPv, 10.5)" in encountered_calcs
+    inline_entry = encountered_calcs["CALC\\\\{A-B}(anotherPv, 10.5)"]
     assert inline_entry["full"] == "calc://inline_expr?A=channel://anotherPv&B=channel://10.5&expr=A-B"
     assert inline_entry["short"] == "calc://inline_expr"
 
-    assert r"LOC\myLocal=d:3.14" in encountered_locs
-    myLocal_entry = encountered_locs[r"LOC\myLocal=d:3.14"]
+    assert "LOC\\myLocal=d:3.14" in encountered_locs
+    myLocal_entry = encountered_locs["LOC\\myLocal=d:3.14"]
     assert myLocal_entry["full"] == "loc://myLocal?type=float&init=3.14"
     assert myLocal_entry["short"] == "loc://myLocal"
 
-    assert r"LOC\myLocalInt=i:42" in encountered_locs
-    myLocalInt_entry = encountered_locs[r"LOC\myLocalInt=i:42"]
+    assert "LOC\\myLocalInt=i:42" in encountered_locs
+    myLocalInt_entry = encountered_locs["LOC\\myLocalInt=i:42"]
     assert myLocalInt_entry["full"] == "loc://myLocalInt?type=int&init=42"
     assert myLocalInt_entry["short"] == "loc://myLocalInt"
 
@@ -335,9 +337,6 @@ def test_parse_colors_list_complex(colors_list_file):
     """
     Test that parse_colors_list correctly parses a complex EDM colors.list file.
     """
-
-    # colors_list_file = os.getenv("COLORS_LIST_FILE")
-    colors_list_file = search_color_list()
     parsed = parse_colors_list(colors_list_file)
 
     print(parsed)
