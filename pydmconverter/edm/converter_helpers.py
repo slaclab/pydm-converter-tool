@@ -638,7 +638,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if obj.name.lower() == "activechoicebuttonclass" and widget_type == QTabWidget:
                     populate_tab_bar(obj, widget)
-                if obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
+                if obj.name.lower() == "activelineclass" and isinstance(
+                    widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)
+                ):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
@@ -672,12 +674,16 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                                 # This matches EDM behavior where filled shapes default to white
                                 widget.brushColor = (255, 255, 255, 255)  # White
                                 widget.brushFill = True
-                                logger.info("Setting default white fill color for IrregularPolygon (no fillColor specified)")
+                                logger.info(
+                                    "Setting default white fill color for IrregularPolygon (no fillColor specified)"
+                                )
 
                             # Enable alarm-sensitive content so the fill color is visible in PyDM
                             # When False, PyDM may not render the brush fill properly
                             widget.alarm_sensitive_content = True
-                            logger.info("Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible")
+                            logger.info(
+                                "Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible"
+                            )
 
                         # Use calculated geometry for polylines instead of obj dimensions
                         widget.x = int(geom["x"] + offset_x)
@@ -685,7 +691,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                         widget.width = int(geom["width"])
                         widget.height = int(geom["height"])
                 # Skip standard transformation for polylines (they use calculated geometry)
-                elif not (obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))):
+                elif not (
+                    obj.name.lower() == "activelineclass"
+                    and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
+                ):
                     if parent_pydm_group is None:
                         x, y, width, height = transform_edm_to_pydm(
                             obj.x,
@@ -742,7 +751,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     # Add extra padding for IrregularPolygon alarm borders
                     # PyDM alarm borders draw inside the widget, taking up ~2-4 pixels
                     if isinstance(widget, PyDMDrawingIrregularPolygon):
-                        alarm_border_pad = 4 if hasattr(widget, 'alarm_sensitive_border') and widget.alarm_sensitive_border else 0
+                        alarm_border_pad = (
+                            4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
+                        )
                         pad = pad + alarm_border_pad
 
                     # Ensure minimum dimensions for very thin/straight lines
@@ -771,9 +782,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 # Enable alarm-sensitive content for all filled drawing widgets
                 # This makes the fill color visible in PyDM
                 if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
-                    if hasattr(widget, 'brushColor') and widget.brushColor is not None:
+                    if hasattr(widget, "brushColor") and widget.brushColor is not None:
                         widget.alarm_sensitive_content = True
-                        logger.info(f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible")
+                        logger.info(
+                            f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible"
+                        )
 
                 if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
                     widget.autoSize = True
@@ -959,7 +972,7 @@ def populate_tab_bar(obj: EDMObject, widget):
     if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
         file_list = obj.properties["displayFileName"]
         for index, tab_name in enumerate(tab_names):
-            widget_name = tab_name.replace('/', '')
+            widget_name = tab_name.replace("/", "")
             child_widget = QWidget(title=tab_name)
             widget.add_child(child_widget)
             embedded_widget = PyDMEmbeddedDisplay(
@@ -1098,12 +1111,12 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     # channel_name = searched_arr[0]
     string_list = searched_arr[-1]
 
-    if string_list.startswith('[') and string_list.endswith(']'):
-        # It's a list 
+    if string_list.startswith("[") and string_list.endswith("]"):
+        # It's a list
         channel_list = string_list[1:-1].split(", ")
         tab_names = [item.strip("'") for item in channel_list]
     else:
-        # It's a single string 
+        # It's a single string
         tab_names = [string_list.strip("'")]
 
     for i in range(len(tab_names)):
