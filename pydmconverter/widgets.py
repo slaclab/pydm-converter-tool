@@ -633,9 +633,9 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
         If True, redirects the command output.
     allow_multiple_executions : Optional[bool]
         If True, permits multiple command executions.
-    titles : Optional[str]
-        Titles associated with the command.
-    commands : Optional[str]
+    titles : Optional[List[str]]
+        Titles associated with the commands (one per command).
+    command : Optional[List[str]]
         The shell commands to execute.
     count : ClassVar[int]
         Class variable tracking the number of PyDMShellCommand instances.
@@ -648,7 +648,7 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
     show_icon: Optional[bool] = None
     redirect_command_output: Optional[bool] = None
     allow_multiple_executions: Optional[bool] = None
-    titles: Optional[str] = None
+    titles: Optional[List[str]] = None
     command: Optional[List[str]] = None
 
     def generate_properties(self) -> List[ET.Element]:
@@ -677,9 +677,9 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Bool("redirectCommandOutput", self.redirect_command_output).to_xml())
         if self.allow_multiple_executions is not None:
             properties.append(Bool("allowMultipleExecutions", self.allow_multiple_executions).to_xml())
-        if self.titles is not None:
-            properties.append(Str("titles", self.titles).to_xml())
-            properties.append(StringList("command", self.command).to_xml())
+        if self.titles is not None and self.command is not None:
+            properties.append(StringList("titles", self.titles).to_xml())
+            properties.append(StringList("commands", self.command).to_xml())
         return properties
 
 
