@@ -89,7 +89,8 @@ class EDMFileParser:
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
 
     def modify_text(self, file_path) -> str:  # unnecessary return
-        self.text = self.text.replace("$(!W)", "")
+        # Replace $(!W) with a marker so we can make those LOC variables unique later
+        self.text = self.text.replace("$(!W)", "__UNIQUE__")
 
         self.text = self.text.replace(
             "$(!A)", ""

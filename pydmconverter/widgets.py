@@ -1192,7 +1192,9 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         if self.visible is not None:
             properties.append(Bool("visible", self.visible).to_xml())
         if self.noscroll is not None:
-            scroll: Bool = not self.noscroll
+            # Always enable scrolling for embedded displays to show all content
+            # EDM's noScroll doesn't map well to PyDM since PyDM doesn't auto-scale
+            scroll: bool = True
             properties.append(Bool("scrollable", scroll).to_xml())
         if (
             self.foreground_color is not None
