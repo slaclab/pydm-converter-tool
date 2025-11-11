@@ -319,13 +319,42 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
         List[etree.Element]
             A list containing arc properties.
         """
-        self.x -= 4
-        self.width += 4  # TODO: Find a better solution
         properties: List[ET.Element] = super().generate_properties()
         if self.startAngle is not None:
             properties.append(
                 Double("startAngle", self.startAngle).to_xml()
             )  # TODO: Maybe make a float class (probabaly unnecessary)
+        properties.append(Int("spanAngle", self.spanAngle).to_xml())
+
+        return properties
+
+
+@dataclass
+class PyDMDrawingPie(Alarmable, Drawable, Hidable, StyleSheetObject):
+    """
+    PyDMDrawingPie represents a filled pie/wedge shape that supports XML serialization,
+    alarm functionality, and can be hidden.
+
+    This is used for EDM arcs that have fill enabled.
+    """
+
+    startAngle: Optional[float] = None
+    spanAngle: Optional[int] = 180
+
+    def generate_properties(self) -> List[ET.Element]:
+        """
+        Generate XML properties for the pie widget.
+
+        Returns
+        -------
+        List[etree.Element]
+            A list containing pie properties.
+        """
+        properties: List[ET.Element] = super().generate_properties()
+        if self.startAngle is not None:
+            properties.append(
+                Double("startAngle", self.startAngle).to_xml()
+            )
         properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
         return properties
@@ -1054,31 +1083,27 @@ class PyDMDrawingPolyline(PyDMDrawingLine):
         List[ET.Element]
             A list of XML elements representing the PyDMDrawingPolyline properties.
         """
-        self.x -= 10
-        self.y -= 10
-        self.width += 20
-        self.height += (
-            20  # TODO: May need to come back and avoid hardcoding if it is possible to have non-arrow functions
-        )
         properties: List[ET.Element] = super().generate_properties()
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
             stringlist = ET.SubElement(points_prop, "stringlist")
             for point in self.points:
-                print(point)
-                point = ", ".join(str(int(x.strip()) + 10) for x in point.split(","))
                 string_el = ET.SubElement(stringlist, "string")
-                string_el.text = point
-            if self.closePolygon is not None:
-                startPoint = ", ".join(str(int(x.strip()) + 10) for x in self.points[0].split(","))
-                string_el = ET.SubElement(stringlist, "string")
-                string_el.text = startPoint
+                string_el.text = point  # Use points as-is, no offset adjustment
+
+            # If closePolygon is True, add the first point at the end to close the shape
+            if self.closePolygon is True:
+                # Only add closing point if first and last are different
+                if self.points and self.points[0] != self.points[-1]:
+                    string_el = ET.SubElement(stringlist, "string")
+                    string_el.text = self.points[0]  # Close polygon with first point
+
             properties.append(points_prop)
         return properties
 
 
 @dataclass
-class PyDMDrawingIrregularPolygon(Drawable, Hidable):
+class PyDMDrawingIrregularPolygon(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingIrregularPolygon represents a filled irregular polygon defined by points.
     The first and last points must be the same to close the shape, creating a defined
@@ -1105,6 +1130,12 @@ class PyDMDrawingIrregularPolygon(Drawable, Hidable):
             A list of XML elements representing the PyDMDrawingIrregularPolygon properties.
         """
         properties: List[ET.Element] = super().generate_properties()
+
+        # Always add transparent background for widget itself (not the polygon fill)
+        # This ensures the rectangular widget background doesn't obstruct other widgets
+        # The polygon shape will still be filled via the brush property
+        from pydmconverter.widgets_helpers import TransparentBackground
+        properties.append(TransparentBackground().to_xml())
 
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})
