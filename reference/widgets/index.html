@@ -8922,9 +8922,9 @@ redirect_command_output : Optional[bool]
     If True, redirects the command output.
 allow_multiple_executions : Optional[bool]
     If True, permits multiple command executions.
-titles : Optional[str]
-    Titles associated with the command.
-commands : Optional[str]
+titles : Optional[List[str]]
+    Titles associated with the commands (one per command).
+command : Optional[List[str]]
     The shell commands to execute.
 count : ClassVar[int]
     Class variable tracking the number of PyDMShellCommand instances.</p>
@@ -9026,9 +9026,9 @@ count : ClassVar[int]
 <span class="sd">        If True, redirects the command output.</span>
 <span class="sd">    allow_multiple_executions : Optional[bool]</span>
 <span class="sd">        If True, permits multiple command executions.</span>
-<span class="sd">    titles : Optional[str]</span>
-<span class="sd">        Titles associated with the command.</span>
-<span class="sd">    commands : Optional[str]</span>
+<span class="sd">    titles : Optional[List[str]]</span>
+<span class="sd">        Titles associated with the commands (one per command).</span>
+<span class="sd">    command : Optional[List[str]]</span>
 <span class="sd">        The shell commands to execute.</span>
 <span class="sd">    count : ClassVar[int]</span>
 <span class="sd">        Class variable tracking the number of PyDMShellCommand instances.</span>
@@ -9041,7 +9041,7 @@ count : ClassVar[int]
     <span class="n">show_icon</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">redirect_command_output</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">allow_multiple_executions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">titles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">titles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">command</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
@@ -9070,9 +9070,9 @@ count : ClassVar[int]
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;redirectCommandOutput&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">redirect_command_output</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_multiple_executions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;allowMultipleExecutions&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_multiple_executions</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Str</span><span class="p">(</span><span class="s2">&quot;titles&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;titles&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;commands&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">return</span> <span class="n">properties</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -9163,9 +9163,9 @@ count : ClassVar[int]
         <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;redirectCommandOutput&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">redirect_command_output</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_multiple_executions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;allowMultipleExecutions&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_multiple_executions</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Str</span><span class="p">(</span><span class="s2">&quot;titles&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;titles&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">titles</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;commands&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">properties</span>
 </code></pre></div></td></tr></table></div>
             </details>
