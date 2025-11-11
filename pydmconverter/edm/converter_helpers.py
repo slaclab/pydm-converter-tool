@@ -160,7 +160,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "args": "arguments",
     "command": "command",
     "numCmds": "numCmds",
-    "commandLabel": "command_label",
+    "commandLabel": "titles",
     # Related display attributes
     "fileName": "filename",
     "macro": "macros",
