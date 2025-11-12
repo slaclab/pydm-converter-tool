@@ -981,6 +981,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#edm.parser_helpers.reformat_calc_expression" class="md-nav__link">
+    <span class="md-ellipsis">
+      reformat_calc_expression
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#edm.parser_helpers.replace_calc_and_loc_in_edm_content" class="md-nav__link">
     <span class="md-ellipsis">
       replace_calc_and_loc_in_edm_content
@@ -1525,6 +1534,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#edm.parser_helpers.reformat_calc_expression" class="md-nav__link">
+    <span class="md-ellipsis">
+      reformat_calc_expression
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#edm.parser_helpers.replace_calc_and_loc_in_edm_content" class="md-nav__link">
     <span class="md-ellipsis">
       replace_calc_and_loc_in_edm_content
@@ -1934,26 +1952,7 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">858</span>
-<span class="normal">859</span>
-<span class="normal">860</span>
-<span class="normal">861</span>
-<span class="normal">862</span>
-<span class="normal">863</span>
-<span class="normal">864</span>
-<span class="normal">865</span>
-<span class="normal">866</span>
-<span class="normal">867</span>
-<span class="normal">868</span>
-<span class="normal">869</span>
-<span class="normal">870</span>
-<span class="normal">871</span>
-<span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span>
-<span class="normal">875</span>
-<span class="normal">876</span>
-<span class="normal">877</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">877</span>
 <span class="normal">878</span>
 <span class="normal">879</span>
 <span class="normal">880</span>
@@ -1968,7 +1967,26 @@ arg_list : List[str]
 <span class="normal">889</span>
 <span class="normal">890</span>
 <span class="normal">891</span>
-<span class="normal">892</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_color_property_to_qcolor</span><span class="p">(</span><span class="n">fillColor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span>
+<span class="normal">895</span>
+<span class="normal">896</span>
+<span class="normal">897</span>
+<span class="normal">898</span>
+<span class="normal">899</span>
+<span class="normal">900</span>
+<span class="normal">901</span>
+<span class="normal">902</span>
+<span class="normal">903</span>
+<span class="normal">904</span>
+<span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_color_property_to_qcolor</span><span class="p">(</span><span class="n">fillColor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the EDM &#39;fillColor&#39;, &#39;bgColor&#39;, &#39;fgColor&#39; property into a tuple representing RGBA values.</span>
 
@@ -2096,27 +2114,27 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">817</span>
-<span class="normal">818</span>
-<span class="normal">819</span>
-<span class="normal">820</span>
-<span class="normal">821</span>
-<span class="normal">822</span>
-<span class="normal">823</span>
-<span class="normal">824</span>
-<span class="normal">825</span>
-<span class="normal">826</span>
-<span class="normal">827</span>
-<span class="normal">828</span>
-<span class="normal">829</span>
-<span class="normal">830</span>
-<span class="normal">831</span>
-<span class="normal">832</span>
-<span class="normal">833</span>
-<span class="normal">834</span>
-<span class="normal">835</span>
-<span class="normal">836</span>
-<span class="normal">837</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_index</span><span class="p">(</span><span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_index</span><span class="p">(</span><span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Retrieve the color definition from color_data using an index string like &#39;index 3&#39;.</span>
 
@@ -2214,22 +2232,22 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">840</span>
-<span class="normal">841</span>
-<span class="normal">842</span>
-<span class="normal">843</span>
-<span class="normal">844</span>
-<span class="normal">845</span>
-<span class="normal">846</span>
-<span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span>
-<span class="normal">851</span>
-<span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_rgb</span><span class="p">(</span><span class="n">colorStr</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">859</span>
+<span class="normal">860</span>
+<span class="normal">861</span>
+<span class="normal">862</span>
+<span class="normal">863</span>
+<span class="normal">864</span>
+<span class="normal">865</span>
+<span class="normal">866</span>
+<span class="normal">867</span>
+<span class="normal">868</span>
+<span class="normal">869</span>
+<span class="normal">870</span>
+<span class="normal">871</span>
+<span class="normal">872</span>
+<span class="normal">873</span>
+<span class="normal">874</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_rgb</span><span class="p">(</span><span class="n">colorStr</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Retrieve the color definition from color_data using an rgb string like &#39;rgb 0 0 0&#39;.</span>
 
@@ -2284,26 +2302,7 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span>
-<span class="normal">349</span>
-<span class="normal">350</span>
-<span class="normal">351</span>
-<span class="normal">352</span>
-<span class="normal">353</span>
-<span class="normal">354</span>
-<span class="normal">355</span>
-<span class="normal">356</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">356</span>
 <span class="normal">357</span>
 <span class="normal">358</span>
 <span class="normal">359</span>
@@ -2409,7 +2408,26 @@ arg_list : List[str]
 <span class="normal">459</span>
 <span class="normal">460</span>
 <span class="normal">461</span>
-<span class="normal">462</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loc_conversion</span><span class="p">(</span><span class="n">edm_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loc_conversion</span><span class="p">(</span><span class="n">edm_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert an EDM local PV string to a PyDM local variable string, mapping types to supported PyDM types.</span>
 
@@ -2916,26 +2934,7 @@ alarm : Dict[str, str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span>
-<span class="normal">581</span>
-<span class="normal">582</span>
-<span class="normal">583</span>
-<span class="normal">584</span>
-<span class="normal">585</span>
-<span class="normal">586</span>
-<span class="normal">587</span>
-<span class="normal">588</span>
-<span class="normal">589</span>
-<span class="normal">590</span>
-<span class="normal">591</span>
-<span class="normal">592</span>
-<span class="normal">593</span>
-<span class="normal">594</span>
-<span class="normal">595</span>
-<span class="normal">596</span>
-<span class="normal">597</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">597</span>
 <span class="normal">598</span>
 <span class="normal">599</span>
 <span class="normal">600</span>
@@ -3152,7 +3151,26 @@ alarm : Dict[str, str]
 <span class="normal">811</span>
 <span class="normal">812</span>
 <span class="normal">813</span>
-<span class="normal">814</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_colors_list</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_colors_list</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM `colors.list` file into a structured Python dictionary.</span>
 
@@ -3398,6 +3416,60 @@ alarm : Dict[str, str]
 <div class="doc doc-object doc-function">
 
 
+<h2 id="edm.parser_helpers.reformat_calc_expression" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">reformat_calc_expression</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert EPICS calc expression operators to Python equivalents.</p>
+<p>EPICS calc uses different operators than Python:
+- ^ for exponentiation (Python uses **)
+- # for not equal (Python uses !=)</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reformat_calc_expression</span><span class="p">(</span><span class="n">exp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert EPICS calc expression operators to Python equivalents.</span>
+
+<span class="sd">    EPICS calc uses different operators than Python:</span>
+<span class="sd">    - ^ for exponentiation (Python uses **)</span>
+<span class="sd">    - # for not equal (Python uses !=)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Exponentiation: ^ -&gt; **</span>
+    <span class="n">exp</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;^&quot;</span><span class="p">,</span> <span class="s2">&quot;**&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Not equal: # -&gt; !=</span>
+    <span class="n">exp</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">,</span> <span class="s2">&quot;!=&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">exp</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h2 id="edm.parser_helpers.replace_calc_and_loc_in_edm_content" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">replace_calc_and_loc_in_edm_content</span><span class="p">(</span><span class="n">edm_content</span><span class="p">,</span> <span class="n">filepath</span><span class="p">)</span></code>
 
@@ -3427,26 +3499,7 @@ encountered_locs : Dict[str, Dict[str, str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
-<span class="normal">469</span>
-<span class="normal">470</span>
-<span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
-<span class="normal">474</span>
-<span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">484</span>
 <span class="normal">485</span>
 <span class="normal">486</span>
 <span class="normal">487</span>
@@ -3497,7 +3550,26 @@ encountered_locs : Dict[str, Dict[str, str]]
 <span class="normal">532</span>
 <span class="normal">533</span>
 <span class="normal">534</span>
-<span class="normal">535</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">replace_calc_and_loc_in_edm_content</span><span class="p">(</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">replace_calc_and_loc_in_edm_content</span><span class="p">(</span>
     <span class="n">edm_content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3698,26 +3770,7 @@ by two consecutive non-comment lines:</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span>
-<span class="normal">541</span>
-<span class="normal">542</span>
-<span class="normal">543</span>
-<span class="normal">544</span>
-<span class="normal">545</span>
-<span class="normal">546</span>
-<span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span>
-<span class="normal">550</span>
-<span class="normal">551</span>
-<span class="normal">552</span>
-<span class="normal">553</span>
-<span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">557</span>
 <span class="normal">558</span>
 <span class="normal">559</span>
 <span class="normal">560</span>
@@ -3735,7 +3788,26 @@ by two consecutive non-comment lines:</p>
 <span class="normal">572</span>
 <span class="normal">573</span>
 <span class="normal">574</span>
-<span class="normal">575</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_color_list</span><span class="p">(</span><span class="n">cli_color_file</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">575</span>
+<span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span>
+<span class="normal">579</span>
+<span class="normal">580</span>
+<span class="normal">581</span>
+<span class="normal">582</span>
+<span class="normal">583</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span>
+<span class="normal">589</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span>
+<span class="normal">593</span>
+<span class="normal">594</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_color_list</span><span class="p">(</span><span class="n">cli_color_file</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Attempt to find the EDM color file by the following priority:</span>
 
@@ -3783,7 +3855,7 @@ by two consecutive non-comment lines:</p>
 
 
 <h2 id="edm.parser_helpers.translate_calc_pv_to_pydm" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">translate_calc_pv_to_pydm</span><span class="p">(</span><span class="n">edm_pv</span><span class="p">,</span> <span class="n">calc_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default_prefix</span><span class="o">=</span><span class="s1">&#39;channel://&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">translate_calc_pv_to_pydm</span><span class="p">(</span><span class="n">edm_pv</span><span class="p">,</span> <span class="n">calc_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default_prefix</span><span class="o">=</span><span class="s1">&#39;ca://&#39;</span><span class="p">)</span></code>
 
 </h2>
 
@@ -3896,10 +3968,12 @@ default_prefix : str, optional
 <span class="normal">331</span>
 <span class="normal">332</span>
 <span class="normal">333</span>
-<span class="normal">334</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">translate_calc_pv_to_pydm</span><span class="p">(</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">translate_calc_pv_to_pydm</span><span class="p">(</span>
     <span class="n">edm_pv</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">calc_dict</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">default_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;channel://&quot;</span><span class="p">,</span>
+    <span class="n">default_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ca://&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Translate an EDM-style CALC PV (e.g., &#39;CALC\\sum(pv1, pv2)&#39;) into</span>
@@ -3939,7 +4013,8 @@ default_prefix : str, optional
 
     <span class="k">if</span> <span class="n">is_inline_expr</span><span class="p">:</span>
         <span class="n">expression</span> <span class="o">=</span> <span class="n">name_or_expr</span>
-        <span class="n">identifier</span> <span class="o">=</span> <span class="s2">&quot;inline_expr&quot;</span>
+        <span class="c1"># identifier = &quot;inline_expr&quot;</span>
+        <span class="n">identifier</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;calc_</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="n">edm_pv</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">calc_name</span> <span class="o">=</span> <span class="n">name_or_expr</span>
         <span class="k">if</span> <span class="n">calc_name</span> <span class="o">==</span> <span class="s2">&quot;sum2&quot;</span><span class="p">:</span>  <span class="c1"># convert sum2 to sum (sum2 is not in calc_dict)</span>
@@ -3958,6 +4033,7 @@ default_prefix : str, optional
 
         <span class="n">identifier</span> <span class="o">=</span> <span class="n">calc_name</span>
 
+    <span class="n">expression</span> <span class="o">=</span> <span class="n">reformat_calc_expression</span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
     <span class="n">letters</span> <span class="o">=</span> <span class="s2">&quot;ABCDEFGHIJKL&quot;</span>
     <span class="n">var_map</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">arg_list</span><span class="p">):</span>
