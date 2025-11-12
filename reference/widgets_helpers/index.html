@@ -5397,21 +5397,7 @@ alarm_sensitive_border : bool
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1707</span>
-<span class="normal">1708</span>
-<span class="normal">1709</span>
-<span class="normal">1710</span>
-<span class="normal">1711</span>
-<span class="normal">1712</span>
-<span class="normal">1713</span>
-<span class="normal">1714</span>
-<span class="normal">1715</span>
-<span class="normal">1716</span>
-<span class="normal">1717</span>
-<span class="normal">1718</span>
-<span class="normal">1719</span>
-<span class="normal">1720</span>
-<span class="normal">1721</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1721</span>
 <span class="normal">1722</span>
 <span class="normal">1723</span>
 <span class="normal">1724</span>
@@ -5428,7 +5414,21 @@ alarm_sensitive_border : bool
 <span class="normal">1735</span>
 <span class="normal">1736</span>
 <span class="normal">1737</span>
-<span class="normal">1738</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1738</span>
+<span class="normal">1739</span>
+<span class="normal">1740</span>
+<span class="normal">1741</span>
+<span class="normal">1742</span>
+<span class="normal">1743</span>
+<span class="normal">1744</span>
+<span class="normal">1745</span>
+<span class="normal">1746</span>
+<span class="normal">1747</span>
+<span class="normal">1748</span>
+<span class="normal">1749</span>
+<span class="normal">1750</span>
+<span class="normal">1751</span>
+<span class="normal">1752</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Alarmable</span><span class="p">(</span><span class="n">Controllable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a widget that changes appearance based on an EPICS alarm state.</span>
@@ -5494,21 +5494,21 @@ alarm_sensitive_border : bool
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1724</span>
-<span class="normal">1725</span>
-<span class="normal">1726</span>
-<span class="normal">1727</span>
-<span class="normal">1728</span>
-<span class="normal">1729</span>
-<span class="normal">1730</span>
-<span class="normal">1731</span>
-<span class="normal">1732</span>
-<span class="normal">1733</span>
-<span class="normal">1734</span>
-<span class="normal">1735</span>
-<span class="normal">1736</span>
-<span class="normal">1737</span>
-<span class="normal">1738</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1738</span>
+<span class="normal">1739</span>
+<span class="normal">1740</span>
+<span class="normal">1741</span>
+<span class="normal">1742</span>
+<span class="normal">1743</span>
+<span class="normal">1744</span>
+<span class="normal">1745</span>
+<span class="normal">1746</span>
+<span class="normal">1747</span>
+<span class="normal">1748</span>
+<span class="normal">1749</span>
+<span class="normal">1750</span>
+<span class="normal">1751</span>
+<span class="normal">1752</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate XML properties for the alarmable widget.</span>
 
@@ -7114,7 +7114,21 @@ pydm_tool_tip : Optional[str]
 <span class="normal">1701</span>
 <span class="normal">1702</span>
 <span class="normal">1703</span>
-<span class="normal">1704</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1704</span>
+<span class="normal">1705</span>
+<span class="normal">1706</span>
+<span class="normal">1707</span>
+<span class="normal">1708</span>
+<span class="normal">1709</span>
+<span class="normal">1710</span>
+<span class="normal">1711</span>
+<span class="normal">1712</span>
+<span class="normal">1713</span>
+<span class="normal">1714</span>
+<span class="normal">1715</span>
+<span class="normal">1716</span>
+<span class="normal">1717</span>
+<span class="normal">1718</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Controllable</span><span class="p">(</span><span class="n">Tangible</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a widget that uses an EPICS PV.</span>
@@ -7163,12 +7177,26 @@ pydm_tool_tip : Optional[str]
             <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPvList</span><span class="p">:</span>
                 <span class="n">group_channel</span><span class="p">,</span> <span class="n">group_min</span><span class="p">,</span> <span class="n">group_max</span> <span class="o">=</span> <span class="n">elem</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="n">RuleArguments</span><span class="p">(</span><span class="s2">&quot;Visible&quot;</span><span class="p">,</span> <span class="n">group_channel</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span> <span class="n">group_min</span><span class="p">,</span> <span class="n">group_max</span><span class="p">)</span>
+                    <span class="n">RuleArguments</span><span class="p">(</span>
+                        <span class="s2">&quot;Visible&quot;</span><span class="p">,</span>
+                        <span class="n">group_channel</span><span class="p">,</span>
+                        <span class="kc">False</span><span class="p">,</span>
+                        <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="n">group_min</span><span class="p">,</span>
+                        <span class="n">group_max</span><span class="p">,</span>
+                    <span class="p">)</span>
                 <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">RuleArguments</span><span class="p">(</span><span class="s2">&quot;Visible&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visMin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visMax</span><span class="p">)</span>
+                <span class="n">RuleArguments</span><span class="p">(</span>
+                    <span class="s2">&quot;Visible&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span><span class="p">,</span>
+                    <span class="kc">False</span><span class="p">,</span>
+                    <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">visMin</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">visMax</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span>
 
         <span class="n">hidden_widgets</span> <span class="o">=</span> <span class="p">[</span>
@@ -7273,7 +7301,21 @@ pydm_tool_tip : Optional[str]
 <span class="normal">1701</span>
 <span class="normal">1702</span>
 <span class="normal">1703</span>
-<span class="normal">1704</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
+<span class="normal">1704</span>
+<span class="normal">1705</span>
+<span class="normal">1706</span>
+<span class="normal">1707</span>
+<span class="normal">1708</span>
+<span class="normal">1709</span>
+<span class="normal">1710</span>
+<span class="normal">1711</span>
+<span class="normal">1712</span>
+<span class="normal">1713</span>
+<span class="normal">1714</span>
+<span class="normal">1715</span>
+<span class="normal">1716</span>
+<span class="normal">1717</span>
+<span class="normal">1718</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate XML properties for the controllable widget.</span>
 
@@ -7296,12 +7338,26 @@ pydm_tool_tip : Optional[str]
         <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPvList</span><span class="p">:</span>
             <span class="n">group_channel</span><span class="p">,</span> <span class="n">group_min</span><span class="p">,</span> <span class="n">group_max</span> <span class="o">=</span> <span class="n">elem</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">RuleArguments</span><span class="p">(</span><span class="s2">&quot;Visible&quot;</span><span class="p">,</span> <span class="n">group_channel</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span> <span class="n">group_min</span><span class="p">,</span> <span class="n">group_max</span><span class="p">)</span>
+                <span class="n">RuleArguments</span><span class="p">(</span>
+                    <span class="s2">&quot;Visible&quot;</span><span class="p">,</span>
+                    <span class="n">group_channel</span><span class="p">,</span>
+                    <span class="kc">False</span><span class="p">,</span>
+                    <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="n">group_min</span><span class="p">,</span>
+                    <span class="n">group_max</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span>
 
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">RuleArguments</span><span class="p">(</span><span class="s2">&quot;Visible&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visMin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visMax</span><span class="p">)</span>
+            <span class="n">RuleArguments</span><span class="p">(</span>
+                <span class="s2">&quot;Visible&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">visPv</span><span class="p">,</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visInvert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">visMin</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">visMax</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="p">)</span>
 
     <span class="n">hidden_widgets</span> <span class="o">=</span> <span class="p">[</span>
@@ -7892,21 +7948,7 @@ rotation : Optional[float]
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1814</span>
-<span class="normal">1815</span>
-<span class="normal">1816</span>
-<span class="normal">1817</span>
-<span class="normal">1818</span>
-<span class="normal">1819</span>
-<span class="normal">1820</span>
-<span class="normal">1821</span>
-<span class="normal">1822</span>
-<span class="normal">1823</span>
-<span class="normal">1824</span>
-<span class="normal">1825</span>
-<span class="normal">1826</span>
-<span class="normal">1827</span>
-<span class="normal">1828</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1828</span>
 <span class="normal">1829</span>
 <span class="normal">1830</span>
 <span class="normal">1831</span>
@@ -7942,7 +7984,21 @@ rotation : Optional[float]
 <span class="normal">1861</span>
 <span class="normal">1862</span>
 <span class="normal">1863</span>
-<span class="normal">1864</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1864</span>
+<span class="normal">1865</span>
+<span class="normal">1866</span>
+<span class="normal">1867</span>
+<span class="normal">1868</span>
+<span class="normal">1869</span>
+<span class="normal">1870</span>
+<span class="normal">1871</span>
+<span class="normal">1872</span>
+<span class="normal">1873</span>
+<span class="normal">1874</span>
+<span class="normal">1875</span>
+<span class="normal">1876</span>
+<span class="normal">1877</span>
+<span class="normal">1878</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Drawable</span><span class="p">(</span><span class="n">Tangible</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a widget that can be drawn with pen and brush properties.</span>
@@ -8027,21 +8083,7 @@ rotation : Optional[float]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1842</span>
-<span class="normal">1843</span>
-<span class="normal">1844</span>
-<span class="normal">1845</span>
-<span class="normal">1846</span>
-<span class="normal">1847</span>
-<span class="normal">1848</span>
-<span class="normal">1849</span>
-<span class="normal">1850</span>
-<span class="normal">1851</span>
-<span class="normal">1852</span>
-<span class="normal">1853</span>
-<span class="normal">1854</span>
-<span class="normal">1855</span>
-<span class="normal">1856</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1856</span>
 <span class="normal">1857</span>
 <span class="normal">1858</span>
 <span class="normal">1859</span>
@@ -8049,7 +8091,21 @@ rotation : Optional[float]
 <span class="normal">1861</span>
 <span class="normal">1862</span>
 <span class="normal">1863</span>
-<span class="normal">1864</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
+<span class="normal">1864</span>
+<span class="normal">1865</span>
+<span class="normal">1866</span>
+<span class="normal">1867</span>
+<span class="normal">1868</span>
+<span class="normal">1869</span>
+<span class="normal">1870</span>
+<span class="normal">1871</span>
+<span class="normal">1872</span>
+<span class="normal">1873</span>
+<span class="normal">1874</span>
+<span class="normal">1875</span>
+<span class="normal">1876</span>
+<span class="normal">1877</span>
+<span class="normal">1878</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate XML properties for the drawable widget.</span>
 
@@ -8801,27 +8857,27 @@ visibility_invert : bool
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1741</span>
-<span class="normal">1742</span>
-<span class="normal">1743</span>
-<span class="normal">1744</span>
-<span class="normal">1745</span>
-<span class="normal">1746</span>
-<span class="normal">1747</span>
-<span class="normal">1748</span>
-<span class="normal">1749</span>
-<span class="normal">1750</span>
-<span class="normal">1751</span>
-<span class="normal">1752</span>
-<span class="normal">1753</span>
-<span class="normal">1754</span>
-<span class="normal">1755</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1755</span>
 <span class="normal">1756</span>
 <span class="normal">1757</span>
 <span class="normal">1758</span>
 <span class="normal">1759</span>
 <span class="normal">1760</span>
-<span class="normal">1761</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1761</span>
+<span class="normal">1762</span>
+<span class="normal">1763</span>
+<span class="normal">1764</span>
+<span class="normal">1765</span>
+<span class="normal">1766</span>
+<span class="normal">1767</span>
+<span class="normal">1768</span>
+<span class="normal">1769</span>
+<span class="normal">1770</span>
+<span class="normal">1771</span>
+<span class="normal">1772</span>
+<span class="normal">1773</span>
+<span class="normal">1774</span>
+<span class="normal">1775</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Hidable</span><span class="p">(</span><span class="n">Tangible</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a widget that can be hidden.</span>
@@ -13131,21 +13187,7 @@ background_color : Optional[RGBA]
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1764</span>
-<span class="normal">1765</span>
-<span class="normal">1766</span>
-<span class="normal">1767</span>
-<span class="normal">1768</span>
-<span class="normal">1769</span>
-<span class="normal">1770</span>
-<span class="normal">1771</span>
-<span class="normal">1772</span>
-<span class="normal">1773</span>
-<span class="normal">1774</span>
-<span class="normal">1775</span>
-<span class="normal">1776</span>
-<span class="normal">1777</span>
-<span class="normal">1778</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1778</span>
 <span class="normal">1779</span>
 <span class="normal">1780</span>
 <span class="normal">1781</span>
@@ -13172,7 +13214,21 @@ background_color : Optional[RGBA]
 <span class="normal">1802</span>
 <span class="normal">1803</span>
 <span class="normal">1804</span>
-<span class="normal">1805</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1805</span>
+<span class="normal">1806</span>
+<span class="normal">1807</span>
+<span class="normal">1808</span>
+<span class="normal">1809</span>
+<span class="normal">1810</span>
+<span class="normal">1811</span>
+<span class="normal">1812</span>
+<span class="normal">1813</span>
+<span class="normal">1814</span>
+<span class="normal">1815</span>
+<span class="normal">1816</span>
+<span class="normal">1817</span>
+<span class="normal">1818</span>
+<span class="normal">1819</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">StyleSheetObject</span><span class="p">(</span><span class="n">Tangible</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A base class for UI elements that support stylesheet-based customization.</span>
@@ -13250,21 +13306,7 @@ any stylesheets derived from foreground or background color settings.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1782</span>
-<span class="normal">1783</span>
-<span class="normal">1784</span>
-<span class="normal">1785</span>
-<span class="normal">1786</span>
-<span class="normal">1787</span>
-<span class="normal">1788</span>
-<span class="normal">1789</span>
-<span class="normal">1790</span>
-<span class="normal">1791</span>
-<span class="normal">1792</span>
-<span class="normal">1793</span>
-<span class="normal">1794</span>
-<span class="normal">1795</span>
-<span class="normal">1796</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1796</span>
 <span class="normal">1797</span>
 <span class="normal">1798</span>
 <span class="normal">1799</span>
@@ -13273,7 +13315,21 @@ any stylesheets derived from foreground or background color settings.</p>
 <span class="normal">1802</span>
 <span class="normal">1803</span>
 <span class="normal">1804</span>
-<span class="normal">1805</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
+<span class="normal">1805</span>
+<span class="normal">1806</span>
+<span class="normal">1807</span>
+<span class="normal">1808</span>
+<span class="normal">1809</span>
+<span class="normal">1810</span>
+<span class="normal">1811</span>
+<span class="normal">1812</span>
+<span class="normal">1813</span>
+<span class="normal">1814</span>
+<span class="normal">1815</span>
+<span class="normal">1816</span>
+<span class="normal">1817</span>
+<span class="normal">1818</span>
+<span class="normal">1819</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate a list of XML property elements for this object, including</span>
 <span class="sd">    any stylesheets derived from foreground or background color settings.</span>
