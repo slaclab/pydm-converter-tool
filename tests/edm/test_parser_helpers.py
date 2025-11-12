@@ -137,7 +137,8 @@ def test_translate_calc_pv_to_pydm():
 
     edm_pv_inline = "CALC\\{A*B}(x, y)"
     pydm_inline = translate_calc_pv_to_pydm(edm_pv_inline, default_prefix="pva://")
-    assert "calc://inline_expr?" in pydm_inline
+    # Inline expressions now use hash-based identifiers for uniqueness
+    assert "calc://calc_" in pydm_inline
     assert "A=pva://x" in pydm_inline
     assert "B=pva://y" in pydm_inline
     assert "expr=A*B" in pydm_inline
