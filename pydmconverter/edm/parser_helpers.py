@@ -337,7 +337,19 @@ def translate_calc_pv_to_pydm(
 
 
 def reformat_calc_expression(exp):
+    """
+    Convert EPICS calc expression operators to Python equivalents.
+
+    EPICS calc uses different operators than Python:
+    - ^ for exponentiation (Python uses **)
+    - # for not equal (Python uses !=)
+    """
+    # Exponentiation: ^ -> **
     exp = exp.replace("^", "**")
+
+    # Not equal: # -> !=
+    exp = exp.replace("#", "!=")
+
     return exp
 
 
