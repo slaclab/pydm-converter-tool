@@ -462,7 +462,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         offset_y: float = 0,
         central_widget: EDMGroup = None,
         parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
-        output_file_path=None,
         # parent_vis_range: Optional[Tuple[int, int]] = None,
     ):
         menu_mux_buttons = []
@@ -524,7 +523,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     offset_y=0,
                     central_widget=central_widget,
                     parent_vispvs=(parent_vispvs or []) + curr_vispv + symbol_vispv,
-                    output_file_path=output_file_path,
                     # parent_vis_range=(parent_vis_range or []) + curr_vis_range,
                 )
 
@@ -795,7 +793,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         None,
         parser.ui.height,
         central_widget=parser.ui,
-        output_file_path=parser.file_path,
     )
 
     pydm_widgets = handle_button_polygon_overlaps(pydm_widgets)
