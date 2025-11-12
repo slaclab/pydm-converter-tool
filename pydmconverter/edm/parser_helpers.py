@@ -255,7 +255,7 @@ def apply_rewrite_rule(rewrite_rule: str, arg_list: List[str]) -> List[str]:
 def translate_calc_pv_to_pydm(
     edm_pv: str,
     calc_dict: Optional[Dict[str, Tuple[Optional[str], Optional[str]]]] = None,
-    default_prefix: str = "channel://",
+    default_prefix: str = "ca://",
 ) -> str:
     """
     Translate an EDM-style CALC PV (e.g., 'CALC\\sum(pv1, pv2)') into
@@ -295,7 +295,8 @@ def translate_calc_pv_to_pydm(
 
     if is_inline_expr:
         expression = name_or_expr
-        identifier = "inline_expr"
+        # identifier = "inline_expr"
+        identifier = f"calc_{hash(edm_pv)}"
     else:
         calc_name = name_or_expr
         if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
@@ -314,6 +315,7 @@ def translate_calc_pv_to_pydm(
 
         identifier = calc_name
 
+    expression = reformat_calc_expression(expression)
     letters = "ABCDEFGHIJKL"
     var_map = {}
     for i, arg in enumerate(arg_list):
@@ -332,6 +334,23 @@ def translate_calc_pv_to_pydm(
     pydm_calc_address = f"calc://{identifier}?{query_str}"
 
     return pydm_calc_address
+
+
+def reformat_calc_expression(exp):
+    """
+    Convert EPICS calc expression operators to Python equivalents.
+
+    EPICS calc uses different operators than Python:
+    - ^ for exponentiation (Python uses **)
+    - # for not equal (Python uses !=)
+    """
+    # Exponentiation: ^ -> **
+    exp = exp.replace("^", "**")
+
+    # Not equal: # -> !=
+    exp = exp.replace("#", "!=")
+
+    return exp
 
 
 def loc_conversion(edm_string: str) -> str:
