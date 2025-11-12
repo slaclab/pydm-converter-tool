@@ -2,22 +2,54 @@
 
 ##Prerequisites
 
+## Installation Methods
 
-## Clone the Repository
+### Option 1: Install from PyPI (Recommended)
+The easiest way to install the converter is directly from PyPI:
 ``` bash
-git clone https://github.com/slaclab/pydm-converter-tool.git
+pip install PyDMConverter
 ```
 
-## Set up Environment
+### Option 2: Install from Source
+If you need the latest development version or want to contribute:
+
+#### Clone the Repository
+``` bash
+git clone https://github.com/slaclab/pydm-converter-tool.git
+cd pydm-converter-tool
+```
+
+#### Set up Environment
 Using `conda`:
 ``` bash
 conda env create -f environment.yml
 conda activate pydm
 ```
 
+Or using pip:
+``` bash
+pip install -e .
+```
+
 # How to Run the Converter
 
-This outlines the two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the [Arguments] page.
+The converter can be run in two ways: via the command line interface (CLI) or through the graphical user interface (GUI).
+
+## Launch the GUI
+
+To launch the graphical interface:
+``` bash
+pydmconverter
+```
+
+This will open the PyDM Converter GUI where you can:
+- Select files or folders to convert
+- Preview conversions before saving
+- Configure conversion options interactively
+
+## Command Line Interface
+
+The CLI provides two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the [Arguments] page.
 
   [Arguments]: arguments.md
 
