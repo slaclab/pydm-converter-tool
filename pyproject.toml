@@ -33,7 +33,12 @@ dependencies = [
 dynamic = ["version"]
 
 [tool.setuptools.packages.find]
-include = ["pydmconverter"]
+include = ["pydmconverter", "pydmconverter.*", "app", "app.*"]
+
+[tool.setuptools.package-data]
+pydmconverter = ["launch_gui.sh"]
+
+[tool.setuptools_scm]
 
 [project.scripts]
 pydmconverter = "pydmconverter.__main__:main"

@@ -28,11 +28,18 @@ from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawa
 def get_property_value(prop: etree.Element) -> Optional[str]:
     """
     Extract the actual value from a property element by checking known child tags.
+    For stringlist, returns the first string element's text.
     """
     for tag in ("string", "bool", "number", "enum", "set"):
         child = prop.find(tag)
         if child is not None:
             return child.text
+    # Handle stringlist - return first string element
+    stringlist = prop.find("stringlist")
+    if stringlist is not None:
+        first_string = stringlist.find("string")
+        if first_string is not None:
+            return first_string.text
     return prop.text
 
 
@@ -354,7 +361,7 @@ def test_pydmshellcommand_generate_properties():
         show_icon=False,
         redirect_command_output=True,
         allow_multiple_executions=False,
-        titles="Title",
+        titles=["Title"],
         command=["echo hello"],
     )
     properties: List[ET.Element] = widget.generate_properties()
@@ -368,8 +375,8 @@ def test_pydmshellcommand_generate_properties():
     assert prop_dict.get("redirectCommandOutput") == "true"
     assert prop_dict.get("allowMultipleExecutions") == "false"
     assert prop_dict.get("titles") == "Title"
-    # Check that command property exists (note: attribute is 'command', not 'commands')
-    assert "command" in [prop.get("name") for prop in properties]
+    # Check that commands property exists (note: property is 'commands', attribute is 'command')
+    assert "commands" in [prop.get("name") for prop in properties]
 
 
 # --- Tests for PyDMRelatedDisplayButton ---
