@@ -34,7 +34,7 @@ import os
 import copy
 import json
 
-EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame, QPushButton, QComboBox, PyDMDrawingLine
+EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame,  QComboBox
     # Graphics widgets
     "activerectangleclass": PyDMDrawingRectangle,
     "circle": PyDMDrawingEllipse,
@@ -307,15 +307,12 @@ def get_polyline_widget_type(obj: EDMObject) -> type:
     has_fill_color = "fillColor" in obj.properties
     is_closed = obj.properties.get("closePolygon") is True
 
-    # Check if first and last points match
     if not is_closed and "xPoints" in obj.properties and "yPoints" in obj.properties:
         x_pts = obj.properties["xPoints"]
         y_pts = obj.properties["yPoints"]
         if len(x_pts) > 1 and len(y_pts) > 1:
-            # Check if first and last points are the same
             is_closed = x_pts[0] == x_pts[-1] and y_pts[0] == y_pts[-1]
 
-    # Use IrregularPolygon if it's closed AND has fill/fillColor
     if (has_fill or has_fill_color) and is_closed:
         logger.info("Converting closed filled polyline to PyDMDrawingIrregularPolygon")
         return PyDMDrawingIrregularPolygon
@@ -343,7 +340,6 @@ def get_arc_widget_type(obj: EDMObject) -> type:
     has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
     has_fill_color = "fillColor" in obj.properties
 
-    # Use PyDMDrawingPie if it has fill/fillColor
     if has_fill or has_fill_color:
         logger.info("Converting filled arc to PyDMDrawingPie")
         return PyDMDrawingPie
@@ -365,16 +361,12 @@ def widgets_overlap(widget1, widget2) -> bool:
     bool
         True if widgets overlap, False otherwise
     """
-    # Get bounds for widget1
     x1, y1 = widget1.x, widget1.y
     w1, h1 = widget1.width, widget1.height
 
-    # Get bounds for widget2
     x2, y2 = widget2.x, widget2.y
     w2, h2 = widget2.width, widget2.height
 
-    # Check if rectangles overlap
-    # No overlap if one is completely to the left/right/above/below the other
     if x1 + w1 <= x2 or x2 + w2 <= x1:
         return False
     if y1 + h1 <= y2 or y2 + h2 <= y1:
@@ -401,35 +393,28 @@ def handle_button_polygon_overlaps(pydm_widgets):
     """
     from pydmconverter.widgets import PyDMRelatedDisplayButton, PyDMDrawingIrregularPolygon
 
-    # Find all buttons and polygons
     buttons = [(i, w) for i, w in enumerate(pydm_widgets) if isinstance(w, PyDMRelatedDisplayButton)]
     polygons = [(i, w) for i, w in enumerate(pydm_widgets) if isinstance(w, PyDMDrawingIrregularPolygon)]
 
-    # Track buttons that need to be moved and made flat
     buttons_to_move = []
 
     for btn_idx, button in buttons:
         for poly_idx, polygon in polygons:
             if widgets_overlap(button, polygon):
                 logger.info(f"Detected overlap: {button.name} overlaps with {polygon.name}")
-                # Set button to flat (transparent)
                 button.flat = True
 
-                # If button comes before polygon in the list, we need to reorder
                 if btn_idx < poly_idx:
                     buttons_to_move.append((btn_idx, button))
                     logger.info(f"Button {button.name} will be moved after polygon {polygon.name}")
                 break
 
-    # Reorder: remove buttons that need to be moved, then append them at the end
     if buttons_to_move:
-        # Sort by index in reverse to remove from end to start (preserves indices)
         buttons_to_move.sort(key=lambda x: x[0], reverse=True)
 
         for btn_idx, button in buttons_to_move:
             pydm_widgets.pop(btn_idx)
 
-        # Append at the end (on top)
         for _, button in reversed(buttons_to_move):
             pydm_widgets.append(button)
 
@@ -542,10 +527,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 )
 
             elif isinstance(obj, EDMObject):
-                # Special handling for activelineclass - determine if it should be Polyline or IrregularPolygon
                 if obj.name.lower() == "activelineclass":
                     widget_type = get_polyline_widget_type(obj)
-                # Special handling for activearcclass - determine if it should be Pie or Arc
                 elif obj.name.lower() == "activearcclass":
                     widget_type = get_arc_widget_type(obj)
                 else:
@@ -593,22 +576,17 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if edm_attr in ("macro", "symbols"):
                         # Handle macro conversion
                         if isinstance(value, list):
-                            # Multiple displays with different macros (e.g., for PyDMRelatedDisplayButton)
                             parsed_macros = []
                             for macro_str in value:
                                 macro_dict = parse_edm_macros(macro_str)
                                 parsed_macros.append(json.dumps(macro_dict))
-                            # For PyDMRelatedDisplayButton, join with newlines
                             value = "\n".join(parsed_macros) if parsed_macros else None
                             logger.info(f"Converted macro list to: {value}")
                         elif isinstance(value, str):
-                            # Single macro string - parse and convert to dict
                             macro_dict = parse_edm_macros(value)
                             if isinstance(widget, PyDMEmbeddedDisplay):
-                                # PyDMEmbeddedDisplay expects a dict
                                 value = macro_dict
                             else:
-                                # PyDMRelatedDisplayButton expects a JSON string
                                 value = json.dumps(macro_dict) if macro_dict else None
                             logger.info(f"Converted macro string to: {value}")
                     if edm_attr == "fillColor":
@@ -638,54 +616,51 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
 
                 if obj.name.lower() == "activechoicebuttonclass" and widget_type == QTabWidget:
                     populate_tab_bar(obj, widget)
-                if obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
+                if obj.name.lower() == "activelineclass" and isinstance(
+                    widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)
+                ):
                     if "xPoints" in obj.properties and "yPoints" in obj.properties:
                         x_points = obj.properties["xPoints"]
                         y_points = obj.properties["yPoints"]
-                        # Apply scale to polyline points
                         abs_pts = [(int(float(x) * scale), int(float(y) * scale)) for x, y in zip(x_points, y_points)]
                         pen = int(obj.properties.get("lineWidth", 1))
 
-                        # Extract arrow size if arrows are present
                         arrow_size = 0
                         if "arrows" in obj.properties and obj.properties["arrows"] in ("to", "from", "both"):
-                            arrow_size = int(15 * scale)  # Default arrow size, scaled
+                            arrow_size = int(15 * scale)
 
                         startCoord = (obj.x, obj.y)
                         geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen, arrow_size)
 
                         widget.points = point_strings
                         widget.penWidth = pen
-                        # Only set default black pen color if not already set from EDM properties
                         if widget.penColor is None:
                             widget.penColor = (0, 0, 0, 255)
 
-                        # Set fill color for IrregularPolygon
                         if isinstance(widget, PyDMDrawingIrregularPolygon):
-                            # IrregularPolygon should always have a fill since that's why it was created
                             if widget.brushColor is not None:
-                                # Ensure brushFill is True for filled polygons
                                 widget.brushFill = True
                                 logger.info(f"IrregularPolygon has explicit brushColor: {widget.brushColor}")
                             else:
-                                # If no brushColor specified, default to white
-                                # This matches EDM behavior where filled shapes default to white
-                                widget.brushColor = (255, 255, 255, 255)  # White
+                                widget.brushColor = (255, 255, 255, 255)
                                 widget.brushFill = True
-                                logger.info("Setting default white fill color for IrregularPolygon (no fillColor specified)")
+                                logger.info(
+                                    "Setting default white fill color for IrregularPolygon (no fillColor specified)"
+                                )
 
-                            # Enable alarm-sensitive content so the fill color is visible in PyDM
-                            # When False, PyDM may not render the brush fill properly
                             widget.alarm_sensitive_content = True
-                            logger.info("Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible")
+                            logger.info(
+                                "Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible"
+                            )
 
-                        # Use calculated geometry for polylines instead of obj dimensions
                         widget.x = int(geom["x"] + offset_x)
                         widget.y = int(geom["y"] + offset_y)
                         widget.width = int(geom["width"])
                         widget.height = int(geom["height"])
-                # Skip standard transformation for polylines (they use calculated geometry)
-                elif not (obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))):
+                elif not (
+                    obj.name.lower() == "activelineclass"
+                    and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
+                ):
                     if parent_pydm_group is None:
                         x, y, width, height = transform_edm_to_pydm(
                             obj.x,
@@ -739,14 +714,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
                     pad = widget.penWidth or 1
 
-                    # Add extra padding for IrregularPolygon alarm borders
-                    # PyDM alarm borders draw inside the widget, taking up ~2-4 pixels
                     if isinstance(widget, PyDMDrawingIrregularPolygon):
-                        alarm_border_pad = 4 if hasattr(widget, 'alarm_sensitive_border') and widget.alarm_sensitive_border else 0
+                        alarm_border_pad = (
+                            4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
+                        )
                         pad = pad + alarm_border_pad
 
-                    # Ensure minimum dimensions for very thin/straight lines
-                    min_dim = max(pad * 2, 3)  # At least 3 pixels or 2x pen width
+                    min_dim = max(pad * 2, 3)
 
                     if widget.width < min_dim:
                         widget.width = min_dim
@@ -758,22 +732,21 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     else:
                         widget.height = int(widget.height) + pad
 
-                # Ensure minimum dimensions for PyDMLabel to prevent text cutoff
                 if isinstance(widget, PyDMLabel):
-                    min_width = 20  # Minimum width for single characters
-                    min_height = 14  # Minimum height for text
+                    min_width = 20
+                    min_height = 14
 
                     if widget.width < min_width:
                         widget.width = min_width
                     if widget.height < min_height:
                         widget.height = min_height
 
-                # Enable alarm-sensitive content for all filled drawing widgets
-                # This makes the fill color visible in PyDM
                 if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
-                    if hasattr(widget, 'brushColor') and widget.brushColor is not None:
+                    if hasattr(widget, "brushColor") and widget.brushColor is not None:
                         widget.alarm_sensitive_content = True
-                        logger.info(f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible")
+                        logger.info(
+                            f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible"
+                        )
 
                 if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
                     widget.autoSize = True
@@ -789,7 +762,6 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui
     )
 
-    # Handle overlapping PyDMRelatedDisplayButton and PyDMDrawingIrregularPolygon
     pydm_widgets = handle_button_polygon_overlaps(pydm_widgets)
 
     if menu_mux_buttons:
@@ -959,7 +931,7 @@ def populate_tab_bar(obj: EDMObject, widget):
     if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
         file_list = obj.properties["displayFileName"]
         for index, tab_name in enumerate(tab_names):
-            widget_name = tab_name.replace('/', '')
+            widget_name = tab_name.replace("/", "")
             child_widget = QWidget(title=tab_name)
             widget.add_child(child_widget)
             embedded_widget = PyDMEmbeddedDisplay(
@@ -1037,18 +1009,17 @@ def create_hidden_frame_for_loc_variable(loc_variable: str, central_widget: EDMG
     """
     channel_name = loc_variable.split("?")[0]
 
-    # Create a minimal EDMObject for a hidden frame
     hidden_frame = EDMObject(
-        name="Group",  # Will become PyDMFrame
+        name="Group",
         properties={
-            "visPv": channel_name,  # Link to location variable
-            "visInvert": True,  # Inverted visibility = always hidden
+            "visPv": channel_name,
+            "visInvert": True,
             "visMin": 0,
             "visMax": 1,
         },
         x=0,
         y=0,
-        width=0,  # Zero size - won't interfere with clicks
+        width=0,
         height=0,
     )
 
@@ -1086,7 +1057,6 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     if int(obj.properties["numDsps"]) <= 1 or searched_arr is None:
         return False
 
-    # Check if location variable only appears once - if so, create hidden frame
     if loc_variable and channel_name:
         instance_count = count_loc_variable_instances(central_widget, channel_name)
 
@@ -1095,15 +1065,12 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
             logger.info("Creating hidden PyDMFrame to satisfy minimum instance requirement")
             create_hidden_frame_for_loc_variable(loc_variable, central_widget)
 
-    # channel_name = searched_arr[0]
     string_list = searched_arr[-1]
 
-    if string_list.startswith('[') and string_list.endswith(']'):
-        # It's a list 
+    if string_list.startswith("[") and string_list.endswith("]"):
         channel_list = string_list[1:-1].split(", ")
         tab_names = [item.strip("'") for item in channel_list]
     else:
-        # It's a single string 
         tab_names = [string_list.strip("'")]
 
     for i in range(len(tab_names)):
@@ -1221,16 +1188,14 @@ def parse_edm_macros(macro_string: str) -> dict:
     if not macro_string:
         return {}
 
-    # Split by comma to get individual key=value pairs
     pairs = macro_string.split(",")
 
     for pair in pairs:
         pair = pair.strip()
         if "=" in pair:
-            key, value = pair.split("=", 1)  # Split on first '=' only
+            key, value = pair.split("=", 1)
             key = key.strip()
             value = value.strip()
-            # Remove quotes if present
             if value.startswith('"') and value.endswith('"'):
                 value = value[1:-1]
             if value.startswith("'") and value.endswith("'"):
@@ -1290,11 +1255,9 @@ def geom_and_local_points(abs_points, startCoord, pen_width: int = 1, arrow_size
     min_x, max_x = min(list(xs)), max(xs)  # TODO: Comeback and resolve which to use
     min_y, max_y = min(list(ys)), max(ys)
 
-    # Calculate dimensions with pen width
     width = max_x - min_x + pen_width
     height = max_y - min_y + pen_width
 
-    # Add arrow padding if arrows are present
     if arrow_size > 0:
         width += arrow_size * 2
         height += arrow_size * 2
@@ -1306,7 +1269,6 @@ def geom_and_local_points(abs_points, startCoord, pen_width: int = 1, arrow_size
         "height": height,
     }
 
-    # Adjust points to account for arrow padding offset
     offset_x = arrow_size if arrow_size > 0 else 0
     offset_y = arrow_size if arrow_size > 0 else 0
     rel = [(x - min_x + offset_x, y - min_y + offset_y) for x, y in abs_points]

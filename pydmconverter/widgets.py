@@ -352,9 +352,7 @@ class PyDMDrawingPie(Alarmable, Drawable, Hidable, StyleSheetObject):
         """
         properties: List[ET.Element] = super().generate_properties()
         if self.startAngle is not None:
-            properties.append(
-                Double("startAngle", self.startAngle).to_xml()
-            )
+            properties.append(Double("startAngle", self.startAngle).to_xml())
         properties.append(Int("spanAngle", self.spanAngle).to_xml())
 
         return properties
@@ -1135,6 +1133,7 @@ class PyDMDrawingIrregularPolygon(Alarmable, Drawable, Hidable):
         # This ensures the rectangular widget background doesn't obstruct other widgets
         # The polygon shape will still be filled via the brush property
         from pydmconverter.widgets_helpers import TransparentBackground
+
         properties.append(TransparentBackground().to_xml())
 
         if self.points is not None:

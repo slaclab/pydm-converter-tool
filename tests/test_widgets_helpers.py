@@ -175,7 +175,7 @@ def test_Legible():
             "    </font>",
             "  </property>",
             '  <property name="alignment">',
-            "    <set>Qt::AlignCenter|Qt::AlignVCenter</set>",
+            "    <set>Qt::AlignHCenter|Qt::AlignVCenter</set>",
             "  </property>",
             "</widget>",
         ]
@@ -206,6 +206,9 @@ def test_Controllable():
             "  </property>",
             '  <property name="PyDMToolTip" stdset="0">',
             "    <string>Tooltip text</string>",
+            "  </property>",
+            '  <property name="rules" stdset="0">',
+            "    <string>[]</string>",
             "  </property>",
             "</widget>",
         ]
@@ -244,6 +247,9 @@ def test_Alarmable():
             "  </property>",
             '  <property name="PyDMToolTip" stdset="0">',
             "    <string>Alarm tip</string>",
+            "  </property>",
+            '  <property name="rules" stdset="0">',
+            "    <string>[]</string>",
             "  </property>",
             '  <property name="alarmSensitiveContent" stdset="0">',
             "    <bool>true</bool>",
@@ -491,16 +497,15 @@ def testStyleSheet():
     target = "\n".join(
         [
             '<property name="styleSheet">',
-            '  <string notr="true">color: rgb(1402121);',
-            "background-color: rgba(2552552550);</string>",
+            "  <string>color: rgb(1402121); background-color: rgba(2552552550);</string>",
             "</property>",
         ]
     )
     styleSheet = StyleSheet(
-        [
-            "color: rgb(1402121);",
-            "background-color: rgba(2552552550);",
-        ]
+        {
+            "color": "rgb(1402121)",
+            "background-color": "rgba(2552552550)",
+        }
     )
     assert target == styleSheet.to_string()
 
