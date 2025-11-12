@@ -23,8 +23,7 @@ def run_gui() -> None:
 
     if not launch_script.exists():
         raise FileNotFoundError(
-            f"launch_gui.sh not found at {launch_script}. "
-            "Please ensure the package was installed correctly."
+            f"launch_gui.sh not found at {launch_script}. Please ensure the package was installed correctly."
         )
 
     subprocess.run(["bash", str(launch_script)], check=True)
