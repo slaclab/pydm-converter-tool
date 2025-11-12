@@ -44,8 +44,6 @@ pydmconverter
 
 This will open the PyDM Converter GUI where you can:
 - Select files or folders to convert
-- Preview conversions before saving
-- Configure conversion options interactively
 
 ## Command Line Interface
 
