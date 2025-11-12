@@ -574,14 +574,18 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                     if edm_attr == "font":
                         value = parse_font_string(value)
                     if edm_attr in ("macro", "symbols"):
-                        # Handle macro conversion
                         if isinstance(value, list):
-                            parsed_macros = []
-                            for macro_str in value:
-                                macro_dict = parse_edm_macros(macro_str)
-                                parsed_macros.append(json.dumps(macro_dict))
-                            value = "\n".join(parsed_macros) if parsed_macros else None
-                            logger.info(f"Converted macro list to: {value}")
+                            if isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
+                                macro_dict = parse_edm_macros(value[0])
+                                value = macro_dict
+                                logger.info(f"Converted single macro to dict: {value}")
+                            else:
+                                parsed_macros = []
+                                for macro_str in value:
+                                    macro_dict = parse_edm_macros(macro_str)
+                                    parsed_macros.append(json.dumps(macro_dict))
+                                value = "\n".join(parsed_macros) if parsed_macros else None
+                                logger.info(f"Converted macro list to: {value}")
                         elif isinstance(value, str):
                             macro_dict = parse_edm_macros(value)
                             if isinstance(widget, PyDMEmbeddedDisplay):
@@ -702,6 +706,30 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 ):
                     off_button = create_off_button(widget)
                     pydm_widgets.append(off_button)
+                if isinstance(widget, PyDMEmbeddedDisplay) and obj.name.lower() == "activepipclass":
+                    if "displayFileName" in obj.properties and obj.properties["displayFileName"]:
+                        display_filenames = obj.properties["displayFileName"]
+                        filename_to_set = None
+                        if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
+                            filename_to_set = display_filenames[0]
+                        elif isinstance(display_filenames, dict) and len(display_filenames) > 0:
+                            filename_to_set = display_filenames[0]
+                        elif isinstance(display_filenames, str):
+                            filename_to_set = display_filenames
+
+                        if isinstance(filename_to_set, str):
+                            if filename_to_set.endswith(".edl"):
+                                filename_to_set = filename_to_set[:-4] + ".ui"
+                            widget.filename = filename_to_set
+                            logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
+
+                    # Make LOC variables unique if they had $(!W) marker
+                    if hasattr(widget, "channel") and widget.channel and "__UNIQUE__" in widget.channel:
+                        # Replace __UNIQUE__ with a unique suffix based on widget ID
+                        widget_id = str(id(widget))[-6:]
+                        widget.channel = widget.channel.replace("__UNIQUE__", widget_id)
+                        logger.info(f"Made LOC variable unique: {widget.channel}")
+
                 if obj.name.lower() == "activefreezebuttonclass":
                     freeze_button = create_freeze_button(widget)
                     pydm_widgets.append(freeze_button)
@@ -759,7 +787,12 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
         return pydm_widgets, menu_mux_buttons
 
     pydm_widgets, menu_mux_buttons = traverse_group(
-        parser.ui, color_list_dict, None, None, parser.ui.height, central_widget=parser.ui
+        parser.ui,
+        color_list_dict,
+        None,
+        None,
+        parser.ui.height,
+        central_widget=parser.ui,
     )
 
     pydm_widgets = handle_button_polygon_overlaps(pydm_widgets)
