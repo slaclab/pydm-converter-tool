@@ -17,8 +17,17 @@ def run_gui() -> None:
     """
     launch the PyDMConverter gui
     """
-    # subprocess.run(["pydm", "--hide-nav-bar", "--hide-menu-bar", "view/main_window.py"])
-    subprocess.run(["bash", "launch_gui.sh"], check=True)
+    # Get the directory where this package is installed
+    package_dir = Path(__file__).parent
+    launch_script = package_dir / "launch_gui.sh"
+
+    if not launch_script.exists():
+        raise FileNotFoundError(
+            f"launch_gui.sh not found at {launch_script}. "
+            "Please ensure the package was installed correctly."
+        )
+
+    subprocess.run(["bash", str(launch_script)], check=True)
 
 
 def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False):
