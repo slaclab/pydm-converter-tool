@@ -463,6 +463,35 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installation-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-install-from-pypi-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Install from PyPI (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-install-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Install from Source
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 2: Install from Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#clone-the-repository" class="md-nav__link">
     <span class="md-ellipsis">
       Clone the Repository
@@ -470,13 +499,23 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#set-up-environment" class="md-nav__link">
     <span class="md-ellipsis">
       Set up Environment
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -896,6 +935,35 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installation-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-install-from-pypi-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Install from PyPI (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-install-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Install from Source
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 2: Install from Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#clone-the-repository" class="md-nav__link">
     <span class="md-ellipsis">
       Clone the Repository
@@ -903,13 +971,23 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#set-up-environment" class="md-nav__link">
     <span class="md-ellipsis">
       Set up Environment
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -934,16 +1012,35 @@
 
 <h1 id="installation">Installation</h1>
 <h2 id="prerequisites">Prerequisites</h2>
-<h2 id="clone-the-repository">Clone the Repository</h2>
+<h2 id="installation-methods">Installation Methods</h2>
+<h3 id="option-1-install-from-pypi-recommended">Option 1: Install from PyPI (Recommended)</h3>
+<p>The easiest way to install the converter is directly from PyPI:
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>PyDMConverter
+</code></pre></div></p>
+<h3 id="option-2-install-from-source">Option 2: Install from Source</h3>
+<p>If you need the latest development version or want to contribute:</p>
+<h4 id="clone-the-repository">Clone the Repository</h4>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/slaclab/pydm-converter-tool.git
+<span class="nb">cd</span><span class="w"> </span>pydm-converter-tool
 </code></pre></div>
-<h2 id="set-up-environment">Set up Environment</h2>
+<h4 id="set-up-environment">Set up Environment</h4>
 <p>Using <code>conda</code>:
 <div class="highlight"><pre><span></span><code>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml
 conda<span class="w"> </span>activate<span class="w"> </span>pydm
 </code></pre></div></p>
+<p>Or using pip:
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</code></pre></div></p>
 <h1 id="how-to-run-the-converter">How to Run the Converter</h1>
-<p>This outlines the two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the <a href="../arguments/">Arguments</a> page.</p>
+<p>The converter can be run in two ways: via the command line interface (CLI) or through the graphical user interface (GUI).</p>
+<h2 id="launch-the-gui">Launch the GUI</h2>
+<p>To launch the graphical interface:
+<div class="highlight"><pre><span></span><code>pydmconverter
+</code></pre></div></p>
+<p>This will open the PyDM Converter GUI where you can:
+- Select files or folders to convert</p>
+<h2 id="command-line-interface">Command Line Interface</h2>
+<p>The CLI provides two main ways to run the converter: on individual files and entire folders. Users can include additional arguments described on the <a href="../arguments/">Arguments</a> page.</p>
 <h2 id="for-individual-files">For individual files</h2>
 <p>When using the converter on a single file, the command line is:
 <div class="highlight"><pre><span></span><code>pydmconverter<span class="w"> </span><span class="s1">&#39;/path/old_file.edl&#39;</span><span class="w"> </span><span class="s1">&#39;new_file_name.ui&#39;</span><span class="w"> </span><span class="sb">`</span>
