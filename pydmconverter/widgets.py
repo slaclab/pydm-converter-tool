@@ -675,9 +675,12 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(Bool("redirectCommandOutput", self.redirect_command_output).to_xml())
         if self.allow_multiple_executions is not None:
             properties.append(Bool("allowMultipleExecutions", self.allow_multiple_executions).to_xml())
-        if self.titles is not None and self.command is not None:
-            properties.append(StringList("titles", self.titles).to_xml())
+        if self.command is not None:
+            # Generate commands property if command is set
             properties.append(StringList("commands", self.command).to_xml())
+            # Generate titles property if titles is set, otherwise PyDM will use default titles
+            if self.titles is not None:
+                properties.append(StringList("titles", self.titles).to_xml())
         return properties
 
 

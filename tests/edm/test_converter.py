@@ -221,3 +221,127 @@ def test_add_widgets_to_parent_single_widget():
     assert len(children) == 1
     assert children[0].get("name") == "frame1"
     assert children[0].get("class") == "PyDMFrame"
+
+
+def test_convert_related_display_invisible_to_flat(tmp_path):
+    """Test that EDM relatedDisplayClass with invisible property maps to PyDM flat property."""
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        # (Related Display)
+        object relatedDisplayClass
+        beginObjectProperties
+        major 4
+        minor 4
+        release 0
+        x 100
+        y 100
+        w 150
+        h 50
+        fgColor index 14
+        bgColor index 0
+        invisible
+        numPvs 4
+        numDsps 1
+        displayFileName {
+          0 "test.edl"
+        }
+        endObjectProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    # Find the PyDMRelatedDisplayButton widget
+    related_display_buttons = root.findall(".//widget[@class='PyDMRelatedDisplayButton']")
+    assert len(related_display_buttons) == 1, "Should have one PyDMRelatedDisplayButton"
+
+    button = related_display_buttons[0]
+    flat_property = button.find("property[@name='flat']")
+    assert flat_property is not None, "Button should have flat property"
+
+    # Check that flat is set to true
+    bool_element = flat_property.find("bool")
+    assert bool_element is not None, "flat property should have bool element"
+    assert bool_element.text == "true", "flat property should be set to true when invisible is present"
+
+
+def test_convert_shell_command_to_commands_property(tmp_path):
+    """Test that EDM shellCmdClass command property maps to PyDM commands property."""
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        # (Shell Command)
+        object shellCmdClass
+        beginObjectProperties
+        major 4
+        minor 2
+        release 0
+        x 100
+        y 100
+        w 150
+        h 50
+        fgColor index 14
+        bgColor index 0
+        buttonLabel "Test Button"
+        numCmds 2
+        command {
+          0 "echo hello"
+          1 "echo world"
+        }
+        endObjectProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    # Find the PyDMShellCommand widget
+    shell_command_widgets = root.findall(".//widget[@class='PyDMShellCommand']")
+    assert len(shell_command_widgets) == 1, "Should have one PyDMShellCommand"
+
+    widget = shell_command_widgets[0]
+    commands_property = widget.find("property[@name='commands']")
+    assert commands_property is not None, "Widget should have commands property"
+
+    # Check the stringlist contains both commands
+    stringlist = commands_property.find("stringlist")
+    assert stringlist is not None, "commands property should have stringlist element"
+
+    strings = stringlist.findall("string")
+    assert len(strings) == 2, "Should have 2 commands"
+    assert strings[0].text == "echo hello", "First command should be 'echo hello'"
+    assert strings[1].text == "echo world", "Second command should be 'echo world'"
