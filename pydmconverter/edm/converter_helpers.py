@@ -167,7 +167,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "symbols": "macros",  # EDM related display buttons use "symbols" for macros
     "file": "filename",
     "useDisplayBg": "useDisplayBg",
-    "invisible": "flat",  
+    "invisible": "flat",
     # Scatter plot attributes
     "xChannel": "x_channel",
     "yChannel": "y_channel",
