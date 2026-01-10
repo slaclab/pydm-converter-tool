@@ -1910,11 +1910,14 @@ class PageHeader:
 
         ET.SubElement(rect, "width").text = str(edm_parser.ui.width)
         ET.SubElement(rect, "height").text = str(edm_parser.ui.height)
-        window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
-        title_string = ET.SubElement(window_title, "string")
-        title_string.text = "PyDM Screen"
 
         screen_properties: dict[str, str] = edm_parser.ui.properties
+
+        # Set window title from EDM screen properties if available, otherwise use default
+        window_title = ET.SubElement(main_widget, "property", attrib={"name": "windowTitle"})
+        title_string = ET.SubElement(window_title, "string")
+        title_string.text = screen_properties.get("title", "PyDM Screen")
+
         self.add_screen_properties(main_widget, screen_properties)
 
         if scrollable:
