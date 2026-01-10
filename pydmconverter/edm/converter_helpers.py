@@ -562,6 +562,13 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 if parent_vispvs:
                     setattr(widget, "visPvList", list(parent_vispvs))
 
+                # TextupdateClass widgets always show units in EDM, so set show_units to True
+                # unless explicitly specified otherwise in the EDM properties
+                if obj.name.lower() in ("textupdateclass", "multilinetextupdateclass", "regtextupdateclass"):
+                    if "showUnits" not in obj.properties:
+                        setattr(widget, "show_units", True)
+                        logger.info(f"Set show_units=True for {obj.name} (implicit EDM behavior)")
+
                 # Set mapped attributes.
                 for edm_attr, value in obj.properties.items():
                     pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
