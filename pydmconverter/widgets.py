@@ -586,6 +586,7 @@ class PyDMPushButton(PyDMPushButtonBase):
             self.on_color is not None
             or self.foreground_color is not None
             or self.background_color is not None
+            or self.flat is True
             or (
                 isinstance(self.name, str)
                 and (
@@ -604,6 +605,9 @@ class PyDMPushButton(PyDMPushButtonBase):
                 styles["background-color"] = self.on_color
             elif self.background_color is not None and self.useDisplayBg is None:
                 styles["background-color"] = self.background_color
+            elif self.flat is True and self.background_color is None and self.on_color is None:
+                # When flat is true but no background is set, set transparent background for embedded displays
+                styles["background-color"] = "transparent"
             if self.on_color is not None and self.off_color != self.on_color:
                 logging.warning("on and off colors are different, need to modify code")
             properties.append(StyleSheet(styles).to_xml())
