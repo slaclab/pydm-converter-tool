@@ -586,7 +586,7 @@ class PyDMPushButton(PyDMPushButtonBase):
             self.on_color is not None
             or self.foreground_color is not None
             or self.background_color is not None
-            or (self.flat is True and self.background_color is None and self.on_color is None)
+            or self.flat is True
             or (
                 isinstance(self.name, str)
                 and (
