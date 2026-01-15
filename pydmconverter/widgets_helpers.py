@@ -385,7 +385,13 @@ class Int(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         int_tag: etree.Element = etree.SubElement(prop, "number")
-        int_tag.text = str(self.value)
+        # Convert through float first to handle scientific notation (e.g., '-2e+08')
+        # PyQt's uic parser cannot handle scientific notation in <number> elements
+        try:
+            int_value = int(float(self.value))
+        except (ValueError, TypeError):
+            int_value = 0
+        int_tag.text = str(int_value)
         return prop
 
 
