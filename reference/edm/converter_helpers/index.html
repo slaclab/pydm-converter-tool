@@ -1818,8 +1818,7 @@
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">425</span>
-<span class="normal">426</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">426</span>
 <span class="normal">427</span>
 <span class="normal">428</span>
 <span class="normal">429</span>
@@ -2203,7 +2202,8 @@
 <span class="normal">807</span>
 <span class="normal">808</span>
 <span class="normal">809</span>
-<span class="normal">810</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_edm_to_pydm_widgets</span><span class="p">(</span><span class="n">parser</span><span class="p">:</span> <span class="n">EDMFileParser</span><span class="p">):</span>
+<span class="normal">810</span>
+<span class="normal">811</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_edm_to_pydm_widgets</span><span class="p">(</span><span class="n">parser</span><span class="p">:</span> <span class="n">EDMFileParser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts an EDMFileParser object into a collection of PyDM widget instances.</span>
 
@@ -2611,12 +2611,12 @@
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1278</span>
-<span class="normal">1279</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1279</span>
 <span class="normal">1280</span>
 <span class="normal">1281</span>
 <span class="normal">1282</span>
-<span class="normal">1283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the edm pizelsize to pydm pointsize (multiply by 0.75)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2652,8 +2652,7 @@ channel_name : str
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1002</span>
-<span class="normal">1003</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1003</span>
 <span class="normal">1004</span>
 <span class="normal">1005</span>
 <span class="normal">1006</span>
@@ -2683,7 +2682,8 @@ channel_name : str
 <span class="normal">1030</span>
 <span class="normal">1031</span>
 <span class="normal">1032</span>
-<span class="normal">1033</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_loc_variable_instances</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">channel_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">1033</span>
+<span class="normal">1034</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_loc_variable_instances</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">channel_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Count how many times a location variable channel appears in the widget tree.</span>
 
@@ -2743,8 +2743,7 @@ channel_name : str
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1071</span>
-<span class="normal">1072</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1072</span>
 <span class="normal">1073</span>
 <span class="normal">1074</span>
 <span class="normal">1075</span>
@@ -2802,7 +2801,8 @@ channel_name : str
 <span class="normal">1127</span>
 <span class="normal">1128</span>
 <span class="normal">1129</span>
-<span class="normal">1130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_embedded_tabs</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">,</span> <span class="n">central_widget</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">1130</span>
+<span class="normal">1131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_embedded_tabs</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">,</span> <span class="n">central_widget</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    If needed, creates tabs from local variables of this embedded display.</span>
 
@@ -2885,8 +2885,7 @@ Modifies relevant visual attributes and appends a flag to identify it.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">911</span>
-<span class="normal">912</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">912</span>
 <span class="normal">913</span>
 <span class="normal">914</span>
 <span class="normal">915</span>
@@ -2902,7 +2901,8 @@ Modifies relevant visual attributes and appends a flag to identify it.</p>
 <span class="normal">925</span>
 <span class="normal">926</span>
 <span class="normal">927</span>
-<span class="normal">928</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_freeze_button</span><span class="p">(</span>
+<span class="normal">928</span>
+<span class="normal">929</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_freeze_button</span><span class="p">(</span>
     <span class="n">widget</span><span class="p">:</span> <span class="n">PyDMPushButton</span><span class="p">,</span>
 <span class="p">):</span>  <span class="c1"># TODO: Can find a way to combine with create_off_button to reduce redundancy</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2950,8 +2950,7 @@ central_widget : EDMGroup
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1036</span>
-<span class="normal">1037</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1037</span>
 <span class="normal">1038</span>
 <span class="normal">1039</span>
 <span class="normal">1040</span>
@@ -2982,7 +2981,8 @@ central_widget : EDMGroup
 <span class="normal">1065</span>
 <span class="normal">1066</span>
 <span class="normal">1067</span>
-<span class="normal">1068</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_hidden_frame_for_loc_variable</span><span class="p">(</span><span class="n">loc_variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">central_widget</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_hidden_frame_for_loc_variable</span><span class="p">(</span><span class="n">loc_variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">central_widget</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a hidden PyDMFrame with the location variable to satisfy</span>
 <span class="sd">    the minimum 2-instance requirement for embedded tabs.</span>
@@ -3038,8 +3038,7 @@ Modifies the height and channel of the current slider</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">931</span>
-<span class="normal">932</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">932</span>
 <span class="normal">933</span>
 <span class="normal">934</span>
 <span class="normal">935</span>
@@ -3067,7 +3066,8 @@ Modifies the height and channel of the current slider</p>
 <span class="normal">957</span>
 <span class="normal">958</span>
 <span class="normal">959</span>
-<span class="normal">960</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_multi_sliders</span><span class="p">(</span><span class="n">widget</span><span class="p">:</span> <span class="n">PyDMSlider</span><span class="p">,</span> <span class="nb">object</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">):</span>
+<span class="normal">960</span>
+<span class="normal">961</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_multi_sliders</span><span class="p">(</span><span class="n">widget</span><span class="p">:</span> <span class="n">PyDMSlider</span><span class="p">,</span> <span class="nb">object</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.</span>
 <span class="sd">    Modifies the height and channel of the current slider</span>
@@ -3120,8 +3120,7 @@ Modifies relevant visual attributes and appends a flag to identify it.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">891</span>
-<span class="normal">892</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">892</span>
 <span class="normal">893</span>
 <span class="normal">894</span>
 <span class="normal">895</span>
@@ -3137,7 +3136,8 @@ Modifies relevant visual attributes and appends a flag to identify it.</p>
 <span class="normal">905</span>
 <span class="normal">906</span>
 <span class="normal">907</span>
-<span class="normal">908</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_off_button</span><span class="p">(</span><span class="n">widget</span><span class="p">:</span> <span class="n">PyDMPushButton</span><span class="p">):</span>
+<span class="normal">908</span>
+<span class="normal">909</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_off_button</span><span class="p">(</span><span class="n">widget</span><span class="p">:</span> <span class="n">PyDMPushButton</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a PyDMPushButton with distinct off/on states, clone it into an &quot;off&quot; version.</span>
 <span class="sd">    Modifies relevant visual attributes and appends a flag to identify it.</span>
@@ -3187,8 +3187,7 @@ obj_name : str
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">864</span>
-<span class="normal">865</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">865</span>
 <span class="normal">866</span>
 <span class="normal">867</span>
 <span class="normal">868</span>
@@ -3211,7 +3210,8 @@ obj_name : str
 <span class="normal">885</span>
 <span class="normal">886</span>
 <span class="normal">887</span>
-<span class="normal">888</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_objects</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">obj_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">EDMObject</span><span class="p">]:</span>
+<span class="normal">888</span>
+<span class="normal">889</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_objects</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">obj_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">EDMObject</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Recursively search through an EDMGroup and its nested groups to find all</span>
 <span class="sd">    instances of EDMObjects that match a specified name.</span>
@@ -3266,8 +3266,7 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">324</span>
-<span class="normal">325</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">325</span>
 <span class="normal">326</span>
 <span class="normal">327</span>
 <span class="normal">328</span>
@@ -3290,7 +3289,8 @@ Otherwise returns PyDMDrawingArc.</p>
 <span class="normal">345</span>
 <span class="normal">346</span>
 <span class="normal">347</span>
-<span class="normal">348</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_arc_widget_type</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+<span class="normal">348</span>
+<span class="normal">349</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_arc_widget_type</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine if an activearcclass should be PyDMDrawingPie or PyDMDrawingArc.</span>
 
@@ -3347,8 +3347,7 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">287</span>
-<span class="normal">288</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">288</span>
 <span class="normal">289</span>
 <span class="normal">290</span>
 <span class="normal">291</span>
@@ -3381,7 +3380,8 @@ Otherwise returns PyDMDrawingArc.</p>
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
-<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_polyline_widget_type</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+<span class="normal">321</span>
+<span class="normal">322</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_polyline_widget_type</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine if an activelineclass should be PyDMDrawingPolyline or PyDMDrawingIrregularPolygon.</span>
 
@@ -3438,11 +3438,11 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1189</span>
-<span class="normal">1190</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1190</span>
 <span class="normal">1191</span>
 <span class="normal">1192</span>
-<span class="normal">1193</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Takes in a value string and joins each element into a string separated by a new line</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3477,8 +3477,7 @@ the button is placed after the polygon in the widget list (on top in z-order).</
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">379</span>
-<span class="normal">380</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">380</span>
 <span class="normal">381</span>
 <span class="normal">382</span>
 <span class="normal">383</span>
@@ -3520,7 +3519,8 @@ the button is placed after the polygon in the widget list (on top in z-order).</
 <span class="normal">419</span>
 <span class="normal">420</span>
 <span class="normal">421</span>
-<span class="normal">422</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">handle_button_polygon_overlaps</span><span class="p">(</span><span class="n">pydm_widgets</span><span class="p">):</span>
+<span class="normal">422</span>
+<span class="normal">423</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">handle_button_polygon_overlaps</span><span class="p">(</span><span class="n">pydm_widgets</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Detect when PyDMRelatedDisplayButton overlaps with PyDMDrawingIrregularPolygon.</span>
 <span class="sd">    Set the button&#39;s flat property to True to make it transparent, and ensure</span>
@@ -3608,8 +3608,7 @@ parse_edm_macros("")
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1196</span>
-<span class="normal">1197</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1197</span>
 <span class="normal">1198</span>
 <span class="normal">1199</span>
 <span class="normal">1200</span>
@@ -3660,7 +3659,8 @@ parse_edm_macros("")
 <span class="normal">1245</span>
 <span class="normal">1246</span>
 <span class="normal">1247</span>
-<span class="normal">1248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_edm_macros</span><span class="p">(</span><span class="n">macro_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_edm_macros</span><span class="p">(</span><span class="n">macro_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM macro string into a dictionary for PyDM widgets.</span>
 
@@ -3737,8 +3737,7 @@ This is just an example parser—adjust as needed.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1251</span>
-<span class="normal">1252</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1252</span>
 <span class="normal">1253</span>
 <span class="normal">1254</span>
 <span class="normal">1255</span>
@@ -3761,7 +3760,8 @@ This is just an example parser—adjust as needed.</p>
 <span class="normal">1272</span>
 <span class="normal">1273</span>
 <span class="normal">1274</span>
-<span class="normal">1275</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="normal">1275</span>
+<span class="normal">1276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM font string like &#39;helvetica-bold-r-12.0&#39;</span>
 <span class="sd">    into a dictionary for a PyDM widget.</span>
@@ -3821,8 +3821,7 @@ prop_name_suffix : str
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1133</span>
-<span class="normal">1134</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1134</span>
 <span class="normal">1135</span>
 <span class="normal">1136</span>
 <span class="normal">1137</span>
@@ -3855,7 +3854,8 @@ prop_name_suffix : str
 <span class="normal">1164</span>
 <span class="normal">1165</span>
 <span class="normal">1166</span>
-<span class="normal">1167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_group</span><span class="p">(</span>
+<span class="normal">1167</span>
+<span class="normal">1168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_group</span><span class="p">(</span>
     <span class="n">group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">widget_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prop_val</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prop_name_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Pv&quot;</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EDMObject</span><span class="p">:</span>  <span class="c1"># TODO: May need to check for edgecases with multiple tabs</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3913,8 +3913,7 @@ to a PyDM coordinate system (top-left origin) at the root level.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">247</span>
-<span class="normal">248</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">248</span>
 <span class="normal">249</span>
 <span class="normal">250</span>
 <span class="normal">251</span>
@@ -3927,7 +3926,8 @@ to a PyDM coordinate system (top-left origin) at the root level.</p>
 <span class="normal">258</span>
 <span class="normal">259</span>
 <span class="normal">260</span>
-<span class="normal">261</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">transform_edm_to_pydm</span><span class="p">(</span><span class="n">edm_x</span><span class="p">,</span> <span class="n">edm_y</span><span class="p">,</span> <span class="n">edm_width</span><span class="p">,</span> <span class="n">edm_height</span><span class="p">,</span> <span class="n">container_height</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">offset_x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">offset_y</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="normal">261</span>
+<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">transform_edm_to_pydm</span><span class="p">(</span><span class="n">edm_x</span><span class="p">,</span> <span class="n">edm_y</span><span class="p">,</span> <span class="n">edm_width</span><span class="p">,</span> <span class="n">edm_height</span><span class="p">,</span> <span class="n">container_height</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">offset_x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">offset_y</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform coordinates from an EDM coordinate system (bottom-left origin)</span>
 <span class="sd">    to a PyDM coordinate system (top-left origin) at the root level.</span>
@@ -3965,8 +3965,7 @@ If EDM uses absolute coordinates for nested widgets, subtract parent position.</
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
-<span class="normal">265</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">265</span>
 <span class="normal">266</span>
 <span class="normal">267</span>
 <span class="normal">268</span>
@@ -3985,7 +3984,8 @@ If EDM uses absolute coordinates for nested widgets, subtract parent position.</
 <span class="normal">281</span>
 <span class="normal">282</span>
 <span class="normal">283</span>
-<span class="normal">284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">transform_nested_widget</span><span class="p">(</span>
+<span class="normal">284</span>
+<span class="normal">285</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">transform_nested_widget</span><span class="p">(</span>
     <span class="n">child_edm_x</span><span class="p">,</span>
     <span class="n">child_edm_y</span><span class="p">,</span>
     <span class="n">child_edm_width</span><span class="p">,</span>
@@ -4034,8 +4034,7 @@ If EDM uses absolute coordinates for nested widgets, subtract parent position.</
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">351</span>
-<span class="normal">352</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">352</span>
 <span class="normal">353</span>
 <span class="normal">354</span>
 <span class="normal">355</span>
@@ -4059,7 +4058,8 @@ If EDM uses absolute coordinates for nested widgets, subtract parent position.</
 <span class="normal">373</span>
 <span class="normal">374</span>
 <span class="normal">375</span>
-<span class="normal">376</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">widgets_overlap</span><span class="p">(</span><span class="n">widget1</span><span class="p">,</span> <span class="n">widget2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">376</span>
+<span class="normal">377</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">widgets_overlap</span><span class="p">(</span><span class="n">widget1</span><span class="p">,</span> <span class="n">widget2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check if two widgets overlap based on their geometry (x, y, width, height).</span>
 
