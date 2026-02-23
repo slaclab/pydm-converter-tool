@@ -973,7 +973,7 @@ def populate_tab_bar(obj: EDMObject, widget):
     if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
         file_list = obj.properties["displayFileName"]
         for index, tab_name in enumerate(tab_names):
-            widget_name = re.sub(r'[^a-zA-Z0-9_]', '_', tab_name)
+            widget_name = re.sub(r"[^a-zA-Z0-9_]", "_", tab_name)
             child_widget = QWidget(title=tab_name)
             widget.add_child(child_widget)
             embedded_widget = PyDMEmbeddedDisplay(
