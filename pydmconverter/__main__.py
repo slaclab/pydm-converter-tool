@@ -29,7 +29,7 @@ def run_gui() -> None:
     subprocess.run(["bash", str(launch_script)], check=True)
 
 
-def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False):
+def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False, site=None):
     input_path: Path = Path(input_file)
     output_path: Path = Path(output_file)
 
@@ -39,7 +39,7 @@ def run(input_file, output_file, input_file_type=".edl", override=False, scrolla
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         copy_img_files(input_path.parent, output_path.parent)
-        convert(str(input_path), str(output_path), scrollable)
+        convert(str(input_path), str(output_path), scrollable, site=site)
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
@@ -47,7 +47,7 @@ def run(input_file, output_file, input_file_type=".edl", override=False, scrolla
         files_found: int
         files_failed: list[str]
         files_found, files_failed = convert_files_in_folder(
-            input_path, output_path, input_file_type, override, scrollable
+            input_path, output_path, input_file_type, override, scrollable, site=site
         )
 
         if files_found == 0:
@@ -76,7 +76,8 @@ def run_cli(args: argparse.Namespace) -> None:
     input_file_type: str = args.output_type
     override: bool = args.override
     scrollable: bool = args.scrollable
-    run(input_file, output_file, input_file_type, override, scrollable)
+    site: str = args.site
+    run(input_file, output_file, input_file_type, override, scrollable, site=site)
 
 
 """
@@ -98,7 +99,7 @@ def run_cli(args: argparse.Namespace) -> None:
         files_found: int
         files_failed: list[str]
         files_found, files_failed = convert_files_in_folder(
-            input_path, output_path, input_file_type, override, scrollable
+            input_path, output_path, input_file_type, override, scrollable, site=site
         )
 
         if files_found == 0:
@@ -125,7 +126,7 @@ def copy_img_files(input_path: Path, output_path: Path) -> None:
 
 
 def convert_files_in_folder(
-    input_path: Path, output_path: Path, input_file_type: str, override: bool, scrollable: bool
+    input_path: Path, output_path: Path, input_file_type: str, override: bool, scrollable: bool, site=None
 ) -> tuple[int, list[str]]:
     """Recursively runs convert on files in directory and subdirectories
 
@@ -161,7 +162,7 @@ def convert_files_in_folder(
             logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
             try:
-                convert(file, output_file_path, scrollable)
+                convert(file, output_file_path, scrollable, site=site)
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
@@ -171,7 +172,7 @@ def convert_files_in_folder(
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         sub_found, sub_failed = convert_files_in_folder(
-            subdir, output_path / subdir.name, input_file_type, override, scrollable
+            subdir, output_path / subdir.name, input_file_type, override, scrollable, site=site
         )
         files_found += sub_found
         files_failed += sub_failed
@@ -226,6 +227,12 @@ def main() -> None:
         "-s",
         action="store_true",
         help="create scrollable pydm windows that replicate edm windows (may cause spacing issues for embedded displays)",
+    )
+    parser.add_argument(
+        "--site",
+        type=str,
+        default=None,
+        help="Apply site-specific conversion rules (e.g., slac)",
     )
     args: argparse.Namespace = parser.parse_args()
 
