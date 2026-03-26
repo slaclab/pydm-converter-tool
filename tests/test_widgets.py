@@ -405,6 +405,23 @@ def test_pydmrelateddisplay_button_generate_properties():
     assert prop_dict.get("followSymlinks") == "false"
 
 
+def test_pydmrelateddisplay_button_list_titles():
+    """Test that list-valued titles are serialized as a StringList."""
+    widget = PyDMRelatedDisplayButton()
+    widget.titles = ["asynOctet Interface I/O", "Register interfaces I/O", "Serial port parameters"]
+    widget.displayFileName = ["asynOctet.edl", "asynRegister.edl", "asynSerialPortSetup.edl"]
+
+    properties: List[ET.Element] = widget.generate_properties()
+
+    titles_prop = next((p for p in properties if p.get("name") == "titles"), None)
+    assert titles_prop is not None
+    # Should be a stringlist, not a plain string
+    stringlist = titles_prop.find("stringlist")
+    assert stringlist is not None
+    strings = [s.text for s in stringlist.findall("string")]
+    assert strings == ["asynOctet Interface I/O", "Register interfaces I/O", "Serial port parameters"]
+
+
 # --- Tests for QComboBox ---
 
 

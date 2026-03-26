@@ -736,7 +736,10 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         # if self.filenames is not None:
         #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
-            properties.append(Str("titles", self.titles).to_xml())
+            if isinstance(self.titles, list):
+                properties.append(StringList("titles", self.titles).to_xml())
+            else:
+                properties.append(Str("titles", self.titles).to_xml())
         if self.macros is not None:
             properties.append(Str("macros", self.macros).to_xml())
         # if self.open_in_new_window is not None:

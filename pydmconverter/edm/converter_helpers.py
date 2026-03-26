@@ -162,6 +162,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "command": "command",
     "numCmds": "numCmds",
     "commandLabel": "titles",
+    "menuLabel": "titles",
     # Related display attributes
     "fileName": "filename",
     "macro": "macros",
