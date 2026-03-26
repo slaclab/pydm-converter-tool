@@ -562,9 +562,7 @@ def test_waveformplot_explicit_limits_disables_autorange():
         yLabel="Voltage",
     )
     properties = widget.generate_properties()
-    yaxes_prop = next(
-        (p for p in properties if p.get("name") == "yAxes"), None
-    )
+    yaxes_prop = next((p for p in properties if p.get("name") == "yAxes"), None)
     assert yaxes_prop is not None
     stringlist = yaxes_prop.find("stringlist")
     yaxis_str = stringlist.find("string").text
@@ -582,9 +580,7 @@ def test_waveformplot_autoscale_src_enables_autorange():
         yAxisSrc="AutoScale",
     )
     properties = widget.generate_properties()
-    yaxes_prop = next(
-        (p for p in properties if p.get("name") == "yAxes"), None
-    )
+    yaxes_prop = next((p for p in properties if p.get("name") == "yAxes"), None)
     assert yaxes_prop is not None
     stringlist = yaxes_prop.find("stringlist")
     yaxis_str = stringlist.find("string").text
@@ -597,7 +593,5 @@ def test_waveformplot_no_limits_enables_autorange():
     # maxYRange is None by default, so no yAxes generated
     # (yLabel condition requires maxYRange to be not None)
     properties = widget.generate_properties()
-    yaxes_prop = next(
-        (p for p in properties if p.get("name") == "yAxes"), None
-    )
+    yaxes_prop = next((p for p in properties if p.get("name") == "yAxes"), None)
     assert yaxes_prop is None
