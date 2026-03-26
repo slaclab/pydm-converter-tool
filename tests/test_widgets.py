@@ -20,6 +20,7 @@ from pydmconverter.widgets import (
     PyDMEnumButton,
     PyDMDrawingLine,
     PyDMDrawingPolyline,
+    PyDMWaveformPlot,
 )
 
 from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawable, Hidable
@@ -548,3 +549,55 @@ def test_pydmdrawingpolyline_generate_properties():
     assert prop_dict.get("flipMidPointArrow") == "true"
 
     assert prop_dict.get("points") == ["0, 0", "10, 10", "20, 20"]
+
+
+# --- Tests for PyDMWaveformPlot ---
+
+
+def test_waveformplot_explicit_limits_disables_autorange():
+    """When yMin/yMax are set, auto_range should be false."""
+    widget = PyDMWaveformPlot(
+        minYRange=0,
+        maxYRange=400,
+        yLabel="Voltage",
+    )
+    properties = widget.generate_properties()
+    yaxes_prop = next(
+        (p for p in properties if p.get("name") == "yAxes"), None
+    )
+    assert yaxes_prop is not None
+    stringlist = yaxes_prop.find("stringlist")
+    yaxis_str = stringlist.find("string").text
+    assert '"autoRange": false' in yaxis_str
+    assert '"minRange": 0' in yaxis_str
+    assert '"maxRange": 400' in yaxis_str
+
+
+def test_waveformplot_autoscale_src_enables_autorange():
+    """When yAxisSrc is AutoScale, auto_range should be true."""
+    widget = PyDMWaveformPlot(
+        minYRange=0,
+        maxYRange=400,
+        yLabel="Voltage",
+        yAxisSrc="AutoScale",
+    )
+    properties = widget.generate_properties()
+    yaxes_prop = next(
+        (p for p in properties if p.get("name") == "yAxes"), None
+    )
+    assert yaxes_prop is not None
+    stringlist = yaxes_prop.find("stringlist")
+    yaxis_str = stringlist.find("string").text
+    assert '"autoRange": true' in yaxis_str
+
+
+def test_waveformplot_no_limits_enables_autorange():
+    """When no limits are set, auto_range should default to true."""
+    widget = PyDMWaveformPlot(yLabel="Voltage")
+    # maxYRange is None by default, so no yAxes generated
+    # (yLabel condition requires maxYRange to be not None)
+    properties = widget.generate_properties()
+    yaxes_prop = next(
+        (p for p in properties if p.get("name") == "yAxes"), None
+    )
+    assert yaxes_prop is None

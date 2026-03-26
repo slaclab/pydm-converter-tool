@@ -1582,7 +1582,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
             properties.append(Double("maxXRange", self.maxXRange).to_xml())
         if self.maxYRange is not None:
             properties.append(Double("maxYRange", self.maxYRange).to_xml())
-        if self.yAxisSrc is not None and self.yAxisSrc == "fromUser":
+        if self.maxYRange is not None and self.yAxisSrc != "AutoScale":
             self.auto_range = "false"
         else:
             self.auto_range = "true"
