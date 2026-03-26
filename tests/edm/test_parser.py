@@ -167,6 +167,11 @@ def test_get_size_properties():
         ("baz", {"baz": True}),
         ("qux {\nquux\ncorge\n}", {"qux": ["quux", "corge"]}),
         ("qux {\n0 quux\n1 corge\n}", {"qux": ["quux", "corge"]}),
+        (
+            'command {\n  0 "pydm -m \\"DEV=WIGG:LTUS:724\\" file.ui &"\n}',
+            {"command": ['pydm -m "DEV=WIGG:LTUS:724" file.ui &']},
+        ),
+        ('label "some \\"quoted\\" text"', {"label": 'some "quoted" text'}),
     ],
 )
 def test_get_object_properties(test_property, expected):

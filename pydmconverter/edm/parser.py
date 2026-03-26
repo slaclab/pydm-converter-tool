@@ -631,12 +631,12 @@ class EDMFileParser:
                     properties[multi_line_key] = cleaned_prop
                     multi_line_prop = []
                 else:
-                    multi_line_prop.append(line.strip(' "'))
+                    multi_line_prop.append(line.strip(' "').replace('\\"', '"'))
                 continue
 
             try:
                 k, v = line.split(maxsplit=1)
-                v = v.strip(' "')
+                v = v.strip(' "').replace('\\"', '"')
             except ValueError:
                 k, v = line, True
 
@@ -673,7 +673,7 @@ class EDMFileParser:
             try:
                 k, v = line.split(maxsplit=1)
                 indices.append(int(k))
-                values.append(v.strip(' "'))
+                values.append(v.strip(' "').replace('\\"', '"'))
             except ValueError:
                 return lines
 
