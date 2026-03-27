@@ -509,8 +509,9 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
     return value
 
 
-def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, offset_y,
-                                  container_height, parent_pydm_group):
+def apply_widget_post_processing(
+    widget, obj, pydm_widgets, scale, offset_x, offset_y, container_height, parent_pydm_group
+):
     """
     Apply widget-specific post-processing after attribute mapping.
 
@@ -522,9 +523,7 @@ def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, off
         populate_tab_bar(obj, widget)
 
     # Polyline/polygon point calculation and geometry
-    if obj.name.lower() == "activelineclass" and isinstance(
-        widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)
-    ):
+    if obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
         if "xPoints" in obj.properties and "yPoints" in obj.properties:
             x_points = obj.properties["xPoints"]
             y_points = obj.properties["yPoints"]
@@ -560,21 +559,30 @@ def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, off
             widget.width = int(geom["width"])
             widget.height = int(geom["height"])
     elif not (
-        obj.name.lower() == "activelineclass"
-        and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
+        obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
     ):
         # Standard geometry transformation
         if parent_pydm_group is None:
             x, y, width, height = transform_edm_to_pydm(
-                obj.x, obj.y, obj.width, obj.height,
-                container_height=container_height, scale=scale,
-                offset_x=offset_x, offset_y=offset_y,
+                obj.x,
+                obj.y,
+                obj.width,
+                obj.height,
+                container_height=container_height,
+                scale=scale,
+                offset_x=offset_x,
+                offset_y=offset_y,
             )
         else:
             x, y, width, height = transform_nested_widget(
-                obj.x, obj.y, obj.width, obj.height,
-                parent_pydm_group.x, parent_pydm_group.y,
-                parent_pydm_group.height, scale=scale,
+                obj.x,
+                obj.y,
+                obj.width,
+                obj.height,
+                parent_pydm_group.x,
+                parent_pydm_group.y,
+                parent_pydm_group.height,
+                scale=scale,
             )
         widget.x = int(x)
         widget.y = int(y)
@@ -582,9 +590,7 @@ def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, off
         widget.height = max(1, int(height))
 
     # PushButton off/on handling
-    if isinstance(widget, PyDMPushButton) and (
-        "offLabel" in obj.properties and "onLabel" not in obj.properties
-    ):
+    if isinstance(widget, PyDMPushButton) and ("offLabel" in obj.properties and "onLabel" not in obj.properties):
         widget.text = obj.properties["offLabel"]
     elif isinstance(widget, PyDMPushButton) and (
         (
@@ -636,9 +642,7 @@ def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, off
         pad = widget.penWidth or 1
 
         if isinstance(widget, PyDMDrawingIrregularPolygon):
-            alarm_border_pad = (
-                4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
-            )
+            alarm_border_pad = 4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
             pad = pad + alarm_border_pad
 
         min_dim = max(pad * 2, 3)
@@ -707,15 +711,25 @@ def traverse_group(
         if isinstance(obj, EDMGroup):
             if parent_pydm_group is None:
                 x, y, width, height = transform_edm_to_pydm(
-                    obj.x, obj.y, obj.width, obj.height,
-                    container_height=container_height, scale=scale,
-                    offset_x=offset_x, offset_y=offset_y,
+                    obj.x,
+                    obj.y,
+                    obj.width,
+                    obj.height,
+                    container_height=container_height,
+                    scale=scale,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
                 )
             else:
                 x, y, width, height = transform_nested_widget(
-                    obj.x, obj.y, obj.width, obj.height,
-                    parent_pydm_group.x, parent_pydm_group.y,
-                    parent_pydm_group.height, scale=scale,
+                    obj.x,
+                    obj.y,
+                    obj.width,
+                    obj.height,
+                    parent_pydm_group.x,
+                    parent_pydm_group.y,
+                    parent_pydm_group.height,
+                    scale=scale,
                 )
 
             logger.debug("Skipped pydm_group")
@@ -727,11 +741,7 @@ def traverse_group(
             else:
                 curr_vispv = []
 
-            if (
-                "symbolMin" in obj.properties
-                and "symbolMax" in obj.properties
-                and "symbolChannel" in obj.properties
-            ):
+            if "symbolMin" in obj.properties and "symbolMax" in obj.properties and "symbolChannel" in obj.properties:
                 symbol_vispv = [
                     (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
                 ]
@@ -800,8 +810,14 @@ def traverse_group(
 
             # 4. Post-processing (geometry, button variants, dimension padding, etc.)
             apply_widget_post_processing(
-                widget, obj, pydm_widgets, scale, offset_x, offset_y,
-                container_height, parent_pydm_group,
+                widget,
+                obj,
+                pydm_widgets,
+                scale,
+                offset_x,
+                offset_y,
+                container_height,
+                parent_pydm_group,
             )
 
             pydm_widgets.append(widget)
@@ -940,8 +956,9 @@ def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
     return objects
 
 
-def create_button_variant(widget: PyDMPushButton, suffix: str, variant_type: str,
-                          attr_mappings: list, original_mappings: list = None):
+def create_button_variant(
+    widget: PyDMPushButton, suffix: str, variant_type: str, attr_mappings: list, original_mappings: list = None
+):
     """
     Clone a PyDMPushButton into a variant (e.g. "off" or "freeze") with remapped attributes.
 
@@ -976,7 +993,9 @@ def create_button_variant(widget: PyDMPushButton, suffix: str, variant_type: str
 def create_off_button(widget: PyDMPushButton):
     """Create an 'off' variant of a push button with distinct off/on states."""
     return create_button_variant(
-        widget, "_off", "off",
+        widget,
+        "_off",
+        "off",
         attr_mappings=[("off_color", "on_color"), ("off_label", "on_label"), ("off_label", "text")],
         original_mappings=[("on_label", "text")],
     )
@@ -985,7 +1004,9 @@ def create_off_button(widget: PyDMPushButton):
 def create_freeze_button(widget: PyDMPushButton):
     """Create a 'freeze' variant of an activefreezebuttonclass button."""
     return create_button_variant(
-        widget, "_freeze", "freeze",
+        widget,
+        "_freeze",
+        "freeze",
         attr_mappings=[("frozenLabel", "text"), ("frozen_background_color", "background_color")],
     )
 

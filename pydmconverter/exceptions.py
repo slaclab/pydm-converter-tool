@@ -1,5 +1,6 @@
 class ConverterError(Exception):
     """Base exception for converter errors."""
+
     pass
 
 
