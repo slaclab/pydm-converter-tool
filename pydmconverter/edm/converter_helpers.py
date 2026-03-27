@@ -669,8 +669,12 @@ def apply_widget_post_processing(
         else:
             widget.height = int(widget.height) + pad
 
-    # Label minimum sizing
-    if isinstance(widget, PyDMLabel):
+    # Text widget padding — Qt renders fonts slightly wider than EDM,
+    # so add a small width buffer to prevent text clipping and button text wrapping.
+    if isinstance(widget, (PyDMLabel, PyDMLineEdit, PyDMPushButton, PyDMRelatedDisplayButton, PyDMShellCommand)):
+        text_pad = max(int(widget.width * 0.05), 4)
+        widget.width = widget.width + text_pad
+    if isinstance(widget, (PyDMLabel, PyDMLineEdit)):
         widget.width = max(widget.width, 20)
         widget.height = max(widget.height, 14)
 
