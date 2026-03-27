@@ -1,5 +1,8 @@
+import logging
 from pathlib import Path
 from pydmconverter.edm.parser import EDMObject
+
+logger = logging.getLogger(__name__)
 
 
 def generate_menumux_file(menumux_buttons: list[EDMObject], output_path: str | Path):
@@ -83,7 +86,7 @@ class MenuMuxScreen(Display):
     with open(file_path, "w") as f:
         f.write(code)
 
-    print(f"Generated: {file_path}")
+    logger.info(f"Generated: {file_path}")
 
 
 def add_menumux_indices(menumux_buttons):

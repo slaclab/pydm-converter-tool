@@ -500,7 +500,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
                         scale=scale,
                     )
 
-                print("skipped pydm_group")
+                logger.debug("Skipped pydm_group")
 
                 if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
                     curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
@@ -1095,7 +1095,7 @@ def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
     loc_variable = None
     channel_name = None
 
-    print(obj.properties.items())
+    logger.debug(f"Object properties: {dict(obj.properties.items())}")
     for prop_name, prop_val in obj.properties.items():
         if isinstance(prop_val, str) and (
             "loc://" in prop_val or "LOC\\" in prop_val

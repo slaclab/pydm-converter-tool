@@ -2,7 +2,7 @@ from pydmconverter.edm.parser import EDMFileParser, EDMObject
 import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
 import logging
-from pprint import pprint
+
 from pydmconverter.widgets_helpers import PageHeader
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,6 @@ CUSTOM_WIDGET_DEFINITIONS = {
 def convert(input_path, output_path, scrollable=False, site=None):
     try:
         edm_parser = EDMFileParser(input_path, output_path)
-        pprint(edm_parser.ui, indent=2)
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:
         logger.error("File Not Found")

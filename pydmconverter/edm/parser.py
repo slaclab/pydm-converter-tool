@@ -154,13 +154,13 @@ class EDMFileParser:
 
                 if begin_obj_props == -1 or end_obj_props == -1 or begin_group_idx == -1:
                     snippet = text[pos : pos + 100].strip()
-                    print(f"Skipping malformed group at {pos}, snippet: {snippet}")
+                    logger.warning(f"Skipping malformed group at {pos}, snippet: {snippet}")
                     pos += 1
                     continue
 
                 end_group_idx = self.find_matching_end_group(text, begin_group_idx)
                 if end_group_idx == -1:
-                    print(f"Could not find matching endGroup at {pos}")
+                    logger.warning(f"Could not find matching endGroup at {pos}")
                     pos += 1
                     continue
 
@@ -205,7 +205,7 @@ class EDMFileParser:
                 pos = object_match.end()
             else:
                 snippet = text[pos : pos + 100]
-                print(f"Unrecognized text at pos {pos}: '{snippet}'")
+                logger.warning(f"Unrecognized text at pos {pos}: '{snippet}'")
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
 
     def get_symbol_group(
@@ -230,7 +230,7 @@ class EDMFileParser:
         """
         embedded_file = properties.get("file")
         if not embedded_file:
-            print("No embedded file specified in properties.")
+            logger.warning("No embedded file specified in properties.")
             return EDMGroup()
         if not embedded_file.endswith(".edl"):
             embedded_file += ".edl"
@@ -431,7 +431,7 @@ class EDMFileParser:
             temp_group.objects = temp_group.objects[:1]
             return
         while len(temp_group.objects) > len(ranges):
-            print(f"removed symbol group: {temp_group.objects.pop()}")
+            logger.debug(f"Removed symbol group: {temp_group.objects.pop()}")
 
     def remove_symbol_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
         """
@@ -511,7 +511,7 @@ class EDMFileParser:
         """
         num_states = int(properties["numStates"])
         if len(properties["controlPvs"]) > 1:
-            print(f"This symbol object has more than one pV: {properties}")
+            logger.warning(f"This symbol object has more than one pV: {properties}")
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
@@ -589,7 +589,7 @@ class EDMFileParser:
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
                 size_properties[prop] = match_macro.group(1)"""
-                print(
+                logger.warning(
                     f"Missing size property (likely a macro): {prop}"
                 )  # TODO: Come back and use the improved solution
                 size_properties[prop] = 1
