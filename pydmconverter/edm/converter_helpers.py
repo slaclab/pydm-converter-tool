@@ -939,44 +939,54 @@ def find_objects(group: EDMGroup, obj_name: str) -> List[EDMObject]:
     return objects
 
 
+def create_button_variant(widget: PyDMPushButton, suffix: str, variant_type: str,
+                          attr_mappings: list, original_mappings: list = None):
+    """
+    Clone a PyDMPushButton into a variant (e.g. "off" or "freeze") with remapped attributes.
+
+    Parameters
+    ----------
+    widget : PyDMPushButton
+        The original button to clone.
+    suffix : str
+        Name suffix for the variant (e.g. "_off", "_freeze").
+    variant_type : str
+        Type label for the variant flag (e.g. "off", "freeze").
+    attr_mappings : list of (src, dst) tuples
+        Copies widget.src → variant.dst for each pair.
+    original_mappings : list of (src, dst) tuples, optional
+        Copies widget.src → widget.dst on the original widget for each pair.
+    """
+    variant = copy.deepcopy(widget)
+    variant.name = widget.name + suffix
+    for src, dst in attr_mappings:
+        if hasattr(widget, src):
+            setattr(variant, dst, getattr(widget, src))
+    setattr(variant, f"is_{variant_type}_button", True)
+    setattr(widget, f"is_{variant_type}_button", False)
+    if original_mappings:
+        for src, dst in original_mappings:
+            if hasattr(widget, src):
+                setattr(widget, dst, getattr(widget, src))
+    logger.info(f"Created {variant_type}-button: {variant.name} based on {widget.name}")
+    return variant
+
+
 def create_off_button(widget: PyDMPushButton):
-    """
-    Given a PyDMPushButton with distinct off/on states, clone it into an "off" version.
-    Modifies relevant visual attributes and appends a flag to identify it.
-    """
-    off_button = copy.deepcopy(widget)
-    off_button.name = widget.name + "_off"
-    if hasattr(widget, "off_color"):
-        off_button.on_color = widget.off_color
-    if hasattr(widget, "off_label"):
-        off_button.on_label = widget.off_label
-        off_button.text = widget.off_label
-        widget.text = widget.on_label
-    setattr(off_button, "is_off_button", True)
-    setattr(widget, "is_off_button", False)
-    logger.info(f"Created off-button: {off_button.name} based on {widget.name}")
-
-    return off_button
+    """Create an 'off' variant of a push button with distinct off/on states."""
+    return create_button_variant(
+        widget, "_off", "off",
+        attr_mappings=[("off_color", "on_color"), ("off_label", "on_label"), ("off_label", "text")],
+        original_mappings=[("on_label", "text")],
+    )
 
 
-def create_freeze_button(
-    widget: PyDMPushButton,
-):  # TODO: Can find a way to combine with create_off_button to reduce redundancy
-    """
-    Given a PyDMPushButton converted from an activefreezebuttonclass, clone it into a "freeze" version.
-    Modifies relevant visual attributes and appends a flag to identify it.
-    """
-    freeze_button = copy.deepcopy(widget)
-    freeze_button.name = widget.name + "_freeze"
-    if hasattr(widget, "frozenLabel"):
-        freeze_button.text = widget.frozenLabel
-    if hasattr(widget, "frozen_background_color"):
-        freeze_button.background_color = widget.frozen_background_color
-    setattr(freeze_button, "is_freeze_button", True)
-    setattr(widget, "is_freeze_button", False)
-    logger.info(f"Created off-button: {freeze_button.name} based on {widget.name}")
-
-    return freeze_button
+def create_freeze_button(widget: PyDMPushButton):
+    """Create a 'freeze' variant of an activefreezebuttonclass button."""
+    return create_button_variant(
+        widget, "_freeze", "freeze",
+        attr_mappings=[("frozenLabel", "text"), ("frozen_background_color", "background_color")],
+    )
 
 
 def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
