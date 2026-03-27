@@ -4,14 +4,6 @@ class ConverterError(Exception):
     pass
 
 
-class UnsupportedWidgetError(ConverterError):
-    """Raised when an EDM widget type has no PyDM mapping."""
-
-    def __init__(self, widget_name: str):
-        self.widget_name = widget_name
-        super().__init__(f"Unsupported widget type: {widget_name}")
-
-
 class AttributeConversionError(ConverterError):
     """Raised when an EDM attribute cannot be converted to its PyDM equivalent."""
 
@@ -23,11 +15,3 @@ class AttributeConversionError(ConverterError):
         if cause:
             msg += f": {cause}"
         super().__init__(msg)
-
-
-class ColorConversionError(ConverterError):
-    """Raised when a color value cannot be converted."""
-
-    def __init__(self, color_value: str):
-        self.color_value = color_value
-        super().__init__(f"Could not convert color: {color_value}")

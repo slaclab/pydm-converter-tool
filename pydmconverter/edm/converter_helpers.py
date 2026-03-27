@@ -287,6 +287,29 @@ def transform_nested_widget(
     return int(relative_x), int(relative_y), int(child_width), int(child_height)
 
 
+def _has_fill_properties(obj: EDMObject) -> tuple:
+    """Return (has_fill, has_fill_color) for an EDM object."""
+    has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
+    has_fill_color = "fillColor" in obj.properties
+    return has_fill, has_fill_color
+
+
+def _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y):
+    """Dispatch to the appropriate geometry transform based on whether we have a parent group."""
+    if parent_pydm_group is None:
+        return transform_edm_to_pydm(
+            obj.x, obj.y, obj.width, obj.height,
+            container_height=container_height, scale=scale,
+            offset_x=offset_x, offset_y=offset_y,
+        )
+    else:
+        return transform_nested_widget(
+            obj.x, obj.y, obj.width, obj.height,
+            parent_pydm_group.x, parent_pydm_group.y, parent_pydm_group.height,
+            scale=scale,
+        )
+
+
 def get_polyline_widget_type(obj: EDMObject) -> type:
     """
     Determine if an activelineclass should be PyDMDrawingPolyline or PyDMDrawingIrregularPolygon.
@@ -307,8 +330,7 @@ def get_polyline_widget_type(obj: EDMObject) -> type:
     type
         Either PyDMDrawingIrregularPolygon or PyDMDrawingPolyline
     """
-    has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
-    has_fill_color = "fillColor" in obj.properties
+    has_fill, has_fill_color = _has_fill_properties(obj)
     is_closed = obj.properties.get("closePolygon") is True
 
     if not is_closed and "xPoints" in obj.properties and "yPoints" in obj.properties:
@@ -341,8 +363,7 @@ def get_arc_widget_type(obj: EDMObject) -> type:
     type
         Either PyDMDrawingPie or PyDMDrawingArc
     """
-    has_fill = obj.properties.get("fill") is True or "fill" in obj.properties
-    has_fill_color = "fillColor" in obj.properties
+    has_fill, has_fill_color = _has_fill_properties(obj)
 
     if has_fill or has_fill_color:
         logger.info("Converting filled arc to PyDMDrawingPie")
@@ -466,7 +487,7 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
 
     if edm_attr == "font":
         value = parse_font_string(value)
-    if edm_attr in ("macro", "symbols"):
+    elif edm_attr in ("macro", "symbols"):
         if isinstance(value, list):
             if isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
                 macro_dict = parse_edm_macros(value[0])
@@ -486,7 +507,7 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
             else:
                 value = json.dumps(macro_dict) if macro_dict else None
             logger.info(f"Converted macro string to: {value}")
-    if edm_attr == "fillColor":
+    elif edm_attr == "fillColor":
         original_value = value
         color_tuple = convert_color_property_to_qcolor(value, color_data=color_list_dict)
         logger.info(f"Color conversion: {original_value} -> {color_tuple}")
@@ -496,11 +517,11 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
         else:
             logger.warning(f"Could not convert color {value}, skipping")
             return None
-    if edm_attr == "value":
+    elif edm_attr == "value":
         value = get_string_value(value)
-    if edm_attr in COLOR_ATTRIBUTES:
+    elif edm_attr in COLOR_ATTRIBUTES:
         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
-    if edm_attr == "plotColor":
+    elif edm_attr == "plotColor":
         color_list = []
         for color in value:
             color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
@@ -561,29 +582,7 @@ def apply_widget_post_processing(
     elif not (
         obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
     ):
-        # Standard geometry transformation
-        if parent_pydm_group is None:
-            x, y, width, height = transform_edm_to_pydm(
-                obj.x,
-                obj.y,
-                obj.width,
-                obj.height,
-                container_height=container_height,
-                scale=scale,
-                offset_x=offset_x,
-                offset_y=offset_y,
-            )
-        else:
-            x, y, width, height = transform_nested_widget(
-                obj.x,
-                obj.y,
-                obj.width,
-                obj.height,
-                parent_pydm_group.x,
-                parent_pydm_group.y,
-                parent_pydm_group.height,
-                scale=scale,
-            )
+        x, y, width, height = _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
         widget.x = int(x)
         widget.y = int(y)
         widget.width = max(1, int(width))
@@ -709,28 +708,9 @@ def traverse_group(
 
     for obj in edm_group.objects:
         if isinstance(obj, EDMGroup):
-            if parent_pydm_group is None:
-                x, y, width, height = transform_edm_to_pydm(
-                    obj.x,
-                    obj.y,
-                    obj.width,
-                    obj.height,
-                    container_height=container_height,
-                    scale=scale,
-                    offset_x=offset_x,
-                    offset_y=offset_y,
-                )
-            else:
-                x, y, width, height = transform_nested_widget(
-                    obj.x,
-                    obj.y,
-                    obj.width,
-                    obj.height,
-                    parent_pydm_group.x,
-                    parent_pydm_group.y,
-                    parent_pydm_group.height,
-                    scale=scale,
-                )
+            x, y, width, height = _compute_geometry(
+                obj, parent_pydm_group, container_height, scale, offset_x, offset_y
+            )
 
             logger.debug("Skipped pydm_group")
 
@@ -1029,15 +1009,15 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
         prevColor = currColor
         i += 1
     if ctrl_attributes:
-        setattr(widget, "height", widget.height // len(ctrl_attributes))
-        setattr(widget, "channel", ctrl_attributes[0][0])
-        setattr(widget, "indicatorColor", ctrl_attributes[0][1])
+        widget.height = widget.height // len(ctrl_attributes)
+        widget.channel = ctrl_attributes[0][0]
+        widget.indicatorColor = ctrl_attributes[0][1]
         for j in range(1, len(ctrl_attributes)):
             curr_slider = copy.deepcopy(widget)
             curr_slider.name = widget.name + f"_{j}"
-            setattr(curr_slider, "y", curr_slider.y + curr_slider.height * j)
-            setattr(curr_slider, "channel", ctrl_attributes[j][0])
-            setattr(curr_slider, "indicatorColor", ctrl_attributes[j][1])
+            curr_slider.y = curr_slider.y + curr_slider.height * j
+            curr_slider.channel = ctrl_attributes[j][0]
+            curr_slider.indicatorColor = ctrl_attributes[j][1]
             logger.info(f"Created multi-slider: {curr_slider.name} based on {widget.name}")
             extra_sliders.append(curr_slider)
     return extra_sliders

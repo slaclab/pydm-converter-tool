@@ -84,7 +84,6 @@ class XMLSerializableMixin(XMLConvertible):
     name: Optional[str] = None
     count: ClassVar[int] = 1
     secretId: str = None
-    secretId: str = None
 
     def __post_init__(self) -> None:
         """
