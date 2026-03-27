@@ -7,7 +7,7 @@ from pydmconverter.edm.converter import convert
 from pathlib import Path
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 IMAGE_FILE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif"}

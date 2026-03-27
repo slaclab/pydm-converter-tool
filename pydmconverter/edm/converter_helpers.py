@@ -567,6 +567,10 @@ def apply_widget_post_processing(
             startCoord = (obj.x, obj.y)
             geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen, arrow_size)
 
+            if not geom:
+                logger.warning(f"Skipping {type(widget).__name__} with no valid points for {obj.name}")
+                return
+
             widget.points = point_strings
             widget.penWidth = pen
             if widget.penColor is None:
@@ -1265,6 +1269,28 @@ def get_string_value(value: list) -> str:
     return "\n".join(value)
 
 
+def _split_macro_pairs(macro_string: str) -> list[str]:
+    """Split macro string on commas, respecting ${...} nesting."""
+    pairs = []
+    current = []
+    depth = 0
+    for char in macro_string:
+        if char == "{" and depth >= 0:
+            depth += 1
+            current.append(char)
+        elif char == "}" and depth > 0:
+            depth -= 1
+            current.append(char)
+        elif char == "," and depth == 0:
+            pairs.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    if current:
+        pairs.append("".join(current))
+    return pairs
+
+
 def parse_edm_macros(macro_string: str) -> dict:
     """
     Parse an EDM macro string into a dictionary for PyDM widgets.
@@ -1301,10 +1327,12 @@ def parse_edm_macros(macro_string: str) -> dict:
     if not macro_string:
         return {}
 
-    pairs = macro_string.split(",")
+    pairs = _split_macro_pairs(macro_string)
 
     for pair in pairs:
         pair = pair.strip()
+        if not pair:
+            continue
         if "=" in pair:
             key, value = pair.split("=", 1)
             key = key.strip()

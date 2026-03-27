@@ -166,9 +166,10 @@ class EDMFileParser:
 
                 # get rid of trailing endObjectProperties
                 extra_end_props = text.find("endObjectProperties", end_group_idx)
+                next_object_pos = text.find("object", end_group_idx)
                 group_end = (
                     extra_end_props + len("endObjectProperties")
-                    if (extra_end_props != -1 and extra_end_props < text.find("object", end_group_idx))
+                    if (extra_end_props != -1 and (next_object_pos == -1 or extra_end_props < next_object_pos))
                     else end_group_idx + len("endGroup")
                 )
                 group_header = (
@@ -666,8 +667,8 @@ class EDMFileParser:
         values = []
 
         def check_sequential(indices):
-            """Check if the list of indices is sequential starting from 0"""
-            return indices == list(range(len(indices)))
+            """Check if the list of indices is sequential (starting from 0 or 1)"""
+            return indices == list(range(len(indices))) or indices == list(range(1, len(indices) + 1))
 
         for line in lines:
             try:

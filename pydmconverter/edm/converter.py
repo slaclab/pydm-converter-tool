@@ -86,10 +86,15 @@ def convert(input_path, output_path, scrollable=False, site=None):
     tree.write(output_path, encoding="utf-8", xml_declaration=True)
 
 
+QT_BASE_CLASSES = {"QPushButton", "QTabWidget", "QFrame", "QLabel", "QWidget", "QLineEdit", "QComboBox", "QTableWidget"}
+
+
 def build_customwidgets_element(used_classes: set) -> ET.Element:
     customwidgets_el = ET.Element("customwidgets")
 
     for cls_name in sorted(used_classes):
+        if cls_name in QT_BASE_CLASSES:
+            continue
         if cls_name not in CUSTOM_WIDGET_DEFINITIONS:
             logger.warning(f"Could not find custom widget {cls_name} in CUSTOM_WIDGET_DEFINITIONS")
             continue
