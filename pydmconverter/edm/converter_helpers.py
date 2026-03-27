@@ -29,6 +29,7 @@ from pydmconverter.widgets import (
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
+from pydmconverter.exceptions import AttributeConversionError
 import logging
 import math
 import os
@@ -795,7 +796,7 @@ def traverse_group(
                     setattr(widget, pydm_attr, value)
                     logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
                 except Exception as e:
-                    logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
+                    raise AttributeConversionError(edm_attr, value, widget.name, cause=e) from e
 
             # 4. Post-processing (geometry, button variants, dimension padding, etc.)
             apply_widget_post_processing(
