@@ -424,6 +424,393 @@ def handle_button_polygon_overlaps(pydm_widgets):
     return pydm_widgets
 
 
+def resolve_widget_type(obj: EDMObject):
+    """
+    Determine the PyDM widget type for a given EDM object.
+
+    Returns the widget type class, or None if unsupported.
+    May mutate obj.properties for special cases (e.g. activechoicebuttonclass without tabs).
+    """
+    name = obj.name.lower()
+
+    if name == "activelineclass":
+        return get_polyline_widget_type(obj)
+    if name == "activearcclass":
+        return get_arc_widget_type(obj)
+
+    widget_type = EDM_TO_PYDM_WIDGETS.get(name)
+    if not widget_type:
+        return None
+
+    if name == "activechoicebuttonclass" and ("tabs" not in obj.properties or not obj.properties["tabs"]):
+        channel = search_for_edm_attr(obj, "channel")
+        if not channel:
+            logger.warning(f"Could not find channel in object: {obj.name}")
+        else:
+            widget_type = PyDMEnumButton
+            obj.properties["tab_names"] = None
+            obj.properties["hide_on_disconnect_channel"] = channel
+
+    return widget_type
+
+
+def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
+    """
+    Convert a single EDM attribute value to its PyDM equivalent.
+
+    Returns the converted value, or None to signal the attribute should be skipped.
+    """
+    if obj.name.lower() == "activelineclass" and edm_attr in ["xPoints", "yPoints", "numPoints"]:
+        return None
+
+    if edm_attr == "font":
+        value = parse_font_string(value)
+    if edm_attr in ("macro", "symbols"):
+        if isinstance(value, list):
+            if isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
+                macro_dict = parse_edm_macros(value[0])
+                value = macro_dict
+                logger.info(f"Converted single macro to dict: {value}")
+            else:
+                parsed_macros = []
+                for macro_str in value:
+                    macro_dict = parse_edm_macros(macro_str)
+                    parsed_macros.append(json.dumps(macro_dict))
+                value = "\n".join(parsed_macros) if parsed_macros else None
+                logger.info(f"Converted macro list to: {value}")
+        elif isinstance(value, str):
+            macro_dict = parse_edm_macros(value)
+            if isinstance(widget, PyDMEmbeddedDisplay):
+                value = macro_dict
+            else:
+                value = json.dumps(macro_dict) if macro_dict else None
+            logger.info(f"Converted macro string to: {value}")
+    if edm_attr == "fillColor":
+        original_value = value
+        color_tuple = convert_color_property_to_qcolor(value, color_data=color_list_dict)
+        logger.info(f"Color conversion: {original_value} -> {color_tuple}")
+        if color_tuple:
+            value = color_tuple
+            logger.info(f"Setting fillColor/brushColor to: {value}")
+        else:
+            logger.warning(f"Could not convert color {value}, skipping")
+            return None
+    if edm_attr == "value":
+        value = get_string_value(value)
+    if edm_attr in COLOR_ATTRIBUTES:
+        value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
+    if edm_attr == "plotColor":
+        color_list = []
+        for color in value:
+            color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
+        value = color_list
+
+    return value
+
+
+def apply_widget_post_processing(widget, obj, pydm_widgets, scale, offset_x, offset_y,
+                                  container_height, parent_pydm_group):
+    """
+    Apply widget-specific post-processing after attribute mapping.
+
+    Handles geometry transformation, polyline points, button variants,
+    embedded display filenames, dimension padding, and minimum sizes.
+    """
+    # Tab bar population
+    if obj.name.lower() == "activechoicebuttonclass" and isinstance(widget, QTabWidget):
+        populate_tab_bar(obj, widget)
+
+    # Polyline/polygon point calculation and geometry
+    if obj.name.lower() == "activelineclass" and isinstance(
+        widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)
+    ):
+        if "xPoints" in obj.properties and "yPoints" in obj.properties:
+            x_points = obj.properties["xPoints"]
+            y_points = obj.properties["yPoints"]
+            abs_pts = [(int(float(x) * scale), int(float(y) * scale)) for x, y in zip(x_points, y_points)]
+            pen = int(obj.properties.get("lineWidth", 1))
+
+            arrow_size = 0
+            if "arrows" in obj.properties and obj.properties["arrows"] in ("to", "from", "both"):
+                arrow_size = int(15 * scale)
+
+            startCoord = (obj.x, obj.y)
+            geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen, arrow_size)
+
+            widget.points = point_strings
+            widget.penWidth = pen
+            if widget.penColor is None:
+                widget.penColor = (0, 0, 0, 255)
+
+            if isinstance(widget, PyDMDrawingIrregularPolygon):
+                if widget.brushColor is not None:
+                    widget.brushFill = True
+                    logger.info(f"IrregularPolygon has explicit brushColor: {widget.brushColor}")
+                else:
+                    widget.brushColor = (255, 255, 255, 255)
+                    widget.brushFill = True
+                    logger.info("Setting default white fill color for IrregularPolygon (no fillColor specified)")
+
+                widget.alarm_sensitive_content = True
+                logger.info("Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible")
+
+            widget.x = int(geom["x"] + offset_x)
+            widget.y = int(geom["y"] + offset_y)
+            widget.width = int(geom["width"])
+            widget.height = int(geom["height"])
+    elif not (
+        obj.name.lower() == "activelineclass"
+        and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
+    ):
+        # Standard geometry transformation
+        if parent_pydm_group is None:
+            x, y, width, height = transform_edm_to_pydm(
+                obj.x, obj.y, obj.width, obj.height,
+                container_height=container_height, scale=scale,
+                offset_x=offset_x, offset_y=offset_y,
+            )
+        else:
+            x, y, width, height = transform_nested_widget(
+                obj.x, obj.y, obj.width, obj.height,
+                parent_pydm_group.x, parent_pydm_group.y,
+                parent_pydm_group.height, scale=scale,
+            )
+        widget.x = int(x)
+        widget.y = int(y)
+        widget.width = max(1, int(width))
+        widget.height = max(1, int(height))
+
+    # PushButton off/on handling
+    if isinstance(widget, PyDMPushButton) and (
+        "offLabel" in obj.properties and "onLabel" not in obj.properties
+    ):
+        widget.text = obj.properties["offLabel"]
+    elif isinstance(widget, PyDMPushButton) and (
+        (
+            ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+            or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
+        )
+        and hasattr(widget, "channel")
+        and widget.channel is not None
+    ):
+        off_button = create_off_button(widget)
+        pydm_widgets.append(off_button)
+
+    # Embedded display filename handling
+    if isinstance(widget, PyDMEmbeddedDisplay) and obj.name.lower() == "activepipclass":
+        if "displayFileName" in obj.properties and obj.properties["displayFileName"]:
+            display_filenames = obj.properties["displayFileName"]
+            filename_to_set = None
+            if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
+                filename_to_set = display_filenames[0]
+            elif isinstance(display_filenames, dict) and len(display_filenames) > 0:
+                filename_to_set = display_filenames[0]
+            elif isinstance(display_filenames, str):
+                filename_to_set = display_filenames
+
+            if isinstance(filename_to_set, str):
+                if filename_to_set.endswith(".edl"):
+                    filename_to_set = filename_to_set[:-4] + ".ui"
+                widget.filename = filename_to_set
+                logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
+
+        # Make LOC variables unique if they had $(!W) marker
+        if hasattr(widget, "channel") and widget.channel and "__UNIQUE__" in widget.channel:
+            widget_id = str(id(widget))[-6:]
+            widget.channel = widget.channel.replace("__UNIQUE__", widget_id)
+            logger.info(f"Made LOC variable unique: {widget.channel}")
+
+    # Freeze button handling
+    if obj.name.lower() == "activefreezebuttonclass":
+        freeze_button = create_freeze_button(widget)
+        pydm_widgets.append(freeze_button)
+
+    # Multi-slider handling
+    if obj.name.lower() == "mmvclass":
+        generated_sliders = create_multi_sliders(widget, obj)
+        pydm_widgets.extend(generated_sliders)
+
+    # Drawing shape dimension padding
+    if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
+        pad = widget.penWidth or 1
+
+        if isinstance(widget, PyDMDrawingIrregularPolygon):
+            alarm_border_pad = (
+                4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
+            )
+            pad = pad + alarm_border_pad
+
+        min_dim = max(pad * 2, 3)
+
+        if widget.width < min_dim:
+            widget.width = min_dim
+        else:
+            widget.width = int(widget.width) + pad
+
+        if widget.height < min_dim:
+            widget.height = min_dim
+        else:
+            widget.height = int(widget.height) + pad
+
+    # Label minimum sizing
+    if isinstance(widget, PyDMLabel):
+        widget.width = max(widget.width, 20)
+        widget.height = max(widget.height, 14)
+
+    # Drawing shape alarm sensitivity
+    if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
+        if hasattr(widget, "brushColor") and widget.brushColor is not None:
+            widget.alarm_sensitive_content = True
+            logger.info(f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible")
+
+    # Auto-size
+    if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
+        widget.autoSize = True
+
+
+def traverse_group(
+    edm_group: EDMGroup,
+    color_list_dict,
+    used_classes: set,
+    skip_widgets: set = None,
+    parent_pydm_group: Optional[PyDMFrame] = None,
+    pydm_widgets=None,
+    container_height: float = None,
+    scale: float = 1.0,
+    offset_x: float = 0,
+    offset_y: float = 0,
+    central_widget: EDMGroup = None,
+    parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
+):
+    """
+    Recursively traverse an EDM group and convert each object to a PyDM widget.
+
+    Parameters
+    ----------
+    edm_group : EDMGroup
+        The EDM group to traverse.
+    color_list_dict : dict
+        Parsed color list data for color conversion.
+    used_classes : set
+        Accumulator for tracking which PyDM widget classes are used.
+    skip_widgets : set, optional
+        Set of widget class names (lowercase) to skip during conversion.
+    """
+    menu_mux_buttons = []
+    if pydm_widgets is None:
+        pydm_widgets = []
+    if skip_widgets is None:
+        skip_widgets = set()
+
+    for obj in edm_group.objects:
+        if isinstance(obj, EDMGroup):
+            if parent_pydm_group is None:
+                x, y, width, height = transform_edm_to_pydm(
+                    obj.x, obj.y, obj.width, obj.height,
+                    container_height=container_height, scale=scale,
+                    offset_x=offset_x, offset_y=offset_y,
+                )
+            else:
+                x, y, width, height = transform_nested_widget(
+                    obj.x, obj.y, obj.width, obj.height,
+                    parent_pydm_group.x, parent_pydm_group.y,
+                    parent_pydm_group.height, scale=scale,
+                )
+
+            logger.debug("Skipped pydm_group")
+
+            if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
+                curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
+            elif "visPv" in obj.properties:
+                curr_vispv = [(obj.properties["visPv"], None, None)]
+            else:
+                curr_vispv = []
+
+            if (
+                "symbolMin" in obj.properties
+                and "symbolMax" in obj.properties
+                and "symbolChannel" in obj.properties
+            ):
+                symbol_vispv = [
+                    (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
+                ]
+            else:
+                symbol_vispv = []
+
+            traverse_group(
+                obj,
+                color_list_dict,
+                used_classes,
+                skip_widgets=skip_widgets,
+                pydm_widgets=pydm_widgets,
+                container_height=height,
+                scale=scale,
+                offset_x=0,
+                offset_y=0,
+                central_widget=central_widget,
+                parent_vispvs=(parent_vispvs or []) + curr_vispv + symbol_vispv,
+            )
+
+        elif isinstance(obj, EDMObject):
+            # Skip widgets based on site rules
+            if obj.name.lower() in skip_widgets:
+                logger.info(f"Skipping {obj.name} (site rule)")
+                continue
+
+            # 1. Resolve widget type
+            widget_type = resolve_widget_type(obj)
+
+            if obj.name.lower() == "menumuxclass":
+                menu_mux_buttons.append(obj)
+            if not widget_type:
+                logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
+                log_unsupported_widget(obj.name)
+                continue
+
+            # 2. Create widget instance
+            widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
+            used_classes.add(type(widget).__name__)
+            logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
+
+            if parent_vispvs:
+                widget.visPvList = list(parent_vispvs)
+
+            # TextupdateClass widgets always show units in EDM
+            if obj.name.lower() in ("textupdateclass", "multilinetextupdateclass", "regtextupdateclass"):
+                if "showUnits" not in obj.properties:
+                    widget.show_units = True
+                    logger.info(f"Set show_units=True for {obj.name} (implicit EDM behavior)")
+
+            # 3. Map and convert attributes
+            for edm_attr, value in obj.properties.items():
+                pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
+                if not pydm_attr:
+                    continue
+
+                value = convert_attribute_value(edm_attr, value, widget, obj, color_list_dict)
+                if value is None:
+                    continue
+
+                try:
+                    setattr(widget, pydm_attr, value)
+                    logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
+                except Exception as e:
+                    logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
+
+            # 4. Post-processing (geometry, button variants, dimension padding, etc.)
+            apply_widget_post_processing(
+                widget, obj, pydm_widgets, scale, offset_x, offset_y,
+                container_height, parent_pydm_group,
+            )
+
+            pydm_widgets.append(widget)
+            logger.info(f"Added {widget.name} to root")
+        else:
+            logger.warning(f"Unknown object type: {type(obj)}. Skipping.")
+
+    return pydm_widgets, menu_mux_buttons
+
+
 def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
@@ -435,380 +822,35 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
 
     Returns
     -------
-    List[Union[widgets.PyDMWidgetBase, widgets.PyDMGroup]]
-        A list of PyDM widget instances representing the EDM UI.
+    Tuple[List, set]
+        A tuple of (pydm_widgets, used_classes).
     """
     from pydmconverter.sites import get_skip_widgets
 
     skip_widgets = get_skip_widgets(site)
 
-    pydm_widgets = []
     used_classes = set()
     color_list_filepath = search_color_list()
     color_list_dict = parse_colors_list(color_list_filepath)
 
-    pip_objects = find_objects(parser.ui, "activepipclass")  # find tabs and populate tab bars with tabs
+    # Pre-process: populate embedded tab bars
+    pip_objects = find_objects(parser.ui, "activepipclass")
     for pip_object in pip_objects:
         create_embedded_tabs(pip_object, parser.ui)
 
-    text_objects = find_objects(
-        parser.ui, "activextextclass"
-    )  # TODO: If this gets too large, make into a helper function
+    # Pre-process: remove overlapping text labels on related display buttons
+    text_objects = find_objects(parser.ui, "activextextclass")
     for text_object in text_objects:
         if should_delete_overlapping(parser.ui, text_object, "relateddisplayclass"):
             delete_object_in_group(parser.ui, text_object)
 
-    def traverse_group(
-        edm_group: EDMGroup,
-        color_list_dict,
-        parent_pydm_group: Optional[PyDMFrame] = None,
-        pydm_widgets=None,
-        container_height: float = None,
-        scale: float = 1.0,
-        offset_x: float = 0,
-        offset_y: float = 0,
-        central_widget: EDMGroup = None,
-        parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
-        # parent_vis_range: Optional[Tuple[int, int]] = None,
-    ):
-        menu_mux_buttons = []
-        if pydm_widgets is None:
-            pydm_widgets = []
-
-        for obj in edm_group.objects:
-            if isinstance(obj, EDMGroup):
-                if parent_pydm_group is None:
-                    x, y, width, height = transform_edm_to_pydm(
-                        obj.x,
-                        obj.y,
-                        obj.width,
-                        obj.height,
-                        container_height=container_height,
-                        scale=scale,
-                        offset_x=offset_x,
-                        offset_y=offset_y,
-                    )
-                else:
-                    x, y, width, height = transform_nested_widget(
-                        obj.x,
-                        obj.y,
-                        obj.width,
-                        obj.height,
-                        parent_pydm_group.x,  # Add parent x
-                        parent_pydm_group.y,  # Add parent y
-                        parent_pydm_group.height,
-                        scale=scale,
-                    )
-
-                logger.debug("Skipped pydm_group")
-
-                if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
-                    curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
-                elif "visPv" in obj.properties:
-                    curr_vispv = [(obj.properties["visPv"], None, None)]
-                else:
-                    curr_vispv = []
-
-                if (
-                    "symbolMin" in obj.properties
-                    and "symbolMax" in obj.properties
-                    and "symbolChannel" in obj.properties
-                ):
-                    symbol_vispv = [
-                        (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
-                    ]
-                else:
-                    symbol_vispv = []
-
-                traverse_group(
-                    obj,
-                    color_list_dict,
-                    pydm_widgets=pydm_widgets,
-                    container_height=height,
-                    scale=scale,
-                    offset_x=0,
-                    offset_y=0,
-                    central_widget=central_widget,
-                    parent_vispvs=(parent_vispvs or []) + curr_vispv + symbol_vispv,
-                    # parent_vis_range=(parent_vis_range or []) + curr_vis_range,
-                )
-
-            elif isinstance(obj, EDMObject):
-                if obj.name.lower() in skip_widgets:
-                    logger.info(f"Skipping {obj.name} (site rule: {site})")
-                    continue
-                if obj.name.lower() == "activelineclass":
-                    widget_type = get_polyline_widget_type(obj)
-                elif obj.name.lower() == "activearcclass":
-                    widget_type = get_arc_widget_type(obj)
-                else:
-                    widget_type = EDM_TO_PYDM_WIDGETS.get(obj.name.lower())
-
-                if obj.name.lower() == "menumuxclass":
-                    menu_mux_buttons.append(obj)
-                if not widget_type:
-                    logger.warning(f"Unsupported widget type: {obj.name}. Skipping.")
-                    log_unsupported_widget(obj.name)
-                    continue
-                if obj.name.lower() == "activechoicebuttonclass" and (
-                    "tabs" not in obj.properties or not obj.properties["tabs"]
-                ):
-                    channel = search_for_edm_attr(obj, "channel")
-
-                    if not channel:
-                        logger.warning("Could not find channel in object: {obj.name}")
-                    else:
-                        tab_names = None
-                        # tab_names = get_channel_tabs(channel)
-                        widget_type = PyDMEnumButton
-                        obj.properties["tab_names"] = tab_names
-                        obj.properties["hide_on_disconnect_channel"] = channel
-
-                widget = widget_type(name=obj.name + str(id(obj)) if hasattr(obj, "name") else f"widget_{id(obj)}")
-                used_classes.add(type(widget).__name__)
-                logger.info(f"Creating widget: {widget_type.__name__} ({widget.name})")
-
-                if parent_vispvs:
-                    setattr(widget, "visPvList", list(parent_vispvs))
-
-                # TextupdateClass widgets always show units in EDM, so set show_units to True
-                # unless explicitly specified otherwise in the EDM properties
-                if obj.name.lower() in ("textupdateclass", "multilinetextupdateclass", "regtextupdateclass"):
-                    if "showUnits" not in obj.properties:
-                        setattr(widget, "show_units", True)
-                        logger.info(f"Set show_units=True for {obj.name} (implicit EDM behavior)")
-
-                # Set mapped attributes.
-                for edm_attr, value in obj.properties.items():
-                    pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
-
-                    if obj.name.lower() == "activelineclass" and edm_attr in ["xPoints", "yPoints", "numPoints"]:
-                        continue
-
-                    if not pydm_attr:
-                        continue
-
-                    if edm_attr == "font":
-                        value = parse_font_string(value)
-                    if edm_attr in ("macro", "symbols"):
-                        if isinstance(value, list):
-                            if isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
-                                macro_dict = parse_edm_macros(value[0])
-                                value = macro_dict
-                                logger.info(f"Converted single macro to dict: {value}")
-                            else:
-                                parsed_macros = []
-                                for macro_str in value:
-                                    macro_dict = parse_edm_macros(macro_str)
-                                    parsed_macros.append(json.dumps(macro_dict))
-                                value = "\n".join(parsed_macros) if parsed_macros else None
-                                logger.info(f"Converted macro list to: {value}")
-                        elif isinstance(value, str):
-                            macro_dict = parse_edm_macros(value)
-                            if isinstance(widget, PyDMEmbeddedDisplay):
-                                value = macro_dict
-                            else:
-                                value = json.dumps(macro_dict) if macro_dict else None
-                            logger.info(f"Converted macro string to: {value}")
-                    if edm_attr == "fillColor":
-                        original_value = value
-                        color_tuple = convert_color_property_to_qcolor(value, color_data=color_list_dict)
-                        logger.info(f"Color conversion: {original_value} -> {color_tuple}")
-                        if color_tuple:
-                            value = color_tuple
-                            logger.info(f"Setting fillColor/brushColor to: {value}")
-                        else:
-                            logger.warning(f"Could not convert color {value}, skipping")
-                            continue
-                    if edm_attr == "value":
-                        value = get_string_value(value)
-                    if edm_attr in COLOR_ATTRIBUTES:
-                        value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
-                    if edm_attr == "plotColor":
-                        color_list = []
-                        for color in value:
-                            color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
-                        value = color_list
-                    try:
-                        setattr(widget, pydm_attr, value)
-                        logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
-                    except Exception as e:
-                        logger.error(f"Failed to set attribute {pydm_attr} on {widget.name}: {e}")
-
-                if obj.name.lower() == "activechoicebuttonclass" and widget_type == QTabWidget:
-                    populate_tab_bar(obj, widget)
-                if obj.name.lower() == "activelineclass" and isinstance(
-                    widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)
-                ):
-                    if "xPoints" in obj.properties and "yPoints" in obj.properties:
-                        x_points = obj.properties["xPoints"]
-                        y_points = obj.properties["yPoints"]
-                        abs_pts = [(int(float(x) * scale), int(float(y) * scale)) for x, y in zip(x_points, y_points)]
-                        pen = int(obj.properties.get("lineWidth", 1))
-
-                        arrow_size = 0
-                        if "arrows" in obj.properties and obj.properties["arrows"] in ("to", "from", "both"):
-                            arrow_size = int(15 * scale)
-
-                        startCoord = (obj.x, obj.y)
-                        geom, point_strings = geom_and_local_points(abs_pts, startCoord, pen, arrow_size)
-
-                        widget.points = point_strings
-                        widget.penWidth = pen
-                        if widget.penColor is None:
-                            widget.penColor = (0, 0, 0, 255)
-
-                        if isinstance(widget, PyDMDrawingIrregularPolygon):
-                            if widget.brushColor is not None:
-                                widget.brushFill = True
-                                logger.info(f"IrregularPolygon has explicit brushColor: {widget.brushColor}")
-                            else:
-                                widget.brushColor = (255, 255, 255, 255)
-                                widget.brushFill = True
-                                logger.info(
-                                    "Setting default white fill color for IrregularPolygon (no fillColor specified)"
-                                )
-
-                            widget.alarm_sensitive_content = True
-                            logger.info(
-                                "Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible"
-                            )
-
-                        widget.x = int(geom["x"] + offset_x)
-                        widget.y = int(geom["y"] + offset_y)
-                        widget.width = int(geom["width"])
-                        widget.height = int(geom["height"])
-                elif not (
-                    obj.name.lower() == "activelineclass"
-                    and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
-                ):
-                    if parent_pydm_group is None:
-                        x, y, width, height = transform_edm_to_pydm(
-                            obj.x,
-                            obj.y,
-                            obj.width,
-                            obj.height,
-                            container_height=container_height,
-                            scale=scale,
-                            offset_x=offset_x,
-                            offset_y=offset_y,
-                        )
-                    else:
-                        x, y, width, height = transform_nested_widget(
-                            obj.x,
-                            obj.y,
-                            obj.width,
-                            obj.height,
-                            parent_pydm_group.x,  # Add parent x
-                            parent_pydm_group.y,  # Add parent y
-                            parent_pydm_group.height,
-                            scale=scale,
-                        )
-                    widget.x = int(x)
-                    widget.y = int(y)
-                    widget.width = max(1, int(width))
-                    widget.height = max(1, int(height))
-
-                if type(widget).__name__ == "PyDMPushButton" and (
-                    "offLabel" in obj.properties and "onLabel" not in obj.properties
-                ):
-                    setattr(widget, "text", obj.properties["offLabel"])
-                elif type(widget).__name__ == "PyDMPushButton" and (
-                    (
-                        ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
-                        or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
-                    )
-                    and hasattr(widget, "channel")
-                    and widget.channel is not None
-                ):
-                    off_button = create_off_button(widget)
-                    pydm_widgets.append(off_button)
-                if isinstance(widget, PyDMEmbeddedDisplay) and obj.name.lower() == "activepipclass":
-                    if "displayFileName" in obj.properties and obj.properties["displayFileName"]:
-                        display_filenames = obj.properties["displayFileName"]
-                        filename_to_set = None
-                        if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
-                            filename_to_set = display_filenames[0]
-                        elif isinstance(display_filenames, dict) and len(display_filenames) > 0:
-                            filename_to_set = display_filenames[0]
-                        elif isinstance(display_filenames, str):
-                            filename_to_set = display_filenames
-
-                        if isinstance(filename_to_set, str):
-                            if filename_to_set.endswith(".edl"):
-                                filename_to_set = filename_to_set[:-4] + ".ui"
-                            widget.filename = filename_to_set
-                            logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
-
-                    # Make LOC variables unique if they had $(!W) marker
-                    if hasattr(widget, "channel") and widget.channel and "__UNIQUE__" in widget.channel:
-                        # Replace __UNIQUE__ with a unique suffix based on widget ID
-                        widget_id = str(id(widget))[-6:]
-                        widget.channel = widget.channel.replace("__UNIQUE__", widget_id)
-                        logger.info(f"Made LOC variable unique: {widget.channel}")
-
-                if obj.name.lower() == "activefreezebuttonclass":
-                    freeze_button = create_freeze_button(widget)
-                    pydm_widgets.append(freeze_button)
-
-                if obj.name.lower() == "mmvclass":
-                    generated_sliders = create_multi_sliders(widget, obj)
-                    for slider in generated_sliders:
-                        pydm_widgets.append(slider)
-
-                if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
-                    pad = widget.penWidth or 1
-
-                    if isinstance(widget, PyDMDrawingIrregularPolygon):
-                        alarm_border_pad = (
-                            4 if hasattr(widget, "alarm_sensitive_border") and widget.alarm_sensitive_border else 0
-                        )
-                        pad = pad + alarm_border_pad
-
-                    min_dim = max(pad * 2, 3)
-
-                    if widget.width < min_dim:
-                        widget.width = min_dim
-                    else:
-                        widget.width = int(widget.width) + pad
-
-                    if widget.height < min_dim:
-                        widget.height = min_dim
-                    else:
-                        widget.height = int(widget.height) + pad
-
-                if isinstance(widget, PyDMLabel):
-                    min_width = 20
-                    min_height = 14
-
-                    if widget.width < min_width:
-                        widget.width = min_width
-                    if widget.height < min_height:
-                        widget.height = min_height
-
-                if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
-                    if hasattr(widget, "brushColor") and widget.brushColor is not None:
-                        widget.alarm_sensitive_content = True
-                        logger.info(
-                            f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible"
-                        )
-
-                if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
-                    widget.autoSize = True
-
-                pydm_widgets.append(widget)
-                logger.info(f"Added {widget.name} to root")
-            else:
-                logger.warning(f"Unknown object type: {type(obj)}. Skipping.")
-
-        return pydm_widgets, menu_mux_buttons
-
+    # Traverse and convert
     pydm_widgets, menu_mux_buttons = traverse_group(
         parser.ui,
         color_list_dict,
-        None,
-        None,
-        parser.ui.height,
+        used_classes,
+        skip_widgets=skip_widgets,
+        container_height=parser.ui.height,
         central_widget=parser.ui,
     )
 
