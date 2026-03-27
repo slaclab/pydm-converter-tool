@@ -526,6 +526,15 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
         for color in value:
             color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
         value = color_list
+    elif edm_attr in ("menuLabel", "commandLabel"):
+        # EDM uses \x18 (CAN character) as a placeholder meaning "use the filename".
+        # Strip these so PyDM falls back to its default title behavior.
+        if isinstance(value, list):
+            value = [v for v in value if v != "\x18"]
+            if not value:
+                return None
+        elif value == "\x18":
+            return None
 
     return value
 
