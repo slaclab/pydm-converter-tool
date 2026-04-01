@@ -298,14 +298,24 @@ def _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x,
     """Dispatch to the appropriate geometry transform based on whether we have a parent group."""
     if parent_pydm_group is None:
         return transform_edm_to_pydm(
-            obj.x, obj.y, obj.width, obj.height,
-            container_height=container_height, scale=scale,
-            offset_x=offset_x, offset_y=offset_y,
+            obj.x,
+            obj.y,
+            obj.width,
+            obj.height,
+            container_height=container_height,
+            scale=scale,
+            offset_x=offset_x,
+            offset_y=offset_y,
         )
     else:
         return transform_nested_widget(
-            obj.x, obj.y, obj.width, obj.height,
-            parent_pydm_group.x, parent_pydm_group.y, parent_pydm_group.height,
+            obj.x,
+            obj.y,
+            obj.width,
+            obj.height,
+            parent_pydm_group.x,
+            parent_pydm_group.y,
+            parent_pydm_group.height,
             scale=scale,
         )
 
@@ -725,9 +735,7 @@ def traverse_group(
 
     for obj in edm_group.objects:
         if isinstance(obj, EDMGroup):
-            x, y, width, height = _compute_geometry(
-                obj, parent_pydm_group, container_height, scale, offset_x, offset_y
-            )
+            x, y, width, height = _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
 
             logger.debug("Skipped pydm_group")
 
