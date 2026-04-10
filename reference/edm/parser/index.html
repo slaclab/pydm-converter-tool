@@ -2406,7 +2406,8 @@ EDMObjects and EDMGroups</p>
 <span class="normal">679</span>
 <span class="normal">680</span>
 <span class="normal">681</span>
-<span class="normal">682</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
+<span class="normal">682</span>
+<span class="normal">683</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDMFileParser class parses .edl files and creates a tree of</span>
 <span class="sd">    EDMObjects and EDMGroups&quot;&quot;&quot;</span>
 
@@ -2515,21 +2516,22 @@ EDMObjects and EDMGroups</p>
 
                 <span class="k">if</span> <span class="n">begin_obj_props</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end_obj_props</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">begin_group_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
                     <span class="n">snippet</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping malformed group at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">, snippet: </span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping malformed group at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">, snippet: </span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="k">continue</span>
 
                 <span class="n">end_group_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_matching_end_group</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">begin_group_idx</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">end_group_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find matching endGroup at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find matching endGroup at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="k">continue</span>
 
                 <span class="c1"># get rid of trailing endObjectProperties</span>
                 <span class="n">extra_end_props</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;endObjectProperties&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">)</span>
+                <span class="n">next_object_pos</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">)</span>
                 <span class="n">group_end</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">extra_end_props</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;endObjectProperties&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="n">extra_end_props</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">extra_end_props</span> <span class="o">&lt;</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">extra_end_props</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span><span class="n">next_object_pos</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">extra_end_props</span> <span class="o">&lt;</span> <span class="n">next_object_pos</span><span class="p">))</span>
                     <span class="k">else</span> <span class="n">end_group_idx</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;endGroup&quot;</span><span class="p">)</span>
                 <span class="p">)</span>
                 <span class="n">group_header</span> <span class="o">=</span> <span class="p">(</span>
@@ -2566,7 +2568,7 @@ EDMObjects and EDMGroups</p>
                 <span class="n">pos</span> <span class="o">=</span> <span class="n">object_match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">snippet</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">100</span><span class="p">]</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized text at pos </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized text at pos </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
                 <span class="n">pos</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span><span class="p">:]</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_symbol_group</span><span class="p">(</span>
@@ -2591,7 +2593,7 @@ EDMObjects and EDMGroups</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">embedded_file</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">embedded_file</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No embedded file specified in properties.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No embedded file specified in properties.&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">EDMGroup</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">embedded_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.edl&quot;</span><span class="p">):</span>
             <span class="n">embedded_file</span> <span class="o">+=</span> <span class="s2">&quot;.edl&quot;</span>
@@ -2792,7 +2794,7 @@ EDMObjects and EDMGroups</p>
             <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span> <span class="o">=</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span>
             <span class="k">return</span>
         <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">ranges</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;removed symbol group: </span><span class="si">{</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed symbol group: </span><span class="si">{</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">remove_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2872,7 +2874,7 @@ EDMObjects and EDMGroups</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">num_states</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;numStates&quot;</span><span class="p">])</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
             <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">),</span> <span class="n">num_states</span><span class="p">)</span>
         <span class="p">):</span>  <span class="c1"># TODO: Figure out what happens when numStates &lt; temp_group.objects</span>
@@ -2950,7 +2952,7 @@ EDMObjects and EDMGroups</p>
 <span class="sd">                if not match_macro:</span>
 <span class="sd">                    raise ValueError(f&quot;Missing required property &#39;{prop}&#39; in widget.&quot;)</span>
 <span class="sd">                size_properties[prop] = match_macro.group(1)&quot;&quot;&quot;</span>
-                <span class="nb">print</span><span class="p">(</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Missing size property (likely a macro): </span><span class="si">{</span><span class="n">prop</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>  <span class="c1"># TODO: Come back and use the improved solution</span>
                 <span class="n">size_properties</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
@@ -3027,8 +3029,8 @@ EDMObjects and EDMGroups</p>
         <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">check_sequential</span><span class="p">(</span><span class="n">indices</span><span class="p">):</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;Check if the list of indices is sequential starting from 0&quot;&quot;&quot;</span>
-            <span class="k">return</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)))</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Check if the list of indices is sequential (starting from 0 or 1)&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)))</span> <span class="ow">or</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
 
         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -3156,8 +3158,7 @@ properties: dict[str, bool | str | list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">521</span>
-<span class="normal">522</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">522</span>
 <span class="normal">523</span>
 <span class="normal">524</span>
 <span class="normal">525</span>
@@ -3176,7 +3177,8 @@ properties: dict[str, bool | str | list[str]]
 <span class="normal">538</span>
 <span class="normal">539</span>
 <span class="normal">540</span>
-<span class="normal">541</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">541</span>
+<span class="normal">542</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Add properties to each sub object within a symbol group. (isSymbol and symbolChannel)</span>
 <span class="sd">    These are used to determine if the symbol should hide when symbolChannel is disconnected.</span>
@@ -3219,8 +3221,7 @@ properties: dict[str, bool | str | list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">543</span>
-<span class="normal">544</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">544</span>
 <span class="normal">545</span>
 <span class="normal">546</span>
 <span class="normal">547</span>
@@ -3241,7 +3242,8 @@ properties: dict[str, bool | str | list[str]]
 <span class="normal">562</span>
 <span class="normal">563</span>
 <span class="normal">564</span>
-<span class="normal">565</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">565</span>
+<span class="normal">566</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the matching endGroup for a beginGroup, handling nested groups&quot;&quot;&quot;</span>
     <span class="n">pos</span> <span class="o">=</span> <span class="n">begin_group_pos</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;beginGroup&quot;</span><span class="p">)</span>
     <span class="n">group_depth</span> <span class="o">=</span> <span class="mi">1</span>
@@ -3293,8 +3295,7 @@ that the min/maxValues represent.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">456</span>
-<span class="normal">457</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">457</span>
 <span class="normal">458</span>
 <span class="normal">459</span>
 <span class="normal">460</span>
@@ -3330,7 +3331,8 @@ that the min/maxValues represent.</p>
 <span class="normal">490</span>
 <span class="normal">491</span>
 <span class="normal">492</span>
-<span class="normal">493</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_pv_ranges</span><span class="p">(</span>
+<span class="normal">493</span>
+<span class="normal">494</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_pv_ranges</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>  <span class="c1"># Should pass in minValues, maxValues, num_states in directly instead of properties</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3402,8 +3404,7 @@ Size properties and version information are ignored.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">602</span>
-<span class="normal">603</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">603</span>
 <span class="normal">604</span>
 <span class="normal">605</span>
 <span class="normal">606</span>
@@ -3449,7 +3450,8 @@ Size properties and version information are ignored.</p>
 <span class="normal">646</span>
 <span class="normal">647</span>
 <span class="normal">648</span>
-<span class="normal">649</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">649</span>
+<span class="normal">650</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_object_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the object properties from the given text. This can be any</span>
 <span class="sd">    property that an EDM Object may use (e.g. fillColor, value, editable).</span>
@@ -3529,8 +3531,7 @@ Size properties and version information are ignored.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">567</span>
-<span class="normal">568</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">568</span>
 <span class="normal">569</span>
 <span class="normal">570</span>
 <span class="normal">571</span>
@@ -3562,7 +3563,8 @@ Size properties and version information are ignored.</p>
 <span class="normal">597</span>
 <span class="normal">598</span>
 <span class="normal">599</span>
-<span class="normal">600</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">600</span>
+<span class="normal">601</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_size_properties</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the size properties from the given text (x, y, width, height)</span>
 
@@ -3587,7 +3589,7 @@ Size properties and version information are ignored.</p>
 <span class="sd">            if not match_macro:</span>
 <span class="sd">                raise ValueError(f&quot;Missing required property &#39;{prop}&#39; in widget.&quot;)</span>
 <span class="sd">            size_properties[prop] = match_macro.group(1)&quot;&quot;&quot;</span>
-            <span class="nb">print</span><span class="p">(</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Missing size property (likely a macro): </span><span class="si">{</span><span class="n">prop</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>  <span class="c1"># TODO: Come back and use the improved solution</span>
             <span class="n">size_properties</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
@@ -3628,8 +3630,7 @@ size_properties : dict[str, int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">211</span>
-<span class="normal">212</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">212</span>
 <span class="normal">213</span>
 <span class="normal">214</span>
 <span class="normal">215</span>
@@ -3685,7 +3686,8 @@ size_properties : dict[str, int]
 <span class="normal">265</span>
 <span class="normal">266</span>
 <span class="normal">267</span>
-<span class="normal">268</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_symbol_group</span><span class="p">(</span>
+<span class="normal">268</span>
+<span class="normal">269</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_symbol_group</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EDMGroup</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3707,7 +3709,7 @@ size_properties : dict[str, int]
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">embedded_file</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">embedded_file</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No embedded file specified in properties.&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No embedded file specified in properties.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">EDMGroup</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">embedded_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.edl&quot;</span><span class="p">):</span>
         <span class="n">embedded_file</span> <span class="o">+=</span> <span class="s2">&quot;.edl&quot;</span>
@@ -3858,7 +3860,8 @@ parent_group : EDMGroup
 <span class="normal">206</span>
 <span class="normal">207</span>
 <span class="normal">208</span>
-<span class="normal">209</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_objects_and_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">209</span>
+<span class="normal">210</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_objects_and_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively parse the given text into a tree of EDMObjects and</span>
 <span class="sd">    EDMGroups. The parsed EDMObjects and EDMGroups are added to the</span>
 <span class="sd">    given parent_group, which is the root EDMGroup of the tree.</span>
@@ -3891,21 +3894,22 @@ parent_group : EDMGroup
 
             <span class="k">if</span> <span class="n">begin_obj_props</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end_obj_props</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">begin_group_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
                 <span class="n">snippet</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping malformed group at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">, snippet: </span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping malformed group at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">, snippet: </span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="k">continue</span>
 
             <span class="n">end_group_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_matching_end_group</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">begin_group_idx</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">end_group_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find matching endGroup at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find matching endGroup at </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="k">continue</span>
 
             <span class="c1"># get rid of trailing endObjectProperties</span>
             <span class="n">extra_end_props</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;endObjectProperties&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">)</span>
+            <span class="n">next_object_pos</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">)</span>
             <span class="n">group_end</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">extra_end_props</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;endObjectProperties&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">extra_end_props</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">extra_end_props</span> <span class="o">&lt;</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">end_group_idx</span><span class="p">))</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">extra_end_props</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span><span class="n">next_object_pos</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">extra_end_props</span> <span class="o">&lt;</span> <span class="n">next_object_pos</span><span class="p">))</span>
                 <span class="k">else</span> <span class="n">end_group_idx</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;endGroup&quot;</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">group_header</span> <span class="o">=</span> <span class="p">(</span>
@@ -3942,7 +3946,7 @@ parent_group : EDMGroup
             <span class="n">pos</span> <span class="o">=</span> <span class="n">object_match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">snippet</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">100</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized text at pos </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized text at pos </span><span class="si">{</span><span class="n">pos</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">snippet</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
             <span class="n">pos</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span><span class="p">:]</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4037,8 +4041,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">495</span>
-<span class="normal">496</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">496</span>
 <span class="normal">497</span>
 <span class="normal">498</span>
 <span class="normal">499</span>
@@ -4061,7 +4064,8 @@ ranges: list[list[str]]
 <span class="normal">516</span>
 <span class="normal">517</span>
 <span class="normal">518</span>
-<span class="normal">519</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
+<span class="normal">519</span>
+<span class="normal">520</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4080,7 +4084,7 @@ ranges: list[list[str]]
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">num_states</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;numStates&quot;</span><span class="p">])</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
         <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">),</span> <span class="n">num_states</span><span class="p">)</span>
     <span class="p">):</span>  <span class="c1"># TODO: Figure out what happens when numStates &lt; temp_group.objects</span>
@@ -4116,8 +4120,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">416</span>
-<span class="normal">417</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">417</span>
 <span class="normal">418</span>
 <span class="normal">419</span>
 <span class="normal">420</span>
@@ -4134,7 +4137,8 @@ ranges: list[list[str]]
 <span class="normal">431</span>
 <span class="normal">432</span>
 <span class="normal">433</span>
-<span class="normal">434</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_extra_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">434</span>
+<span class="normal">435</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_extra_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, remove extra groups that are outside</span>
 <span class="sd">    of the ranges given. (if there are more groups than ranges, the extra</span>
@@ -4152,7 +4156,7 @@ ranges: list[list[str]]
         <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span> <span class="o">=</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span>
     <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">ranges</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;removed symbol group: </span><span class="si">{</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed symbol group: </span><span class="si">{</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4185,8 +4189,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">651</span>
-<span class="normal">652</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">652</span>
 <span class="normal">653</span>
 <span class="normal">654</span>
 <span class="normal">655</span>
@@ -4216,7 +4219,8 @@ ranges: list[list[str]]
 <span class="normal">679</span>
 <span class="normal">680</span>
 <span class="normal">681</span>
-<span class="normal">682</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">682</span>
+<span class="normal">683</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">remove_prepended_index</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes the prepended indices from the given multi-line property value</span>
 
@@ -4234,8 +4238,8 @@ ranges: list[list[str]]
     <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">check_sequential</span><span class="p">(</span><span class="n">indices</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the list of indices is sequential starting from 0&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)))</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the list of indices is sequential (starting from 0 or 1)&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)))</span> <span class="ow">or</span> <span class="n">indices</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
 
     <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -4276,8 +4280,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">436</span>
-<span class="normal">437</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">437</span>
 <span class="normal">438</span>
 <span class="normal">439</span>
 <span class="normal">440</span>
@@ -4294,7 +4297,8 @@ ranges: list[list[str]]
 <span class="normal">451</span>
 <span class="normal">452</span>
 <span class="normal">453</span>
-<span class="normal">454</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">454</span>
+<span class="normal">455</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, remove all groups whose ranges do not include 1.</span>
 <span class="sd">    (This is done when no pvs are given and only the &quot;1&quot; group should be displayed)</span>
@@ -4347,8 +4351,7 @@ size_properties : dict[str, int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">292</span>
-<span class="normal">293</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">293</span>
 <span class="normal">294</span>
 <span class="normal">295</span>
 <span class="normal">296</span>
@@ -4469,7 +4472,8 @@ size_properties : dict[str, int]
 <span class="normal">411</span>
 <span class="normal">412</span>
 <span class="normal">413</span>
-<span class="normal">414</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reorient_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">orientation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">414</span>
+<span class="normal">415</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reorient_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">orientation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, change the orientation of each object</span>
 <span class="sd">    within the symbol groups (rotateCW, rotateCCW, FlipV, FlipH) either</span>
@@ -4621,8 +4625,7 @@ size_properties : dict[str, int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">270</span>
-<span class="normal">271</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">271</span>
 <span class="normal">272</span>
 <span class="normal">273</span>
 <span class="normal">274</span>
@@ -4641,7 +4644,8 @@ size_properties : dict[str, int]
 <span class="normal">287</span>
 <span class="normal">288</span>
 <span class="normal">289</span>
-<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resize_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">290</span>
+<span class="normal">291</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resize_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, modify the coordinates of each</span>
 <span class="sd">    object within the symbol groupsto be in relation to the coordinates</span>

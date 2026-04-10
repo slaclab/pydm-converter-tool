@@ -1952,7 +1952,9 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">877</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">875</span>
+<span class="normal">876</span>
+<span class="normal">877</span>
 <span class="normal">878</span>
 <span class="normal">879</span>
 <span class="normal">880</span>
@@ -1984,9 +1986,7 @@ arg_list : List[str]
 <span class="normal">906</span>
 <span class="normal">907</span>
 <span class="normal">908</span>
-<span class="normal">909</span>
-<span class="normal">910</span>
-<span class="normal">911</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_color_property_to_qcolor</span><span class="p">(</span><span class="n">fillColor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="normal">909</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_color_property_to_qcolor</span><span class="p">(</span><span class="n">fillColor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the EDM &#39;fillColor&#39;, &#39;bgColor&#39;, &#39;fgColor&#39; property into a tuple representing RGBA values.</span>
 
@@ -2114,7 +2114,9 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">836</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
 <span class="normal">837</span>
 <span class="normal">838</span>
 <span class="normal">839</span>
@@ -2132,9 +2134,7 @@ arg_list : List[str]
 <span class="normal">851</span>
 <span class="normal">852</span>
 <span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
-<span class="normal">856</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_index</span><span class="p">(</span><span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="normal">854</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_index</span><span class="p">(</span><span class="n">color_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Retrieve the color definition from color_data using an index string like &#39;index 3&#39;.</span>
 
@@ -2232,7 +2232,9 @@ arg_list : List[str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">859</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span>
 <span class="normal">860</span>
 <span class="normal">861</span>
 <span class="normal">862</span>
@@ -2245,9 +2247,7 @@ arg_list : List[str]
 <span class="normal">869</span>
 <span class="normal">870</span>
 <span class="normal">871</span>
-<span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_rgb</span><span class="p">(</span><span class="n">colorStr</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="normal">872</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_color_by_rgb</span><span class="p">(</span><span class="n">colorStr</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Retrieve the color definition from color_data using an rgb string like &#39;rgb 0 0 0&#39;.</span>
 
@@ -2425,9 +2425,7 @@ arg_list : List[str]
 <span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loc_conversion</span><span class="p">(</span><span class="n">edm_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">479</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loc_conversion</span><span class="p">(</span><span class="n">edm_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert an EDM local PV string to a PyDM local variable string, mapping types to supported PyDM types.</span>
 
@@ -2516,8 +2514,7 @@ arg_list : List[str]
                 <span class="n">type_char</span> <span class="o">=</span> <span class="s2">&quot;d&quot;</span>
             <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
                 <span class="c1"># print(&quot;Invalid EDM format: Missing &#39;:&#39; separator and not an integer (enter c to continue)&quot;)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;name: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;value: </span><span class="si">{</span><span class="n">type_and_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;name: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">, value: </span><span class="si">{</span><span class="n">type_and_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid EDM format: Missing &#39;:&#39; separator and not an integer&quot;</span><span class="p">)</span>
 
     <span class="n">edm_type</span> <span class="o">=</span> <span class="n">type_char</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
@@ -2531,8 +2528,7 @@ arg_list : List[str]
         <span class="k">if</span> <span class="n">edm_type</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edm_type</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">edm_type</span> <span class="o">=</span> <span class="s2">&quot;s&quot;</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">type_and_value</span><span class="p">)</span>
-            <span class="nb">breakpoint</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected type_and_value: </span><span class="si">{</span><span class="n">type_and_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported type character: </span><span class="si">{</span><span class="n">type_char</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -2934,7 +2930,9 @@ alarm : Dict[str, str]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">597</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
 <span class="normal">598</span>
 <span class="normal">599</span>
 <span class="normal">600</span>
@@ -3168,9 +3166,7 @@ alarm : Dict[str, str]
 <span class="normal">828</span>
 <span class="normal">829</span>
 <span class="normal">830</span>
-<span class="normal">831</span>
-<span class="normal">832</span>
-<span class="normal">833</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_colors_list</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="normal">831</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_colors_list</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM `colors.list` file into a structured Python dictionary.</span>
 
@@ -3499,7 +3495,9 @@ encountered_locs : Dict[str, Dict[str, str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">484</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
 <span class="normal">485</span>
 <span class="normal">486</span>
 <span class="normal">487</span>
@@ -3567,9 +3565,7 @@ encountered_locs : Dict[str, Dict[str, str]]
 <span class="normal">549</span>
 <span class="normal">550</span>
 <span class="normal">551</span>
-<span class="normal">552</span>
-<span class="normal">553</span>
-<span class="normal">554</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">replace_calc_and_loc_in_edm_content</span><span class="p">(</span>
+<span class="normal">552</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">replace_calc_and_loc_in_edm_content</span><span class="p">(</span>
     <span class="n">edm_content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3770,7 +3766,9 @@ by two consecutive non-comment lines:</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">557</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
 <span class="normal">558</span>
 <span class="normal">559</span>
 <span class="normal">560</span>
@@ -3805,9 +3803,7 @@ by two consecutive non-comment lines:</p>
 <span class="normal">589</span>
 <span class="normal">590</span>
 <span class="normal">591</span>
-<span class="normal">592</span>
-<span class="normal">593</span>
-<span class="normal">594</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_color_list</span><span class="p">(</span><span class="n">cli_color_file</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">592</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">search_color_list</span><span class="p">(</span><span class="n">cli_color_file</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Attempt to find the EDM color file by the following priority:</span>
 
@@ -4020,7 +4016,7 @@ default_prefix : str, optional
         <span class="k">if</span> <span class="n">calc_name</span> <span class="o">==</span> <span class="s2">&quot;sum2&quot;</span><span class="p">:</span>  <span class="c1"># convert sum2 to sum (sum2 is not in calc_dict)</span>
             <span class="n">calc_name</span> <span class="o">=</span> <span class="s2">&quot;sum&quot;</span>
         <span class="k">if</span> <span class="n">calc_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">calc_dict</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">calc_dict</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;calc_dict contents: </span><span class="si">{</span><span class="n">calc_dict</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Calculation &#39;</span><span class="si">{</span><span class="n">calc_name</span><span class="si">}</span><span class="s2">&#39; is not defined in calc_dict. </span><span class="si">{</span><span class="n">arg_list</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># logger.warning(f&quot;Calculation &#39;{calc_name}&#39; is not defined in calc_dict. {arg_list}&quot;)</span>
             <span class="c1"># return &quot;failed CALC&quot;</span>
