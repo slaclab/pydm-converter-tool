@@ -7,7 +7,7 @@ from pydmconverter.edm.converter import convert
 from pathlib import Path
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 IMAGE_FILE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif"}
@@ -166,7 +166,6 @@ def convert_files_in_folder(
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
-                breakpoint()
                 continue
 
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]

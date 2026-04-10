@@ -302,7 +302,7 @@ def translate_calc_pv_to_pydm(
         if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
             calc_name = "sum"
         if calc_name not in calc_dict:
-            print(calc_dict)
+            logger.debug(f"calc_dict contents: {calc_dict}")
             raise ValueError(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
             # logger.warning(f"Calculation '{calc_name}' is not defined in calc_dict. {arg_list}")
             # return "failed CALC"
@@ -442,8 +442,7 @@ def loc_conversion(edm_string: str) -> str:
                 type_char = "d"
             except ValueError:
                 # print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
-                print(f"name: {name}")
-                print(f"value: {type_and_value}")
+                logger.debug(f"name: {name}, value: {type_and_value}")
                 raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
 
     edm_type = type_char.lower()
@@ -457,8 +456,7 @@ def loc_conversion(edm_string: str) -> str:
         if edm_type and len(edm_type) > 1:
             edm_type = "s"
             value = type_and_value
-            print(type_and_value)
-            breakpoint()
+            logger.warning(f"Unexpected type_and_value: {type_and_value}")
         else:
             raise ValueError(f"Unsupported type character: {type_char}")
 

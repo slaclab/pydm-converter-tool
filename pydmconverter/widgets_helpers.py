@@ -10,6 +10,16 @@ logger = logging.getLogger(__name__)
 ALARM_CONTENT_DEFAULT = False
 ALARM_BORDER_DEFAULT = True
 
+# Widget types whose channel is used as the hidden_channel for rules.
+# These widgets need their visibility controlled via PV-based rules.
+HIDDEN_WIDGET_TYPES = [
+    "activextextdspclassnoedit",
+    "activechoicebuttonclass",
+    "activextextclass",
+    "mzxygraphclass",
+    "activerampbuttonclass",
+]
+
 
 class XMLConvertible:
     """
@@ -22,8 +32,6 @@ class XMLConvertible:
     to_string() -> str
         Return a formatted string representation of the XML element.
     """
-
-    secretId: str = None
 
     secretId: str = None
 
@@ -75,7 +83,6 @@ class XMLSerializableMixin(XMLConvertible):
 
     name: Optional[str] = None
     count: ClassVar[int] = 1
-    secretId: str = None
     secretId: str = None
 
     def __post_init__(self) -> None:
@@ -211,7 +218,6 @@ class Font(XMLConvertible):
     """
 
     family: Optional[str] = None
-    family: Optional[str] = None
     pointsize: Optional[int] = None
     weight: Optional[int] = None
     bold: Optional[bool] = None
@@ -228,9 +234,6 @@ class Font(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "font"})
         font: etree.Element = etree.SubElement(prop, "font")
-        if self.family is not None:
-            family_tag: etree.Element = etree.SubElement(font, "family")
-            family_tag.text = str(self.family)
         if self.family is not None:
             family_tag: etree.Element = etree.SubElement(font, "family")
             family_tag.text = str(self.family)
@@ -457,8 +460,6 @@ class Str(XMLConvertible):
             self.string = ""
         prop: etree.Element = etree.Element("property", attrib={"name": self.name, "stdset": "0"})
         string_tag: etree.Element = etree.SubElement(prop, "string")
-        if isinstance(self.string, list):
-            raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         if isinstance(self.string, list):
             raise TypeError(f"Element <{self.string}> has list as .text: {self.string}")
         string_tag.text = self.string
@@ -747,10 +748,6 @@ class Alignment(XMLConvertible):
         """
         prop: etree.Element = etree.Element("property", attrib={"name": "alignment"})
         set_tag: etree.Element = etree.SubElement(prop, "set")
-        if self.alignment == "center":
-            set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
-        else:
-            set_tag.text = f"Qt::Align{self.alignment.capitalize()}|Qt::AlignVCenter"
         if self.alignment == "center":
             set_tag.text = "Qt::AlignHCenter|Qt::AlignVCenter"
         else:
@@ -1590,7 +1587,6 @@ class Tangible(XMLSerializableMixin):
         properties.append(Geometry(self.x, self.y, max(self.width, 2), max(self.height, 2)).to_xml())
         if self.secretId is not None:
             properties.append(Str("secretId", self.secretId).to_xml())
-            breakpoint()
         return properties
 
 
@@ -1703,17 +1699,7 @@ class Controllable(Tangible):
                 )
             )
 
-        hidden_widgets = [
-            "activextextdspclassnoedit",
-            "activechoicebuttonclass, activextextclass",
-            "mzxygraphclass",
-            "activerampbuttonclass",
-        ]
-        is_hidden = False
-
-        for elem in hidden_widgets:
-            if self.name.lower().startswith(elem):
-                is_hidden = True
+        is_hidden = any(self.name.lower().startswith(elem) for elem in HIDDEN_WIDGET_TYPES)
         if is_hidden:
             hidden_channel = self.channel
         elif self.isSymbol is not None:
@@ -1927,7 +1913,7 @@ class PageHeader:
         self.add_screen_properties(main_widget, screen_properties)
 
         if scrollable:
-            print("Creating scrollable PyDM window")
+            logger.info("Creating scrollable PyDM window")
             layout = ET.SubElement(main_widget, "layout", attrib={"class": "QVBoxLayout", "name": "verticalLayout"})
             layout_item = ET.SubElement(layout, "item")
             scroll_area = ET.SubElement(layout_item, "widget", attrib={"class": "QScrollArea", "name": "scrollArea"})
