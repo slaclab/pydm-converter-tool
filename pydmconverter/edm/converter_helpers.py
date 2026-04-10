@@ -424,7 +424,7 @@ def handle_button_polygon_overlaps(pydm_widgets):
     return pydm_widgets
 
 
-def convert_edm_to_pydm_widgets(parser: EDMFileParser):
+def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
 
@@ -438,6 +438,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
     List[Union[widgets.PyDMWidgetBase, widgets.PyDMGroup]]
         A list of PyDM widget instances representing the EDM UI.
     """
+    from pydmconverter.sites import get_skip_widgets
+
+    skip_widgets = get_skip_widgets(site)
+
     pydm_widgets = []
     used_classes = set()
     color_list_filepath = search_color_list()
@@ -530,6 +534,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser):
                 )
 
             elif isinstance(obj, EDMObject):
+                if obj.name.lower() in skip_widgets:
+                    logger.info(f"Skipping {obj.name} (site rule: {site})")
+                    continue
                 if obj.name.lower() == "activelineclass":
                     widget_type = get_polyline_widget_type(obj)
                 elif obj.name.lower() == "activearcclass":

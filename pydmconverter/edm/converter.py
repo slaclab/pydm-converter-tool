@@ -50,7 +50,7 @@ CUSTOM_WIDGET_DEFINITIONS = {
 }
 
 
-def convert(input_path, output_path, scrollable=False):
+def convert(input_path, output_path, scrollable=False, site=None):
     try:
         edm_parser = EDMFileParser(input_path, output_path)
         pprint(edm_parser.ui, indent=2)
@@ -61,7 +61,7 @@ def convert(input_path, output_path, scrollable=False):
 
     # edm_parser.ui, _, _ = replace_calc_and_loc_in_edm_content(edm_parser.ui, input_path)
 
-    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser)
+    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser, site=site)
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
     page_header = PageHeader()

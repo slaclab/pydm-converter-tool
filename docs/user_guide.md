@@ -69,5 +69,10 @@ pydmconverter /afs/slac/g/lcls/edm/file.edl file.ui`
 ```
 To convert EDM files in a folder called "edm" to PYDM file in the current folder :
 ``` bash
-pydmconverter /afs/slac/g/lcls/edm . .edl`
+pydmconverter /afs/slac/g/lcls/edm . .edl
+```
+
+To convert with SLAC-specific rules (e.g. skipping exit buttons):
+``` bash
+pydmconverter /afs/slac/g/lcls/edm/file.edl file.ui --site slac
 ```
