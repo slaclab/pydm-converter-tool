@@ -491,6 +491,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#site" class="md-nav__link">
+    <span class="md-ellipsis">
+      Site
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#help" class="md-nav__link">
     <span class="md-ellipsis">
       Help
@@ -899,6 +908,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#site" class="md-nav__link">
+    <span class="md-ellipsis">
+      Site
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#help" class="md-nav__link">
     <span class="md-ellipsis">
       Help
@@ -936,6 +954,29 @@
 <h2 id="scroll-bars">Scroll Bars</h2>
 <p><code>-s</code> or <code>--scrollable</code></p>
 <p>This argument adds scroll bars to converted screens. It will ad a horizontal and vertical scroll bar. If this argument is not included, the screen will not contain a scroll bar.</p>
+<h2 id="site">Site</h2>
+<p><code>--site &lt;name&gt;</code></p>
+<p>This argument applies site-specific conversion rules during the conversion process. Some facilities have EDM widgets or patterns that have no equivalent in PyDM and should be skipped or handled differently. The <code>--site</code> flag lets you opt into these rules without affecting the default conversion behavior.</p>
+<p><strong>Available sites:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Site</th>
+<th>Rules Applied</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slac</code></td>
+<td>Skips <code>activeExitButtonClass</code> (exit buttons present on every SLAC EDM screen that have no PyDM equivalent)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage:</strong>
+<div class="highlight"><pre><span></span><code>pydmconverter<span class="w"> </span>/path/to/file.edl<span class="w"> </span>output.ui<span class="w"> </span>--site<span class="w"> </span>slac
+</code></pre></div></p>
+<p><strong>Adding a new site:</strong>
+To add conversion rules for a new site, create a new module in <code>pydmconverter/sites/</code> (e.g. <code>mysite.py</code>) that defines a <code>SKIP_WIDGETS</code> set, then register it in <code>pydmconverter/sites/__init__.py</code>.</p>
 <h2 id="help">Help</h2>
 <p><code>-h</code> or <code>--help</code></p>
 <p>This argument shows the converter's help message, which outlines the available arguments for users.</p>
