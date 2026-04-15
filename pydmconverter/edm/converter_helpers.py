@@ -797,6 +797,14 @@ def traverse_group(
                     widget.show_units = True
                     logger.info(f"Set show_units=True for {obj.name} (implicit EDM behavior)")
 
+            # ByteClass: EDM defaults to 16 bits and no labels
+            if isinstance(widget, PyDMByteIndicator):
+                if "numBits" not in obj.properties:
+                    widget.numBits = 16
+                    logger.info(f"Set numBits=16 for {obj.name} (EDM default)")
+                widget.showLabels = False
+                logger.info(f"Set showLabels=False for {obj.name} (EDM has no labels)")
+
             # 3. Map and convert attributes
             for edm_attr, value in obj.properties.items():
                 pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
