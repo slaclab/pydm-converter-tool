@@ -31,6 +31,8 @@ from pydmconverter.widgets_helpers import (
     SizePolicy,
     StyleSheet,
     Text,
+    BoolRule,
+    MultiRule,
 )
 
 
@@ -629,3 +631,57 @@ def testBrush():
     )
     brush = Brush(50, 100, 150, fill=False)
     assert target == brush.to_string()
+
+
+class TestBoolRuleExpression:
+    def test_string_integer_values(self):
+        rule = BoolRule("Visible", "TEST:PV", visMin="0", visMax="1")
+        result = rule.to_string()
+        assert "float(ch[0]) >= 0.0 and float(ch[0]) < 1.0" in result
+
+    def test_string_float_values(self):
+        rule = BoolRule("Visible", "TEST:PV", visMin="0.5", visMax="10.5")
+        result = rule.to_string()
+        assert "float(ch[0]) >= 0.5 and float(ch[0]) < 10.5" in result
+
+    def test_scientific_notation_values(self):
+        rule = BoolRule("Visible", "TEST:PV", visMin="1e+02", visMax="2.5e+03")
+        result = rule.to_string()
+        assert "float(ch[0]) >= 100.0 and float(ch[0]) < 2500.0" in result
+
+    def test_no_vis_min_max(self):
+        rule = BoolRule("Visible", "TEST:PV")
+        result = rule.to_string()
+        assert "ch[0]==1" in result
+
+    def test_show_on_false(self):
+        rule = BoolRule("Visible", "TEST:PV", show_on_true=False, visMin="0", visMax="1")
+        result = rule.to_string()
+        assert "False if float(ch[0]) >= 0.0 and float(ch[0]) < 1.0 else True" in result
+
+
+class TestMultiRuleExpression:
+    def test_string_integer_values(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, "0", "1", None)
+        assert result == "float(ch[0]) >= 0.0 and float(ch[0]) < 1.0"
+
+    def test_string_float_values(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, "0.5", "10.5", None)
+        assert result == "float(ch[0]) >= 0.5 and float(ch[0]) < 10.5"
+
+    def test_scientific_notation_values(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, "1e+02", "2.5e+03", None)
+        assert result == "float(ch[0]) >= 100.0 and float(ch[0]) < 2500.0"
+
+    def test_show_on_false(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, False, "0", "1", None)
+        assert result == "float(ch[0]) < 0.0 or float(ch[0]) >= 1.0"
+
+    def test_no_vis_min_max(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, None, None, None)
+        assert result == "ch[0]==1"

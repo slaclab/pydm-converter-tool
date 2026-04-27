@@ -906,8 +906,8 @@ class BoolRule(XMLConvertible):
     channel: str
     initial_value: Optional[bool] = True
     show_on_true: Optional[bool] = True
-    visMin: Optional[int] = None
-    visMax: Optional[int] = None
+    visMin: Optional[Union[int, float, str]] = None
+    visMax: Optional[Union[int, float, str]] = None
     notes: Optional[str] = ""
 
     def to_string(self):
@@ -920,8 +920,14 @@ class BoolRule(XMLConvertible):
             A string representing the rule.
         """
         if self.visMin is not None and self.visMax is not None:
-            show_on_true_string = f"True if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else False"
-            show_on_false_string = f"False if float(ch[0]) >= {self.visMin} and float(ch[0]) < {self.visMax} else True"
+            try:
+                vis_min = float(self.visMin)
+                vis_max = float(self.visMax)
+            except (ValueError, TypeError):
+                vis_min = 0.0
+                vis_max = 0.0
+            show_on_true_string = f"True if float(ch[0]) >= {vis_min} and float(ch[0]) < {vis_max} else False"
+            show_on_false_string = f"False if float(ch[0]) >= {vis_min} and float(ch[0]) < {vis_max} else True"
         else:
             show_on_true_string = "True if ch[0]==1 else False"
             show_on_false_string = "True if ch[0]!=1 else False"
@@ -1047,8 +1053,14 @@ class MultiRule(XMLConvertible):
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:
-            show_on_true_string = f"float({ch}) >= {visMin} and float({ch}) < {visMax}"
-            show_on_false_string = f"float({ch}) < {visMin} or float({ch}) >= {visMax}"
+            try:
+                vis_min = float(visMin)
+                vis_max = float(visMax)
+            except (ValueError, TypeError):
+                vis_min = 0.0
+                vis_max = 0.0
+            show_on_true_string = f"float({ch}) >= {vis_min} and float({ch}) < {vis_max}"
+            show_on_false_string = f"float({ch}) < {vis_min} or float({ch}) >= {vis_max}"
         else:
             show_on_true_string = f"{ch}==1"
             show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
@@ -1647,8 +1659,8 @@ class Controllable(Tangible):
     visPv: Optional[str] = None
     visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
-    visMin: Optional[int] = None
-    visMax: Optional[int] = None
+    visMin: Optional[Union[int, float, str]] = None
+    visMax: Optional[Union[int, float, str]] = None
     text = None
     hide_on_disconnect_channel: Optional[str] = None
     isSymbol: Optional[bool] = None
