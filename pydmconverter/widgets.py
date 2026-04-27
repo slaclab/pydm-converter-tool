@@ -1857,7 +1857,6 @@ class PyDMSlider(Alarmable):
 
 @dataclass
 class PyDMAnalogIndicator(Alarmable):
-
     showTicks: Optional[bool] = None
     showLimits: Optional[bool] = None
     showUnits: Optional[bool] = None
