@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional, Union
 
 
 @dataclass(frozen=True)
@@ -24,8 +25,8 @@ class RuleArguments:
     channel: str
     show_on_true: bool
     initial_value: bool
-    visMin: int
-    visMax: int
+    visMin: Optional[Union[int, float, str]]
+    visMax: Optional[Union[int, float, str]]
 
     def __iter__(self):
         yield self.rule_type
