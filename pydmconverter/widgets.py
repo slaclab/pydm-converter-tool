@@ -1853,3 +1853,39 @@ class PyDMSlider(Alarmable):
             properties.append(Int("userMaximum", self.max).to_xml())
 
         return properties
+
+
+@dataclass
+class PyDMAnalogIndicator(Alarmable):
+
+    showTicks: Optional[bool] = None
+    showLimits: Optional[bool] = None
+    showUnits: Optional[bool] = None
+    showValue: Optional[bool] = None
+    precision: Optional[int] = None
+    indicatorColor: Optional[RGBA] = None
+    background_color: Optional[RGBA] = None
+    foreground_color: Optional[RGBA] = None
+
+    def generate_properties(self) -> List[ET.Element]:
+        properties: List[ET.Element] = super().generate_properties()
+
+        if self.showTicks is not None:
+            properties.append(Bool("showTicks", self.showTicks).to_xml())
+        if self.showLimits is not None:
+            properties.append(Bool("showLimits", self.showLimits).to_xml())
+        if self.showUnits is not None:
+            properties.append(Bool("showUnits", self.showUnits).to_xml())
+        if self.showValue is not None:
+            properties.append(Bool("showValue", self.showValue).to_xml())
+        if self.precision is not None:
+            properties.append(Int("precision", self.precision).to_xml())
+        if self.indicatorColor is not None:
+            properties.append(ColorObject("indicatorColor", *self.indicatorColor).to_xml())
+        if self.background_color is not None:
+            properties.append(ColorObject("backgroundColor", *self.background_color).to_xml())
+        if self.foreground_color is not None:
+            properties.append(ColorObject("tickColor", *self.foreground_color).to_xml())
+        properties.append(TransparentBackground().to_xml())
+
+        return properties

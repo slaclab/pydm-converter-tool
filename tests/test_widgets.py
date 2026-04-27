@@ -21,6 +21,7 @@ from pydmconverter.widgets import (
     PyDMDrawingLine,
     PyDMDrawingPolyline,
     PyDMWaveformPlot,
+    PyDMAnalogIndicator,
 )
 
 from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawable, Hidable
@@ -612,3 +613,40 @@ def test_waveformplot_no_limits_enables_autorange():
     properties = widget.generate_properties()
     yaxes_prop = next((p for p in properties if p.get("name") == "yAxes"), None)
     assert yaxes_prop is None
+
+
+# --- Tests for PyDMAnalogIndicator ---
+
+
+def test_pydmanalogindicator_generate_properties():
+    widget = PyDMAnalogIndicator(
+        showTicks=True,
+        showLimits=True,
+        showUnits=True,
+        showValue=True,
+        precision=2,
+        indicatorColor=(255, 0, 0, 255),
+        background_color=(200, 200, 200, 255),
+        foreground_color=(0, 0, 0, 255),
+        channel="ca://IOC:SYS0:PRESSURE",
+    )
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+
+    assert prop_dict.get("showTicks") == "true"
+    assert prop_dict.get("showLimits") == "true"
+    assert prop_dict.get("showUnits") == "true"
+    assert prop_dict.get("showValue") == "true"
+    assert prop_dict.get("precision") == "2"
+    assert prop_dict.get("channel") == "ca://IOC:SYS0:PRESSURE"
+
+
+def test_pydmanalogindicator_defaults():
+    widget = PyDMAnalogIndicator()
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+
+    assert "showTicks" not in prop_dict
+    assert "showLimits" not in prop_dict
+    assert "showUnits" not in prop_dict
+    assert "precision" not in prop_dict
