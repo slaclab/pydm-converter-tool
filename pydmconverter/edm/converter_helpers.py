@@ -26,6 +26,7 @@ from pydmconverter.widgets import (
     PyDMScaleIndicator,
     PyDMSlider,
     PyDMWaveformTable,
+    PyDMAnalogIndicator,
 )
 from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, search_color_list, parse_colors_list
 from pydmconverter.edm.menumux import generate_menumux_file
@@ -45,7 +46,8 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame,  QComboBox
     # "image": PyDMImageView,
     "activextextclass": PyDMLabel,
     # Monitors
-    # "meter": PyDMMeter,
+    "activemeterclass": PyDMAnalogIndicator,
+    "meter": PyDMAnalogIndicator,
     # "bar": PyDMBar,
     # "xy_graph": PyDMScatterPlot,
     # "byte_indicator": PyDMByteIndicator,
@@ -241,6 +243,8 @@ COLOR_ATTRIBUTES: set = {
     "indicatorColor",
     "frozenBgColor",
     "gridColor",
+    "barColor",
+    "scaleColor",
 }
 
 logging.basicConfig(level=logging.INFO)
@@ -697,6 +701,11 @@ def apply_widget_post_processing(
     # Auto-size
     if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
         widget.autoSize = True
+
+    if obj.properties.get("showScale") and isinstance(widget, PyDMAnalogIndicator):
+        widget.showTicks = True
+        widget.showLimits = True
+        widget.showUnits = True
 
 
 def traverse_group(

@@ -345,3 +345,69 @@ def test_convert_shell_command_to_commands_property(tmp_path):
     assert len(strings) == 2, "Should have 2 commands"
     assert strings[0].text == "echo hello", "First command should be 'echo hello'"
     assert strings[1].text == "echo world", "Second command should be 'echo world'"
+
+
+def test_convert_meter_widget(tmp_path):
+    """Test that EDM meter widget converts to PyDMAnalogIndicator."""
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        # (Meter)
+        object activeMeterClass
+        beginObjectProperties
+        major 4
+        minor 0
+        release 1
+        x 100
+        y 100
+        w 150
+        h 150
+        readPv "IOC:SYS0:PRESSURE"
+        scaleMin 0
+        scaleMax 100
+        showScale
+        fgColor index 14
+        bgColor index 0
+        endObjectProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    meter_widgets = root.findall(".//widget[@class='PyDMAnalogIndicator']")
+    assert len(meter_widgets) == 1, "Should have one PyDMAnalogIndicator"
+
+    widget = meter_widgets[0]
+
+    channel_prop = widget.find("property[@name='channel']")
+    assert channel_prop is not None, "Widget should have channel property"
+    assert channel_prop.find("string").text == "IOC:SYS0:PRESSURE"
+
+    show_ticks = widget.find("property[@name='showTicks']")
+    assert show_ticks is not None, "Widget should have showTicks property"
+    assert show_ticks.find("bool").text == "true"
+
+    show_limits = widget.find("property[@name='showLimits']")
+    assert show_limits is not None, "Widget should have showLimits property"
+    assert show_limits.find("bool").text == "true"
+
+    show_units = widget.find("property[@name='showUnits']")
+    assert show_units is not None, "Widget should have showUnits property"
+    assert show_units.find("bool").text == "true"
