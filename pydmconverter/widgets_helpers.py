@@ -91,6 +91,8 @@ class XMLSerializableMixin(XMLConvertible):
         """
         if not self.name:
             self.name = f"{type(self).__name__}{type(self).count}"
+        elif self.name[0].isdigit():
+            self.name = f"widget_{self.name}"
         type(self).count += 1
 
     def generate_properties(self) -> List[etree.Element]:
