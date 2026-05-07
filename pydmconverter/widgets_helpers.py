@@ -1657,7 +1657,7 @@ class Controllable(Tangible):
 
     channel: Optional[str] = None
     pydm_tool_tip: Optional[str] = None
-    visPvList: Optional[List[Tuple[str, int, int]]] = None
+    visPvList: Optional[List[Tuple[str, int, int, bool]]] = None
     visPv: Optional[str] = None
     visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
@@ -1689,13 +1689,17 @@ class Controllable(Tangible):
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
         if self.visPvList is not None:
             for elem in self.visPvList:
-                group_channel, group_min, group_max = elem
+                if len(elem) == 4:
+                    group_channel, group_min, group_max, group_invert = elem
+                else:
+                    group_channel, group_min, group_max = elem
+                    group_invert = False
                 self.rules.append(
                     RuleArguments(
                         "Visible",
                         group_channel,
                         False,
-                        not self.visInvert if self.visInvert is not None else True,
+                        not group_invert,
                         group_min,
                         group_max,
                     )

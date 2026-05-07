@@ -720,7 +720,7 @@ def traverse_group(
     offset_x: float = 0,
     offset_y: float = 0,
     central_widget: EDMGroup = None,
-    parent_vispvs: Optional[List[Tuple[str, int, int]]] = None,
+    parent_vispvs: Optional[List[Tuple[str, int, int, bool]]] = None,
 ):
     """
     Recursively traverse an EDM group and convert each object to a PyDM widget.
@@ -748,16 +748,22 @@ def traverse_group(
 
             logger.debug("Skipped pydm_group")
 
+            vis_invert = bool(obj.properties.get("visInvert", False))
             if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
-                curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"])]
+                curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"], vis_invert)]
             elif "visPv" in obj.properties:
-                curr_vispv = [(obj.properties["visPv"], None, None)]
+                curr_vispv = [(obj.properties["visPv"], None, None, vis_invert)]
             else:
                 curr_vispv = []
 
             if "symbolMin" in obj.properties and "symbolMax" in obj.properties and "symbolChannel" in obj.properties:
                 symbol_vispv = [
-                    (obj.properties["symbolChannel"], obj.properties["symbolMin"], obj.properties["symbolMax"])
+                    (
+                        obj.properties["symbolChannel"],
+                        obj.properties["symbolMin"],
+                        obj.properties["symbolMax"],
+                        False,
+                    )
                 ]
             else:
                 symbol_vispv = []
