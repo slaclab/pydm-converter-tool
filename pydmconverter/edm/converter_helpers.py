@@ -750,9 +750,7 @@ def traverse_group(
 
             vis_invert = bool(obj.properties.get("visInvert", False))
             if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
-                curr_vispv = [
-                    (obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"], vis_invert)
-                ]
+                curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"], vis_invert)]
             elif "visPv" in obj.properties:
                 curr_vispv = [(obj.properties["visPv"], None, None, vis_invert)]
             else:
