@@ -51,9 +51,9 @@ CUSTOM_WIDGET_DEFINITIONS = {
 }
 
 
-def convert(input_path, output_path, scrollable=False, site=None):
+def convert(input_path, output_path, scrollable=False, site=None, calc_list_file=None):
     try:
-        edm_parser = EDMFileParser(input_path, output_path)
+        edm_parser = EDMFileParser(input_path, output_path, calc_list_file=calc_list_file)
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:
         logger.error("File Not Found")
