@@ -13,6 +13,7 @@ class OptionsModel:
     def __init__(self):
         # General options
         self.output_folder = None
+        self.override_existing = False
 
         # EDM options
         self.edm_override_def_colors = False
@@ -39,6 +40,9 @@ class OptionsModel:
                 output_folder = data.get("output_folder", None)
                 if output_folder is not None and os.path.exists(output_folder):
                     self.output_folder = output_folder
+                override_existing = data.get("override_existing", None)
+                if override_existing is not None:
+                    self.override_existing = override_existing
 
                 # EDM options
                 edm_override_def_colors = data.get("edm_override_def_colors", None)
@@ -61,6 +65,8 @@ class OptionsModel:
         # General options
         if self.output_folder is not None:
             data["output_folder"] = self.output_folder
+        if self.override_existing is not False:
+            data["override_existing"] = self.override_existing
 
         # EDM options
         if self.edm_override_def_colors is not False:

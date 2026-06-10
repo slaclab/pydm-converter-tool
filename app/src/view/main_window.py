@@ -182,7 +182,9 @@ class MainWindow(Display):
             output_file = table_widget.item(row, 1).text()
             file_type = os.path.splitext(input_file)[1].lower()
             try:
-                pydmconverter.__main__.run(input_file, output_file, file_type, override=True)
+                pydmconverter.__main__.run(
+                    input_file, output_file, file_type, override=self.options_model.override_existing
+                )
                 logger.debug(f"converted {input_file} to {output_file}")
                 table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
             except Exception as msg:
