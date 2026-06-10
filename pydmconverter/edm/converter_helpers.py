@@ -707,6 +707,17 @@ def apply_widget_post_processing(
         widget.showLimits = True
         widget.showUnits = True
 
+    # EDM meter labels become the analog indicator title. pvName and pvLabel
+    # types resolve from the PV at runtime, so use the PV name for those.
+    if isinstance(widget, PyDMAnalogIndicator):
+        label_type = obj.properties.get("labelType", "literal")
+        if label_type == "literal":
+            title = obj.properties.get("label")
+        else:
+            title = obj.properties.get("readPv")
+        if title:
+            widget.title = title
+
 
 def traverse_group(
     edm_group: EDMGroup,

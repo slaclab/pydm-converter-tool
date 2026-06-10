@@ -1865,10 +1865,13 @@ class PyDMAnalogIndicator(Alarmable):
     indicatorColor: Optional[RGBA] = None
     background_color: Optional[RGBA] = None
     foreground_color: Optional[RGBA] = None
+    title: Optional[str] = None
 
     def generate_properties(self) -> List[ET.Element]:
         properties: List[ET.Element] = super().generate_properties()
 
+        if self.title is not None:
+            properties.append(Str("title", self.title).to_xml())
         if self.showTicks is not None:
             properties.append(Bool("showTicks", self.showTicks).to_xml())
         if self.showLimits is not None:

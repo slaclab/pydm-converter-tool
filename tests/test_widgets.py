@@ -629,6 +629,7 @@ def test_pydmanalogindicator_generate_properties():
         background_color=(200, 200, 200, 255),
         foreground_color=(0, 0, 0, 255),
         channel="ca://IOC:SYS0:PRESSURE",
+        title="Pressure",
     )
     properties: List[ET.Element] = widget.generate_properties()
     prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
@@ -639,6 +640,7 @@ def test_pydmanalogindicator_generate_properties():
     assert prop_dict.get("showValue") == "true"
     assert prop_dict.get("precision") == "2"
     assert prop_dict.get("channel") == "ca://IOC:SYS0:PRESSURE"
+    assert prop_dict.get("title") == "Pressure"
 
 
 def test_pydmanalogindicator_defaults():
@@ -650,3 +652,4 @@ def test_pydmanalogindicator_defaults():
     assert "showLimits" not in prop_dict
     assert "showUnits" not in prop_dict
     assert "precision" not in prop_dict
+    assert "title" not in prop_dict
