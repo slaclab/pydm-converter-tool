@@ -7,36 +7,46 @@ from pydmconverter.custom_types import RGBA
 logger = logging.getLogger(__name__)
 
 
-def search_calc_list(file_path: str) -> str:
+def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Optional[str]:
     """
-    search for a calc.list file and return the path if found, returns None if no calc.list exists.
+    Search for a calc.list file and return its full path, returns None if no calc.list is found.
 
-    This function reads a file, filters out comment lines (lines starting with
-    '#') and empty lines, and assumes each definition in the file is specified
-    by two consecutive non-comment lines:
+    The search checks the following locations in order:
+
+    1. cli_calc_file, if provided.
+    2. calc.list in the same directory as file_path.
+    3. calc.list in a config subdirectory next to file_path.
+    4. $EDMFILES/calc.list.
 
     Parameters
     ----------
     file_path : str
         The path to a file whose directory will be searched for 'calc.list'.
+    cli_calc_file : str, optional
+        An explicit path to a calc.list file (e.g. from the --calc-list CLI
+        option). If provided and valid, it overrides the other locations.
 
     Returns
     -------
     Optional[str]
-        The full path to the found 'calc.list' file, in either the local directory or in $EDMFILES, as a string if it exists;
-        otherwise, None.
+        The full path to the found 'calc.list' file if it exists; otherwise, None.
     """
-    directory = os.path.dirname(file_path)
-    local_calc_list = os.path.join(directory, "calc.list")
+    if cli_calc_file and os.path.isfile(cli_calc_file):
+        return cli_calc_file
 
-    if os.path.isfile(local_calc_list):
-        return directory
+    directory = os.path.dirname(file_path)
+    candidates = [
+        os.path.join(directory, "calc.list"),
+        os.path.join(directory, "config", "calc.list"),
+    ]
 
     edmfiles = os.environ.get("EDMFILES", "")
-    global_calc_list = os.path.join(edmfiles, "calc.list")
+    if edmfiles:
+        candidates.append(os.path.join(edmfiles, "calc.list"))
 
-    if edmfiles and os.path.isfile(global_calc_list):
-        return global_calc_list
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
 
     return None
 
@@ -441,9 +451,13 @@ def loc_conversion(edm_string: str) -> str:
                 value = type_and_value
                 type_char = "d"
             except ValueError:
-                # print("Invalid EDM format: Missing ':' separator and not an integer (enter c to continue)")
-                logger.debug(f"name: {name}, value: {type_and_value}")
-                raise ValueError("Invalid EDM format: Missing ':' separator and not an integer")
+                # EDM falls back to a string PV with an empty value when the
+                # initialization is unparseable, so mirror that behavior here.
+                logger.warning(
+                    f"Unparseable local PV initialization '{type_and_value}' for '{name}', defaulting to an empty string"
+                )
+                value = ""
+                type_char = "s"
 
     edm_type = type_char.lower()
     if edm_type.isdigit():
@@ -480,7 +494,7 @@ def loc_conversion(edm_string: str) -> str:
 
 
 def replace_calc_and_loc_in_edm_content(
-    edm_content: str, filepath: str
+    edm_content: str, filepath: str, calc_list_file: Optional[str] = None
 ) -> Tuple[str, Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
     """
     Replace both CALC\\...(...) and LOC\\...=... references in the EDM file content
@@ -493,6 +507,9 @@ def replace_calc_and_loc_in_edm_content(
         The full text of the EDM file, as a single string.
     filepath : str
         path of the given edm file
+    calc_list_file : str, optional
+        An explicit path to a calc.list file used to resolve named CALC PVs.
+        Overrides the default calc.list search locations.
 
     Returns
     -------
@@ -505,7 +522,7 @@ def replace_calc_and_loc_in_edm_content(
         A dictionary of all encountered LOC references, similarly mapping each
         unique original LOC reference to "full" and "short" addresses.
     """
-    calc_list_path = search_calc_list(filepath)
+    calc_list_path = search_calc_list(filepath, calc_list_file)
     calc_dict = parse_calc_list(calc_list_path)
 
     encountered_calcs: Dict[str, Dict[str, str]] = {}
@@ -516,7 +533,13 @@ def replace_calc_and_loc_in_edm_content(
     def replace_calc_match(match: re.Match) -> str:
         edm_pv = match.group(1)
         if edm_pv not in encountered_calcs:
-            full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
+            try:
+                full_url = translate_calc_pv_to_pydm(edm_pv, calc_dict=calc_dict)
+            except ValueError as e:
+                # Leave the original EDM reference in place so one bad calc
+                # does not abort the conversion of the whole file.
+                logger.warning(f"Could not translate CALC PV '{edm_pv}': {e}")
+                return match.group(0)
             short_url = full_url.split("?", 1)[0]
             encountered_calcs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
@@ -536,7 +559,13 @@ def replace_calc_and_loc_in_edm_content(
                 full_url = f"loc://{cleaned_pv}"
                 short_url = full_url
             else:
-                full_url = loc_conversion(edm_pv)  # TODO: remove the ifs later
+                try:
+                    full_url = loc_conversion(edm_pv)  # TODO: remove the ifs later
+                except (ValueError, NotImplementedError) as e:
+                    # Leave the original EDM reference in place so one bad
+                    # local PV does not abort the conversion of the whole file.
+                    logger.warning(f"Could not translate LOC PV '{edm_pv}': {e}")
+                    return match.group(0)
                 if full_url:
                     short_url = full_url.split("?", 1)[0]
                 else:

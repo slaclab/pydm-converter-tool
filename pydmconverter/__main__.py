@@ -29,7 +29,7 @@ def run_gui() -> None:
     subprocess.run(["bash", str(launch_script)], check=True)
 
 
-def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False, site=None):
+def run(input_file, output_file, input_file_type=".edl", override=False, scrollable=False, site=None, calc_list=None):
     input_path: Path = Path(input_file)
     output_path: Path = Path(output_file)
 
@@ -39,7 +39,7 @@ def run(input_file, output_file, input_file_type=".edl", override=False, scrolla
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         copy_img_files(input_path.parent, output_path.parent)
-        convert(str(input_path), str(output_path), scrollable, site=site)
+        convert(str(input_path), str(output_path), scrollable, site=site, calc_list_file=calc_list)
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
@@ -47,7 +47,7 @@ def run(input_file, output_file, input_file_type=".edl", override=False, scrolla
         files_found: int
         files_failed: list[str]
         files_found, files_failed = convert_files_in_folder(
-            input_path, output_path, input_file_type, override, scrollable, site=site
+            input_path, output_path, input_file_type, override, scrollable, site=site, calc_list=calc_list
         )
 
         if files_found == 0:
@@ -77,7 +77,8 @@ def run_cli(args: argparse.Namespace) -> None:
     override: bool = args.override
     scrollable: bool = args.scrollable
     site: str = args.site
-    run(input_file, output_file, input_file_type, override, scrollable, site=site)
+    calc_list: str = args.calc_list
+    run(input_file, output_file, input_file_type, override, scrollable, site=site, calc_list=calc_list)
 
 
 """
@@ -126,7 +127,13 @@ def copy_img_files(input_path: Path, output_path: Path) -> None:
 
 
 def convert_files_in_folder(
-    input_path: Path, output_path: Path, input_file_type: str, override: bool, scrollable: bool, site=None
+    input_path: Path,
+    output_path: Path,
+    input_file_type: str,
+    override: bool,
+    scrollable: bool,
+    site=None,
+    calc_list=None,
 ) -> tuple[int, list[str]]:
     """Recursively runs convert on files in directory and subdirectories
 
@@ -162,7 +169,7 @@ def convert_files_in_folder(
             logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
             try:
-                convert(file, output_file_path, scrollable, site=site)
+                convert(file, output_file_path, scrollable, site=site, calc_list_file=calc_list)
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
@@ -171,7 +178,7 @@ def convert_files_in_folder(
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         sub_found, sub_failed = convert_files_in_folder(
-            subdir, output_path / subdir.name, input_file_type, override, scrollable, site=site
+            subdir, output_path / subdir.name, input_file_type, override, scrollable, site=site, calc_list=calc_list
         )
         files_found += sub_found
         files_failed += sub_failed
@@ -232,6 +239,12 @@ def main() -> None:
         type=str,
         default=None,
         help="Apply site-specific conversion rules (e.g., slac)",
+    )
+    parser.add_argument(
+        "--calc-list",
+        type=str,
+        default=None,
+        help="Path to an EDM calc.list file used to resolve named CALC PVs",
     )
     args: argparse.Namespace = parser.parse_args()
 

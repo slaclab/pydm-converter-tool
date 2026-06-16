@@ -19,8 +19,9 @@ from pydmconverter.edm.parser_helpers import (
 
 def test_search_calc_list(tmp_path, monkeypatch):
     """
-    Test that search_calc_list returns the local directory if calc.list
-    exists there, otherwise checks EDMFILES.
+    Test that search_calc_list returns the full path to calc.list, checking
+    the explicit cli path, the local directory, a local config subdirectory,
+    and EDMFILES in that order.
     """
     fake_file = tmp_path / "fake.edl"
     fake_file.touch()
@@ -29,9 +30,26 @@ def test_search_calc_list(tmp_path, monkeypatch):
     local_calc_list.touch()
 
     result = search_calc_list(str(fake_file))
-    assert result == str(tmp_path), "Expected to find local calc.list in the directory."
+    assert result == str(local_calc_list), "Expected the full path of the local calc.list."
+
+    cli_calc_dir = tmp_path / "cli"
+    cli_calc_dir.mkdir()
+    cli_calc_list = cli_calc_dir / "calc.list"
+    cli_calc_list.touch()
+
+    result = search_calc_list(str(fake_file), cli_calc_file=str(cli_calc_list))
+    assert result == str(cli_calc_list), "Expected the cli path to override other locations."
 
     local_calc_list.unlink()
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config_calc_list = config_dir / "calc.list"
+    config_calc_list.touch()
+
+    result = search_calc_list(str(fake_file))
+    assert result == str(config_calc_list), "Expected to find calc.list in the local config subdirectory."
+
+    config_calc_list.unlink()
     global_calc_dir = tempfile.mkdtemp()
     global_calc_list = os.path.join(global_calc_dir, "calc.list")
     with open(global_calc_list, "w") as f:
@@ -174,6 +192,12 @@ def test_loc_conversion():
     result_no_colon = loc_conversion(edm_string_missing_colon)
     assert "loc://noColon" in result_no_colon, f"Expected loc://noColon in result, got '{result_no_colon}'"
 
+    # An unparseable initialization falls back to a string PV with an empty
+    # value, matching EDM behavior
+    edm_string_unparseable = "LOC\\myLocal=intPv=ShowChannels"
+    result_unparseable = loc_conversion(edm_string_unparseable)
+    assert result_unparseable == "loc://myLocal?type=str&init="
+
 
 @pytest.mark.parametrize(
     "edm_content",
@@ -241,7 +265,7 @@ def test_replace_calc_and_loc_in_edm_content(
         edm_content, filepath="/some/fake/edm_file.edl"
     )
 
-    mock_search_calc_list.assert_called_once_with("/some/fake/edm_file.edl")
+    mock_search_calc_list.assert_called_once_with("/some/fake/edm_file.edl", None)
     mock_parse_calc_list.assert_called_once_with("/fake/path/calc.list")
 
     assert "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B" in new_content
@@ -271,6 +295,48 @@ def test_replace_calc_and_loc_in_edm_content(
     myLocalInt_entry = encountered_locs["LOC\\myLocalInt=i:42"]
     assert myLocalInt_entry["full"] == "loc://myLocalInt?type=int&init=42"
     assert myLocalInt_entry["short"] == "loc://myLocalInt"
+
+
+def test_replace_calc_keeps_undefined_calc(tmp_path):
+    """
+    Tests that an undefined named calc is left untouched with a warning
+    instead of aborting the conversion of the whole file.
+    """
+    edm_content = """
+    object activeXTextClass {
+      controlPv "CALC\\\\noSuchCalc(pv1)"
+      visPv "LOC\\myLocal=d:3.14"
+    }
+    """
+    fake_file = tmp_path / "fake.edl"
+    fake_file.touch()
+
+    new_content, encountered_calcs, encountered_locs = replace_calc_and_loc_in_edm_content(
+        edm_content, filepath=str(fake_file)
+    )
+
+    assert "CALC\\\\noSuchCalc(pv1)" in new_content, "Expected the unresolved CALC PV to be left as is."
+    assert encountered_calcs == {}
+    assert "loc://myLocal?type=float&init=3.14" in new_content, "Expected LOC replacement to still happen."
+
+
+def test_replace_calc_uses_explicit_calc_list(tmp_path):
+    """
+    Tests that an explicit calc_list_file is used to resolve named calcs.
+    """
+    calc_list_file = tmp_path / "mycalcs.list"
+    calc_list_file.write_text("CALC1\nsum\nA+B\n")
+
+    edm_content = 'controlPv "CALC\\\\sum(pv1, pv2)"'
+    fake_file = tmp_path / "fake.edl"
+    fake_file.touch()
+
+    new_content, encountered_calcs, _ = replace_calc_and_loc_in_edm_content(
+        edm_content, filepath=str(fake_file), calc_list_file=str(calc_list_file)
+    )
+
+    assert "calc://sum?A=ca://pv1&B=ca://pv2&expr=A+B" in new_content
+    assert "CALC\\\\sum(pv1, pv2)" in encountered_calcs
 
 
 @pytest.fixture

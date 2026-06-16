@@ -60,18 +60,21 @@ class EDMFileParser:
     #    re.DOTALL | re.MULTILINE,
     # )
 
-    def __init__(self, file_path: str | Path, output_file_path: str | Path):
+    def __init__(self, file_path: str | Path, output_file_path: str | Path, calc_list_file: str | None = None):
         """Creates an instance of EDMFileParser for the given file_path
 
         Parameters
         ----------
         file_path : str | Path
             EDM file to parse
+        calc_list_file : str, optional
+            Explicit path to a calc.list file used to resolve named CALC PVs
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
         self.file_path = file_path
         self.output_file_path = output_file_path
+        self.calc_list_file = calc_list_file
 
         try:
             with open(file_path, "r") as file:
@@ -97,7 +100,7 @@ class EDMFileParser:
         )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
-        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path)
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path, self.calc_list_file)
         return self.text
 
     def parse_screen_properties(self) -> None:
