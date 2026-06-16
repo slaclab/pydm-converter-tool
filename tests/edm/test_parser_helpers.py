@@ -10,6 +10,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_calc_pv,
     apply_rewrite_rule,
     translate_calc_pv_to_pydm,
+    reformat_calc_expression,
     loc_conversion,
     replace_calc_and_loc_in_edm_content,
     parse_colors_list,
@@ -142,6 +143,39 @@ def test_translate_calc_pv_to_pydm():
     assert "A=pva://x" in pydm_inline
     assert "B=pva://y" in pydm_inline
     assert "expr=A*B" in pydm_inline
+
+
+def test_reformat_calc_expression():
+    """
+    EPICS calc operators must be translated to valid Python, since PyDM's calc
+    plugin evaluates the expression and otherwise raises a SyntaxError at open
+    time (issue #142).
+    """
+    # Already-valid Python passes through unchanged
+    assert reformat_calc_expression("A+B") == "A+B"
+
+    # Exponentiation and not-equal
+    assert reformat_calc_expression("A^2") == "A**2"
+    assert reformat_calc_expression("A#B") == "A!=B"
+
+    # Single = becomes ==, without clobbering existing comparison operators
+    assert reformat_calc_expression("A=B") == "A==B"
+    assert reformat_calc_expression("A<=B") == "A<=B"
+    assert reformat_calc_expression("A>=B") == "A>=B"
+    assert reformat_calc_expression("A!=B") == "A!=B"
+
+    # Logical operators
+    assert reformat_calc_expression("A&&B") == "A and B"
+    assert reformat_calc_expression("A||B") == "A or B"
+
+    # The exact expression from issue #142
+    assert reformat_calc_expression("A=B?1:0") == "(1 if A==B else 0)"
+
+    # Right-associative nested ternary
+    assert reformat_calc_expression("A?1:B?2:3") == "(1 if A else (2 if B else 3))"
+
+    # Ternary nested in the true branch
+    assert reformat_calc_expression("A?B?1:2:3") == "((1 if B else 2) if A else 3)"
 
 
 def test_loc_conversion():
