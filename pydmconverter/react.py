@@ -11,7 +11,10 @@ TSX is intentionally not produced here — that is the Screen Builder's eject pa
 from __future__ import annotations
 
 import logging
+import shutil
+import tempfile
 from pathlib import Path
+from typing import Literal
 
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.ir.emit import write_screen_json
@@ -32,6 +35,27 @@ def convert_to_ir(input_path: str | Path, *, registry: RegistryClient | None = N
     if adapter is None:
         raise ValueError(f"--target react supports {', '.join(SUPPORTED_SUFFIXES)} inputs, not {suffix!r}")
     return adapter(input_path, registry=registry)
+
+
+def convert_bytes(data: bytes, *, kind: Literal["edl", "ui"], registry: RegistryClient | None = None) -> ScreenIR:
+    """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
+
+    For HTTP callers (the Screen Builder uploads screens as bytes, a browser cannot
+    hand the backend a server path), so callers need not spill uploads to disk. The
+    EDM parser reads from a path, so the bytes are staged in a temp file scoped to
+    this call rather than in every caller.
+    """
+    if kind not in ("edl", "ui"):
+        raise ValueError(f"convert_bytes kind must be 'edl' or 'ui', not {kind!r}")
+    # Fixed basename in a private temp dir -> a deterministic screen id (not a random
+    # temp stem), and conversion of identical bytes is byte-stable.
+    tmp_dir = Path(tempfile.mkdtemp(prefix="pydmconv-"))
+    try:
+        staged = tmp_dir / f"screen.{kind}"
+        staged.write_bytes(data)
+        return convert_to_ir(staged, registry=registry)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def _screen_json_path(input_path: Path, output_path: Path) -> Path:

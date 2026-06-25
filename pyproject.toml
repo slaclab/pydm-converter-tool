@@ -27,8 +27,6 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "pydm",
-    'pyqt5',
     "pydantic>=2",
     "jsonschema>=4",
 ]
@@ -46,11 +44,20 @@ pydmconverter = ["launch_gui.sh", "ir/data/*.json", "ir/data/widget-registry/*.j
 pydmconverter = "pydmconverter.__main__:main"
 
 [project.optional-dependencies]
+# PyQt5/PyDM are only needed for the legacy --target pydm (.ui) output, menumux,
+# and the desktop GUI. The IR / --target react path (pydmconverter.react) is pure
+# Python and imports without them.
+gui = [
+    "pydm",
+    "pyqt5",
+]
 dev = [
     "pytest",
     "pytest-cov",
     "pytest-qt",
-    "pytest-mock"
+    "pytest-mock",
+    "pydm",
+    "pyqt5",
 ]
 
 [project.urls]

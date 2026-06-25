@@ -15,9 +15,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydmconverter.edm.converter_helpers import parse_edm_macros
 from pydmconverter.edm.edm_qt import EDM_TO_QT_PROP, resolve_qt_class
 from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject
+from pydmconverter.edm.parser_helpers import parse_edm_macros
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.model import ScreenIR
