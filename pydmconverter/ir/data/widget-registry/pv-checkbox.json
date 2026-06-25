@@ -1,0 +1,55 @@
+{
+  "id": "pv-checkbox",
+  "version": "1.0.0",
+  "displayName": "PV Checkbox",
+  "description": "Toggle bound to a boolean or integer PV.",
+  "category": "controls",
+  "paletteIcon": "pv-checkbox.svg",
+
+  "reactComponent": {
+    "name": "PVCheckbox",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMCheckbox",
+    "extends": "QCheckBox",
+    "header": "pydm.widgets.checkbox"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "label": { "type": "string" },
+      "kind": {
+        "type": "string",
+        "enum": ["standard", "tri-state", "toggle"],
+        "default": "standard"
+      },
+      "alarmSensitive": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "text": { "to": "label" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv"] },
+      { "name": "Display", "fields": ["label", "kind"] },
+      { "name": "Alarm", "fields": ["alarmSensitive"] }
+    ]
+  },
+
+  "defaults": { "width": 120, "height": 24 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

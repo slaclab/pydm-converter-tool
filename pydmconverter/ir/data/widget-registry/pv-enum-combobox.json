@@ -1,0 +1,49 @@
+{
+  "id": "pv-enum-combobox",
+  "version": "1.0.0",
+  "displayName": "PV Enum Combobox",
+  "description": "Dropdown selector for a PV with enum_strings.",
+  "category": "controls",
+  "paletteIcon": "pv-enum-combobox.svg",
+
+  "reactComponent": {
+    "name": "PVEnumComboBox",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMEnumComboBox",
+    "extends": "QComboBox",
+    "header": "pydm.widgets.enum_combo_box"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "searchable": { "type": "boolean", "default": false },
+      "alarmSensitive": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv"] },
+      { "name": "Display", "fields": ["searchable"] },
+      { "name": "Alarm", "fields": ["alarmSensitive"] }
+    ]
+  },
+
+  "defaults": { "width": 140, "height": 32 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

@@ -1,0 +1,42 @@
+{
+  "id": "pv-radio-group",
+  "version": "1.0.0",
+  "displayName": "PV Radio Group",
+  "description": "Mutually exclusive enum selector for a PV with enum_strings. Authored in the Screen Builder; converter does not auto-translate clusters of QRadioButtons (use a pv-enum-combobox for migrated screens).",
+  "category": "controls",
+  "paletteIcon": "pv-radio-group.svg",
+
+  "reactComponent": {
+    "name": "PVRadioGroup",
+    "module": "@canopy/widgets"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "orientation": {
+        "type": "string",
+        "enum": ["horizontal", "vertical"],
+        "default": "vertical"
+      },
+      "alarmSensitive": { "type": "boolean", "default": false }
+    }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv"] },
+      { "name": "Display", "fields": ["orientation"] },
+      { "name": "Alarm", "fields": ["alarmSensitive"] }
+    ]
+  },
+
+  "defaults": { "width": 160, "height": 96 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

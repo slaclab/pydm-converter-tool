@@ -1,0 +1,55 @@
+{
+  "id": "text-label",
+  "version": "1.0.0",
+  "displayName": "Text Label",
+  "description": "Static text label with no PV binding.",
+  "category": "decorations",
+  "paletteIcon": "text-label.svg",
+
+  "reactComponent": {
+    "name": "TextLabel",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QLabel",
+    "extends": "QFrame"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["text"],
+    "properties": {
+      "text": { "type": "string" },
+      "variant": {
+        "type": "string",
+        "enum": ["heading", "subheading", "body", "caption"],
+        "default": "body"
+      },
+      "align": {
+        "type": "string",
+        "enum": ["left", "center", "right"],
+        "default": "left"
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "text": { "to": "text" },
+    "alignment": { "to": "align", "transform": "qtAlignment" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Content", "fields": ["text"] },
+      { "name": "Display", "fields": ["variant", "align"] }
+    ]
+  },
+
+  "defaults": { "width": 100, "height": 24 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

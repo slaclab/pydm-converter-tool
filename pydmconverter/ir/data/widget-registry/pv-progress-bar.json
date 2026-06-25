@@ -1,0 +1,62 @@
+{
+  "id": "pv-progress-bar",
+  "version": "1.0.0",
+  "displayName": "PV Progress Bar",
+  "description": "Bar visualization of a numeric PV between configured limits.",
+  "category": "indicators",
+  "paletteIcon": "pv-progress-bar.svg",
+
+  "reactComponent": {
+    "name": "PVProgressBar",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMScaleIndicator",
+    "extends": "QWidget",
+    "header": "pydm.widgets.scale"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "min": { "type": "number" },
+      "max": { "type": "number" },
+      "orientation": {
+        "type": "string",
+        "enum": ["horizontal", "vertical"],
+        "default": "horizontal"
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["determinate", "indeterminate"],
+        "default": "determinate"
+      },
+      "showValue": { "type": "boolean", "default": true }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "userMinimum": { "to": "min" },
+    "userMaximum": { "to": "max" },
+    "orientation": { "to": "orientation", "transform": "qtOrientation" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv"] },
+      { "name": "Range", "fields": ["min", "max"] },
+      { "name": "Display", "fields": ["orientation", "kind", "showValue"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 24 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

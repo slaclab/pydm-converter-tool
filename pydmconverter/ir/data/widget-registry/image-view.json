@@ -1,0 +1,51 @@
+{
+  "id": "image-view",
+  "version": "1.0.0",
+  "displayName": "Image View",
+  "description": "Static facility / synoptic background image. Not for live camera data; use pv-image-view (P2) for that.",
+  "category": "decorations",
+  "paletteIcon": "image-view.svg",
+
+  "reactComponent": {
+    "name": "ImageView",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMDrawingImage",
+    "extends": "QWidget",
+    "header": "pydm.widgets.drawing"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["src"],
+    "properties": {
+      "src": { "type": "string", "description": "URL or path to the image asset." },
+      "fit": {
+        "type": "string",
+        "enum": ["fill", "contain", "cover", "none"],
+        "default": "contain"
+      },
+      "alt": { "type": "string" }
+    }
+  },
+
+  "qtPropMap": {
+    "filename": { "to": "src" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Source", "fields": ["src", "alt"] },
+      { "name": "Display", "fields": ["fit"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 200 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

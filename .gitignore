@@ -119,3 +119,7 @@ ENV/
 .vscode/
 
 *.json
+
+# Canopy IR data files (generated schema + vendored widget registry) are tracked assets
+!pydmconverter/ir/data/*.json
+!pydmconverter/ir/data/widget-registry/*.json

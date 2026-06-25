@@ -1,0 +1,57 @@
+{
+  "id": "pv-text-input",
+  "version": "1.0.0",
+  "displayName": "PV Text Input",
+  "description": "Editable text field bound to a PV. Writes on Enter.",
+  "category": "controls",
+  "paletteIcon": "pv-text-input.svg",
+
+  "reactComponent": {
+    "name": "PVTextInput",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMLineEdit",
+    "extends": "QLineEdit",
+    "header": "pydm.widgets.line_edit"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "kind": {
+        "type": "string",
+        "enum": ["text", "search", "password", "numeric", "read-only"],
+        "default": "text"
+      },
+      "writeOnEnter": { "type": "boolean", "default": true },
+      "placeholder": { "type": "string" },
+      "alarmSensitive": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "writeOnPress": { "to": "writeOnEnter" },
+    "placeholderText": { "to": "placeholder" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv", "writeOnEnter"] },
+      { "name": "Display", "fields": ["kind", "placeholder"] },
+      { "name": "Alarm", "fields": ["alarmSensitive"] }
+    ]
+  },
+
+  "defaults": { "width": 160, "height": 28 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

@@ -1,0 +1,49 @@
+{
+  "id": "regular-button",
+  "version": "1.0.0",
+  "displayName": "Button",
+  "description": "Action button with no PV binding. Use with rules or navigation actions.",
+  "category": "controls",
+  "paletteIcon": "regular-button.svg",
+
+  "reactComponent": {
+    "name": "RegularButton",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QPushButton",
+    "extends": "QAbstractButton"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["label"],
+    "properties": {
+      "label": { "type": "string" },
+      "kind": {
+        "type": "string",
+        "enum": ["primary", "secondary", "tertiary", "danger", "ghost"],
+        "default": "secondary"
+      },
+      "iconOnly": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "text": { "to": "label" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["label", "kind", "iconOnly"] }
+    ]
+  },
+
+  "defaults": { "width": 100, "height": 32 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}
