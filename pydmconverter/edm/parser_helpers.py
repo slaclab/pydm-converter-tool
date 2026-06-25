@@ -1022,3 +1022,82 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
     logger.info(f"Converted {fillColor} to color: {result}")
 
     return result
+
+
+def _split_macro_pairs(macro_string: str) -> list[str]:
+    """Split macro string on commas, respecting ${...} nesting."""
+    pairs = []
+    current = []
+    depth = 0
+    for char in macro_string:
+        if char == "{" and depth >= 0:
+            depth += 1
+            current.append(char)
+        elif char == "}" and depth > 0:
+            depth -= 1
+            current.append(char)
+        elif char == "," and depth == 0:
+            pairs.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    if current:
+        pairs.append("".join(current))
+    return pairs
+
+
+def parse_edm_macros(macro_string: str) -> dict:
+    """
+    Parse an EDM macro string into a dictionary for PyDM widgets.
+
+    EDM macros are in the format: "KEY1=value1,KEY2=value2,KEY3=value3"
+    This function converts them to a Python dict: {"KEY1": "value1", "KEY2": "value2", "KEY3": "value3"}
+
+    Parameters
+    ----------
+    macro_string : str
+        The EDM macro string to parse (e.g., "P=CAMR:LI20:110,R=:ASYN")
+
+    Returns
+    -------
+    dict
+        A dictionary containing the parsed macro key-value pairs.
+        Returns an empty dict if the input is empty or None.
+
+    Examples
+    --------
+    >>> parse_edm_macros("P=CAMR:LI20:110,R=:ASYN")
+    {'P': 'CAMR:LI20:110', 'R': ':ASYN'}
+    >>> parse_edm_macros("DEVICE=IOC:SYS0:1")
+    {'DEVICE': 'IOC:SYS0:1'}
+    >>> parse_edm_macros("")
+    {}
+    """
+    if not macro_string or not isinstance(macro_string, str):
+        return {}
+
+    macro_dict = {}
+    macro_string = macro_string.strip()
+
+    if not macro_string:
+        return {}
+
+    pairs = _split_macro_pairs(macro_string)
+
+    for pair in pairs:
+        pair = pair.strip()
+        if not pair:
+            continue
+        if "=" in pair:
+            key, value = pair.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            if value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+            macro_dict[key] = value
+        else:
+            logger.warning(f"Invalid macro pair format: '{pair}' in macro string: '{macro_string}'")
+
+    return macro_dict

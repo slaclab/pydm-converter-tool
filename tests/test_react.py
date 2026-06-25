@@ -14,6 +14,25 @@ def test_convert_to_ir_dispatches_by_suffix():
     assert react.convert_to_ir(UI_FIXTURE).metadata.source.type == "ui-converter"
 
 
+def test_convert_bytes_edl_and_ui():
+    """convert_bytes runs the same pipeline as convert_to_ir but is keyed on kind (#146)."""
+    edm = react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl")
+    ui = react.convert_bytes(UI_FIXTURE.read_bytes(), kind="ui")
+    assert edm.metadata.source.type == "edl-converter"
+    assert ui.metadata.source.type == "ui-converter"
+    assert edm.root.children  # produced widgets through the shared builder
+
+
+def test_convert_bytes_is_deterministic():
+    data = EDM_FIXTURE.read_bytes()
+    assert react.convert_bytes(data, kind="edl") == react.convert_bytes(data, kind="edl")
+
+
+def test_convert_bytes_rejects_bad_kind():
+    with pytest.raises(ValueError, match="kind"):
+        react.convert_bytes(b"<x/>", kind="txt")
+
+
 def test_convert_to_ir_rejects_unknown_suffix(tmp_path):
     bogus = tmp_path / "x.txt"
     bogus.write_text("nope", encoding="utf-8")
