@@ -10,6 +10,7 @@ from time import sleep
 from typing import List
 from pydm import Display
 from qtpy.QtCore import Slot, QCoreApplication
+from qtpy.QtGui import QBrush, QColor
 from qtpy.QtWidgets import (
     QFileDialog,
     QTableWidget,
@@ -26,6 +27,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+CONVERTED_ROW_COLOR = QColor(200, 230, 201)
+FAILED_ROW_COLOR = QColor(255, 205, 210)
 
 
 class MainWindow(Display):
@@ -174,6 +178,17 @@ class MainWindow(Display):
             if conversion_status == "Converted":
                 table_widget.removeRow(i)
 
+    def set_row_status(self, row: int, status: str, color: QColor, tooltip: str = "") -> None:
+        """Sets the status cell of a row and colors the whole row"""
+        table_widget: QTableWidget = self.ui.table_widget
+        status_item = QTableWidgetItem(status)
+        status_item.setToolTip(tooltip)
+        table_widget.setItem(row, 2, status_item)
+        for col in range(table_widget.columnCount()):
+            item = table_widget.item(row, col)
+            if item is not None:
+                item.setBackground(QBrush(color))
+
     @Slot()
     def on_convert_button_clicked(self) -> None:
         table_widget: QTableWidget = self.ui.table_widget
@@ -186,10 +201,10 @@ class MainWindow(Display):
                     input_file, output_file, file_type, override=self.options_model.override_existing
                 )
                 logger.debug(f"converted {input_file} to {output_file}")
-                table_widget.setItem(row, 2, QTableWidgetItem("Converted"))
+                self.set_row_status(row, "Converted", CONVERTED_ROW_COLOR)
             except Exception as msg:
                 logger.debug(msg)
-                table_widget.setItem(row, 2, QTableWidgetItem("Failed"))
+                self.set_row_status(row, "Failed", FAILED_ROW_COLOR, tooltip=str(msg))
             QCoreApplication.processEvents()
 
             """parser = self.app_model.parsers[file_type](input_file)
