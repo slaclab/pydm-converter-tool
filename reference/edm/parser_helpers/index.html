@@ -981,6 +981,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_edm_macros
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="parse_edm_macros">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#edm.parser_helpers.reformat_calc_expression" class="md-nav__link">
     <span class="md-ellipsis">
       reformat_calc_expression
@@ -1523,6 +1565,48 @@
   <a href="#edm.parser_helpers.parse_colors_list--notes" class="md-nav__link">
     <span class="md-ellipsis">
       Notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_edm_macros
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="parse_edm_macros">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.parser_helpers.parse_edm_macros--examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
     </span>
   </a>
   
@@ -3443,6 +3527,159 @@ alarm : Dict[str, str]
             <span class="n">parsed_data</span><span class="p">[</span><span class="n">possible_key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">return</span> <span class="n">parsed_data</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.parser_helpers.parse_edm_macros" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">parse_edm_macros</span><span class="p">(</span><span class="n">macro_string</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Parse an EDM macro string into a dictionary for PyDM widgets.</p>
+<p>EDM macros are in the format: "KEY1=value1,KEY2=value2,KEY3=value3"
+This function converts them to a Python dict: {"KEY1": "value1", "KEY2": "value2", "KEY3": "value3"}</p>
+<h4 id="edm.parser_helpers.parse_edm_macros--parameters">Parameters</h4>
+<p>macro_string : str
+    The EDM macro string to parse (e.g., "P=CAMR:LI20:110,R=:ASYN")</p>
+<h4 id="edm.parser_helpers.parse_edm_macros--returns">Returns</h4>
+<p>dict
+    A dictionary containing the parsed macro key-value pairs.
+    Returns an empty dict if the input is empty or None.</p>
+<h4 id="edm.parser_helpers.parse_edm_macros--examples">Examples</h4>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>parse_edm_macros("P=CAMR:LI20:110,R=:ASYN")
+{'P': 'CAMR:LI20:110', 'R': ':ASYN'}
+parse_edm_macros("DEVICE=IOC:SYS0:1")
+{'DEVICE': 'IOC:SYS0:1'}
+parse_edm_macros("")
+{}</p>
+</blockquote>
+</blockquote>
+</blockquote>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/parser_helpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span>
+<span class="normal">1053</span>
+<span class="normal">1054</span>
+<span class="normal">1055</span>
+<span class="normal">1056</span>
+<span class="normal">1057</span>
+<span class="normal">1058</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_edm_macros</span><span class="p">(</span><span class="n">macro_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse an EDM macro string into a dictionary for PyDM widgets.</span>
+
+<span class="sd">    EDM macros are in the format: &quot;KEY1=value1,KEY2=value2,KEY3=value3&quot;</span>
+<span class="sd">    This function converts them to a Python dict: {&quot;KEY1&quot;: &quot;value1&quot;, &quot;KEY2&quot;: &quot;value2&quot;, &quot;KEY3&quot;: &quot;value3&quot;}</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    macro_string : str</span>
+<span class="sd">        The EDM macro string to parse (e.g., &quot;P=CAMR:LI20:110,R=:ASYN&quot;)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary containing the parsed macro key-value pairs.</span>
+<span class="sd">        Returns an empty dict if the input is empty or None.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; parse_edm_macros(&quot;P=CAMR:LI20:110,R=:ASYN&quot;)</span>
+<span class="sd">    {&#39;P&#39;: &#39;CAMR:LI20:110&#39;, &#39;R&#39;: &#39;:ASYN&#39;}</span>
+<span class="sd">    &gt;&gt;&gt; parse_edm_macros(&quot;DEVICE=IOC:SYS0:1&quot;)</span>
+<span class="sd">    {&#39;DEVICE&#39;: &#39;IOC:SYS0:1&#39;}</span>
+<span class="sd">    &gt;&gt;&gt; parse_edm_macros(&quot;&quot;)</span>
+<span class="sd">    {}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">macro_string</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">macro_string</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">macro_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">macro_string</span> <span class="o">=</span> <span class="n">macro_string</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">macro_string</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">pairs</span> <span class="o">=</span> <span class="n">_split_macro_pairs</span><span class="p">(</span><span class="n">macro_string</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+        <span class="n">pair</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pair</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">pair</span><span class="p">:</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">macro_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid macro pair format: &#39;</span><span class="si">{</span><span class="n">pair</span><span class="si">}</span><span class="s2">&#39; in macro string: &#39;</span><span class="si">{</span><span class="n">macro_string</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">macro_dict</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
