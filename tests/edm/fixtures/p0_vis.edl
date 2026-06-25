@@ -1,0 +1,62 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 200
+h 200
+font "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Group with visibility)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 180
+h 40
+visPv "$(PREFIX):ENABLE"
+
+beginGroup
+
+# (Static Text inside the group)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 12
+y 12
+w 100
+h 16
+value {
+  "In group"
+}
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+# (Text display with its own inverted range visibility)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 60
+w 100
+h 16
+controlPv "$(PREFIX):VAL"
+visPv "$(PREFIX):MODE"
+visMin "1"
+visMax "3"
+visInvert
+endObjectProperties

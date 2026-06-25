@@ -1,0 +1,57 @@
+{
+  "id": "pv-button",
+  "version": "1.0.0",
+  "displayName": "PV Button",
+  "description": "Action button that writes press/release values to a PV.",
+  "category": "controls",
+  "paletteIcon": "pv-button.svg",
+
+  "reactComponent": {
+    "name": "PVButton",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMPushButton",
+    "extends": "QPushButton",
+    "header": "pydm.widgets.pushbutton"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "label": { "type": "string" },
+      "kind": {
+        "type": "string",
+        "enum": ["primary", "secondary", "tertiary", "danger", "ghost"],
+        "default": "primary"
+      },
+      "iconOnly": { "type": "boolean", "default": false },
+      "pressValue": { "type": ["number", "string"] },
+      "releaseValue": { "type": ["number", "string"] }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "pressValue": { "to": "pressValue" },
+    "releaseValue": { "to": "releaseValue" },
+    "text": { "to": "label" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv", "pressValue", "releaseValue"] },
+      { "name": "Display", "fields": ["label", "kind", "iconOnly"] }
+    ]
+  },
+
+  "defaults": { "width": 100, "height": 32 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

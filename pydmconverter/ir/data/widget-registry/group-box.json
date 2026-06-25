@@ -1,0 +1,44 @@
+{
+  "id": "group-box",
+  "version": "1.0.0",
+  "displayName": "Group Box",
+  "description": "Visual container with a title heading and absolute-positioned children.",
+  "category": "containers",
+  "paletteIcon": "group-box.svg",
+
+  "reactComponent": {
+    "name": "GroupBox",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QGroupBox",
+    "extends": "QWidget"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "flat": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "title": { "to": "title" },
+    "flat": { "to": "flat" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["title", "flat"] }
+    ]
+  },
+
+  "defaults": { "width": 240, "height": 160 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": true
+}

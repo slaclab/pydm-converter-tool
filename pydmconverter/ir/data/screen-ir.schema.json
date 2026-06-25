@@ -1,0 +1,424 @@
+{
+  "$defs": {
+    "FormulaDeclaration": {
+      "description": "A screen-level Fox formula (converter handoff 6.3).\n\nShape-compatible with ``canopy.contracts.formula.FormulaSpec`` plus a\n``name``. ``calc://`` expressions are hoisted here (deduped) and referenced\nfrom a widget channel prop as ``fox://<name>``.",
+      "properties": {
+        "bindings": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Bindings",
+          "type": "object"
+        },
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        },
+        "kind": {
+          "default": "scalar",
+          "enum": [
+            "scalar",
+            "timeseries",
+            "waveform"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "expression"
+      ],
+      "title": "FormulaDeclaration",
+      "type": "object"
+    },
+    "Geometry": {
+      "description": "Absolute-only geometry (D4). Origin is the parent's top-left.",
+      "properties": {
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Height"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Width"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Y"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "Geometry",
+      "type": "object"
+    },
+    "MacroDeclaration": {
+      "description": "A screen-level macro (D6 / macros design M2).\n\n``default`` is required for ``kind: \"screen\"`` and forbidden for\n``kind: \"template\"`` — enforced on :class:`ScreenIR`.",
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "name": {
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "MacroDeclaration",
+      "type": "object"
+    },
+    "Metadata": {
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Size"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "source",
+        "size"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "NodeMeta": {
+      "description": "Editor annotations preserved on round-trip, ignored by the runtime (D17).",
+      "properties": {
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        }
+      },
+      "title": "NodeMeta",
+      "type": "object"
+    },
+    "Rule": {
+      "description": "A property rule in author form (D7/D15, REVISED 2026-06-16).\n\nThe runtime ``FormulaSpec`` is derived client-side at subscribe time and is\nnever stored here. Any bindable (scalar/enum, non ``pv-channel``) property\nmay be targeted.",
+      "properties": {
+        "conditions": {
+          "items": {
+            "$ref": "#/$defs/RuleCondition"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "pvs": {
+          "items": {
+            "$ref": "#/$defs/RulePV"
+          },
+          "title": "Pvs",
+          "type": "array"
+        },
+        "targetProperty": {
+          "title": "Targetproperty",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "targetProperty"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "RuleCondition": {
+      "description": "One ordered condition -> value pair.\n\n``expression`` references the rule's PVs by 0-based index (``{0}``, ``{1}``)\nso it stays stable across PV renames. ``value`` is the value written to the\ntarget property when the condition holds.",
+      "properties": {
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        }
+      },
+      "required": [
+        "expression",
+        "value"
+      ],
+      "title": "RuleCondition",
+      "type": "object"
+    },
+    "RulePV": {
+      "description": "A PV referenced by a rule. ``trigger`` marks it as a re-eval input.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "trigger": {
+          "default": true,
+          "title": "Trigger",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "RulePV",
+      "type": "object"
+    },
+    "Size": {
+      "properties": {
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Height"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Width"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "title": "Size",
+      "type": "object"
+    },
+    "Source": {
+      "description": "Provenance of the screen. ``type`` is e.g. ``\"edl-converter\"``.",
+      "properties": {
+        "savedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Savedat"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "WidgetNode": {
+      "description": "A single widget in the tree (D1, D2, D3, D7, D11, D14, D17).",
+      "properties": {
+        "children": {
+          "items": {
+            "$ref": "#/$defs/WidgetNode"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "meta": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "props": {
+          "additionalProperties": true,
+          "title": "Props",
+          "type": "object"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "geometry"
+      ],
+      "title": "WidgetNode",
+      "type": "object"
+    }
+  },
+  "$id": "https://canopy.slac.stanford.edu/schemas/screen-ir/1.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The canonical screen representation — the converter's single output seam.",
+  "properties": {
+    "formulas": {
+      "items": {
+        "$ref": "#/$defs/FormulaDeclaration"
+      },
+      "title": "Formulas",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "default": "screen",
+      "enum": [
+        "screen",
+        "template"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "macros": {
+      "items": {
+        "$ref": "#/$defs/MacroDeclaration"
+      },
+      "title": "Macros",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "root": {
+      "$ref": "#/$defs/WidgetNode"
+    },
+    "schemaVersion": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schemaversion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "metadata",
+    "root"
+  ],
+  "title": "Canopy Screen IR",
+  "type": "object"
+}

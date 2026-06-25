@@ -1,0 +1,72 @@
+{
+  "id": "pv-label",
+  "version": "1.0.0",
+  "displayName": "PV Label",
+  "description": "Displays a PV value as text with optional units, formatting, and alarm coloring.",
+  "category": "indicators",
+  "paletteIcon": "pv-label.svg",
+
+  "reactComponent": {
+    "name": "PVLabel",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMLabel",
+    "extends": "QLabel",
+    "header": "pydm.widgets.label"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": {
+        "type": "string",
+        "title": "PV Channel",
+        "description": "EPICS PV name (supports ${MACRO} substitution)",
+        "format": "pv-channel"
+      },
+      "precision": {
+        "oneOf": [
+          { "type": "number", "minimum": 0 },
+          { "type": "string", "enum": ["fromPV"] }
+        ],
+        "default": "fromPV"
+      },
+      "showUnits": { "type": "boolean", "default": false },
+      "alarmSensitive": { "type": "boolean", "default": false },
+      "alarmBorder": { "type": "boolean", "default": false },
+      "format": {
+        "type": "string",
+        "enum": ["default", "exponential", "hex", "binary", "string"],
+        "default": "default"
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "precisionFromPV": { "to": "precision", "transform": "boolToFromPV" },
+    "precision": { "to": "precision" },
+    "showUnits": { "to": "showUnits" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" },
+    "alarmSensitiveBorder": { "to": "alarmBorder" },
+    "displayFormat": { "to": "format" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv", "precision", "showUnits"] },
+      { "name": "Display", "fields": ["format"] },
+      { "name": "Alarm", "fields": ["alarmSensitive", "alarmBorder"] }
+    ]
+  },
+
+  "defaults": { "width": 100, "height": 24 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

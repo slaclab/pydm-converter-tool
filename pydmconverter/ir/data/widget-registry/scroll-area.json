@@ -1,0 +1,52 @@
+{
+  "id": "scroll-area",
+  "version": "1.0.0",
+  "displayName": "Scroll Area",
+  "description": "Container with scrollbars when contents overflow.",
+  "category": "containers",
+  "paletteIcon": "scroll-area.svg",
+
+  "reactComponent": {
+    "name": "ScrollArea",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QScrollArea",
+    "extends": "QFrame"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "horizontalPolicy": {
+        "type": "string",
+        "enum": ["auto", "always-on", "always-off"],
+        "default": "auto"
+      },
+      "verticalPolicy": {
+        "type": "string",
+        "enum": ["auto", "always-on", "always-off"],
+        "default": "auto"
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "horizontalScrollBarPolicy": { "to": "horizontalPolicy", "transform": "qtScrollPolicy" },
+    "verticalScrollBarPolicy": { "to": "verticalPolicy", "transform": "qtScrollPolicy" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Scroll Bars", "fields": ["horizontalPolicy", "verticalPolicy"] }
+    ]
+  },
+
+  "defaults": { "width": 320, "height": 240 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": true
+}

@@ -29,6 +29,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pydm",
     'pyqt5',
+    "pydantic>=2",
+    "jsonschema>=4",
 ]
 dynamic = ["version"]
 
@@ -36,7 +38,7 @@ dynamic = ["version"]
 include = ["pydmconverter", "pydmconverter.*", "app", "app.*"]
 
 [tool.setuptools.package-data]
-pydmconverter = ["launch_gui.sh"]
+pydmconverter = ["launch_gui.sh", "ir/data/*.json", "ir/data/widget-registry/*.json"]
 
 [tool.setuptools_scm]
 

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>screen</class>
+ <widget class="QWidget" name="screen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>p0_min</string>
+  </property>
+  <widget class="QLabel" name="static_label">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>20</y>
+     <width>120</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Label ${PREFIX}</string>
+   </property>
+  </widget>
+  <widget class="PyDMLineEdit" name="setpoint">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>50</y>
+     <width>120</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="channel" stdset="0">
+    <string>ca://${PREFIX}:SETPOINT</string>
+   </property>
+  </widget>
+  <widget class="PyDMPushButton" name="go">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>80</y>
+     <width>80</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Go</string>
+   </property>
+   <property name="channel" stdset="0">
+    <string>${PREFIX}:GO</string>
+   </property>
+   <property name="pressValue" stdset="0">
+    <string>1</string>
+   </property>
+  </widget>
+  <widget class="PyDMMysteryGauge" name="gauge">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>20</y>
+     <width>100</width>
+     <height>50</height>
+    </rect>
+   </property>
+   <property name="customProp" stdset="0">
+    <string>x</string>
+   </property>
+  </widget>
+ </widget>
+</ui>

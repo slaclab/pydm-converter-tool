@@ -1,0 +1,55 @@
+{
+  "id": "embedded-display",
+  "version": "1.0.0",
+  "displayName": "Embedded Display",
+  "description": "Loads another .screen.json document with optional macro forwarding.",
+  "category": "containers",
+  "paletteIcon": "embedded-display.svg",
+
+  "reactComponent": {
+    "name": "EmbeddedDisplay",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMEmbeddedDisplay",
+    "extends": "QFrame",
+    "header": "pydm.widgets.embedded_display"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["file"],
+    "properties": {
+      "file": {
+        "type": "string",
+        "title": "Screen File",
+        "description": "Path to a .screen.json document."
+      },
+      "macros": {
+        "type": "object",
+        "additionalProperties": { "type": "string" },
+        "description": "Macros forwarded to the embedded screen."
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "filename": { "to": "file" },
+    "macros": { "to": "macros" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Source", "fields": ["file"] },
+      { "name": "Macros", "fields": ["macros"] }
+    ]
+  },
+
+  "defaults": { "width": 400, "height": 200 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

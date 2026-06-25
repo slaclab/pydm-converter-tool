@@ -1,0 +1,47 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 200
+h 150
+font "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Byte)
+object byteClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 120
+h 20
+controlPv "$(P):BITS"
+numBits 8
+endObjectProperties
+
+# (Related Display)
+object relatedDisplayClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 40
+w 80
+h 20
+buttonLabel "Open"
+numPvs 4
+numDsps 1
+displayFileName {
+  0 "subscreen"
+}
+symbols {
+  0 "DEV=$(P)"
+}
+endObjectProperties

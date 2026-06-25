@@ -1,0 +1,52 @@
+{
+  "id": "frame",
+  "version": "1.0.0",
+  "displayName": "Frame",
+  "description": "Border / visual section without a title. Holds absolute-positioned children.",
+  "category": "containers",
+  "paletteIcon": "frame.svg",
+
+  "reactComponent": {
+    "name": "Frame",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QFrame",
+    "extends": "QWidget"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "shape": {
+        "type": "string",
+        "enum": ["box", "panel", "horizontal-line", "vertical-line", "no-frame"],
+        "default": "panel"
+      },
+      "shadow": {
+        "type": "string",
+        "enum": ["plain", "raised", "sunken"],
+        "default": "plain"
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "frameShape": { "to": "shape", "transform": "qtFrameShape" },
+    "frameShadow": { "to": "shadow", "transform": "qtFrameShadow" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["shape", "shadow"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 100 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": true
+}
