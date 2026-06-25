@@ -408,6 +408,8 @@ def loc_conversion(edm_string: str) -> str:
         "e": "int",  # mapping enum to int
     }
 
+    edm_type_keywords = {"intpv": "i", "doublepv": "d", "stringpv": "s", "enumpv": "e"}
+
     try:
         name, type_and_value = content.split("=", 1)
         name = name.lstrip("\\")
@@ -416,6 +418,20 @@ def loc_conversion(edm_string: str) -> str:
         name = content.lstrip("\\")
         return f"loc://{name}"
         # raise ValueError("Invalid EDM format: Missing '=' separator")
+
+    # Handle EDM type keyword format: LOC\$(!W)intPv=<name> or LOC\$(!W)intPv=intPv=<name>
+    name_suffix = name.split(")")[-1] if ")" in name else name
+    if name_suffix.lower() in edm_type_keywords:
+        macro_prefix = name[: len(name) - len(name_suffix)] if ")" in name else ""
+        type_char = edm_type_keywords[name_suffix.lower()]
+        # Strip redundant type keyword prefix from value (e.g., intPv=ShowChannels -> ShowChannels)
+        if "=" in type_and_value:
+            prefix_part, actual_name = type_and_value.split("=", 1)
+            if prefix_part.lower() in edm_type_keywords:
+                type_and_value = actual_name
+        name = macro_prefix + type_and_value
+        pydm_type = type_mapping.get(type_char, "int")
+        return f"loc://{name}?type={pydm_type}&init=0"
 
     try:
         type_char, value = type_and_value.split(":", 1)
