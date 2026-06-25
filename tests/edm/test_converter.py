@@ -375,6 +375,23 @@ def test_convert_meter_widget(tmp_path):
         scaleMin 0
         scaleMax 100
         showScale
+        label "Pressure"
+        fgColor index 14
+        bgColor index 0
+        endObjectProperties
+
+        # (Meter)
+        object activeMeterClass
+        beginObjectProperties
+        major 4
+        minor 0
+        release 1
+        x 300
+        y 100
+        w 150
+        h 150
+        readPv "IOC:SYS0:FLOW"
+        labelType "pvName"
         fgColor index 14
         bgColor index 0
         endObjectProperties
@@ -392,13 +409,22 @@ def test_convert_meter_widget(tmp_path):
     root = tree.getroot()
 
     meter_widgets = root.findall(".//widget[@class='PyDMAnalogIndicator']")
-    assert len(meter_widgets) == 1, "Should have one PyDMAnalogIndicator"
+    assert len(meter_widgets) == 2, "Should have two PyDMAnalogIndicators"
 
     widget = meter_widgets[0]
 
     channel_prop = widget.find("property[@name='channel']")
     assert channel_prop is not None, "Widget should have channel property"
     assert channel_prop.find("string").text == "IOC:SYS0:PRESSURE"
+
+    title_prop = widget.find("property[@name='title']")
+    assert title_prop is not None, "Widget should have title property"
+    assert title_prop.find("string").text == "Pressure"
+
+    pv_name_widget = meter_widgets[1]
+    pv_name_title = pv_name_widget.find("property[@name='title']")
+    assert pv_name_title is not None, "labelType pvName should fall back to the PV name as title"
+    assert pv_name_title.find("string").text == "IOC:SYS0:FLOW"
 
     show_ticks = widget.find("property[@name='showTicks']")
     assert show_ticks is not None, "Widget should have showTicks property"
