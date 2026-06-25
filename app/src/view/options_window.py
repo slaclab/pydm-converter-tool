@@ -47,12 +47,20 @@ class OptionsWindow(QWidget):
         self.output_folder_select = FileSelectWidget(path=self.options_model.output_folder, select_dir=False)
         output_folder_group_layout.addWidget(self.output_folder_select)
 
+        conversion_group = QGroupBox("Conversion")
+        conversion_group_layout = QVBoxLayout()
+        conversion_group.setLayout(conversion_group_layout)
+        self.override_existing_checkbox = QCheckBox("Overwrite existing output files")
+        self.override_existing_checkbox.setChecked(self.options_model.override_existing)
+        conversion_group_layout.addWidget(self.override_existing_checkbox)
+
         self.general_group_view = QWidget()
         general_group_layout = QVBoxLayout()
         self.general_group_view.setLayout(general_group_layout)
         general_group_label = QLabel("General")
         general_group_layout.addWidget(general_group_label)
         general_group_layout.addWidget(output_folder_group)
+        general_group_layout.addWidget(conversion_group)
         general_group_layout.addStretch()
 
         edm_colors_group = QGroupBox("colors.list")
@@ -122,6 +130,7 @@ class OptionsWindow(QWidget):
         else:
             QMessageBox.critical(self, "Invalid Path", "The entered output folder path is not valid.")
             return False
+        self.options_model.override_existing = self.override_existing_checkbox.isChecked()
 
         # EDM options
         colors_path = self.edm_override_file_select.get_path()
