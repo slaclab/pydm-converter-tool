@@ -350,9 +350,16 @@ def reformat_calc_expression(exp):
     """
     Convert EPICS calc expression operators to Python equivalents.
 
-    EPICS calc uses different operators than Python:
-    - ^ for exponentiation (Python uses **)
-    - # for not equal (Python uses !=)
+    PyDM's calc plugin evaluates the ``expr`` query as a Python expression, so
+    EPICS-only operators must be translated or PyDM raises a SyntaxError when the
+    display is opened.
+
+    Conversions:
+    - ``^`` exponentiation -> ``**``
+    - ``#`` not equal -> ``!=``
+    - ``=`` equality -> ``==`` (leaving ``<=``, ``>=``, ``!=``, ``==`` untouched)
+    - ``&&`` / ``||`` -> ``and`` / ``or``
+    - ``cond ? a : b`` ternary -> ``(a if cond else b)`` (handles nesting)
     """
     # Exponentiation: ^ -> **
     exp = exp.replace("^", "**")
@@ -360,7 +367,70 @@ def reformat_calc_expression(exp):
     # Not equal: # -> !=
     exp = exp.replace("#", "!=")
 
+    # Equality: single = -> ==, without touching <=, >=, !=, ==, :=
+    exp = re.sub(r"(?<![<>=!:])=(?!=)", "==", exp)
+
+    # Logical operators
+    exp = exp.replace("&&", " and ").replace("||", " or ")
+
+    # C-style ternary -> Python conditional expression
+    exp = _convert_calc_ternary(exp)
+
     return exp
+
+
+def _convert_calc_ternary(exp: str) -> str:
+    """
+    Convert an EPICS C-style ternary ``cond ? a : b`` into the Python
+    conditional expression ``(a if cond else b)``.
+
+    Handles right-associative nesting (``a ? b : c ? d : e``) and ternaries
+    nested in the true branch (``a ? b ? c : d : e``) by balancing ``?`` and
+    ``:`` like brackets while ignoring anything inside parentheses.
+    """
+    depth = 0
+    q_index = -1
+    for i, ch in enumerate(exp):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "?" and depth == 0:
+            q_index = i
+            break
+
+    if q_index == -1:
+        return exp
+
+    depth = 0
+    nested = 0
+    colon_index = -1
+    for i in range(q_index + 1, len(exp)):
+        ch = exp[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and ch == "?":
+            nested += 1
+        elif depth == 0 and ch == ":":
+            if nested == 0:
+                colon_index = i
+                break
+            nested -= 1
+
+    if colon_index == -1:
+        # Unbalanced ternary; leave the expression untouched.
+        return exp
+
+    cond = exp[:q_index].strip()
+    true_part = exp[q_index + 1 : colon_index].strip()
+    false_part = exp[colon_index + 1 :].strip()
+
+    return (
+        f"({_convert_calc_ternary(true_part)} if {_convert_calc_ternary(cond)} "
+        f"else {_convert_calc_ternary(false_part)})"
+    )
 
 
 def loc_conversion(edm_string: str) -> str:
