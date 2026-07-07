@@ -81,6 +81,9 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "shift": "shift",
     # alignment
     "fontAlign": "alignment",
+    # colours (resolved to hex by the adapter)
+    "fgColor": "foregroundColor",
+    "bgColor": "backgroundColor",
 }
 
 

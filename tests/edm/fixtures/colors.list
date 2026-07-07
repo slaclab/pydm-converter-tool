@@ -1,0 +1,12 @@
+4 0 0
+
+blinkms=500
+columns=5
+max=0x10000
+
+static 0 "Black" { 0 0 0 }
+static 14 "Yellow" { 0xffff 0xffff 0 }
+static 25 "Controller" { 0 0 0xffff }
+static 33 "blinking red" { 0xffff 0 0 0xa0a0 0 0 }
+
+alias controlColor Controller

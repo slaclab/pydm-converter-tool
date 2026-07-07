@@ -25,10 +25,13 @@ def test_p0_widget_types_in_order():
 
 
 def test_static_text_maps_to_text_label():
-    """activeXTextClass with no PV -> text-label, value list joined into text."""
+    """activeXTextClass with no PV -> text-label, value list joined into text.
+
+    ``fgColor rgb 0 0 0`` resolves without a palette (rgb form needs no colors.list).
+    """
     label = _convert().root.children[0]
     assert label.type == "text-label"
-    assert label.props == {"text": "Label ${PREFIX}"}
+    assert label.props == {"text": "Label ${PREFIX}", "foregroundColor": "#000000"}
     assert label.geometry.model_dump() == {"x": 10, "y": 20, "width": 120, "height": 18}
 
 
