@@ -115,7 +115,7 @@ def test_explicit_param_beats_env(monkeypatch, tmp_path):
     monkeypatch.setenv("EDMCOLORFILE", str(COLORS_FIXTURE))
     alt_colors = tmp_path / "colors.list"
     alt_colors.write_text(
-        "4 0 0\n\nmax=0x10000\n\nstatic 25 \"Controller\" { 0xffff 0 0 }\n",
+        '4 0 0\n\nmax=0x10000\n\nstatic 25 "Controller" { 0xffff 0 0 }\n',
         encoding="utf-8",
         newline="\n",
     )
