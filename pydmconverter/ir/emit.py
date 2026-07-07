@@ -35,7 +35,12 @@ def _prune(value: Any) -> Any:
 def to_wire_dict(screen: ScreenIR) -> dict[str, Any]:
     """Return the camelCase wire dict for ``screen`` (pruned, deterministic)."""
     raw = screen.model_dump(by_alias=True, exclude_none=True)
-    return _prune(raw)
+    wire = _prune(raw)
+    # Unlike rules/children/warnings (genuinely optional, omittable when empty),
+    # the schema requires "macros" to be present as a key even when the screen
+    # declares none — an empty list is valid content, just not an absent key.
+    wire.setdefault("macros", [])
+    return wire
 
 
 def to_json(screen: ScreenIR, *, indent: int = 2) -> str:
