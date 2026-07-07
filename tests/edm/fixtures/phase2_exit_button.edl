@@ -1,0 +1,49 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Exit button, plain)
+object activeExitButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 10
+y 10
+w 60
+h 24
+fgColor index 14
+bgColor index 0
+label "EXIT"
+font "courier-medium-r-12.0"
+3d
+endObjectProperties
+
+# (Exit button, exitProgram)
+object activeExitButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 10
+y 40
+w 60
+h 24
+fgColor index 14
+bgColor index 0
+label "QUIT"
+font "courier-medium-r-12.0"
+3d
+exitProgram
+endObjectProperties

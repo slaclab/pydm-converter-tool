@@ -9,10 +9,21 @@ absolute screen coordinates, matching the Screen IR geometry contract.
 Scope (Phase 1): P0 widgets plus graphics classes, structural conversion. Rules
 (visPv) are handled; colours are resolved to static hex; calc/Fox formulas and
 dynamic colour (colorPv/bgAlarm) are deferred to later phases.
+
+Scope (Phase 2): text/button/indicator classes — activeXTextDspClass:noedit,
+shellCmdClass, activeExitButtonClass, activePngClass, activeMeterClass,
+activeIndicatorClass, activeRadioButtonClass, activeFreezeButtonClass,
+activeRampButtonClass, activeUpdownButtonClass, mmvClass, and
+multiLineTextEntryClass. Several of these carry EDM semantics with no Qt/web
+analog (freeze/ramp/updown increment behaviour, shell command execution); those
+are surfaced as node warnings rather than silently dropped (D11). menuMuxClass
+is deliberately unmapped (macro-muxing needs a design) and falls through to
+unknown-widget.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Callable
 
@@ -51,6 +62,18 @@ _BOOL_PROPS = {"showUnits", "alarmSensitiveContent", "alarmSensitiveBorder", "sh
 # resolved to "#rrggbb" hex before the builder sees them. penColor/brushColor are
 # consumed by the Phase 1 drawing widget defs (rectangle/ellipse/line/arc).
 _COLOR_PROPS = {"penColor", "brushColor", "foregroundColor", "backgroundColor"}
+# displayFormat carries pv-label's "format" enum value; EDM's format strings must
+# be normalized to the registry's vocabulary (decimal/hex/string/exponential/default).
+_FORMAT_PROPS = {"displayFormat"}
+_EDM_FORMAT_TO_QT: dict[str, str] = {
+    "decimal": "default",
+    "float": "default",
+    "gfloat": "default",
+    "default": "default",
+    "exponential": "exponential",
+    "hex": "hex",
+    "string": "string",
+}
 
 
 def _to_number(value: Any) -> Any:
@@ -93,6 +116,13 @@ def _to_macros(value: Any) -> dict[str, str]:
     return merged
 
 
+def _to_format(value: Any) -> str:
+    """EDM format string -> pv-label's ``format`` enum. Case-insensitive; unrecognized -> "default"."""
+    if isinstance(value, str):
+        return _EDM_FORMAT_TO_QT.get(value.strip().lower(), "default")
+    return "default"
+
+
 def _coerce(qt_prop: str, value: Any) -> Any:
     if qt_prop in _CHANNEL_PROPS:
         return _to_channel(value)
@@ -104,6 +134,8 @@ def _coerce(qt_prop: str, value: Any) -> Any:
         return _to_number(value)
     if qt_prop in _BOOL_PROPS:
         return _to_bool(value)
+    if qt_prop in _FORMAT_PROPS:
+        return _to_format(value)
     return normalize_macro_syntax(value) if isinstance(value, str) else value
 
 
@@ -262,6 +294,105 @@ def _fixup_bar(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     return None
 
 
+# Matches a leading "<int> " prefix that remove_prepended_index leaves in place
+# when the multi-line block's indices are non-sequential.
+_LEADING_INDEX_RE = re.compile(r"^\d+\s+")
+
+
+def _strip_leading_index(value: str) -> str:
+    return _LEADING_INDEX_RE.sub("", value, count=1)
+
+
+def _as_str_list(value: Any) -> list[str]:
+    """Normalize a brace-block prop value to a list of strings (a bare str -> [str])."""
+    if isinstance(value, list):
+        return [_strip_leading_index(str(item)) for item in value]
+    if isinstance(value, str):
+        return [value]
+    return []
+
+
+def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """shellCmdClass fixup: command/commandLabel brace blocks -> qt_props["actions"].
+
+    (buttonLabel -> text -> label is already handled globally.)
+    """
+    commands = _as_str_list(obj.properties.get("command"))
+    if not commands:
+        return None
+    labels = _as_str_list(obj.properties.get("commandLabel"))
+
+    actions: list[dict[str, Any]] = []
+    for index, command in enumerate(commands):
+        action: dict[str, Any] = {"type": "shell_command", "command": normalize_macro_syntax(command)}
+        if index < len(labels):
+            action["label"] = normalize_macro_syntax(labels[index])
+        actions.append(action)
+
+    qt_props["actions"] = actions
+    warnings.append("EDM shell commands carried as actions; the web runtime does not execute shell commands")
+    return None
+
+
+def _fixup_exit_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeExitButtonClass fixup: always closes the display."""
+    qt_props["actions"] = [{"type": "close_display"}]
+    if obj.properties.get("exitProgram"):
+        warnings.append("EDM exitProgram semantics reduced to close_display")
+    return None
+
+
+def _fixup_freeze_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeFreezeButtonClass fixup: no PV in the corpus (freeze targets the local display)."""
+    warnings.append("EDM freeze-button semantics (display update freeze) are not preserved")
+    return None
+
+
+def _fixup_ramp_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeRampButtonClass fixup: rampRate/finalValuePv semantics have no Qt analog."""
+    warnings.append("EDM ramp-button semantics (rampRate/finalValuePv) are not preserved")
+    return None
+
+
+def _fixup_updown_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeUpdownButtonClass fixup: coarseValue/fineValue increment semantics have no Qt analog."""
+    warnings.append("EDM up/down increment semantics (coarseValue/fineValue) are not preserved")
+    return None
+
+
+def _fixup_mmv(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """mmvClass fixup: derive orientation from orientStr (the NUMERIC orientation prop is unreliable)."""
+    orient_str = str(obj.properties.get("orientStr", "")).lower()
+    if orient_str.startswith("horiz"):
+        qt_props["orientation"] = "horizontal"
+    elif orient_str.startswith("vert"):
+        qt_props["orientation"] = "vertical"
+    else:
+        qt_props.pop("orientation", None)
+
+    if obj.properties.get("ctrl2Pv"):
+        warnings.append("mmvClass second control PV (ctrl2Pv) dropped")
+    return None
+
+
+def _fixup_multiline_text_entry(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """multiLineTextEntryClass fixup: rendered as a single-line pv-text-input."""
+    warnings.append("EDM multi-line text entry rendered as a single-line text input")
+    return None
+
+
+def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeMeterClass fixup: warn when labelType isn't the literal-text default.
+
+    (readPv->channel, scaleMin/scaleMax->userMinimum/userMaximum, label->text are
+    global renames already.)
+    """
+    label_type = obj.properties.get("labelType")
+    if label_type not in (None, "", "literal"):
+        warnings.append(f"EDM meter labelType '{label_type}' not supported; label emitted as literal text")
+    return None
+
+
 _CLASS_FIXUPS.update(
     {
         "activerectangleclass": _apply_shared_drawing_fixup,
@@ -271,6 +402,17 @@ _CLASS_FIXUPS.update(
         "activebarclass": _fixup_bar,
         "activeslacbarclass": _fixup_bar,
         "activevsbarclass": _fixup_bar,
+        # Phase 2: text / buttons / indicators
+        "shellcmdclass": _fixup_shell_cmd,
+        "activeexitbuttonclass": _fixup_exit_button,
+        "activefreezebuttonclass": _fixup_freeze_button,
+        "activerampbuttonclass": _fixup_ramp_button,
+        "activeupdownbuttonclass": _fixup_updown_button,
+        "mmvclass": _fixup_mmv,
+        "multilinetextentryclass": _fixup_multiline_text_entry,
+        "activemeterclass": _fixup_meter,
+        "activeindicatorclass": _fixup_bar,
+        # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
     }
 )
 

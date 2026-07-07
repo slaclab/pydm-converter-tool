@@ -1,0 +1,242 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 600
+h 400
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Group with visibility, containing a rectangle + line + static text)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 260
+h 100
+visPv "$(P):SHOW"
+
+beginGroup
+
+# (Rectangle inside the group)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 20
+w 100
+h 40
+lineColor index 14
+fill
+fillColor index 25
+lineWidth 2
+lineStyle dash
+endObjectProperties
+
+# (Line inside the group)
+object activeLineClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 70
+w 100
+h 20
+numPoints 2
+xPoints {
+0 20
+1 120
+}
+yPoints {
+0 70
+1 90
+}
+lineColor index 0
+endObjectProperties
+
+# (Static text inside the group, fgColor)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 140
+y 20
+w 100
+h 18
+fgColor index 14
+value {
+  "Group Label $(P)"
+}
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+# (Arc, top level)
+object activeArcClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 280
+y 10
+w 80
+h 80
+startAngle -90
+totalAngle 180
+lineColor index 14
+fill
+fillColor index 25
+lineWidth 2
+endObjectProperties
+
+# (Bar, top level)
+object activeBarClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 370
+y 10
+w 30
+h 80
+indicatorPv "$(P):PRESSURE"
+min "0"
+max "25"
+orientation "vertical"
+indicatorColor index 14
+endObjectProperties
+
+# (Text Update, noedit, top level)
+object activeXTextDspClass:noedit
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 420
+y 10
+w 120
+h 18
+controlPv "$(P):VAL"
+format "decimal"
+precision 2
+fgColor index 14
+bgColor index 0
+endObjectProperties
+
+# (Shell command button, top level)
+object shellCmdClass
+beginObjectProperties
+major 4
+minor 2
+release 0
+x 420
+y 40
+w 96
+h 24
+fgColor index 14
+bgColor index 0
+buttonLabel "Utilities"
+numCmds 1
+command {
+  0 "xterm -e top"
+}
+endObjectProperties
+
+# (Exit button, top level)
+object activeExitButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 420
+y 70
+w 60
+h 24
+fgColor index 14
+bgColor index 0
+label "EXIT"
+font "courier-medium-r-12.0"
+3d
+endObjectProperties
+
+# (Meter, top level)
+object activeMeterClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 10
+y 120
+w 180
+h 95
+caseColor index 14
+scaleColor index 14
+labelColor index 14
+fgColor index 25
+bgColor index 0
+readPv "$(P):CURRENT"
+label "Current"
+labelType "literal"
+showScale
+scaleMin "0"
+scaleMax "150"
+endObjectProperties
+
+# (Radio button group, top level)
+object activeRadioButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 200
+y 120
+w 98
+h 116
+fgColor index 14
+bgColor index 0
+controlPv "$(P):MODE"
+font "helvetica-medium-r-12.0"
+endObjectProperties
+
+# (Static PNG image, top level)
+object activePngClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 310
+y 120
+w 200
+h 150
+file "images/beamline_$(P)"
+endObjectProperties
+
+# (Menu Mux, top level - stays unknown-widget)
+object menuMuxClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 250
+w 98
+h 116
+controlPv "$(P):MUX"
+symbol0Value "Off"
+symbol1Value "On"
+endObjectProperties

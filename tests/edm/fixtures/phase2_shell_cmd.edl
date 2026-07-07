@@ -1,0 +1,38 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Shell Command button, two commands)
+object shellCmdClass
+beginObjectProperties
+major 4
+minor 2
+release 0
+x 10
+y 10
+w 96
+h 24
+fgColor index 14
+bgColor index 0
+buttonLabel "Utilities"
+numCmds 2
+command {
+  0 "xterm -e top"
+  1 "alhDisable $(DEV)"
+}
+commandLabel {
+  0 "Top"
+  1 "Disable"
+}
+endObjectProperties

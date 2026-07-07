@@ -1,0 +1,27 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Static PNG image)
+object activePngClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 200
+h 150
+file "images/beamline"
+endObjectProperties

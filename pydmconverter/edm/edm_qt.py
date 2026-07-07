@@ -42,10 +42,24 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "activebarclass": "PyDMScaleIndicator",
     "activeslacbarclass": "PyDMScaleIndicator",
     "activevsbarclass": "PyDMScaleIndicator",
+    # Phase 2: text / buttons / indicators
+    "activextextdspclassnoedit": "PyDMLabel",  # the parser strips the colon from activeXTextDspClass:noedit
+    "shellcmdclass": "QPushButton",
+    "activeexitbuttonclass": "QPushButton",
+    "activepngclass": "PyDMDrawingImage",
+    "activemeterclass": "PyDMAnalogIndicator",
+    "activeindicatorclass": "PyDMScaleIndicator",
+    "activeradiobuttonclass": "PyDMEnumButton",
+    "activefreezebuttonclass": "QPushButton",  # corpus: 0/102 samples carry a controlPv (freeze/unfreeze is local-only)
+    "activerampbuttonclass": "PyDMPushButton",
+    "activeupdownbuttonclass": "PyDMPushButton",
+    "mmvclass": "PyDMSlider",
+    "multilinetextentryclass": "PyDMLineEdit",
+    # menuMuxClass deliberately absent: macro-muxing needs a design; stays unknown-widget.
 }
 
 # EDM attributes that name a PV channel.
-EDM_CHANNEL_ATTRS = ("controlPv", "indicatorPv", "readPv", "alarmPv", "pv", "filePv", "nullPv")
+EDM_CHANNEL_ATTRS = ("controlPv", "indicatorPv", "readPv", "alarmPv", "pv", "filePv", "nullPv", "ctrl1Pv")
 
 # EDM attribute name -> Qt prop name (the key Beaver's qtPropMap consumes).
 EDM_TO_QT_PROP: dict[str, str] = {
@@ -57,6 +71,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "pv": "channel",
     "filePv": "channel",
     "nullPv": "channel",
+    "ctrl1Pv": "channel",  # mmvClass (Phase 2)
     # text / labels (Beaver maps "text" -> text/label per widget)
     "value": "text",
     "label": "text",
@@ -65,6 +80,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "precision": "precision",
     "showUnits": "showUnits",
     "displayFormat": "displayFormat",
+    "format": "displayFormat",  # activeXTextDspClass(:noedit) EDM format string (Phase 2)
     # alarm sensitivity
     "fgAlarm": "alarmSensitiveContent",
     "alarmSensitiveContent": "alarmSensitiveContent",
@@ -92,6 +108,8 @@ EDM_TO_QT_PROP: dict[str, str] = {
     # colours (resolved to hex by the adapter)
     "fgColor": "foregroundColor",
     "bgColor": "backgroundColor",
+    "fgColour": "foregroundColor",  # British spelling (multiLineTextEntryClass, mmvClass et al.)
+    "bgColour": "backgroundColor",
     # drawing (Phase 1)
     "lineColor": "penColor",
     "fillColor": "brushColor",
