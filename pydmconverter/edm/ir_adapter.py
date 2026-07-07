@@ -2,19 +2,19 @@
 
 Reuses the EDM parser and its semantics (macro normalization already happens in
 the parser), then normalizes each EDM object into the Qt vocabulary the shared
-:class:`~pydmconverter.ir.builder.IRBuilder` consumes. Group nesting is flattened
-to absolute geometry (EDM child coordinates are already absolute), matching the
-absolute-canvas model — visible-container nodes (frame/group-box) are a later phase.
+:class:`~pydmconverter.ir.builder.IRBuilder` consumes. Groups are materialized as
+``group`` widget nodes (registry-resolved, no Qt analog); their children keep
+absolute screen coordinates, matching the Screen IR geometry contract.
 
-Scope (Phase 1): P0 widgets, structural conversion. Rules (visPv) are handled;
-colours are resolved to static hex; calc/Fox formulas and dynamic colour (colorPv/
-bgAlarm) are deferred to later phases.
+Scope (Phase 1): P0 widgets plus graphics classes, structural conversion. Rules
+(visPv) are handled; colours are resolved to static hex; calc/Fox formulas and
+dynamic colour (colorPv/bgAlarm) are deferred to later phases.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from pydmconverter.edm.edm_qt import EDM_TO_QT_PROP, resolve_qt_class
 from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject
@@ -27,13 +27,16 @@ from pydmconverter.edm.parser_helpers import (
 )
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
-from pydmconverter.ir.model import ScreenIR
+from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode
 
 # An EDM visibility spec: (visPv, visMin, visMax, visInvert). visMin/visMax are
 # None when the EDM object only declares visPv (visible-when-nonzero).
 VisTuple = tuple[str, "float | None", "float | None", bool]
+
+# A SourceNode geometry tuple: absolute (x, y, width, height).
+Geometry = tuple[Number, Number, Number, Number]
 
 # Qt props that need value coercion before the builder maps them.
 _CHANNEL_PROPS = {"channel"}
@@ -42,12 +45,11 @@ _TEXT_PROPS = {"text"}
 # pressValue/releaseValue are deliberately absent: the registry types them as
 # number-or-string, and EDM authors write enum-name values ("Open") as often as
 # numerics, so they pass through as the original string rather than being coerced.
-_NUMERIC_PROPS = {"precision", "userMinimum", "userMaximum", "numBits", "shift"}
-_BOOL_PROPS = {"showUnits", "alarmSensitiveContent", "alarmSensitiveBorder", "showValueLabel"}
+_NUMERIC_PROPS = {"precision", "userMinimum", "userMaximum", "numBits", "shift", "penWidth", "startAngle", "spanAngle"}
+_BOOL_PROPS = {"showUnits", "alarmSensitiveContent", "alarmSensitiveBorder", "showValueLabel", "brushFill"}
 # Qt props holding an EDM colour value ("index N" / "rgb r g b") that must be
 # resolved to "#rrggbb" hex before the builder sees them. penColor/brushColor are
-# consumed by drawing widget defs a later phase wires up; included now so their
-# resolution is already in place when those widgets land.
+# consumed by the Phase 1 drawing widget defs (rectangle/ellipse/line/arc).
 _COLOR_PROPS = {"penColor", "brushColor", "foregroundColor", "backgroundColor"}
 
 
@@ -148,10 +150,136 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
     return f"#{red:02x}{green:02x}{blue:02x}"
 
 
+# Per-class fixup: keyed by lowercased EDM class name. Runs after the generic
+# prop loop (and colour/dynamic-flag handling) in ``_object_to_source``. May
+# mutate ``qt_props``/``warnings`` in place and may return a geometry override
+# (bbox derived from raw properties) to replace the object's header geometry.
+_CLASS_FIXUPS: dict[str, Callable[[EDMObject, dict[str, Any], list[str]], Geometry | None]] = {}
+
+
+def _as_number(value: float) -> Any:
+    """``float`` -> ``int`` when integral, else the float unchanged."""
+    return int(value) if value.is_integer() else value
+
+
+def _apply_shared_drawing_fixup(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> None:
+    """Fixup shared by all drawing classes (rectangle/circle/arc/line)."""
+    if obj.properties.get("invisible"):
+        # The defs map opacity->opacity; EDM invisible objects must not render.
+        qt_props["opacity"] = 100
+    if qt_props.get("penWidth") == 0:
+        # X11 width-0 means thinnest visible line; width 0 in the builder renders nothing.
+        qt_props["penWidth"] = 1
+    alarm_flags = [flag for flag in ("lineAlarm", "fillAlarm") if obj.properties.get(flag)]
+    if alarm_flags:
+        flags = ", ".join(alarm_flags)
+        warnings.append(f"EDM alarm-driven colours ({flags}) are not supported; static colours emitted")
+
+
+def _parse_line_points(obj: EDMObject) -> list[tuple[float, float]] | None:
+    """Parse ``xPoints``/``yPoints`` into ``[(x, y), ...]``, or ``None`` if malformed."""
+    x_points = obj.properties.get("xPoints")
+    y_points = obj.properties.get("yPoints")
+    if not isinstance(x_points, list) or not isinstance(y_points, list):
+        return None
+    if len(x_points) != len(y_points) or len(x_points) < 2:
+        return None
+    try:
+        return [(float(x), float(y)) for x, y in zip(x_points, y_points)]
+    except (TypeError, ValueError):
+        return None
+
+
+def _fixup_line(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeLineClass fixup: shared drawing logic + points/arrows/fill handling."""
+    _apply_shared_drawing_fixup(obj, qt_props, warnings)
+
+    geometry_override: Geometry | None = None
+    points = _parse_line_points(obj)
+    if points is None:
+        warnings.append("activeLineClass points missing or malformed; keeping header geometry")
+    else:
+        xs = [x for x, _ in points]
+        ys = [y for _, y in points]
+        min_x, min_y = min(xs), min(ys)
+        geometry_override = (min_x, min_y, max(xs) - min_x, max(ys) - min_y)
+        qt_props["points"] = [{"x": _as_number(x - min_x), "y": _as_number(y - min_y)} for x, y in points]
+
+    # Explicit booleans every time: the Line component defaults arrowEnd to
+    # TRUE when the prop is absent, so both must always be written.
+    arrows = obj.properties.get("arrows")
+    qt_props["arrowStartPoint"] = arrows in ("from", "both")
+    qt_props["arrowEndPoint"] = arrows in ("to", "both")
+
+    if obj.properties.get("fill") or obj.properties.get("closePolygon"):
+        # Line has no fill; brushFill arrives via the global fill->brushFill
+        # rename and the line def would drop it anyway, but pop for cleanliness.
+        qt_props.pop("brushFill", None)
+        qt_props.pop("brushColor", None)
+        warnings.append("EDM filled/closed polygon is rendered as an open polyline")
+
+    return geometry_override
+
+
+def _fixup_arc(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeArcClass fixup: shared drawing logic + angle defaults/fillMode."""
+    _apply_shared_drawing_fixup(obj, qt_props, warnings)
+
+    if "startAngle" not in qt_props:
+        qt_props["startAngle"] = 0
+    if "spanAngle" not in qt_props:
+        # EDM draws the full ellipse when totalAngle is omitted (corpus-derived: absent ~70%).
+        qt_props["spanAngle"] = 360
+
+    if obj.properties.get("fillMode") and obj.properties.get("fill"):
+        warnings.append(f"EDM arc fillMode '{obj.properties['fillMode']}' approximated by plain fill")
+
+    return None
+
+
+_BAR_UNMAPPED_PROPS = (
+    "indicatorColor",
+    "indicatorColour",
+    "origin",
+    "showScale",
+    "scaleFormat",
+    "scalePrecision",
+    "label",
+    "maxPv",
+    "minPv",
+)
+
+
+def _fixup_bar(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeBarClass/activeSlacBarClass/activeVsBarClass fixup."""
+    if obj.name.lower() == "activevsbarclass" and "orientation" not in qt_props:
+        qt_props["orientation"] = "vertical"
+
+    present = [name for name in _BAR_UNMAPPED_PROPS if name in obj.properties]
+    if present:
+        warnings.append(f"EDM bar props not mapped: {', '.join(present)}")
+
+    return None
+
+
+_CLASS_FIXUPS.update(
+    {
+        "activerectangleclass": _apply_shared_drawing_fixup,
+        "activecircleclass": _apply_shared_drawing_fixup,
+        "activelineclass": _fixup_line,
+        "activearcclass": _fixup_arc,
+        "activebarclass": _fixup_bar,
+        "activeslacbarclass": _fixup_bar,
+        "activevsbarclass": _fixup_bar,
+    }
+)
+
+
 def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> SourceNode:
     qt_class = resolve_qt_class(obj.name.lower(), obj.properties)
     qt_props: dict[str, Any] = {}
     warnings: list[str] = []
+    geometry: Geometry = (obj.x, obj.y, obj.width, obj.height)
     if qt_class is not None:
         use_display_bg = bool(obj.properties.get("useDisplayBg"))
         for edm_attr, value in obj.properties.items():
@@ -173,10 +301,15 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
         for flag in ("colorPv", "bgAlarm"):
             if obj.properties.get(flag):
                 warnings.append(f"EDM dynamic colour ({flag}) is not supported; static colours emitted")
+        fixup = _CLASS_FIXUPS.get(obj.name.lower())
+        if fixup is not None:
+            override = fixup(obj, qt_props, warnings)
+            if override is not None:
+                geometry = override
     return SourceNode(
         qt_class=qt_class,
         qt_props=qt_props,
-        geometry=(obj.x, obj.y, obj.width, obj.height),
+        geometry=geometry,
         raw_class=obj.name,
         raw_props=dict(obj.properties),
         warnings=warnings,
@@ -228,15 +361,16 @@ def _visibility_rule_spec(vis_tuples: list[VisTuple]) -> RuleSpec:
     )
 
 
-def edm_group_to_source_nodes(
-    group: EDMGroup, inherited_vis: tuple[VisTuple, ...] = (), *, colors: dict[str, Any] | None = None
-) -> list[SourceNode]:
-    """Flatten an EDM group tree into a flat list of widget SourceNodes.
+def edm_group_to_source_nodes(group: EDMGroup, *, colors: dict[str, Any] | None = None) -> list[SourceNode]:
+    """Materialize an EDM group tree into a list of widget SourceNodes.
 
-    EDM groups are organizational and their children carry absolute coordinates, so
-    groups dissolve into their widgets (z-order preserved). A group's ``visPv`` is
-    inherited by every descendant as a visibility rule. When visible-container widgets
-    land (frame/group-box), groups with chrome can become container nodes.
+    EDM groups are materialized as ``group`` widget nodes (the registry's ``group``
+    definition, resolved via ``registry_id`` rather than a Qt class — EDM groups have
+    no Qt analog). Children keep ABSOLUTE screen coordinates: that is the Screen IR
+    geometry contract (verified in the Screen Builder: ``importScreenJSON`` copies
+    ``node.geometry`` verbatim and ``WidgetOverlay`` subtracts the parent origin at
+    render time). A group's ``visPv`` becomes a ``visible`` rule on the group node
+    itself and hides the whole subtree — no inheritance onto individual descendants.
 
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
     to resolve "index N" colour props to hex.
@@ -244,15 +378,24 @@ def edm_group_to_source_nodes(
     nodes: list[SourceNode] = []
     for obj in group.objects:
         if isinstance(obj, EDMGroup):
+            group_node = SourceNode(
+                qt_class=None,
+                registry_id="group",
+                qt_props={"layoutMode": "absolute"},
+                geometry=(obj.x, obj.y, obj.width, obj.height),
+                raw_class="activeGroupClass",
+                raw_props=dict(obj.properties),
+                children=edm_group_to_source_nodes(obj, colors=colors),
+            )
             group_vis = _vis_tuple(obj.properties)
-            child_vis = inherited_vis + ((group_vis,) if group_vis else ())
-            nodes.extend(edm_group_to_source_nodes(obj, child_vis, colors=colors))
+            if group_vis is not None:
+                group_node.rules = [_visibility_rule_spec([group_vis])]
+            nodes.append(group_node)
         elif isinstance(obj, EDMObject):
             node = _object_to_source(obj, colors)
             own_vis = _vis_tuple(obj.properties)
-            all_vis = list(inherited_vis) + ([own_vis] if own_vis else [])
-            if all_vis:
-                node.rules = [_visibility_rule_spec(all_vis)]
+            if own_vis is not None:
+                node.rules = [_visibility_rule_spec([own_vis])]
             nodes.append(node)
     return nodes
 

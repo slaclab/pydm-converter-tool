@@ -1,0 +1,29 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Circle - filled)
+object activeCircleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 30
+y 30
+w 40
+h 40
+lineColor index 25
+fill
+fillColor index 14
+endObjectProperties

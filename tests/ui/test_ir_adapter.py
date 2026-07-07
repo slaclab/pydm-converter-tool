@@ -86,8 +86,15 @@ def _structure(screen):
 
 
 def test_cross_input_equivalence_with_edm():
-    """Milestone: the same screen as .edl and .ui yields structurally-equal IR."""
-    assert _structure(ui_file_to_ir(FIXTURE)) == _structure(edm_file_to_ir(EDM_FIXTURE))
+    """Milestone: the same screen as .edl and .ui yields structurally-equal IR.
+
+    Scoped to the first 3 children (label/input/button): the 4th diverges by
+    design — ``p0_min.ui``'s ``PyDMMysteryGauge`` is a fixture-only unknown class
+    (see test_unknown_pydm_class), while ``p0_min.edl``'s activeRectangleClass
+    graduated to a supported "rectangle" node in the EDM graphics phase (see
+    test_rectangle_maps_with_line_colour in tests/edm/test_ir_adapter.py).
+    """
+    assert _structure(ui_file_to_ir(FIXTURE))[:3] == _structure(edm_file_to_ir(EDM_FIXTURE))[:3]
 
 
 def test_scalar_number_parsing_is_tolerant():

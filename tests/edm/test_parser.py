@@ -142,6 +142,87 @@ def test_parse_groups(tmp_path):
     assert parser.ui.objects[0].objects[0].name == "activeXTextClass"
 
 
+def test_parse_groups_double_space_robustness(tmp_path):
+    """`object  activeGroupClass` (two spaces) still parses as a group, not a plain object.
+
+    ``_GROUP_AT`` is `r"object\\s+activeGroupClass\\b"`, so any run of whitespace
+    between "object" and "activeGroupClass" is tolerated.
+    """
+    test_data = textwrap.dedent("""
+        # (Group)
+        object  activeGroupClass
+        beginObjectProperties
+        x 5
+        y 5
+        w 100
+        h 100
+        beginGroup
+
+        # (Static Text)
+        object activeXTextClass
+        beginObjectProperties
+        x 10
+        y 10
+        endObjectProperties
+
+        endGroup
+        endObjectProperties
+    """)
+    test_file = tmp_path / "test.edl"
+    test_file.write_text(test_data)
+    output_file = tmp_path / "test.ui"
+
+    parser = EDMFileParser(test_file, output_file)
+    assert len(parser.ui.objects) == 1
+    group = parser.ui.objects[0]
+    assert isinstance(group, EDMGroup)
+    assert not isinstance(group, EDMObject)
+    assert len(group.objects) == 1
+    assert group.objects[0].name == "activeXTextClass"
+
+
+def test_parse_groups_desync_redirect(tmp_path):
+    """A forward-searching object match that swallows garbage text still yields a group.
+
+    The ``object_pattern`` regex searches forward past unparseable text (e.g. a
+    stray VCS conflict marker), so it can end up matching a following
+    ``activeGroupClass`` as though it were a plain object. The parser must redirect
+    that match to the group parser so the result is still an EDMGroup, not an
+    EDMObject named "activeGroupClass".
+    """
+    test_data = textwrap.dedent("""
+        ======= merge noise
+        object activeGroupClass
+        beginObjectProperties
+        x 5
+        y 5
+        w 100
+        h 100
+        beginGroup
+
+        # (Static Text)
+        object activeXTextClass
+        beginObjectProperties
+        x 10
+        y 10
+        endObjectProperties
+
+        endGroup
+        endObjectProperties
+    """)
+    test_file = tmp_path / "test.edl"
+    test_file.write_text(test_data)
+    output_file = tmp_path / "test.ui"
+
+    parser = EDMFileParser(test_file, output_file)
+    assert len(parser.ui.objects) == 1
+    group = parser.ui.objects[0]
+    assert isinstance(group, EDMGroup)
+    assert not isinstance(group, EDMObject)
+    assert len(group.objects) == 1
+    assert group.objects[0].name == "activeXTextClass"
+
+
 def test_get_size_properties():
     """Test that the size properties are extracted correctly"""
     test_data = textwrap.dedent("""

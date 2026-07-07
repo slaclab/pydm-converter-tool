@@ -21,7 +21,7 @@ def test_screen_metadata():
 
 def test_p0_widget_types_in_order():
     children = _convert().root.children
-    assert [c.type for c in children] == ["text-label", "pv-text-input", "pv-button", "unknown-widget"]
+    assert [c.type for c in children] == ["text-label", "pv-text-input", "pv-button", "rectangle"]
 
 
 def test_static_text_maps_to_text_label():
@@ -49,12 +49,12 @@ def test_button_maps_label_and_press_value():
     assert button.props["pressValue"] == "1"
 
 
-def test_unsupported_class_becomes_unknown_widget():
-    unknown = _convert().root.children[3]
-    assert unknown.type == "unknown-widget"
-    assert unknown.props["originalClass"] == "activeRectangleClass"
-    assert unknown.props["originalProps"] == {"lineColor": "rgb 0 0 0"}
-    assert unknown.warnings == ["No registry entry for activeRectangleClass; rendering placeholder"]
+def test_rectangle_maps_with_line_colour():
+    """p0_min's rect has only ``lineColor rgb 0 0 0`` (Rectangle graduated in Phase 1)."""
+    rectangle = _convert().root.children[3]
+    assert rectangle.type == "rectangle"
+    assert rectangle.props == {"lineColor": "#000000"}
+    assert rectangle.geometry.model_dump() == {"x": 200, "y": 20, "width": 100, "height": 50}
 
 
 def test_macros_collected():

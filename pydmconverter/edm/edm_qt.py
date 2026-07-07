@@ -34,6 +34,14 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     # P1
     "byteclass": "PyDMByteIndicator",
     "relateddisplayclass": "PyDMRelatedDisplayButton",
+    # Phase 1: graphics
+    "activerectangleclass": "PyDMDrawingRectangle",
+    "activecircleclass": "PyDMDrawingEllipse",
+    "activelineclass": "PyDMDrawingPolyline",
+    "activearcclass": "PyDMDrawingArc",
+    "activebarclass": "PyDMScaleIndicator",
+    "activeslacbarclass": "PyDMScaleIndicator",
+    "activevsbarclass": "PyDMScaleIndicator",
 }
 
 # EDM attributes that name a PV channel.
@@ -84,6 +92,17 @@ EDM_TO_QT_PROP: dict[str, str] = {
     # colours (resolved to hex by the adapter)
     "fgColor": "foregroundColor",
     "bgColor": "backgroundColor",
+    # drawing (Phase 1)
+    "lineColor": "penColor",
+    "fillColor": "brushColor",
+    "lineWidth": "penWidth",
+    "lineStyle": "penStyle",
+    "fill": "brushFill",
+    "startAngle": "startAngle",
+    "totalAngle": "spanAngle",
+    # bar/scale range
+    "min": "userMinimum",
+    "max": "userMaximum",
 }
 
 
