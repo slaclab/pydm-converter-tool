@@ -54,10 +54,46 @@ def test_registry_miss_returns_none():
 
 
 def test_sb_native_widgets_have_no_qt_class():
-    """absolute-canvas / pv-radio-group have no qtMapping (06_beaver.md)."""
+    """absolute-canvas / group have no qtMapping (06_beaver.md)."""
     reg = VendoredRegistry()
     assert reg.by_id("absolute-canvas").qt_class is None
-    assert reg.by_id("pv-radio-group").qt_class is None
+    assert reg.by_id("group").qt_class is None
+
+
+NEW_DRAWING_IDS = {"rectangle", "ellipse", "line", "arc", "group", "pv-meter"}
+
+
+def test_new_widget_ids_resolve_by_id():
+    """The six new EDM-coverage widgets resolve via by_id."""
+    reg = VendoredRegistry()
+    for widget_id in NEW_DRAWING_IDS:
+        assert reg.by_id(widget_id) is not None, f"missing registry def for {widget_id!r}"
+
+
+def test_new_widgets_resolve_by_qt_class():
+    reg = VendoredRegistry()
+    expected = {
+        "PyDMDrawingRectangle": "rectangle",
+        "PyDMDrawingEllipse": "ellipse",
+        "PyDMDrawingPolyline": "line",
+        "PyDMDrawingArc": "arc",
+        "PyDMAnalogIndicator": "pv-meter",
+        "PyDMEnumButton": "pv-radio-group",
+    }
+    for qt_class, widget_id in expected.items():
+        definition = reg.by_qt_class(qt_class)
+        assert definition is not None, f"no definition for qt_class {qt_class!r}"
+        assert definition.id == widget_id
+
+
+def test_group_has_no_qt_class_and_supports_children():
+    """group is resolved by registry id from the EDM adapter; no Qt analog."""
+    reg = VendoredRegistry()
+    group = reg.by_id("group")
+    assert group is not None
+    assert group.qt_class is None
+    assert reg.by_qt_class("group") is None
+    assert group.supports_children is True
 
 
 def test_widget_definition_ignores_unknown_fields():

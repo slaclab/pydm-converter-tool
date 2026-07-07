@@ -27,12 +27,25 @@
         "enum": ["primary", "secondary", "tertiary", "danger", "ghost"],
         "default": "secondary"
       },
-      "iconOnly": { "type": "boolean", "default": false }
+      "iconOnly": { "type": "boolean", "default": false },
+      "actions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "description": "Converter-carried action list (e.g. shell_command, close_display); the Screen Builder lifts these into widget actions."
+      }
     }
   },
 
   "qtPropMap": {
-    "text": { "to": "label" }
+    "text": { "to": "label" },
+    "actions": { "to": "actions" }
   },
 
   "inspectorSchema": {

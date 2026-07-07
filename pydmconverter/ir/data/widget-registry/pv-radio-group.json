@@ -11,6 +11,12 @@
     "module": "@canopy/widgets"
   },
 
+  "qtMapping": {
+    "class": "PyDMEnumButton",
+    "extends": "QWidget",
+    "header": "pydm.widgets.enum_button"
+  },
+
   "propSchema": {
     "$schema": "https://json-schema.org/draft-07/schema",
     "type": "object",
@@ -24,6 +30,11 @@
       },
       "alarmSensitive": { "type": "boolean", "default": false }
     }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "orientation": { "to": "orientation", "transform": "qtOrientation" }
   },
 
   "inspectorSchema": {

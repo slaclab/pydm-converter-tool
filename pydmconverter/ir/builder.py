@@ -91,7 +91,9 @@ class IRBuilder:
         )
 
     def _build_node(self, node: SourceNode) -> WidgetNode:
-        definition = self.registry.by_qt_class(node.qt_class) if node.qt_class else None
+        definition = self.registry.by_id(node.registry_id) if node.registry_id else None
+        if definition is None and node.qt_class:
+            definition = self.registry.by_qt_class(node.qt_class)
         if definition is None:
             return self._unknown_node(node)
         return WidgetNode(

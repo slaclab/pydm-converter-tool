@@ -65,6 +65,14 @@ def test_first_of():
     assert apply_transform("firstOf", "already-scalar") == "already-scalar"
 
 
+def test_edm_line_style():
+    assert apply_transform("edmLineStyle", "solid") == "solid"
+    assert apply_transform("edmLineStyle", "dash") == "dashed"
+    assert apply_transform("edmLineStyle", "Qt::DashLine") == "dashed"
+    assert apply_transform("edmLineStyle", "DotLine") == "dotted"
+    assert apply_transform("edmLineStyle", "anything") == "solid"
+
+
 def test_unknown_transform_raises():
     with pytest.raises(KeyError):
         apply_transform("notARealTransform", "x")
