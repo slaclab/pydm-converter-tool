@@ -1,0 +1,69 @@
+{
+  "id": "arc",
+  "version": "1.0.0",
+  "displayName": "Arc",
+  "description": "Elliptical arc. 0 degrees = east (3 o'clock); positive angles sweep counterclockwise.",
+  "category": "drawing",
+  "paletteIcon": "arc.svg",
+
+  "reactComponent": {
+    "name": "Arc",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMDrawingArc",
+    "extends": "QWidget",
+    "header": "pydm.widgets.drawing"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "lineColor": { "type": "string", "default": "#6f6f6f" },
+      "lineWidth": { "type": "number", "minimum": 0, "default": 2 },
+      "startAngle": {
+        "type": "number",
+        "default": 0,
+        "description": "Degrees; 0 = east, counterclockwise positive."
+      },
+      "spanAngle": {
+        "type": "number",
+        "default": 90,
+        "description": "Degrees swept counterclockwise from startAngle."
+      },
+      "fill": { "type": "boolean", "default": false },
+      "fillColor": { "type": "string" },
+      "opacity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 0,
+        "description": "Transparency percent; 100 = fully transparent (carries EDM's 'invisible' flag)."
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "penColor": { "to": "lineColor" },
+    "penWidth": { "to": "lineWidth" },
+    "startAngle": { "to": "startAngle" },
+    "spanAngle": { "to": "spanAngle" },
+    "brushFill": { "to": "fill" },
+    "brushColor": { "to": "fillColor" },
+    "opacity": { "to": "opacity" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "startAngle", "spanAngle", "fill", "fillColor", "opacity"] }
+    ]
+  },
+
+  "defaults": { "width": 80, "height": 80 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

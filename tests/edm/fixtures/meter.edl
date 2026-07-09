@@ -1,0 +1,43 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Analog meter)
+object activeMeterClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 10
+y 10
+w 180
+h 95
+caseColor index 14
+scaleColor index 14
+labelColor index 14
+fgColor index 25
+bgColor index 0
+topShadowColor index 14
+botShadowColor index 14
+readPv "$(P):CURRENT"
+label "Current"
+labelType "literal"
+showScale
+scaleFormat "FFloat"
+scalePrecision "2"
+scaleMin "0"
+scaleMax "150"
+labelFontTag "helvetica-medium-r-12.0"
+scaleFontTag "helvetica-medium-r-12.0"
+endObjectProperties

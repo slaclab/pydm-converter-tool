@@ -51,6 +51,8 @@ class EDMFileParser:
 
     screen_prop_pattern = re.compile(r"beginScreenProperties(.*)endScreenProperties", re.DOTALL)
     group_pattern = re.compile(r"object activeGroupClass(.*)endGroup", re.DOTALL)
+    # Used with re.Pattern.match(text, pos) (a pos arg avoids slicing a huge string).
+    _GROUP_AT = re.compile(r"object\s+activeGroupClass\b")
     object_pattern = re.compile(
         r"object\s+(\w+(?::\w+)?)\s*beginObjectProperties\s*(.*?)\s*endObjectProperties(?=\s*(?:#.*?)?(?:object|\s*$))",
         re.DOTALL | re.MULTILINE,
@@ -147,49 +149,12 @@ class EDMFileParser:
             if pos >= len(text):
                 break
 
-            if text[pos:].lstrip().startswith("object activeGroupClass"):
-                group_start = pos
-
-                begin_obj_props = text.find("beginObjectProperties", group_start)
-                begin_group_idx = text.find("beginGroup", begin_obj_props)
-                end_group_idx = self.find_matching_end_group(text, begin_group_idx)
-                end_obj_props = text.find("endObjectProperties", end_group_idx)
-
-                if begin_obj_props == -1 or end_obj_props == -1 or begin_group_idx == -1:
-                    snippet = text[pos : pos + 100].strip()
-                    logger.warning(f"Skipping malformed group at {pos}, snippet: {snippet}")
+            if self._GROUP_AT.match(text, pos):
+                new_pos = self._parse_group_at(text, pos, parent_group)
+                if new_pos == -1:
                     pos += 1
                     continue
-
-                end_group_idx = self.find_matching_end_group(text, begin_group_idx)
-                if end_group_idx == -1:
-                    logger.warning(f"Could not find matching endGroup at {pos}")
-                    pos += 1
-                    continue
-
-                # get rid of trailing endObjectProperties
-                extra_end_props = text.find("endObjectProperties", end_group_idx)
-                next_object_pos = text.find("object", end_group_idx)
-                group_end = (
-                    extra_end_props + len("endObjectProperties")
-                    if (extra_end_props != -1 and (next_object_pos == -1 or extra_end_props < next_object_pos))
-                    else end_group_idx + len("endGroup")
-                )
-                group_header = (
-                    text[begin_obj_props + len("beginObjectProperties") : begin_group_idx]
-                    + text[end_group_idx + len("endGroup") : end_obj_props]
-                )
-                group_body = text[begin_group_idx + len("beginGroup") : end_group_idx]
-
-                size_props = self.get_size_properties(group_header)
-                properties = self.get_object_properties(group_header)
-
-                group = EDMGroup(**size_props)
-                group.properties = properties
-
-                self.parse_objects_and_groups(group_body, group)
-                parent_group.add_object(group)
-                pos = group_end
+                pos = new_pos
                 continue
 
             # Try matching a regular object
@@ -197,6 +162,19 @@ class EDMFileParser:
             if object_match:
                 name = object_match.group(1).replace(":", "")  # remove colons from name (causes issues with PyDM)
                 object_text = object_match.group(2)
+
+                # The object regex searches forward past unparseable text (e.g. stray
+                # VCS conflict markers seen in real corpora), so it can end up matching
+                # a following group as though it were a plain object. Redirect to the
+                # group parser so groups stay groups; only fall back to the generic
+                # EDMObject path if the redirect itself fails (nothing may disappear
+                # silently).
+                if name.lower() == "activegroupclass":
+                    new_pos = self._parse_group_at(text, object_match.start(), parent_group)
+                    if new_pos != -1:
+                        pos = new_pos
+                        continue
+
                 size_properties = self.get_size_properties(object_text)
                 properties = self.get_object_properties(object_text)
 
@@ -211,6 +189,52 @@ class EDMFileParser:
                 snippet = text[pos : pos + 100]
                 logger.warning(f"Unrecognized text at pos {pos}: '{snippet}'")
                 pos = text.find("\n", pos) if "\n" in text[pos:] else len(text)
+
+    def _parse_group_at(self, text: str, group_start: int, parent_group: EDMGroup) -> int:
+        """Parse one ``object activeGroupClass ... endGroup`` block starting at ``group_start``.
+
+        Returns the position just past the parsed group on success, or ``-1`` when the
+        group is malformed (unbalanced/missing markers) — callers preserve the original
+        warning + "advance by one and retry" behavior on failure.
+        """
+        begin_obj_props = text.find("beginObjectProperties", group_start)
+        begin_group_idx = text.find("beginGroup", begin_obj_props)
+        end_group_idx = self.find_matching_end_group(text, begin_group_idx)
+        end_obj_props = text.find("endObjectProperties", end_group_idx)
+
+        if begin_obj_props == -1 or end_obj_props == -1 or begin_group_idx == -1:
+            snippet = text[group_start : group_start + 100].strip()
+            logger.warning(f"Skipping malformed group at {group_start}, snippet: {snippet}")
+            return -1
+
+        end_group_idx = self.find_matching_end_group(text, begin_group_idx)
+        if end_group_idx == -1:
+            logger.warning(f"Could not find matching endGroup at {group_start}")
+            return -1
+
+        # get rid of trailing endObjectProperties
+        extra_end_props = text.find("endObjectProperties", end_group_idx)
+        next_object_pos = text.find("object", end_group_idx)
+        group_end = (
+            extra_end_props + len("endObjectProperties")
+            if (extra_end_props != -1 and (next_object_pos == -1 or extra_end_props < next_object_pos))
+            else end_group_idx + len("endGroup")
+        )
+        group_header = (
+            text[begin_obj_props + len("beginObjectProperties") : begin_group_idx]
+            + text[end_group_idx + len("endGroup") : end_obj_props]
+        )
+        group_body = text[begin_group_idx + len("beginGroup") : end_group_idx]
+
+        size_props = self.get_size_properties(group_header)
+        properties = self.get_object_properties(group_header)
+
+        group = EDMGroup(**size_props)
+        group.properties = properties
+
+        self.parse_objects_and_groups(group_body, group)
+        parent_group.add_object(group)
+        return group_end
 
     def get_symbol_group(
         self, properties: dict[str, bool | str | list[str]], size_properties: dict[str, int]

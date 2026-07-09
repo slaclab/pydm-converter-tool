@@ -170,6 +170,44 @@ def test_identical_calcs_share_one_formula():
     assert len(screen.formulas) == 1
 
 
+def test_registry_id_builds_group_with_nested_child():
+    """A SourceNode with registry_id="group" resolves by id and nests its children."""
+    child = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "X"})
+    node = SourceNode(
+        qt_class=None,
+        registry_id="group",
+        qt_props={"layoutMode": "absolute"},
+        children=[child],
+        geometry=(0, 0, 200, 150),
+    )
+    group = _screen([node]).root.children[0]
+    assert group.type == "group"
+    assert group.props == {"layoutMode": "absolute"}
+    assert len(group.children) == 1
+    assert group.children[0].type == "pv-label"
+
+
+def test_registry_id_takes_precedence_over_qt_class():
+    """When both are set, registry_id wins over qt_class."""
+    node = SourceNode(qt_class="PyDMLabel", registry_id="group", qt_props={"layoutMode": "flex"})
+    built = _screen([node]).root.children[0]
+    assert built.type == "group"
+    assert built.props == {"layoutMode": "flex"}
+
+
+def test_unknown_registry_id_falls_back_to_unknown_widget():
+    """An unresolvable registry_id (and no qt_class) falls back to unknown-widget."""
+    node = SourceNode(
+        qt_class=None,
+        registry_id="not-a-real-registry-id",
+        raw_class="edmMysteryGroup",
+        raw_props={"foo": "bar"},
+    )
+    built = _screen([node]).root.children[0]
+    assert built.type == "unknown-widget"
+    assert built.props == {"originalClass": "edmMysteryGroup", "originalProps": {"foo": "bar"}}
+
+
 def test_built_screen_validates_and_round_trips():
     nodes = [
         SourceNode(

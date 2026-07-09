@@ -4,15 +4,15 @@ from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
-FIXTURE = Path(__file__).parent / "fixtures" / "p1_widgets.ui"
+FIXTURE = Path(__file__).parent / "fixtures" / "byte_and_related.ui"
 
 
 def _by_type():
     return {c.type: c for c in ui_file_to_ir(FIXTURE).root.children}
 
 
-def test_all_p1_types_resolve():
-    """P1 widgets resolve from .ui with no adapter changes (registry-driven)."""
+def test_all_widget_types_resolve():
+    """byte/related-display/frame/progress-bar/group-box widgets resolve from .ui with no adapter changes (registry-driven)."""
     assert set(_by_type()) == {
         "pv-byte-led",
         "pv-checkbox",
@@ -46,5 +46,5 @@ def test_group_box_is_a_container():
     assert [child.type for child in group.children] == ["pv-label"]
 
 
-def test_p1_screen_validates():
+def test_screen_validates():
     assert validate_screen_json(to_wire_dict(ui_file_to_ir(FIXTURE))) == []

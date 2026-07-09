@@ -4,7 +4,7 @@ from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 
-FIXTURE = Path(__file__).parent / "fixtures" / "p1_widgets.edl"
+FIXTURE = Path(__file__).parent / "fixtures" / "byte_and_related.edl"
 
 
 def _by_type():
@@ -22,5 +22,5 @@ def test_related_display_class():
     assert rel.props == {"file": "subscreen", "label": "Open", "macros": {"DEV": "${P}"}}
 
 
-def test_p1_screen_validates():
+def test_screen_validates():
     assert validate_screen_json(to_wire_dict(edm_file_to_ir(FIXTURE))) == []

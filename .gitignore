@@ -123,3 +123,7 @@ ENV/
 # Canopy IR data files (generated schema + vendored widget registry) are tracked assets
 !pydmconverter/ir/data/*.json
 !pydmconverter/ir/data/widget-registry/*.json
+
+# EDM->IR combined integration snapshot (committed regression fixture;
+# see tests/edm/test_integration_combined.py for how to regenerate it deliberately)
+!tests/edm/fixtures/integration_combined.screen.json

@@ -42,7 +42,9 @@
         "type": "string",
         "enum": ["default", "exponential", "hex", "binary", "string"],
         "default": "default"
-      }
+      },
+      "foregroundColor": { "type": "string" },
+      "backgroundColor": { "type": "string" }
     }
   },
 
@@ -53,14 +55,17 @@
     "showUnits": { "to": "showUnits" },
     "alarmSensitiveContent": { "to": "alarmSensitive" },
     "alarmSensitiveBorder": { "to": "alarmBorder" },
-    "displayFormat": { "to": "format" }
+    "displayFormat": { "to": "format" },
+    "foregroundColor": { "to": "foregroundColor" },
+    "backgroundColor": { "to": "backgroundColor" }
   },
 
   "inspectorSchema": {
     "groups": [
       { "name": "PV", "fields": ["pv", "precision", "showUnits"] },
       { "name": "Display", "fields": ["format"] },
-      { "name": "Alarm", "fields": ["alarmSensitive", "alarmBorder"] }
+      { "name": "Alarm", "fields": ["alarmSensitive", "alarmBorder"] },
+      { "name": "Appearance", "fields": ["foregroundColor", "backgroundColor"] }
     ]
   },
 

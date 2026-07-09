@@ -1,0 +1,93 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Group with visibility)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 200
+h 120
+visPv "$(P):SHOW"
+
+beginGroup
+
+# (Static Text inside the group)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 20
+y 20
+w 100
+h 18
+value {
+  "In group"
+}
+endObjectProperties
+
+# (Nested Group - no visibility)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 30
+y 50
+w 100
+h 60
+
+beginGroup
+
+# (Rectangle inside nested group)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 40
+y 60
+w 60
+h 30
+lineColor index 14
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+# (Text display with its own range visibility, top level)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 140
+w 100
+h 18
+controlPv "$(P):VAL"
+visPv "$(P):MODE"
+visMin "1"
+visMax "3"
+endObjectProperties

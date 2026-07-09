@@ -28,22 +28,44 @@ _ADAPTERS = {".edl": edm_file_to_ir, ".ui": ui_file_to_ir}
 SUPPORTED_SUFFIXES = tuple(_ADAPTERS)
 
 
-def convert_to_ir(input_path: str | Path, *, registry: RegistryClient | None = None) -> ScreenIR:
-    """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix."""
+def convert_to_ir(
+    input_path: str | Path,
+    *,
+    registry: RegistryClient | None = None,
+    color_list_path: str | Path | None = None,
+) -> ScreenIR:
+    """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
+
+    ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
+    used to resolve "index N" color props; when omitted it is located via (in order)
+    the ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    """
     suffix = Path(input_path).suffix.lower()
     adapter = _ADAPTERS.get(suffix)
     if adapter is None:
         raise ValueError(f"--target react supports {', '.join(SUPPORTED_SUFFIXES)} inputs, not {suffix!r}")
-    return adapter(input_path, registry=registry)
+    if suffix == ".edl":
+        return edm_file_to_ir(input_path, registry=registry, color_list_path=color_list_path)
+    return ui_file_to_ir(input_path, registry=registry)
 
 
-def convert_bytes(data: bytes, *, kind: Literal["edl", "ui"], registry: RegistryClient | None = None) -> ScreenIR:
+def convert_bytes(
+    data: bytes,
+    *,
+    kind: Literal["edl", "ui"],
+    registry: RegistryClient | None = None,
+    color_list_path: str | Path | None = None,
+) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
     For HTTP callers (the Screen Builder uploads screens as bytes, a browser cannot
     hand the backend a server path), so callers need not spill uploads to disk. The
     EDM parser reads from a path, so the bytes are staged in a temp file scoped to
     this call rather than in every caller.
+
+    ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
+    used to resolve "index N" color props; when omitted it falls back to the
+    ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     if kind not in ("edl", "ui"):
         raise ValueError(f"convert_bytes kind must be 'edl' or 'ui', not {kind!r}")
@@ -53,7 +75,7 @@ def convert_bytes(data: bytes, *, kind: Literal["edl", "ui"], registry: Registry
     try:
         staged = tmp_dir / f"screen.{kind}"
         staged.write_bytes(data)
-        return convert_to_ir(staged, registry=registry)
+        return convert_to_ir(staged, registry=registry, color_list_path=color_list_path)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -71,13 +93,19 @@ def convert_file(
     *,
     override: bool = False,
     registry: RegistryClient | None = None,
+    color_list_path: str | Path | None = None,
 ) -> Path:
-    """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path."""
+    """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
+
+    ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
+    used to resolve "index N" color props; when omitted it falls back to the
+    ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    """
     inp = Path(input_path)
     out = _screen_json_path(inp, Path(output_path))
     if out.is_file() and not override:
         raise FileExistsError(f"Output file '{out}' already exists. Use --override or -o to overwrite it.")
-    return write_screen_json(convert_to_ir(inp, registry=registry), out)
+    return write_screen_json(convert_to_ir(inp, registry=registry, color_list_path=color_list_path), out)
 
 
 def convert_folder(
@@ -86,10 +114,15 @@ def convert_folder(
     *,
     override: bool = False,
     registry: RegistryClient | None = None,
+    color_list_path: str | Path | None = None,
 ) -> tuple[int, list[str]]:
     """Recursively convert every ``.edl``/``.ui`` under ``input_dir``.
 
     Returns ``(files_found, files_failed)``.
+
+    ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
+    used to resolve "index N" color props; when omitted it falls back to the
+    ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -106,7 +139,7 @@ def convert_folder(
             logger.warning("Skipped: %s already exists. Use --override or -o to overwrite it.", out)
             continue
         try:
-            write_screen_json(convert_to_ir(source, registry=registry), out)
+            write_screen_json(convert_to_ir(source, registry=registry, color_list_path=color_list_path), out)
         except Exception as exc:  # noqa: BLE001 - report and continue the walk
             failed.append(str(source))
             logger.warning("Failed to convert %s: %s", source, exc)

@@ -1,0 +1,60 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Text Update, noedit, exponential format)
+object activeXTextDspClass:noedit
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 10
+w 120
+h 18
+controlPv "$(P):VAL"
+format "exponential"
+precision 3
+showUnits
+fgColor index 14
+bgColor index 0
+useDisplayBg
+endObjectProperties
+
+# (Text Update, noedit, decimal format)
+object activeXTextDspClass:noedit
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 40
+w 120
+h 18
+controlPv "$(P):RATE"
+format "decimal"
+endObjectProperties
+
+# (Text Control, plain class - regression: still editable pv-text-input)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 70
+w 120
+h 18
+controlPv "$(P):SETPOINT"
+endObjectProperties

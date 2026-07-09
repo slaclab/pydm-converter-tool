@@ -1,0 +1,64 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Bar - pressure, vertical)
+object activeBarClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 20
+w 30
+h 120
+indicatorPv "$(P):PRESSURE"
+min "0"
+max "25"
+orientation "vertical"
+indicatorColor index 14
+endObjectProperties
+
+# (Slac Bar - flow, horizontal)
+object activeSlacBarClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 80
+y 20
+w 120
+h 30
+indicatorPv "$(P):FLOW"
+min "0"
+max "100"
+orientation "horizontal"
+indicatorColor index 25
+label "Flow"
+showScale
+endObjectProperties
+
+# (Vs Bar - level, no orientation)
+object activeVsBarClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 220
+y 20
+w 30
+h 120
+indicatorPv "$(P):LVL"
+maxPv "$(P):HIHI"
+endObjectProperties

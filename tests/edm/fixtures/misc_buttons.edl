@@ -1,0 +1,83 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Freeze button - no PV in the corpus, freeze/unfreeze targets the local display)
+object activeFreezeButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 69
+h 24
+fgColor index 14
+bgColor index 0
+frozenBgColor index 25
+topShadowColor index 14
+botShadowColor index 14
+label "Freeze"
+frozenLabel "Unfreeze"
+font "helvetica-medium-r-10.0"
+3d
+endObjectProperties
+
+# (Ramp button)
+object activeRampButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 50
+w 50
+h 50
+fgColor index 25
+bgColor index 0
+topShadowColor index 14
+botShadowColor index 14
+controlPv "$(P):SP"
+finalValuePv "$(P):FINAL"
+updateRate 0.1
+rampRate 100000
+label "Ramp"
+3d
+font "helvetica-bold-r-24.0"
+limitsFromDb
+endObjectProperties
+
+# (Up/down button)
+object activeUpdownButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 120
+w 40
+h 24
+fgColor index 25
+bgColor index 0
+topShadowColor index 14
+botShadowColor index 14
+controlPv "$(P):SP"
+coarseValue "0.01"
+fineValue "0.001"
+label "- | +"
+3d
+rate 1
+font "courier-medium-r-12.0"
+limitsFromDb
+endObjectProperties

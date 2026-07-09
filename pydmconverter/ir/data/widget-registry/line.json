@@ -1,0 +1,78 @@
+{
+  "id": "line",
+  "version": "1.0.0",
+  "displayName": "Line",
+  "description": "Polyline with optional arrowheads. Vertices are relative to the widget's top-left corner.",
+  "category": "drawing",
+  "paletteIcon": "line.svg",
+
+  "reactComponent": {
+    "name": "Line",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMDrawingPolyline",
+    "extends": "QWidget",
+    "header": "pydm.widgets.drawing"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "lineColor": { "type": "string", "default": "#6f6f6f" },
+      "lineWidth": { "type": "number", "minimum": 0, "default": 2 },
+      "lineStyle": {
+        "type": "string",
+        "enum": ["solid", "dashed", "dotted"],
+        "default": "solid"
+      },
+      "points": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "description": "Vertices relative to the widget's top-left corner."
+      },
+      "arrowStart": { "type": "boolean", "default": false },
+      "arrowEnd": { "type": "boolean", "default": false },
+      "arrowSize": { "type": "number", "minimum": 1, "default": 10 },
+      "opacity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 0,
+        "description": "Transparency percent; 100 = fully transparent (carries EDM's 'invisible' flag)."
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "penColor": { "to": "lineColor" },
+    "penWidth": { "to": "lineWidth" },
+    "penStyle": { "to": "lineStyle", "transform": "edmLineStyle" },
+    "points": { "to": "points" },
+    "arrowStartPoint": { "to": "arrowStart" },
+    "arrowEndPoint": { "to": "arrowEnd" },
+    "opacity": { "to": "opacity" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "lineStyle", "arrowStart", "arrowEnd", "arrowSize", "opacity"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 100 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

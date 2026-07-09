@@ -1,0 +1,41 @@
+{
+  "id": "group",
+  "version": "1.0.0",
+  "displayName": "Group",
+  "description": "Logical container grouping child widgets. Children keep absolute screen coordinates (the IR geometry contract).",
+  "category": "containers",
+  "paletteIcon": "group.svg",
+
+  "reactComponent": {
+    "name": "Group",
+    "module": "@canopy/widgets"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "layoutMode": {
+        "type": "string",
+        "enum": ["absolute", "flex", "grid"],
+        "default": "absolute"
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "layoutMode": { "to": "layoutMode" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["layoutMode"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 150 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": true
+}

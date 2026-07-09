@@ -1,0 +1,285 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "integration_combined",
+  "metadata": {
+    "title": "integration_combined",
+    "source": {
+      "type": "edl-converter"
+    },
+    "size": {
+      "width": 600,
+      "height": 400
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": ""
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 600,
+      "height": 400
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 400
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "group",
+        "props": {
+          "layoutMode": "absolute"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 260,
+          "height": 100
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "Visibility",
+            "targetProperty": "visible",
+            "pvs": [
+              {
+                "name": "${P}:SHOW",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} != 0",
+                "value": true
+              }
+            ],
+            "default": false
+          }
+        ],
+        "children": [
+          {
+            "id": "w-003",
+            "type": "rectangle",
+            "props": {
+              "lineColor": "#ffff00",
+              "lineWidth": 2,
+              "lineStyle": "dashed",
+              "fill": true,
+              "fillColor": "#0000ff"
+            },
+            "geometry": {
+              "x": 20,
+              "y": 20,
+              "width": 100,
+              "height": 40
+            }
+          },
+          {
+            "id": "w-004",
+            "type": "line",
+            "props": {
+              "lineColor": "#000000",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 100,
+                  "y": 20
+                }
+              ],
+              "arrowStart": false,
+              "arrowEnd": false
+            },
+            "geometry": {
+              "x": 20.0,
+              "y": 70.0,
+              "width": 100.0,
+              "height": 20.0
+            }
+          },
+          {
+            "id": "w-005",
+            "type": "text-label",
+            "props": {
+              "text": "Group Label ${P}",
+              "foregroundColor": "#ffff00"
+            },
+            "geometry": {
+              "x": 140,
+              "y": 20,
+              "width": 100,
+              "height": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": "w-006",
+        "type": "arc",
+        "props": {
+          "lineColor": "#ffff00",
+          "lineWidth": 2,
+          "startAngle": -90,
+          "spanAngle": 180,
+          "fill": true,
+          "fillColor": "#0000ff"
+        },
+        "geometry": {
+          "x": 280,
+          "y": 10,
+          "width": 80,
+          "height": 80
+        }
+      },
+      {
+        "id": "w-007",
+        "type": "pv-progress-bar",
+        "props": {
+          "pv": "${P}:PRESSURE",
+          "min": 0,
+          "max": 25,
+          "orientation": "vertical"
+        },
+        "geometry": {
+          "x": 370,
+          "y": 10,
+          "width": 30,
+          "height": 80
+        },
+        "warnings": [
+          "EDM bar props not mapped: indicatorColor"
+        ]
+      },
+      {
+        "id": "w-008",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:VAL",
+          "precision": 2,
+          "format": "default",
+          "foregroundColor": "#ffff00",
+          "backgroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 420,
+          "y": 10,
+          "width": 120,
+          "height": 18
+        }
+      },
+      {
+        "id": "w-009",
+        "type": "regular-button",
+        "props": {
+          "label": "Utilities",
+          "actions": [
+            {
+              "type": "shell_command",
+              "command": "xterm -e top"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 420,
+          "y": 40,
+          "width": 96,
+          "height": 24
+        },
+        "warnings": [
+          "EDM shell commands carried as actions; the web runtime does not execute shell commands"
+        ]
+      },
+      {
+        "id": "w-010",
+        "type": "regular-button",
+        "props": {
+          "label": "EXIT",
+          "actions": [
+            {
+              "type": "close_display"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 420,
+          "y": 70,
+          "width": 60,
+          "height": 24
+        }
+      },
+      {
+        "id": "w-011",
+        "type": "pv-meter",
+        "props": {
+          "pv": "${P}:CURRENT",
+          "min": 0,
+          "max": 150,
+          "label": "Current"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 120,
+          "width": 180,
+          "height": 95
+        }
+      },
+      {
+        "id": "w-012",
+        "type": "pv-radio-group",
+        "props": {
+          "pv": "${P}:MODE"
+        },
+        "geometry": {
+          "x": 200,
+          "y": 120,
+          "width": 98,
+          "height": 116
+        }
+      },
+      {
+        "id": "w-013",
+        "type": "image-view",
+        "props": {
+          "src": "images/beamline_${P}"
+        },
+        "geometry": {
+          "x": 310,
+          "y": 120,
+          "width": 200,
+          "height": 150
+        }
+      },
+      {
+        "id": "w-014",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "menuMuxClass",
+          "originalProps": {
+            "controlPv": "${P}:MUX",
+            "symbol0Value": "Off",
+            "symbol1Value": "On"
+          }
+        },
+        "geometry": {
+          "x": 10,
+          "y": 250,
+          "width": 98,
+          "height": 116
+        },
+        "warnings": [
+          "No registry entry for menuMuxClass; rendering placeholder"
+        ]
+      }
+    ]
+  }
+}

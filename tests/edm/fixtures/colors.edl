@@ -1,0 +1,83 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Static Text with resolvable index colours)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 20
+w 120
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 25
+bgColor index 0
+value {
+  "Colored"
+}
+endObjectProperties
+
+# (Static Text using the display background)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 50
+w 120
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 14
+bgColor index 0
+useDisplayBg
+value {
+  "NoBg"
+}
+endObjectProperties
+
+# (Static Text with an unresolvable colour index)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 80
+w 120
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 9999
+value {
+  "Missing"
+}
+endObjectProperties
+
+# (Text Control with rgb colour and a dynamic colour flag)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 6
+release 0
+x 10
+y 110
+w 120
+h 18
+controlPv "$(P):X"
+fgColor rgb 65535 0 0
+colorPv "$(P):COLOR"
+endObjectProperties

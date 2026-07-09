@@ -1,0 +1,61 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (Arc - explicit angles, filled)
+object activeArcClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 20
+w 80
+h 80
+startAngle -90
+totalAngle 180
+lineColor index 14
+fill
+fillColor index 25
+lineWidth 2
+endObjectProperties
+
+# (Arc - no totalAngle, defaults to full ellipse)
+object activeArcClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 120
+y 20
+w 80
+h 80
+lineColor index 0
+endObjectProperties
+
+# (Arc - pie fillMode)
+object activeArcClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 220
+y 20
+w 80
+h 80
+startAngle 0
+totalAngle 90
+fill
+fillMode "pie"
+endObjectProperties

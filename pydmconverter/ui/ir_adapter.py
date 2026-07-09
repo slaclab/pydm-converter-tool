@@ -53,7 +53,7 @@ def _scalar_property(prop: ET.Element) -> Any:
     """Extract a scalar value from a ``<property>``; ``_SKIP`` for unsupported kinds.
 
     Handles the simple typed children. Complex kinds (font, sizepolicy, ...) are
-    skipped — no P0 prop consumes them.
+    skipped — no supported prop consumes them.
     """
     children = list(prop)
     if not children:

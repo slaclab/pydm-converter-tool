@@ -31,19 +31,24 @@
         "type": "string",
         "enum": ["left", "center", "right"],
         "default": "left"
-      }
+      },
+      "foregroundColor": { "type": "string" },
+      "backgroundColor": { "type": "string" }
     }
   },
 
   "qtPropMap": {
     "text": { "to": "text" },
-    "alignment": { "to": "align", "transform": "qtAlignment" }
+    "alignment": { "to": "align", "transform": "qtAlignment" },
+    "foregroundColor": { "to": "foregroundColor" },
+    "backgroundColor": { "to": "backgroundColor" }
   },
 
   "inspectorSchema": {
     "groups": [
       { "name": "Content", "fields": ["text"] },
-      { "name": "Display", "fields": ["variant", "align"] }
+      { "name": "Display", "fields": ["variant", "align"] },
+      { "name": "Appearance", "fields": ["foregroundColor", "backgroundColor"] }
     ]
   },
 

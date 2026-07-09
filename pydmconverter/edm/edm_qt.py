@@ -1,4 +1,4 @@
-"""EDM -> Qt class and prop name maps for the IR adapter (P0 widgets).
+"""EDM -> Qt class and prop name maps for the IR adapter.
 
 The shared IR builder resolves widgets and props by Qt vocabulary (the keys
 Beaver's ``qtMapping``/``qtPropMap`` use). The EDM front-end therefore translates
@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
-# EDM class (lowercased) -> Qt class the registry knows. P0 subset; everything
-# else falls through to an unknown-widget node (D11).
+# EDM class (lowercased) -> Qt class the registry knows; everything
+# else falls through to an unknown-widget node.
 EDM_TO_QT_CLASS: dict[str, str] = {
     "activextextclass": "PyDMLabel",  # split to QLabel (text-label) when static, see resolve_qt_class
     "textupdateclass": "PyDMLabel",
@@ -31,13 +31,35 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "activetriumfsliderclass": "PyDMSlider",
     "activechoicebuttonclass": "PyDMEnumComboBox",
     "activepipclass": "PyDMEmbeddedDisplay",
-    # P1
+    # byte indicator / related display
     "byteclass": "PyDMByteIndicator",
     "relateddisplayclass": "PyDMRelatedDisplayButton",
+    # graphics
+    "activerectangleclass": "PyDMDrawingRectangle",
+    "activecircleclass": "PyDMDrawingEllipse",
+    "activelineclass": "PyDMDrawingPolyline",
+    "activearcclass": "PyDMDrawingArc",
+    "activebarclass": "PyDMScaleIndicator",
+    "activeslacbarclass": "PyDMScaleIndicator",
+    "activevsbarclass": "PyDMScaleIndicator",
+    # text / buttons / indicators
+    "activextextdspclassnoedit": "PyDMLabel",  # the parser strips the colon from activeXTextDspClass:noedit
+    "shellcmdclass": "QPushButton",
+    "activeexitbuttonclass": "QPushButton",
+    "activepngclass": "PyDMDrawingImage",
+    "activemeterclass": "PyDMAnalogIndicator",
+    "activeindicatorclass": "PyDMScaleIndicator",
+    "activeradiobuttonclass": "PyDMEnumButton",
+    "activefreezebuttonclass": "QPushButton",  # corpus: 0/102 samples carry a controlPv (freeze/unfreeze is local-only)
+    "activerampbuttonclass": "PyDMPushButton",
+    "activeupdownbuttonclass": "PyDMPushButton",
+    "mmvclass": "PyDMSlider",
+    "multilinetextentryclass": "PyDMLineEdit",
+    # menuMuxClass deliberately absent: macro-muxing needs a design; stays unknown-widget.
 }
 
 # EDM attributes that name a PV channel.
-EDM_CHANNEL_ATTRS = ("controlPv", "indicatorPv", "readPv", "alarmPv", "pv", "filePv", "nullPv")
+EDM_CHANNEL_ATTRS = ("controlPv", "indicatorPv", "readPv", "alarmPv", "pv", "filePv", "nullPv", "ctrl1Pv")
 
 # EDM attribute name -> Qt prop name (the key Beaver's qtPropMap consumes).
 EDM_TO_QT_PROP: dict[str, str] = {
@@ -49,6 +71,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "pv": "channel",
     "filePv": "channel",
     "nullPv": "channel",
+    "ctrl1Pv": "channel",  # mmvClass
     # text / labels (Beaver maps "text" -> text/label per widget)
     "value": "text",
     "label": "text",
@@ -57,6 +80,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "precision": "precision",
     "showUnits": "showUnits",
     "displayFormat": "displayFormat",
+    "format": "displayFormat",  # activeXTextDspClass(:noedit) EDM format string
     # alarm sensitivity
     "fgAlarm": "alarmSensitiveContent",
     "alarmSensitiveContent": "alarmSensitiveContent",
@@ -74,13 +98,30 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "fileName": "filename",
     "symbols": "macros",
     "macro": "macros",
-    # related display (P1): a list of target files -> "filenames" (firstOf -> file)
+    # related display: a list of target files -> "filenames" (firstOf -> file)
     "displayFileName": "filenames",
-    # byte indicator (P1)
+    # byte indicator
     "numBits": "numBits",
     "shift": "shift",
     # alignment
     "fontAlign": "alignment",
+    # colors (resolved to hex by the adapter)
+    "fgColor": "foregroundColor",
+    "bgColor": "backgroundColor",
+    # British-spelled EDM keys emitted by some classes (multiLineTextEntryClass, mmvClass et al.)
+    "fgColour": "foregroundColor",
+    "bgColour": "backgroundColor",
+    # drawing
+    "lineColor": "penColor",
+    "fillColor": "brushColor",
+    "lineWidth": "penWidth",
+    "lineStyle": "penStyle",
+    "fill": "brushFill",
+    "startAngle": "startAngle",
+    "totalAngle": "spanAngle",
+    # bar/scale range
+    "min": "userMinimum",
+    "max": "userMaximum",
 }
 
 

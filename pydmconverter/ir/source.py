@@ -48,6 +48,10 @@ class SourceNode:
     qt_props:
         Prop values keyed by Qt property name (the keys Beaver's ``qtPropMap``
         expects). The builder selects and transforms these.
+    registry_id:
+        Direct registry id to resolve (bypasses Qt-class lookup) — for source
+        concepts with no Qt analog, e.g. EDM groups -> the ``"group"`` definition.
+        When set, it wins over ``qt_class``.
     geometry:
         Absolute ``(x, y, width, height)``.
     children:
@@ -63,6 +67,7 @@ class SourceNode:
 
     qt_class: str | None
     qt_props: dict[str, Any] = field(default_factory=dict)
+    registry_id: str | None = None
     geometry: tuple[Number, Number, Number, Number] = (0, 0, 0, 0)
     children: list["SourceNode"] = field(default_factory=list)
     rules: list[RuleSpec] = field(default_factory=list)

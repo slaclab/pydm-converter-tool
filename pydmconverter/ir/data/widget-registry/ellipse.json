@@ -1,0 +1,63 @@
+{
+  "id": "ellipse",
+  "version": "1.0.0",
+  "displayName": "Ellipse",
+  "description": "Static ellipse/circle outline with optional fill.",
+  "category": "drawing",
+  "paletteIcon": "ellipse.svg",
+
+  "reactComponent": {
+    "name": "Ellipse",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMDrawingEllipse",
+    "extends": "QWidget",
+    "header": "pydm.widgets.drawing"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "lineColor": { "type": "string", "default": "#6f6f6f" },
+      "lineWidth": { "type": "number", "minimum": 0, "default": 1 },
+      "lineStyle": {
+        "type": "string",
+        "enum": ["solid", "dashed", "dotted"],
+        "default": "solid"
+      },
+      "fill": { "type": "boolean", "default": false },
+      "fillColor": { "type": "string" },
+      "opacity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 0,
+        "description": "Transparency percent; 100 = fully transparent (carries EDM's 'invisible' flag)."
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "penColor": { "to": "lineColor" },
+    "penWidth": { "to": "lineWidth" },
+    "penStyle": { "to": "lineStyle", "transform": "edmLineStyle" },
+    "brushFill": { "to": "fill" },
+    "brushColor": { "to": "fillColor" },
+    "opacity": { "to": "opacity" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "lineStyle", "fill", "fillColor", "opacity"] }
+    ]
+  },
+
+  "defaults": { "width": 60, "height": 60 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

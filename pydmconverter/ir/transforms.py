@@ -130,6 +130,19 @@ def first_of(value: Any) -> Any:
     return value
 
 
+def edm_line_style(value: Any) -> Any:
+    """EDM/Qt pen style -> builder line style ("solid" / "dashed" / "dotted").
+
+    Accepts EDM strings ("solid", "dash") and Qt enum names ("Qt::DashLine").
+    """
+    text = str(value).lower()
+    if "dash" in text:
+        return "dashed"
+    if "dot" in text:
+        return "dotted"
+    return "solid"
+
+
 TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "stripProtocol": strip_protocol,
     "boolToFromPV": bool_to_from_pv,
@@ -139,6 +152,7 @@ TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "qtFrameShadow": qt_frame_shadow,
     "qtScrollPolicy": qt_scroll_policy,
     "firstOf": first_of,
+    "edmLineStyle": edm_line_style,
 }
 
 

@@ -980,7 +980,7 @@ def get_color_by_rgb(colorStr: str) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an 'rgb' key)
                                   or None if not found.
     """
-    color_list: list[str] = colorStr.split(" ")
+    color_list: list[str] = colorStr.split()  # tolerate any run of whitespace between components
     output_dict = {}
     output_dict["rgb"] = [int(s) for s in color_list[1:]]  # get ints from list excluding 'rgb' at index 0
 

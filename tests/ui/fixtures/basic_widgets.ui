@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>p0_min</string>
+   <string>basic_widgets</string>
   </property>
   <widget class="QLabel" name="static_label">
    <property name="geometry">

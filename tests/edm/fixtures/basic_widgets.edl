@@ -60,7 +60,7 @@ controlPv "$(PREFIX):GO"
 pressValue "1"
 endObjectProperties
 
-# (Rectangle - unsupported in P0)
+# (Rectangle)
 object activeRectangleClass
 beginObjectProperties
 major 4

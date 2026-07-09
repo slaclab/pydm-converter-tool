@@ -1,0 +1,52 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+
+# (mmvClass slider, horizontal)
+object mmvClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 460
+h 10
+fgColor index 14
+bgColor index 0
+ctrl1Color index 25
+ctrl1Pv "$(P):M1"
+ctrl2Color index 25
+ctrl2Pv "$(P):M2"
+orientStr "HorizTop"
+orientation 0
+incMultiplier 1
+limitsFromDb
+endObjectProperties
+
+# (Multi-line text entry)
+object multiLineTextEntryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 10
+y 40
+w 300
+h 60
+controlPv "$(P):NOTES"
+fgColour index 25
+bgColour index 0
+font "helvetica-medium-r-12.0"
+endObjectProperties
