@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>screen</class>
+ <widget class="QWidget" name="screen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>newly_supported</string>
+  </property>
+  <widget class="QWidget" name="panel">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>200</width>
+     <height>120</height>
+    </rect>
+   </property>
+   <widget class="PyDMLabel" name="readback">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="channel" stdset="0">
+     <string>ca://${PREFIX}:RBV</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="PyDMShellCommand" name="probe">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>150</y>
+     <width>120</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Probe...</string>
+   </property>
+   <property name="commands" stdset="0">
+    <stringlist>
+     <string>probe ${PREFIX}</string>
+    </stringlist>
+   </property>
+   <property name="showIcon" stdset="0">
+    <bool>false</bool>
+   </property>
+   <property name="alarmSensitiveBorder" stdset="0">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="PyDMWaveformPlot" name="graph">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>10</y>
+     <width>260</width>
+     <height>200</height>
+    </rect>
+   </property>
+   <property name="title" stdset="0">
+    <string>Temps</string>
+   </property>
+   <property name="curves">
+    <stringlist>
+     <string>{"y_channel": "${PREFIX}:TEMP", "color": "#e00000", "lineWidth": 1}</string>
+     <string>not valid json</string>
+    </stringlist>
+   </property>
+   <property name="xLabels">
+    <stringlist>
+     <string>Time</string>
+    </stringlist>
+   </property>
+  </widget>
+ </widget>
+</ui>

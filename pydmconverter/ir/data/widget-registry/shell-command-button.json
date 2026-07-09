@@ -1,0 +1,59 @@
+{
+  "id": "shell-command-button",
+  "version": "1.0.0",
+  "displayName": "Shell Command Button",
+  "description": "A button that runs one or more shell commands when clicked.",
+  "category": "controls",
+  "paletteIcon": "shell-command-button.svg",
+
+  "reactComponent": {
+    "name": "PVShellCommand",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMShellCommand",
+    "extends": "PyDMPushButton",
+    "header": "pydm.widgets.shell_command"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "Shell command to execute on click (first of the widget's commands list)."
+      },
+      "label": { "type": "string" },
+      "showIcon": { "type": "boolean", "default": false },
+      "allowMultipleExecutions": { "type": "boolean", "default": false },
+      "alarmSensitive": { "type": "boolean", "default": false },
+      "alarmBorder": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "commands": { "to": "command", "transform": "firstOf" },
+    "command": { "to": "command" },
+    "text": { "to": "label" },
+    "showIcon": { "to": "showIcon" },
+    "allowMultipleExecutions": { "to": "allowMultipleExecutions" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" },
+    "alarmSensitiveBorder": { "to": "alarmBorder" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Command", "fields": ["command", "allowMultipleExecutions"] },
+      { "name": "Display", "fields": ["label", "showIcon"] },
+      { "name": "Alarm", "fields": ["alarmSensitive", "alarmBorder"] }
+    ]
+  },
+
+  "defaults": { "width": 120, "height": 32 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

@@ -14,6 +14,7 @@ skips any mapped prop whose transformed value is ``DROP``.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Callable
 
@@ -143,6 +144,32 @@ def edm_line_style(value: Any) -> Any:
     return "solid"
 
 
+def parse_json_strings(value: Any) -> Any:
+    """A ``stringlist`` of JSON blobs -> a list of parsed objects.
+
+    PyDM's ``PyDMWaveformPlot`` stores ``curves`` / ``yAxes`` as a Qt stringlist
+    where each entry is a JSON document (one per curve / axis). The ``.ui`` adapter
+    hands those through as a ``list[str]``; this parses each element. Tolerant:
+    an unparseable entry is skipped rather than raising, so one malformed curve
+    does not sink the whole plot. A lone JSON string (not a list) is wrapped.
+    Non-string / already-parsed values pass through unchanged.
+    """
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return value
+    parsed: list[Any] = []
+    for item in value:
+        if not isinstance(item, str):
+            parsed.append(item)
+            continue
+        try:
+            parsed.append(json.loads(item))
+        except (ValueError, TypeError):
+            continue
+    return parsed
+
+
 TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "stripProtocol": strip_protocol,
     "boolToFromPV": bool_to_from_pv,
@@ -153,6 +180,7 @@ TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "qtScrollPolicy": qt_scroll_policy,
     "firstOf": first_of,
     "edmLineStyle": edm_line_style,
+    "parseJsonStrings": parse_json_strings,
 }
 
 

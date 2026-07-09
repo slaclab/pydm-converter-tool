@@ -1,0 +1,62 @@
+{
+  "id": "waveform-plot",
+  "version": "1.0.0",
+  "displayName": "Waveform Plot",
+  "description": "An XY / waveform plot of one or more PV curves.",
+  "category": "charts",
+  "paletteIcon": "waveform-plot.svg",
+
+  "reactComponent": {
+    "name": "PVWaveformPlot",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMWaveformPlot",
+    "extends": "PyDMWaveformPlot",
+    "header": "pydm.widgets.waveformplot"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "curves": {
+        "type": "array",
+        "items": { "type": "object" },
+        "description": "Per-curve config (y_channel, x_channel, color, lineStyle, ...)."
+      },
+      "yAxes": {
+        "type": "array",
+        "items": { "type": "object" },
+        "description": "Per-axis config (name, orientation, label, min/max range, ...)."
+      },
+      "xLabels": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+
+  "qtPropMap": {
+    "title": { "to": "title" },
+    "curves": { "to": "curves", "transform": "parseJsonStrings" },
+    "yAxes": { "to": "yAxes", "transform": "parseJsonStrings" },
+    "xLabels": { "to": "xLabels" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["title"] },
+      { "name": "Curves", "fields": ["curves"] },
+      { "name": "Axes", "fields": ["yAxes", "xLabels"] }
+    ]
+  },
+
+  "defaults": { "width": 400, "height": 300 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": false
+}

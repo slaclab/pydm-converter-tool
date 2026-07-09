@@ -108,3 +108,32 @@ def test_widget_definition_ignores_unknown_fields():
 def test_gateway_registry_is_a_registry_client_but_unimplemented():
     """The Canopy-port backend satisfies the protocol shape but is not wired here."""
     assert isinstance(BeaverGatewayRegistry(), RegistryClient)
+
+
+def test_newly_supported_ui_classes_resolve_by_qt_class():
+    """QWidget / PyDMShellCommand / PyDMWaveformPlot resolve instead of unknown-widget."""
+    reg = VendoredRegistry()
+    expected = {
+        "QWidget": "qwidget-container",
+        "PyDMShellCommand": "shell-command-button",
+        "PyDMWaveformPlot": "waveform-plot",
+    }
+    for qt_class, widget_id in expected.items():
+        definition = reg.by_qt_class(qt_class)
+        assert definition is not None, f"no definition for qt_class {qt_class!r}"
+        assert definition.id == widget_id
+
+
+def test_qwidget_container_supports_children():
+    """A non-root QWidget maps to a container that holds children with absolute geometry."""
+    reg = VendoredRegistry()
+    container = reg.by_qt_class("QWidget")
+    assert container is not None
+    assert container.supports_children is True
+
+
+def test_group_stays_sb_native():
+    """group must remain SB-native (no Qt class) — QWidget uses qwidget-container instead."""
+    reg = VendoredRegistry()
+    assert reg.by_id("group").qt_class is None
+    assert reg.by_qt_class("QWidget").id != "group"

@@ -6,6 +6,7 @@ from pydmconverter.ir.schema import validate_screen_json
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 FIXTURE = Path(__file__).parent / "fixtures" / "basic_widgets.ui"
+NEWLY_SUPPORTED = Path(__file__).parent / "fixtures" / "newly_supported.ui"
 EDM_FIXTURE = Path(__file__).parents[1] / "edm" / "fixtures" / "basic_widgets.edl"
 
 
@@ -95,6 +96,42 @@ def test_cross_input_equivalence_with_edm():
     in tests/edm/test_ir_adapter.py).
     """
     assert _structure(ui_file_to_ir(FIXTURE))[:3] == _structure(edm_file_to_ir(EDM_FIXTURE))[:3]
+
+
+def _all_types(node):
+    yield node.type
+    for child in node.children:
+        yield from _all_types(child)
+
+
+def test_newly_supported_classes_have_no_unknown_widgets():
+    """QWidget panels, shell commands, and waveform plots all resolve now."""
+    screen = ui_file_to_ir(NEWLY_SUPPORTED)
+    assert "unknown-widget" not in set(_all_types(screen.root))
+
+
+def test_qwidget_panel_becomes_container_with_child():
+    screen = ui_file_to_ir(NEWLY_SUPPORTED)
+    panel = next(c for c in screen.root.children if c.type == "qwidget-container")
+    assert [child.type for child in panel.children] == ["pv-label"]
+    assert panel.children[0].props["pv"] == "${PREFIX}:RBV"  # ca:// stripped
+
+
+def test_shell_command_maps_label_and_command():
+    screen = ui_file_to_ir(NEWLY_SUPPORTED)
+    shell = next(c for c in screen.root.children if c.type == "shell-command-button")
+    assert shell.props["label"] == "Probe..."
+    assert shell.props["command"] == "probe ${PREFIX}"  # firstOf the commands stringlist
+    assert shell.props["alarmBorder"] is True
+
+
+def test_waveform_plot_parses_curves_and_skips_malformed():
+    screen = ui_file_to_ir(NEWLY_SUPPORTED)
+    plot = next(c for c in screen.root.children if c.type == "waveform-plot")
+    assert plot.props["title"] == "Temps"
+    # the malformed second curve string is dropped; the valid one parses to an object
+    assert plot.props["curves"] == [{"y_channel": "${PREFIX}:TEMP", "color": "#e00000", "lineWidth": 1}]
+    assert plot.props["xLabels"] == ["Time"]
 
 
 def test_scalar_number_parsing_is_tolerant():
