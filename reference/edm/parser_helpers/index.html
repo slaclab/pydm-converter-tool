@@ -2342,7 +2342,7 @@ arg_list : List[str]
 <span class="sd">        Optional[Dict[str, Any]]: The corresponding color dictionary (expected to have an &#39;rgb&#39; key)</span>
 <span class="sd">                                  or None if not found.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">color_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">colorStr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+    <span class="n">color_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">colorStr</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>  <span class="c1"># tolerate any run of whitespace between components</span>
     <span class="n">output_dict</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">output_dict</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">color_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>  <span class="c1"># get ints from list excluding &#39;rgb&#39; at index 0</span>
 
