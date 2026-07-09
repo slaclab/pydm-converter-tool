@@ -37,7 +37,7 @@ def convert_to_ir(
     """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
-    used to resolve "index N" colour props; when omitted it is located via (in order)
+    used to resolve "index N" color props; when omitted it is located via (in order)
     the ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     suffix = Path(input_path).suffix.lower()
@@ -64,7 +64,7 @@ def convert_bytes(
     this call rather than in every caller.
 
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
-    used to resolve "index N" colour props; when omitted it falls back to the
+    used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     if kind not in ("edl", "ui"):
@@ -98,7 +98,7 @@ def convert_file(
     """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
-    used to resolve "index N" colour props; when omitted it falls back to the
+    used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     inp = Path(input_path)
@@ -121,7 +121,7 @@ def convert_folder(
     Returns ``(files_found, files_failed)``.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
-    used to resolve "index N" colour props; when omitted it falls back to the
+    used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     input_dir = Path(input_dir)

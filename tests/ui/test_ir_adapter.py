@@ -5,8 +5,8 @@ from pydmconverter.ir.emit import to_json, to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
-FIXTURE = Path(__file__).parent / "fixtures" / "p0_min.ui"
-EDM_FIXTURE = Path(__file__).parents[1] / "edm" / "fixtures" / "p0_min.edl"
+FIXTURE = Path(__file__).parent / "fixtures" / "basic_widgets.ui"
+EDM_FIXTURE = Path(__file__).parents[1] / "edm" / "fixtures" / "basic_widgets.edl"
 
 
 def _convert():
@@ -15,8 +15,8 @@ def _convert():
 
 def test_screen_metadata():
     screen = _convert()
-    assert screen.id == "p0_min"
-    assert screen.metadata.title == "p0_min"  # from windowTitle
+    assert screen.id == "basic_widgets"
+    assert screen.metadata.title == "basic_widgets"  # from windowTitle
     assert screen.metadata.source.type == "ui-converter"
     assert (screen.metadata.size.width, screen.metadata.size.height) == (400, 300)
 
@@ -89,10 +89,10 @@ def test_cross_input_equivalence_with_edm():
     """Milestone: the same screen as .edl and .ui yields structurally-equal IR.
 
     Scoped to the first 3 children (label/input/button): the 4th diverges by
-    design — ``p0_min.ui``'s ``PyDMMysteryGauge`` is a fixture-only unknown class
-    (see test_unknown_pydm_class), while ``p0_min.edl``'s activeRectangleClass
-    graduated to a supported "rectangle" node in the EDM graphics phase (see
-    test_rectangle_maps_with_line_colour in tests/edm/test_ir_adapter.py).
+    design — ``basic_widgets.ui``'s ``PyDMMysteryGauge`` is a fixture-only unknown class
+    (see test_unknown_pydm_class), while ``basic_widgets.edl``'s activeRectangleClass
+    maps to a supported "rectangle" node (see test_rectangle_maps_with_line_color
+    in tests/edm/test_ir_adapter.py).
     """
     assert _structure(ui_file_to_ir(FIXTURE))[:3] == _structure(edm_file_to_ir(EDM_FIXTURE))[:3]
 

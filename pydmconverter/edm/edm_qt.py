@@ -1,4 +1,4 @@
-"""EDM -> Qt class and prop name maps for the IR adapter (P0 widgets).
+"""EDM -> Qt class and prop name maps for the IR adapter.
 
 The shared IR builder resolves widgets and props by Qt vocabulary (the keys
 Beaver's ``qtMapping``/``qtPropMap`` use). The EDM front-end therefore translates
@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
-# EDM class (lowercased) -> Qt class the registry knows. P0 subset; everything
-# else falls through to an unknown-widget node (D11).
+# EDM class (lowercased) -> Qt class the registry knows; everything
+# else falls through to an unknown-widget node.
 EDM_TO_QT_CLASS: dict[str, str] = {
     "activextextclass": "PyDMLabel",  # split to QLabel (text-label) when static, see resolve_qt_class
     "textupdateclass": "PyDMLabel",
@@ -31,10 +31,10 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "activetriumfsliderclass": "PyDMSlider",
     "activechoicebuttonclass": "PyDMEnumComboBox",
     "activepipclass": "PyDMEmbeddedDisplay",
-    # P1
+    # byte indicator / related display
     "byteclass": "PyDMByteIndicator",
     "relateddisplayclass": "PyDMRelatedDisplayButton",
-    # Phase 1: graphics
+    # graphics
     "activerectangleclass": "PyDMDrawingRectangle",
     "activecircleclass": "PyDMDrawingEllipse",
     "activelineclass": "PyDMDrawingPolyline",
@@ -42,7 +42,7 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "activebarclass": "PyDMScaleIndicator",
     "activeslacbarclass": "PyDMScaleIndicator",
     "activevsbarclass": "PyDMScaleIndicator",
-    # Phase 2: text / buttons / indicators
+    # text / buttons / indicators
     "activextextdspclassnoedit": "PyDMLabel",  # the parser strips the colon from activeXTextDspClass:noedit
     "shellcmdclass": "QPushButton",
     "activeexitbuttonclass": "QPushButton",
@@ -71,7 +71,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "pv": "channel",
     "filePv": "channel",
     "nullPv": "channel",
-    "ctrl1Pv": "channel",  # mmvClass (Phase 2)
+    "ctrl1Pv": "channel",  # mmvClass
     # text / labels (Beaver maps "text" -> text/label per widget)
     "value": "text",
     "label": "text",
@@ -80,7 +80,7 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "precision": "precision",
     "showUnits": "showUnits",
     "displayFormat": "displayFormat",
-    "format": "displayFormat",  # activeXTextDspClass(:noedit) EDM format string (Phase 2)
+    "format": "displayFormat",  # activeXTextDspClass(:noedit) EDM format string
     # alarm sensitivity
     "fgAlarm": "alarmSensitiveContent",
     "alarmSensitiveContent": "alarmSensitiveContent",
@@ -98,19 +98,20 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "fileName": "filename",
     "symbols": "macros",
     "macro": "macros",
-    # related display (P1): a list of target files -> "filenames" (firstOf -> file)
+    # related display: a list of target files -> "filenames" (firstOf -> file)
     "displayFileName": "filenames",
-    # byte indicator (P1)
+    # byte indicator
     "numBits": "numBits",
     "shift": "shift",
     # alignment
     "fontAlign": "alignment",
-    # colours (resolved to hex by the adapter)
+    # colors (resolved to hex by the adapter)
     "fgColor": "foregroundColor",
     "bgColor": "backgroundColor",
-    "fgColour": "foregroundColor",  # British spelling (multiLineTextEntryClass, mmvClass et al.)
+    # British-spelled EDM keys emitted by some classes (multiLineTextEntryClass, mmvClass et al.)
+    "fgColour": "foregroundColor",
     "bgColour": "backgroundColor",
-    # drawing (Phase 1)
+    # drawing
     "lineColor": "penColor",
     "fillColor": "brushColor",
     "lineWidth": "penWidth",

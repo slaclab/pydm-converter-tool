@@ -4,7 +4,7 @@ from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.ir.emit import to_json, to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 
-FIXTURE = Path(__file__).parent / "fixtures" / "p0_min.edl"
+FIXTURE = Path(__file__).parent / "fixtures" / "basic_widgets.edl"
 
 
 def _convert():
@@ -13,13 +13,13 @@ def _convert():
 
 def test_screen_metadata():
     screen = _convert()
-    assert screen.id == "p0_min"
+    assert screen.id == "basic_widgets"
     assert screen.metadata.source.type == "edl-converter"
     assert (screen.metadata.size.width, screen.metadata.size.height) == (400, 300)
     assert screen.root.type == "absolute-canvas"
 
 
-def test_p0_widget_types_in_order():
+def test_widget_types_in_order():
     children = _convert().root.children
     assert [c.type for c in children] == ["text-label", "pv-text-input", "pv-button", "rectangle"]
 
@@ -49,8 +49,8 @@ def test_button_maps_label_and_press_value():
     assert button.props["pressValue"] == "1"
 
 
-def test_rectangle_maps_with_line_colour():
-    """p0_min's rect has only ``lineColor rgb 0 0 0`` (Rectangle graduated in Phase 1)."""
+def test_rectangle_maps_with_line_color():
+    """basic_widgets's rect has only ``lineColor rgb 0 0 0`` (Rectangle is a supported graphics class)."""
     rectangle = _convert().root.children[3]
     assert rectangle.type == "rectangle"
     assert rectangle.props == {"lineColor": "#000000"}

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>p1</class>
- <widget class="QWidget" name="p1">
+ <class>byte_and_related</class>
+ <widget class="QWidget" name="byte_and_related">
   <property name="geometry">
    <rect><x>0</x><y>0</y><width>320</width><height>220</height></rect>
   </property>
-  <property name="windowTitle"><string>p1</string></property>
+  <property name="windowTitle"><string>byte_and_related</string></property>
   <widget class="PyDMByteIndicator" name="byte">
    <property name="geometry"><rect><x>10</x><y>10</y><width>100</width><height>20</height></rect></property>
    <property name="channel" stdset="0"><string>ca://${P}:BITS</string></property>

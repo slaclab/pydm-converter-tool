@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0",
   "kind": "screen",
-  "id": "combined_phase12",
+  "id": "integration_combined",
   "metadata": {
-    "title": "combined_phase12",
+    "title": "integration_combined",
     "source": {
       "type": "edl-converter"
     },

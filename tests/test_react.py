@@ -5,8 +5,8 @@ import pytest
 
 from pydmconverter import react
 
-EDM_FIXTURE = Path(__file__).parent / "edm" / "fixtures" / "p0_min.edl"
-UI_FIXTURE = Path(__file__).parent / "ui" / "fixtures" / "p0_min.ui"
+EDM_FIXTURE = Path(__file__).parent / "edm" / "fixtures" / "basic_widgets.edl"
+UI_FIXTURE = Path(__file__).parent / "ui" / "fixtures" / "basic_widgets.ui"
 
 
 def test_convert_to_ir_dispatches_by_suffix():

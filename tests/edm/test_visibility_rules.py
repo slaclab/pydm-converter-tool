@@ -4,7 +4,7 @@ from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 
-FIXTURE = Path(__file__).parent / "fixtures" / "p0_vis.edl"
+FIXTURE = Path(__file__).parent / "fixtures" / "visibility.edl"
 
 
 def _convert():
@@ -50,5 +50,5 @@ def test_output_validates():
 def test_widgets_without_visibility_have_no_rules():
     from pathlib import Path as _Path
 
-    plain = edm_file_to_ir(_Path(__file__).parent / "fixtures" / "p0_min.edl")
+    plain = edm_file_to_ir(_Path(__file__).parent / "fixtures" / "basic_widgets.edl")
     assert all(not child.rules for child in plain.root.children)

@@ -6,18 +6,17 @@ the parser), then normalizes each EDM object into the Qt vocabulary the shared
 ``group`` widget nodes (registry-resolved, no Qt analog); their children keep
 absolute screen coordinates, matching the Screen IR geometry contract.
 
-Scope (Phase 1): P0 widgets plus graphics classes, structural conversion. Rules
-(visPv) are handled; colours are resolved to static hex; calc/Fox formulas and
-dynamic colour (colorPv/bgAlarm) are deferred to later phases.
-
-Scope (Phase 2): text/button/indicator classes — activeXTextDspClass:noedit,
+Covers structural conversion plus graphics classes (rectangle/ellipse/line/arc,
+bars) and the text/button/indicator classes — activeXTextDspClass:noedit,
 shellCmdClass, activeExitButtonClass, activePngClass, activeMeterClass,
 activeIndicatorClass, activeRadioButtonClass, activeFreezeButtonClass,
 activeRampButtonClass, activeUpdownButtonClass, mmvClass, and
-multiLineTextEntryClass. Several of these carry EDM semantics with no Qt/web
-analog (freeze/ramp/updown increment behaviour, shell command execution); those
-are surfaced as node warnings rather than silently dropped (D11). menuMuxClass
-is deliberately unmapped (macro-muxing needs a design) and falls through to
+multiLineTextEntryClass. Rules (visPv) are handled and colors are resolved to
+static hex; calc/Fox formulas and dynamic color (colorPv/bgAlarm) are not yet
+translated. Several classes carry EDM semantics with no Qt/web analog
+(freeze/ramp/updown increment behaviour, shell command execution); those are
+surfaced as node warnings rather than silently dropped. menuMuxClass is
+deliberately unmapped (macro-muxing needs a design) and falls through to
 unknown-widget.
 """
 
@@ -58,9 +57,9 @@ _TEXT_PROPS = {"text"}
 # numerics, so they pass through as the original string rather than being coerced.
 _NUMERIC_PROPS = {"precision", "userMinimum", "userMaximum", "numBits", "shift", "penWidth", "startAngle", "spanAngle"}
 _BOOL_PROPS = {"showUnits", "alarmSensitiveContent", "alarmSensitiveBorder", "showValueLabel", "brushFill"}
-# Qt props holding an EDM colour value ("index N" / "rgb r g b") that must be
+# Qt props holding an EDM color value ("index N" / "rgb r g b") that must be
 # resolved to "#rrggbb" hex before the builder sees them. penColor/brushColor are
-# consumed by the Phase 1 drawing widget defs (rectangle/ellipse/line/arc).
+# consumed by the drawing widget defs (rectangle/ellipse/line/arc).
 _COLOR_PROPS = {"penColor", "brushColor", "foregroundColor", "backgroundColor"}
 # displayFormat carries pv-label's "format" enum value; EDM's format strings must
 # be normalized to the registry's vocabulary (decimal/hex/string/exponential/default).
@@ -140,13 +139,14 @@ def _coerce(qt_prop: str, value: Any) -> Any:
 
 
 def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | None:
-    """Resolve an EDM colour value ("index 14" / "rgb 65535 0 0") to "#rrggbb", or None.
+    """Resolve an EDM color value ("index 14" / "rgb 65535 0 0") to "#rrggbb", or None.
 
     ``color_data`` is the parsed ``colors.list`` palette (see :func:`parse_colors_list`);
     it may be ``None``/empty when no palette was found, in which case an "index N" value
-    cannot be resolved. Blinking colours carry six components (two RGB states); only the
-    first state is used. Scaling matches :func:`parser_helpers.convert_color_property_to_qcolor`:
-    components are 16-bit when any exceeds 256, scaled by ``255/(max_val - 1)``.
+    cannot be resolved. Blinking colors carry six components (two RGB states); only the
+    first state is used. Components are treated as 16-bit when any reaches 256 (the
+    smallest value that cannot be an 8-bit intensity), scaled by ``255/(max_val - 1)``;
+    values below 256 are already 8-bit and pass through unscaled.
     Returns ``None`` on any failure — callers drop the prop rather than emit a default.
     """
     if not isinstance(value, str) or not value:
@@ -170,8 +170,9 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
         return None
     red, green, blue = rgb[:3]
 
-    if max(red, green, blue) > 256:
-        # Components above 256 are 16-bit; without a palette-declared max,
+    if max(red, green, blue) >= 256:
+        # 256 is the smallest value that cannot be an 8-bit intensity, so any
+        # component at or above it is 16-bit; without a palette-declared max,
         # assume the EDM-native 0x10000 rather than clamping everything to 255.
         max_val = (color_data or {}).get("max") or 65536
         scale = 255 / (max_val - 1)
@@ -183,7 +184,7 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
 
 
 # Per-class fixup: keyed by lowercased EDM class name. Runs after the generic
-# prop loop (and colour/dynamic-flag handling) in ``_object_to_source``. May
+# prop loop (and color/dynamic-flag handling) in ``_object_to_source``. May
 # mutate ``qt_props``/``warnings`` in place and may return a geometry override
 # (bbox derived from raw properties) to replace the object's header geometry.
 _CLASS_FIXUPS: dict[str, Callable[[EDMObject, dict[str, Any], list[str]], Geometry | None]] = {}
@@ -205,7 +206,7 @@ def _apply_shared_drawing_fixup(obj: EDMObject, qt_props: dict[str, Any], warnin
     alarm_flags = [flag for flag in ("lineAlarm", "fillAlarm") if obj.properties.get(flag)]
     if alarm_flags:
         flags = ", ".join(alarm_flags)
-        warnings.append(f"EDM alarm-driven colours ({flags}) are not supported; static colours emitted")
+        warnings.append(f"EDM alarm-driven colors ({flags}) are not supported; static colors emitted")
 
 
 def _parse_line_points(obj: EDMObject) -> list[tuple[float, float]] | None:
@@ -402,7 +403,7 @@ _CLASS_FIXUPS.update(
         "activebarclass": _fixup_bar,
         "activeslacbarclass": _fixup_bar,
         "activevsbarclass": _fixup_bar,
-        # Phase 2: text / buttons / indicators
+        # text / buttons / indicators
         "shellcmdclass": _fixup_shell_cmd,
         "activeexitbuttonclass": _fixup_exit_button,
         "activefreezebuttonclass": _fixup_freeze_button,
@@ -435,14 +436,14 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
                     continue
                 hex_color = edm_color_to_hex(value, colors)
                 if hex_color is None:
-                    warnings.append(f"EDM colour '{value}' for {edm_attr} could not be resolved; prop dropped")
+                    warnings.append(f"EDM color '{value}' for {edm_attr} could not be resolved; prop dropped")
                     continue
                 qt_props[qt_prop] = hex_color
                 continue
             qt_props[qt_prop] = _coerce(qt_prop, value)
         for flag in ("colorPv", "bgAlarm"):
             if obj.properties.get(flag):
-                warnings.append(f"EDM dynamic colour ({flag}) is not supported; static colours emitted")
+                warnings.append(f"EDM dynamic color ({flag}) is not supported; static colors emitted")
         fixup = _CLASS_FIXUPS.get(obj.name.lower())
         if fixup is not None:
             override = fixup(obj, qt_props, warnings)
@@ -515,7 +516,7 @@ def edm_group_to_source_nodes(group: EDMGroup, *, colors: dict[str, Any] | None 
     itself and hides the whole subtree — no inheritance onto individual descendants.
 
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
-    to resolve "index N" colour props to hex.
+    to resolve "index N" color props to hex.
     """
     nodes: list[SourceNode] = []
     for obj in group.objects:
@@ -548,11 +549,11 @@ def edm_file_to_ir(
     """Parse an ``.edl`` file and build its Screen IR.
 
     ``color_list_path`` points at an EDM ``colors.list`` palette used to resolve
-    "index N" colour props. When omitted, the palette is located via (in order) the
+    "index N" color props. When omitted, the palette is located via (in order) the
     ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``;
     an explicit ``color_list_path`` wins over all of those. If no palette is found,
-    "index N" colours cannot be resolved and are dropped with a node warning ("rgb ..."
-    colours resolve without a palette).
+    "index N" colors cannot be resolved and are dropped with a node warning ("rgb ..."
+    colors resolve without a palette).
     """
     path = Path(input_path)
     parser = EDMFileParser(str(path), str(path.with_suffix(".ui")))

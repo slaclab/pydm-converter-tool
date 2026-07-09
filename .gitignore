@@ -124,6 +124,6 @@ ENV/
 !pydmconverter/ir/data/*.json
 !pydmconverter/ir/data/widget-registry/*.json
 
-# Phase 1 + 2 EDM->IR combined integration snapshot (committed regression fixture;
+# EDM->IR combined integration snapshot (committed regression fixture;
 # see tests/edm/test_integration_combined.py for how to regenerate it deliberately)
-!tests/edm/fixtures/combined_phase12.screen.json
+!tests/edm/fixtures/integration_combined.screen.json

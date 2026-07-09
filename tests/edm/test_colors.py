@@ -11,7 +11,7 @@ from pydmconverter.react import convert_to_ir
 
 FIXTURES = Path(__file__).parent / "fixtures"
 COLORS_FIXTURE = FIXTURES / "colors.list"
-COLORS_FILE = FIXTURES / "p0_colors.edl"
+COLORS_FILE = FIXTURES / "colors.edl"
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def test_index_resolves_to_hex(colors):
 
 
 def test_blinking_index_uses_first_state(colors):
-    """A blinking static colour carries six components (two RGB states); only the first is used."""
+    """A blinking static color carries six components (two RGB states); only the first is used."""
     assert edm_color_to_hex("index 33", colors) == "#ff0000"
 
 
@@ -45,6 +45,17 @@ def test_rgb_8bit_is_unscaled(colors):
     assert edm_color_to_hex("rgb 128 128 128", colors) == "#808080"
 
 
+def test_rgb_256_is_scaled_as_16bit(colors):
+    """256 is the smallest value that cannot be an 8-bit intensity, so it scales
+    down as a 16-bit component (near-zero) rather than passing through as-is."""
+    assert edm_color_to_hex("rgb 256 0 0", colors) == "#000000"
+
+
+def test_rgb_tolerates_extra_whitespace(colors):
+    """Multiple/irregular spaces between components still resolve (split on any run)."""
+    assert edm_color_to_hex("rgb  65535   0 0", colors) == "#ff0000"
+
+
 @pytest.mark.parametrize("value", ["banana", "", None])
 def test_garbage_values_are_none(colors, value):
     assert edm_color_to_hex(value, colors) is None
@@ -58,7 +69,7 @@ def _by_type_list(color_list_path=COLORS_FIXTURE):
     return ir.root.children
 
 
-def test_resolved_static_colours():
+def test_resolved_static_colors():
     widget = _by_type_list()[0]
     assert widget.type == "text-label"
     assert widget.props["foregroundColor"] == "#0000ff"
@@ -71,22 +82,22 @@ def test_use_display_bg_skips_background():
     assert "backgroundColor" not in widget.props
 
 
-def test_unresolvable_colour_drops_prop_with_warning():
+def test_unresolvable_color_drops_prop_with_warning():
     widget = _by_type_list()[2]
     assert "foregroundColor" not in widget.props
     assert any("index 9999" in warning for warning in widget.warnings)
 
 
-def test_dynamic_colour_flag_warns_and_prop_map_drops_colour():
+def test_dynamic_color_flag_warns_and_prop_map_drops_color():
     """pv-text-input's qtPropMap has no foregroundColor entry, so the resolved
-    rgb colour is silently dropped by the allowlist; the colorPv flag still warns."""
+    rgb color is silently dropped by the allowlist; the colorPv flag still warns."""
     widget = _by_type_list()[3]
     assert widget.type == "pv-text-input"
     assert "foregroundColor" not in widget.props
-    assert any("dynamic colour" in warning for warning in widget.warnings)
+    assert any("dynamic color" in warning for warning in widget.warnings)
 
 
-def test_p0_colors_screen_validates():
+def test_colors_screen_validates():
     ir = convert_to_ir(COLORS_FILE, color_list_path=str(COLORS_FIXTURE))
     assert validate_screen_json(to_wire_dict(ir)) == []
 
@@ -94,8 +105,8 @@ def test_p0_colors_screen_validates():
 # --- injection mechanism ----------------------------------------------------------
 
 
-def test_no_param_no_env_no_default_drops_index_colour(monkeypatch):
-    """With no palette resolvable at all, an "index N" colour cannot be resolved."""
+def test_no_param_no_env_no_default_drops_index_color(monkeypatch):
+    """With no palette resolvable at all, an "index N" color cannot be resolved."""
     monkeypatch.setattr(ir_adapter, "search_color_list", lambda cli_color_file=None: None)
     ir = convert_to_ir(COLORS_FILE)
     widget = ir.root.children[0]

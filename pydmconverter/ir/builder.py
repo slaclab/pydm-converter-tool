@@ -10,9 +10,8 @@ It is source-agnostic: it knows registry ids, ``qtPropMap``, transforms, geometr
 ids, and z-order — nothing about EDM or Qt XML. Both the EDM and ``.ui`` front-ends
 build into the same IR through it.
 
-Scope (Phase 1): structural conversion — type, props, absolute geometry, children
-order (D14), unknown-widget fallback (D11), screen metadata, and macro collection.
-Rules, calc/Fox formulas, and dynamic colour are later phases.
+Handles structural conversion — type, props, absolute geometry, children order,
+unknown-widget fallback, screen metadata, and macro collection.
 """
 
 from __future__ import annotations

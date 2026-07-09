@@ -5,7 +5,7 @@ from pydmconverter.ir.registry import (
     WidgetDefinition,
 )
 
-P0_IDS = {
+BASE_WIDGET_IDS = {
     "absolute-canvas",
     "embedded-display",
     "pv-label",
@@ -21,10 +21,10 @@ def test_vendored_registry_is_a_registry_client():
     assert isinstance(VendoredRegistry(), RegistryClient)
 
 
-def test_p0_widgets_present():
-    """All 8 P0 widget ids resolve in the vendored snapshot."""
+def test_base_widgets_present():
+    """All 8 base widget ids resolve in the vendored snapshot."""
     reg = VendoredRegistry()
-    assert P0_IDS.issubset(set(reg.widget_ids))
+    assert BASE_WIDGET_IDS.issubset(set(reg.widget_ids))
 
 
 def test_by_qt_class_resolves_pydm_classes():

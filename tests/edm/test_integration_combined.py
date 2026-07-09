@@ -1,16 +1,16 @@
-"""Phase 1 + Phase 2 combined integration snapshot.
+"""Combined integration snapshot covering graphics + control widget classes.
 
-To regenerate ``combined_phase12.screen.json`` deliberately (e.g. after an
+To regenerate ``integration_combined.screen.json`` deliberately (e.g. after an
 intentional IR/prop-mapping change), run from the repo root:
 
-    .venv/Scripts/python.exe -c "
+    python -c "
     from pydmconverter.edm.ir_adapter import edm_file_to_ir
     from pydmconverter.ir.emit import to_json
     ir = edm_file_to_ir(
-        'tests/edm/fixtures/combined_phase12.edl',
+        'tests/edm/fixtures/integration_combined.edl',
         color_list_path='tests/edm/fixtures/colors.list',
     )
-    with open('tests/edm/fixtures/combined_phase12.screen.json', 'w', encoding='utf-8', newline='') as f:
+    with open('tests/edm/fixtures/integration_combined.screen.json', 'w', encoding='utf-8', newline='') as f:
         f.write(to_json(ir))
     "
 
@@ -27,8 +27,8 @@ from pydmconverter.ir.schema import validate_screen_json
 
 FIXTURES = Path(__file__).parent / "fixtures"
 COLORS = FIXTURES / "colors.list"
-FIXTURE = FIXTURES / "combined_phase12.edl"
-SNAPSHOT = FIXTURES / "combined_phase12.screen.json"
+FIXTURE = FIXTURES / "integration_combined.edl"
+SNAPSHOT = FIXTURES / "integration_combined.screen.json"
 
 
 def _convert():
