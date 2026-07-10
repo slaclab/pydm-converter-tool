@@ -1,0 +1,44 @@
+{
+  "id": "qwidget-container",
+  "version": "1.0.0",
+  "displayName": "Container",
+  "description": "A plain Qt QWidget used as a container/panel. Holds absolute-positioned children with no visible chrome. Maps from a non-root QWidget in a .ui file (the root form is consumed as the screen, not a child).",
+  "category": "containers",
+  "paletteIcon": "group.svg",
+
+  "reactComponent": {
+    "name": "Group",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "QWidget",
+    "extends": "QWidget"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+      "layoutMode": {
+        "type": "string",
+        "enum": ["absolute", "flex", "grid"],
+        "default": "absolute"
+      }
+    }
+  },
+
+  "qtPropMap": {},
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "Display", "fields": ["layoutMode"] }
+    ]
+  },
+
+  "defaults": { "width": 200, "height": 150 },
+
+  "supportsPv": false,
+  "supportsRules": true,
+  "supportsChildren": true
+}

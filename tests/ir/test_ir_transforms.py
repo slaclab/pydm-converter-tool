@@ -73,6 +73,18 @@ def test_edm_line_style():
     assert apply_transform("edmLineStyle", "anything") == "solid"
 
 
+def test_parse_json_strings():
+    # a stringlist of JSON blobs -> list of parsed objects
+    assert apply_transform("parseJsonStrings", ['{"a": 1}', '{"b": 2}']) == [{"a": 1}, {"b": 2}]
+    # a malformed entry is skipped, not fatal
+    assert apply_transform("parseJsonStrings", ['{"a": 1}', "not json"]) == [{"a": 1}]
+    # a lone JSON string is wrapped into a one-element list
+    assert apply_transform("parseJsonStrings", '{"a": 1}') == [{"a": 1}]
+    # empty list stays empty; non-list passes through
+    assert apply_transform("parseJsonStrings", []) == []
+    assert apply_transform("parseJsonStrings", 5) == 5
+
+
 def test_unknown_transform_raises():
     with pytest.raises(KeyError):
         apply_transform("notARealTransform", "x")
