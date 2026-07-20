@@ -31,7 +31,11 @@
       },
       "iconOnly": { "type": "boolean", "default": false },
       "pressValue": { "type": ["number", "string"] },
-      "releaseValue": { "type": ["number", "string"] }
+      "releaseValue": { "type": ["number", "string"] },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
+      }
     }
   },
 
@@ -39,7 +43,8 @@
     "channel": { "to": "pv", "transform": "stripProtocol" },
     "pressValue": { "to": "pressValue" },
     "releaseValue": { "to": "releaseValue" },
-    "text": { "to": "label" }
+    "text": { "to": "label" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {

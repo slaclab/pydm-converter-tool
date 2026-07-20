@@ -29,7 +29,11 @@
       "showIcon": { "type": "boolean", "default": false },
       "allowMultipleExecutions": { "type": "boolean", "default": false },
       "alarmSensitive": { "type": "boolean", "default": false },
-      "alarmBorder": { "type": "boolean", "default": false }
+      "alarmBorder": { "type": "boolean", "default": false },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
+      }
     }
   },
 
@@ -40,7 +44,8 @@
     "showIcon": { "to": "showIcon" },
     "allowMultipleExecutions": { "to": "allowMultipleExecutions" },
     "alarmSensitiveContent": { "to": "alarmSensitive" },
-    "alarmSensitiveBorder": { "to": "alarmBorder" }
+    "alarmSensitiveBorder": { "to": "alarmBorder" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {

@@ -20,13 +20,18 @@
   "propSchema": {
     "$schema": "https://json-schema.org/draft-07/schema",
     "type": "object",
-    "required": ["pv"],
+    "required": [],
     "properties": {
       "pv": {
         "type": "string",
         "title": "PV Channel",
         "description": "EPICS PV name (supports ${MACRO} substitution)",
         "format": "pv-channel"
+      },
+      "text": {
+        "type": "string",
+        "title": "Static Text",
+        "description": "Static fallback text shown when no PV is bound (channel-less PyDMLabel)."
       },
       "precision": {
         "oneOf": [
@@ -44,12 +49,22 @@
         "default": "default"
       },
       "foregroundColor": { "type": "string" },
-      "backgroundColor": { "type": "string" }
+      "backgroundColor": { "type": "string" },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
+      },
+      "align": {
+        "type": "string",
+        "enum": ["left", "center", "right"],
+        "default": "left"
+      }
     }
   },
 
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
+    "text": { "to": "text" },
     "precisionFromPV": { "to": "precision", "transform": "boolToFromPV" },
     "precision": { "to": "precision" },
     "showUnits": { "to": "showUnits" },
@@ -57,7 +72,9 @@
     "alarmSensitiveBorder": { "to": "alarmBorder" },
     "displayFormat": { "to": "format" },
     "foregroundColor": { "to": "foregroundColor" },
-    "backgroundColor": { "to": "backgroundColor" }
+    "backgroundColor": { "to": "backgroundColor" },
+    "fontSize": { "to": "fontSize" },
+    "alignment": { "to": "align", "transform": "qtAlignment" }
   },
 
   "inspectorSchema": {

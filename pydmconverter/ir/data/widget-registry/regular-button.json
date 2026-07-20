@@ -39,13 +39,18 @@
           "additionalProperties": true
         },
         "description": "Converter-carried action list (e.g. shell_command, close_display); the Screen Builder lifts these into widget actions."
+      },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
       }
     }
   },
 
   "qtPropMap": {
     "text": { "to": "label" },
-    "actions": { "to": "actions" }
+    "actions": { "to": "actions" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {

@@ -24,13 +24,15 @@
     "properties": {
       "pv": { "type": "string", "format": "pv-channel" },
       "searchable": { "type": "boolean", "default": false },
-      "alarmSensitive": { "type": "boolean", "default": false }
+      "alarmSensitive": { "type": "boolean", "default": false },
+      "fontSize": { "type": "number", "title": "Font Size (px)" }
     }
   },
 
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
-    "alarmSensitiveContent": { "to": "alarmSensitive" }
+    "alarmSensitiveContent": { "to": "alarmSensitive" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {

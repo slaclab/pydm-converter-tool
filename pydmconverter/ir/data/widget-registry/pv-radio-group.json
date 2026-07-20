@@ -28,13 +28,18 @@
         "enum": ["horizontal", "vertical"],
         "default": "vertical"
       },
-      "alarmSensitive": { "type": "boolean", "default": false }
+      "alarmSensitive": { "type": "boolean", "default": false },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
+      }
     }
   },
 
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
-    "orientation": { "to": "orientation", "transform": "qtOrientation" }
+    "orientation": { "to": "orientation", "transform": "qtOrientation" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {

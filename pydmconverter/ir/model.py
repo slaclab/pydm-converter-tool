@@ -36,9 +36,10 @@ SchemaVersion = Literal["1.0"]
 ScreenKind = Literal["screen", "template"]
 FormulaKind = Literal["scalar", "timeseries", "waveform"]
 
-# Macro names: uppercase letters/digits/underscores, must start with a letter
-# (Canopy macros design M2). ``${VAR}`` references resolve frontend-side.
-MACRO_NAME_PATTERN = r"^[A-Z][A-Z0-9_]*$"
+# Matches the published @slaclab/canopy-screen-ir contract: accepts lowercase/
+# mixed-case macros (${dev}, ${signal}) that PyDM/EDM sources author, rather than
+# rejecting them here and stranding their PVs.
+MACRO_NAME_PATTERN = r"^[A-Za-z][A-Za-z0-9_]*$"
 
 
 class Geometry(IRModel):

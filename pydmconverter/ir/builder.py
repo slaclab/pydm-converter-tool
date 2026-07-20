@@ -68,12 +68,23 @@ class IRBuilder:
         (default ``""``), so the screen is self-consistent (macros design M2/M9).
         """
         width, height = size
+        # Allocate the root id before children so the canvas stays w-001.
+        root_id = self.ids.widget()
+        children = [self._build_node(node) for node in top_level]
+        # PyDM windows auto-grow/scroll, so children can extend past the root
+        # rect; expand the canvas to encompass them rather than clip.
+        MARGIN = 8
+        max_x, max_y = self._content_extent(children)
+        if max_x + MARGIN > width:
+            width = max_x + MARGIN
+        if max_y + MARGIN > height:
+            height = max_y + MARGIN
         root = WidgetNode(
-            id=self.ids.widget(),
+            id=root_id,
             type=self.root_type,
             props={"width": width, "height": height},
             geometry=Geometry(x=0, y=0, width=width, height=height),
-            children=[self._build_node(node) for node in top_level],
+            children=children,
         )
         declared = macros if macros is not None else self._collect_macros(root)
         return ScreenIR(
@@ -164,6 +175,24 @@ class IRBuilder:
                 )
             )
         return rules
+
+    @staticmethod
+    def _content_extent(nodes: list[WidgetNode]) -> tuple[Number, Number]:
+        """Max (x+width, y+height) over a node tree, ignoring zero-size nodes."""
+        max_x = max_y = 0
+
+        def visit(node: WidgetNode) -> None:
+            nonlocal max_x, max_y
+            g = node.geometry
+            if g.width and g.height:
+                max_x = max(max_x, g.x + g.width)
+                max_y = max(max_y, g.y + g.height)
+            for child in node.children:
+                visit(child)
+
+        for n in nodes:
+            visit(n)
+        return max_x, max_y
 
     @staticmethod
     def _geometry(geom: tuple[Number, Number, Number, Number]) -> Geometry:

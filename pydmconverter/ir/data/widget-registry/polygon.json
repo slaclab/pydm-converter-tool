@@ -1,19 +1,19 @@
 {
-  "id": "line",
+  "id": "polygon",
   "version": "1.0.0",
-  "displayName": "Line",
-  "description": "Polyline with optional arrowheads. Vertices are relative to the widget's top-left corner.",
+  "displayName": "Polygon",
+  "description": "Closed polygon from a list of vertices. Vertices are relative to the widget's top-left corner.",
   "category": "drawing",
-  "paletteIcon": "line.svg",
+  "paletteIcon": "polygon.svg",
 
   "reactComponent": {
-    "name": "Line",
+    "name": "Polygon",
     "module": "@canopy/widgets"
   },
 
   "qtMapping": {
-    "class": "PyDMDrawingPolyline",
-    "extends": "QWidget",
+    "class": "PyDMDrawingIrregularPolygon",
+    "extends": "PyDMDrawingPolyline",
     "header": "pydm.widgets.drawing"
   },
 
@@ -41,9 +41,13 @@
         },
         "description": "Vertices relative to the widget's top-left corner."
       },
-      "arrowStart": { "type": "boolean", "default": false },
-      "arrowEnd": { "type": "boolean", "default": false },
-      "arrowSize": { "type": "number", "minimum": 1, "default": 10 },
+      "closed": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the outline is closed (polygon) or left open (polyline)."
+      },
+      "fill": { "type": "boolean", "default": false },
+      "fillColor": { "type": "string" },
       "opacity": {
         "type": "number",
         "minimum": 0,
@@ -59,18 +63,18 @@
     "penWidth": { "to": "lineWidth" },
     "penStyle": { "to": "lineStyle", "transform": "edmLineStyle" },
     "points": { "to": "points", "transform": "parsePoints" },
-    "arrowStartPoint": { "to": "arrowStart" },
-    "arrowEndPoint": { "to": "arrowEnd" },
+    "brushFill": { "to": "fill" },
+    "brushColor": { "to": "fillColor" },
     "opacity": { "to": "opacity" }
   },
 
   "inspectorSchema": {
     "groups": [
-      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "lineStyle", "arrowStart", "arrowEnd", "arrowSize", "opacity"] }
+      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "lineStyle", "fill", "fillColor", "opacity"] }
     ]
   },
 
-  "defaults": { "width": 200, "height": 100 },
+  "defaults": { "width": 100, "height": 100 },
 
   "supportsPv": false,
   "supportsRules": true,

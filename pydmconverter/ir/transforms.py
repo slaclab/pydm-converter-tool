@@ -131,6 +131,32 @@ def first_of(value: Any) -> Any:
     return value
 
 
+def screen_ref(value: Any) -> Any:
+    """A PyDM screen reference (``filename``/``filenames``) -> the converted
+    ``.screen.json`` artifact.
+
+    Rewrites only the extension, preserving the directory: subdirs share
+    basenames (``Collimator/Widget`` vs ``Heater/Widget``), so a basename-only
+    ref would collide. Takes the first of a ``filenames`` stringlist; leaves
+    already-``.screen.json`` and macro-only/empty refs alone.
+    """
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else DROP
+    if value is DROP or not isinstance(value, str) or not value.strip():
+        return DROP if value is DROP else value
+    ref = value.strip().replace("\\", "/")
+    if ref.endswith(".screen.json"):
+        return ref
+    for ext in (".ui", ".edl"):
+        if ref.endswith(ext):
+            return ref[: -len(ext)] + ".screen.json"
+    # Extensionless targets get the extension appended; macro refs can't be
+    # rewritten, so leave them.
+    if "${" in ref or "$(" in ref:
+        return ref
+    return ref + ".screen.json"
+
+
 def edm_line_style(value: Any) -> Any:
     """EDM/Qt pen style -> builder line style ("solid" / "dashed" / "dotted").
 
@@ -170,6 +196,34 @@ def parse_json_strings(value: Any) -> Any:
     return parsed
 
 
+def parse_points(value: Any) -> Any:
+    """A ``stringlist`` of ``"x, y"`` pairs -> a list of ``{"x": float, "y": float}``.
+
+    Polyline/polygon vertices, which the runtime expects as structured objects.
+    Idempotent (already-``{x, y}`` dicts pass through); unparseable entries are
+    skipped rather than raising.
+    """
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return value
+    points: list[Any] = []
+    for item in value:
+        if isinstance(item, dict) and "x" in item and "y" in item:
+            points.append(item)
+            continue
+        if not isinstance(item, str):
+            continue
+        parts = item.replace(",", " ").split()
+        if len(parts) < 2:
+            continue
+        try:
+            points.append({"x": float(parts[0]), "y": float(parts[1])})
+        except (ValueError, TypeError):
+            continue
+    return points
+
+
 TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "stripProtocol": strip_protocol,
     "boolToFromPV": bool_to_from_pv,
@@ -179,8 +233,10 @@ TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "qtFrameShadow": qt_frame_shadow,
     "qtScrollPolicy": qt_scroll_policy,
     "firstOf": first_of,
+    "screenRef": screen_ref,
     "edmLineStyle": edm_line_style,
     "parseJsonStrings": parse_json_strings,
+    "parsePoints": parse_points,
 }
 
 

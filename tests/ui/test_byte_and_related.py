@@ -29,7 +29,7 @@ def test_byte_led_props():
 
 def test_related_display_firstof_and_label():
     """filenames stringlist -> file via firstOf; text -> label."""
-    assert _by_type()["related-display-button"].props == {"file": "sub.ui", "label": "Open"}
+    assert _by_type()["related-display-button"].props == {"file": "sub.screen.json", "label": "Open"}
 
 
 def test_frame_enum_transforms():
