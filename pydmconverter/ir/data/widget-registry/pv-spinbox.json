@@ -1,0 +1,60 @@
+{
+  "id": "pv-spinbox",
+  "version": "1.0.0",
+  "displayName": "PV Spinbox",
+  "description": "Numeric spinbox bound to a PV. Writes the value on change.",
+  "category": "controls",
+  "paletteIcon": "pv-text-input.svg",
+
+  "reactComponent": {
+    "name": "PVSpinbox",
+    "module": "@canopy/widgets"
+  },
+
+  "qtMapping": {
+    "class": "PyDMSpinbox",
+    "extends": "QDoubleSpinBox",
+    "header": "pydm.widgets.spinbox"
+  },
+
+  "propSchema": {
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "required": ["pv"],
+    "properties": {
+      "pv": { "type": "string", "format": "pv-channel" },
+      "precision": { "type": "number", "minimum": 0 },
+      "precisionFromPV": { "type": "boolean", "default": true },
+      "showStepExponent": { "type": "boolean", "default": false },
+      "minValue": { "type": "number" },
+      "maxValue": { "type": "number" },
+      "limitsFromPV": { "type": "boolean", "default": true },
+      "alarmSensitive": { "type": "boolean", "default": false }
+    }
+  },
+
+  "qtPropMap": {
+    "channel": { "to": "pv", "transform": "stripProtocol" },
+    "precision": { "to": "precision" },
+    "precisionFromPV": { "to": "precisionFromPV" },
+    "showStepExponent": { "to": "showStepExponent" },
+    "userMinimum": { "to": "minValue" },
+    "userMaximum": { "to": "maxValue" },
+    "alarmSensitiveContent": { "to": "alarmSensitive" }
+  },
+
+  "inspectorSchema": {
+    "groups": [
+      { "name": "PV", "fields": ["pv", "limitsFromPV"] },
+      { "name": "Display", "fields": ["precision", "precisionFromPV", "showStepExponent"] },
+      { "name": "Limits", "fields": ["minValue", "maxValue"] },
+      { "name": "Alarm", "fields": ["alarmSensitive"] }
+    ]
+  },
+
+  "defaults": { "width": 120, "height": 28 },
+
+  "supportsPv": true,
+  "supportsRules": true,
+  "supportsChildren": false
+}

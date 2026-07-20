@@ -52,6 +52,17 @@ def test_pv_label_prop_mapping_and_transform():
     assert label.geometry.model_dump() == {"x": 10, "y": 20, "width": 200, "height": 30}
 
 
+def test_pv_label_alignment_maps_to_align():
+    """PyDMLabel alignment=Qt::AlignCenter -> pv-label align="center" (qtAlignment)."""
+    node = SourceNode(
+        qt_class="PyDMLabel",
+        qt_props={"text": "Horizontal Motors", "alignment": "Qt::AlignCenter"},
+    )
+    label = _screen([node]).root.children[0]
+    assert label.type == "pv-label"
+    assert label.props == {"text": "Horizontal Motors", "align": "center"}
+
+
 def test_bool_to_from_pv_true_and_false():
     true_node = SourceNode(qt_class="PyDMLabel", qt_props={"precisionFromPV": True})
     assert _screen([true_node]).root.children[0].props == {"precision": "fromPV"}
@@ -103,7 +114,7 @@ def test_nested_children():
     outer = SourceNode(qt_class="PyDMEmbeddedDisplay", qt_props={"filename": "child.ui"}, children=[inner])
     node = _screen([outer]).root.children[0]
     assert node.type == "embedded-display"
-    assert node.props == {"file": "child.ui"}
+    assert node.props == {"file": "child.screen.json"}
     assert node.children[0].type == "pv-label"
 
 
@@ -222,3 +233,22 @@ def test_built_screen_validates_and_round_trips():
     from pydmconverter.ir.model import ScreenIR
 
     assert to_json(ScreenIR.model_validate(wire)) == to_json(screen)
+
+
+def test_screen_size_expands_to_encompass_children():
+    """metadata.size grows so children extending past the root rect aren't
+    clipped (convert-fidelity defect O: PyDM windows auto-grow/scroll)."""
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    b = IRBuilder(VendoredRegistry())
+    # child reaches x+w=790, y+h=200; declared window is only 710x100
+    child = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 780, 190))
+    ir = b.build_screen(screen_id="t", title="t", source_type="ui-converter", size=(710, 100), top_level=[child])
+    assert ir.metadata.size.width >= 790  # +margin
+    assert ir.metadata.size.height >= 200
+    # a screen whose children fit is left unchanged
+    small = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 20))
+    ir2 = b.build_screen(screen_id="t2", title="t", source_type="ui-converter", size=(710, 500), top_level=[small])
+    assert (ir2.metadata.size.width, ir2.metadata.size.height) == (710, 500)

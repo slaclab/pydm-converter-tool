@@ -13,8 +13,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Canonical reference pattern — matches the @canopy/core regex exactly (M6).
-MACRO_REF_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
+# Matches the broad ``\w+`` form the runtime resolver substitutes, so
+# lowercase/mixed-case macros (${dev}, ${signal}) are found rather than dropped.
+# The published @slaclab/canopy-screen-ir contract accepts this case too.
+MACRO_REF_RE = re.compile(r"\$\{(\w+)\}")
 
 # EDM-style ``$(VAR)`` to tolerate on input; normalized to ``${VAR}`` (M1).
 _EDM_MACRO_RE = re.compile(r"\$\(([A-Za-z_][A-Za-z0-9_]*)\)")

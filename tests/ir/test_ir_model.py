@@ -59,12 +59,23 @@ def test_float_geometry_allowed():
 
 
 def test_macro_name_pattern_enforced():
-    """Macro names must match ^[A-Z][A-Z0-9_]*$ (M2)."""
+    """Macro names must start with a letter, then letters/digits/underscores.
+
+    Both cases are accepted: Canopy macros design M2 specifies uppercase, but
+    PyDM/EDM sources author lowercase/mixed-case macros (${dev}, ${signal}, …)
+    which the runtime resolves fine, so the converter preserves the authored
+    spelling rather than dropping the declaration (convert-fidelity defect G).
+    """
     MacroDeclaration(name="PREFIX", default="")
-    with pytest.raises(ValidationError):
-        MacroDeclaration(name="lowercase", default="")
+    # Lowercase and mixed-case are now valid (case preserved).
+    assert MacroDeclaration(name="lowercase", default="").name == "lowercase"
+    assert MacroDeclaration(name="dev", default="").name == "dev"
+    assert MacroDeclaration(name="signalName", default="").name == "signalName"
+    # Still must start with a letter.
     with pytest.raises(ValidationError):
         MacroDeclaration(name="1BAD", default="")
+    with pytest.raises(ValidationError):
+        MacroDeclaration(name="_bad", default="")
 
 
 def test_screen_macro_requires_default():

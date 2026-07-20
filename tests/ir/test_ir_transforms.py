@@ -24,6 +24,30 @@ def test_bool_to_from_pv():
     assert apply_transform("boolToFromPV", "false") is DROP
 
 
+def test_parse_points():
+    # "x, y" stringlist -> structured {x, y} floats
+    assert apply_transform("parsePoints", ["0.0, 0.0", "7.0, 5.0", "14.0, 0.0"]) == [
+        {"x": 0.0, "y": 0.0},
+        {"x": 7.0, "y": 5.0},
+        {"x": 14.0, "y": 0.0},
+    ]
+    # tolerant of spacing variants and negatives
+    assert apply_transform("parsePoints", ["1,2", " -3 , 4 "]) == [
+        {"x": 1.0, "y": 2.0},
+        {"x": -3.0, "y": 4.0},
+    ]
+    # a lone string is wrapped
+    assert apply_transform("parsePoints", "5, 6") == [{"x": 5.0, "y": 6.0}]
+    # unparseable entries are skipped, not fatal
+    assert apply_transform("parsePoints", ["1, 2", "junk", "3, 4"]) == [
+        {"x": 1.0, "y": 2.0},
+        {"x": 3.0, "y": 4.0},
+    ]
+    # idempotent: already-structured points pass through
+    already = [{"x": 1.0, "y": 2.0}]
+    assert apply_transform("parsePoints", already) == already
+
+
 def test_qt_orientation():
     assert apply_transform("qtOrientation", "Qt::Horizontal") == "horizontal"
     assert apply_transform("qtOrientation", "Qt::Vertical") == "vertical"
@@ -104,3 +128,22 @@ def test_transforms_cover_registry():
                 referenced.add(entry["transform"])
     missing = referenced - set(known_transforms())
     assert not missing, f"registry references transforms with no implementation: {sorted(missing)}"
+
+
+def test_screen_ref_rewrites_to_screen_json():
+    from pydmconverter.ir.transforms import screen_ref, DROP
+
+    # .ui / .edl -> .screen.json, RELATIVE DIR PRESERVED (subdir templates share
+    # basenames — Collimator/Widget vs Heater/Widget — so the dir must survive).
+    assert screen_ref("motor-simple.ui") == "motor-simple.screen.json"
+    assert screen_ref("sub/dir/foo.edl") == "sub/dir/foo.screen.json"
+    assert screen_ref("Collimator/Widget.ui") == "Collimator/Widget.screen.json"
+    # filenames stringlist -> first, rewritten
+    assert screen_ref(["a.ui", "b.ui"]) == "a.screen.json"
+    # extensionless PyDM related-display target -> append
+    assert screen_ref("mc_li21_coll") == "mc_li21_coll.screen.json"
+    # already-converted / macro refs left sensible
+    assert screen_ref("x.screen.json") == "x.screen.json"
+    assert screen_ref("${SCREEN}") == "${SCREEN}"
+    # empty list drops
+    assert screen_ref([]) is DROP

@@ -79,6 +79,84 @@ def test_layout_child_without_rect_warns(tmp_path):
     assert label.warnings and "no geometry rect" in label.warnings[0]
 
 
+def test_channelless_pydmlabel_keeps_static_text(tmp_path):
+    """A PyDMLabel with `text` and no `channel` is a static label: the text must survive.
+
+    Regression for Defect A — pv-label dropped `text`, rendering a blank box.
+    """
+    ui = """<?xml version="1.0"?>
+    <ui version="4.0"><widget class="QWidget" name="screen">
+      <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>100</height></rect></property>
+      <widget class="PyDMLabel" name="static_lbl">
+        <property name="geometry"><rect><x>5</x><y>5</y><width>80</width><height>20</height></rect></property>
+        <property name="text"><string>Hello</string></property>
+      </widget>
+    </widget></ui>"""
+    path = tmp_path / "static_label.ui"
+    path.write_text(ui, encoding="utf-8")
+    label = ui_file_to_ir(path).root.children[0]
+    assert label.type == "pv-label"
+    assert label.props.get("text") == "Hello"
+    assert "pv" not in label.props
+
+
+def test_irregular_polygon_maps_to_polygon_with_points(tmp_path):
+    """A PyDMDrawingIrregularPolygon becomes a `polygon` node (not unknown-widget),
+    carrying its vertices as structured {x, y} points."""
+    ui = """<?xml version="1.0"?>
+    <ui version="4.0"><widget class="QWidget" name="screen">
+      <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>100</height></rect></property>
+      <widget class="PyDMDrawingIrregularPolygon" name="poly">
+        <property name="geometry"><rect><x>5</x><y>5</y><width>20</width><height>20</height></rect></property>
+        <property name="penStyle"><enum>Qt::SolidLine</enum></property>
+        <property name="penWidth"><double>2.0</double></property>
+        <property name="points">
+          <stringlist>
+            <string>0.0, 0.0</string>
+            <string>7.0, 5.0</string>
+            <string>14.0, 0.0</string>
+            <string>0.0, 0.0</string>
+          </stringlist>
+        </property>
+      </widget>
+    </widget></ui>"""
+    path = tmp_path / "poly.ui"
+    path.write_text(ui, encoding="utf-8")
+    node = ui_file_to_ir(path).root.children[0]
+    assert node.type == "polygon"
+    assert node.props["lineWidth"] == 2.0
+    assert node.props["lineStyle"] == "solid"
+    assert node.props["points"] == [
+        {"x": 0.0, "y": 0.0},
+        {"x": 7.0, "y": 5.0},
+        {"x": 14.0, "y": 0.0},
+        {"x": 0.0, "y": 0.0},
+    ]
+
+
+def test_polyline_line_points_are_structured(tmp_path):
+    """A PyDMDrawingPolyline stays a `line` node, and its "x, y" stringlist is
+    normalized to structured {x, y} points (regression: raw strings reached the runtime)."""
+    ui = """<?xml version="1.0"?>
+    <ui version="4.0"><widget class="QWidget" name="screen">
+      <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>100</height></rect></property>
+      <widget class="PyDMDrawingPolyline" name="pl">
+        <property name="geometry"><rect><x>0</x><y>0</y><width>20</width><height>20</height></rect></property>
+        <property name="points">
+          <stringlist>
+            <string>0.0, 1.0</string>
+            <string>17.0, 18.0</string>
+          </stringlist>
+        </property>
+      </widget>
+    </widget></ui>"""
+    path = tmp_path / "polyline.ui"
+    path.write_text(ui, encoding="utf-8")
+    node = ui_file_to_ir(path).root.children[0]
+    assert node.type == "line"
+    assert node.props["points"] == [{"x": 0.0, "y": 1.0}, {"x": 17.0, "y": 18.0}]
+
+
 def _structure(screen):
     return [
         (c.type, c.props.get("pv") or c.props.get("text"), tuple(c.geometry.model_dump().values()))
@@ -151,3 +229,98 @@ def test_scalar_number_parsing_is_tolerant():
     assert _scalar_property(prop("number", "nope")) is _SKIP
     assert _scalar_property(prop("double", "1.5")) == 1.5
     assert _scalar_property(prop("double", "nope")) is _SKIP
+
+
+def test_lowercase_macros_are_declared(tmp_path):
+    """Lowercase/mixed-case ${macro} refs in PV channels must be collected into
+    the screen's macros[] (convert-fidelity defect G) — not silently dropped."""
+    from pydmconverter.ui.ir_adapter import ui_file_to_ir
+
+    ui = tmp_path / "lc.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMLabel" name="l1">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>20</height></rect></property>
+  <property name="channel"><string>${dev}:${area}:Value</string></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    names = {m.name for m in ir.macros}
+    assert "dev" in names and "area" in names
+
+
+def test_font_pointsize_becomes_fontsize_px(tmp_path):
+    """Qt <font><pointsize> is dropped by the scalar walk (complex kind); the adapter
+    must lower it to a px `fontSize` prop so dense text does not overflow at the
+    runtime 13px default (convert-fidelity font defect). px = round(pt * 96/72)."""
+    from pydmconverter.ui.ir_adapter import ui_file_to_ir
+
+    ui = tmp_path / "font.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMLabel" name="lbl">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>80</width><height>20</height></rect></property>
+  <property name="text"><string>Currently:</string></property>
+  <property name="font"><font><family>Helvetica</family><pointsize>9</pointsize></font></property>
+ </widget>
+ <widget class="PyDMPushButton" name="btn">
+  <property name="geometry"><rect><x>0</x><y>30</y><width>50</width><height>30</height></rect></property>
+  <property name="text"><string>STOP</string></property>
+  <property name="font"><font><family>Helvetica</family><pointsize>7</pointsize></font></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    label, button = ir.root.children[0], ir.root.children[1]
+    assert label.props["fontSize"] == 12  # 9 * 96/72 == 12
+    assert button.props["fontSize"] == 9  # round(7 * 96/72) == 9
+
+
+def test_font_pixelsize_used_verbatim(tmp_path):
+    """A Qt <font><pixelsize> is already in px and is carried through unchanged."""
+    from pydmconverter.ui.ir_adapter import ui_file_to_ir
+
+    ui = tmp_path / "px.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMLabel" name="lbl">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>80</width><height>20</height></rect></property>
+  <property name="text"><string>Px</string></property>
+  <property name="font"><font><family>Helvetica</family><pixelsize>15</pixelsize></font></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    assert ir.root.children[0].props["fontSize"] == 15
+
+
+def test_font_without_size_emits_nothing(tmp_path):
+    """A <font> with no point/pixel size must not add a bogus fontSize prop
+    (runtime default stands) and must never crash the conversion."""
+    from pydmconverter.ui.ir_adapter import ui_file_to_ir
+
+    ui = tmp_path / "nosize.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMLabel" name="lbl">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>80</width><height>20</height></rect></property>
+  <property name="text"><string>NoSize</string></property>
+  <property name="font"><font><family>Helvetica</family><bold>true</bold></font></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    assert "fontSize" not in ir.root.children[0].props

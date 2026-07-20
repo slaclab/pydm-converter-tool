@@ -30,7 +30,11 @@
       },
       "writeOnEnter": { "type": "boolean", "default": true },
       "placeholder": { "type": "string" },
-      "alarmSensitive": { "type": "boolean", "default": false }
+      "alarmSensitive": { "type": "boolean", "default": false },
+      "fontSize": {
+        "type": "number",
+        "title": "Font Size (px)"
+      }
     }
   },
 
@@ -38,7 +42,8 @@
     "channel": { "to": "pv", "transform": "stripProtocol" },
     "writeOnPress": { "to": "writeOnEnter" },
     "placeholderText": { "to": "placeholder" },
-    "alarmSensitiveContent": { "to": "alarmSensitive" }
+    "alarmSensitiveContent": { "to": "alarmSensitive" },
+    "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {
