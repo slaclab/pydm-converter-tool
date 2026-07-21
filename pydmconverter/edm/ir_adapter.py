@@ -67,7 +67,9 @@ _BOOL_PROPS = {"showUnits", "alarmSensitiveContent", "alarmSensitiveBorder", "sh
 # Qt props holding an EDM color value ("index N" / "rgb r g b") that must be
 # resolved to "#rrggbb" hex before the builder sees them. penColor/brushColor are
 # consumed by the drawing widget defs (rectangle/ellipse/line/arc).
-_COLOR_PROPS = {"penColor", "brushColor", "foregroundColor", "backgroundColor"}
+_COLOR_PROPS = {"penColor", "brushColor", "foregroundColor", "backgroundColor", "onColor", "offColor"}
+# EDM font string "family-weight-slant-size" -> pixel size for the IR fontSize.
+_FONT_PROPS = {"fontSize"}
 # displayFormat carries pv-label's "format" enum value; EDM's format strings must
 # be normalized to the registry's vocabulary (decimal/hex/string/exponential/default).
 _FORMAT_PROPS = {"displayFormat"}
@@ -129,6 +131,22 @@ def _to_format(value: Any) -> str:
     return "default"
 
 
+def _to_font_size(value: Any) -> Any:
+    """EDM font string ("helvetica-bold-r-12.0") -> integer pixel size.
+
+    EDM bitmap-font sizes render ~1:1 as CSS pixels. Malformed values drop the
+    prop (returning None) rather than guessing a size.
+    """
+    if not isinstance(value, str):
+        return None
+    tail = value.rsplit("-", 1)[-1]
+    try:
+        size = float(tail)
+    except ValueError:
+        return None
+    return max(6, round(size)) if size > 0 else None
+
+
 def _coerce(qt_prop: str, value: Any) -> Any:
     if qt_prop in _CHANNEL_PROPS:
         return _to_channel(value)
@@ -142,6 +160,8 @@ def _coerce(qt_prop: str, value: Any) -> Any:
         return _to_bool(value)
     if qt_prop in _FORMAT_PROPS:
         return _to_format(value)
+    if qt_prop in _FONT_PROPS:
+        return _to_font_size(value)
     return normalize_macro_syntax(value) if isinstance(value, str) else value
 
 
@@ -192,8 +212,9 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
 
 # Classes whose registry definition maps a readback channel (readbackChannel ->
 # pv-button's readbackPV). Elsewhere a second data channel has nowhere to land
-# and is dropped with a warning.
-_READBACK_CLASSES = {"activebuttonclass", "activemessagebuttonclass"}
+# and is dropped with a warning. Menu buttons pair controlPv with an
+# indicatorPv readback exactly like plain buttons (batch-2: cbxfel camera rows).
+_READBACK_CLASSES = {"activebuttonclass", "activemessagebuttonclass", "activemenubuttonclass"}
 
 # EDM alarm-severity palette (green / yellow / red / white-invalid) — what an
 # alarm-sensitive EDM part shows instead of its configured static color.
@@ -606,6 +627,25 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
     ]
 
 
+def _fixup_choice_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeChoiceButtonClass fixup: EDM lays the states out to fill the rect —
+    wide boxes read horizontally, tall boxes vertically."""
+    qt_props["orientation"] = "horizontal" if obj.width >= obj.height else "vertical"
+    return None
+
+
+def _fixup_menu_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeMenuButtonClass fixup: the button face shows the CURRENT choice
+    (EDM renders the enum string of its PV), so the web button uses pvState
+    labeling; without an explicit indicatorPv the control channel doubles as
+    the state source.
+    """
+    qt_props["labelType"] = "pvState"
+    if "readbackChannel" not in qt_props and qt_props.get("channel"):
+        qt_props["readbackChannel"] = qt_props["channel"]
+    return None
+
+
 def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """activeMeterClass fixup: warn when labelType isn't the literal-text default.
 
@@ -639,6 +679,8 @@ _CLASS_FIXUPS.update(
         "activeindicatorclass": _fixup_bar,
         "activemessagebuttonclass": _fixup_state_button,
         "activebuttonclass": _fixup_state_button,
+        "activechoicebuttonclass": _fixup_choice_button,
+        "activemenubuttonclass": _fixup_menu_button,
         "xygraphclass": _fixup_xy_graph,
         "activepipclass": _fixup_pip,
         # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
@@ -669,7 +711,10 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
                     continue
                 qt_props[qt_prop] = hex_color
                 continue
-            qt_props[qt_prop] = _coerce(qt_prop, value)
+            coerced = _coerce(qt_prop, value)
+            if qt_prop in _FONT_PROPS and coerced is None:
+                continue  # malformed font string: no size beats a wrong size
+            qt_props[qt_prop] = coerced
         _apply_channel_attrs(obj, qt_props, warnings)
         rules = _alarm_rules(obj) + _pip_rules(obj)
         if any(rule.target_property == "foregroundColor" for rule in rules):

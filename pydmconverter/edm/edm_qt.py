@@ -29,7 +29,9 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "activemotifsliderclass": "PyDMSlider",
     "activesliderclass": "PyDMSlider",
     "activetriumfsliderclass": "PyDMSlider",
-    "activechoicebuttonclass": "PyDMEnumComboBox",
+    # EDM choice button IS a radio set: every state visible, current one lit
+    # (a dropdown hides the alternatives and, closed, showed only the ordinal).
+    "activechoicebuttonclass": "PyDMEnumButton",
     "activepipclass": "PyDMEmbeddedDisplay",
     # byte indicator / related display
     "byteclass": "PyDMByteIndicator",
@@ -96,6 +98,13 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "onLabel": "onLabel",
     "offLabel": "offLabel",
     "buttonType": "buttonType",
+    # state colors (buttons and byte indicators share the attr names)
+    "onColor": "onColor",
+    "offColor": "offColor",
+    # typography: EDM font strings ("helvetica-bold-r-12.0") -> pixel size.
+    # Without this every label rendered at the theme default and overflowed
+    # its EDM-sized box (ellipsis, or silently clipped digits).
+    "font": "fontSize",
     # slider
     "scaleMin": "userMinimum",
     "scaleMax": "userMaximum",

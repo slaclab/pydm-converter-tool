@@ -31,7 +31,7 @@ def test_static_text_maps_to_text_label():
     """
     label = _convert().root.children[0]
     assert label.type == "text-label"
-    assert label.props == {"text": "Label ${PREFIX}", "foregroundColor": "#000000"}
+    assert label.props == {"text": "Label ${PREFIX}", "foregroundColor": "#000000", "fontSize": 12}
     assert label.geometry.model_dump() == {"x": 10, "y": 20, "width": 120, "height": 18}
 
 

@@ -37,6 +37,18 @@ def test_two_channel_button_keeps_control_as_channel_and_maps_readback():
     assert warnings == []
 
 
+def test_menu_button_maps_indicator_to_readback():
+    qt_props, warnings = {}, []
+    obj = _obj(
+        "activeMenuButtonClass",
+        {"controlPv": "CAMR:X:Acquire", "indicatorPv": "CAMR:X:DetectorState_RBV"},
+    )
+    _apply_channel_attrs(obj, qt_props, warnings)
+    assert qt_props["channel"] == "CAMR:X:Acquire"
+    assert qt_props["readbackChannel"] == "CAMR:X:DetectorState_RBV"
+    assert warnings == []
+
+
 def test_choice_button_control_wins_and_indicator_drop_is_loud():
     qt_props, warnings = {}, []
     obj = _obj(

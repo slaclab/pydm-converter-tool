@@ -5,53 +5,107 @@
   "description": "Multi-bit status indicator: a row of LEDs driven by individual bits of an integer PV.",
   "category": "indicators",
   "paletteIcon": "pv-byte-led.svg",
-
   "reactComponent": {
     "name": "PVByteLed",
     "module": "@canopy/widgets"
   },
-
   "qtMapping": {
     "class": "PyDMByteIndicator",
     "extends": "QWidget",
     "header": "pydm.widgets.byte"
   },
-
   "propSchema": {
     "$schema": "https://json-schema.org/draft-07/schema",
     "type": "object",
-    "required": ["pv", "numBits"],
+    "required": [
+      "pv",
+      "numBits"
+    ],
     "properties": {
-      "pv": { "type": "string", "format": "pv-channel" },
-      "numBits": { "type": "integer", "minimum": 1, "maximum": 64, "default": 8 },
-      "shift": { "type": "integer", "minimum": 0, "default": 0 },
+      "pv": {
+        "type": "string",
+        "format": "pv-channel"
+      },
+      "numBits": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 64,
+        "default": 8
+      },
+      "shift": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      },
       "orientation": {
         "type": "string",
-        "enum": ["horizontal", "vertical"],
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
         "default": "horizontal"
       },
-      "onColor": { "type": "string", "default": "#3ddc84" },
-      "offColor": { "type": "string", "default": "#444444" }
+      "onColor": {
+        "type": "string",
+        "default": "#3ddc84"
+      },
+      "offColor": {
+        "type": "string",
+        "default": "#444444"
+      }
     }
   },
-
   "qtPropMap": {
-    "channel": { "to": "pv", "transform": "stripProtocol" },
-    "numBits": { "to": "numBits" },
-    "shift": { "to": "shift" },
-    "orientation": { "to": "orientation", "transform": "qtOrientation" }
+    "channel": {
+      "to": "pv",
+      "transform": "stripProtocol"
+    },
+    "numBits": {
+      "to": "numBits"
+    },
+    "shift": {
+      "to": "shift"
+    },
+    "orientation": {
+      "to": "orientation",
+      "transform": "qtOrientation"
+    },
+    "onColor": {
+      "to": "onColor"
+    },
+    "offColor": {
+      "to": "offColor"
+    }
   },
-
   "inspectorSchema": {
     "groups": [
-      { "name": "PV", "fields": ["pv"] },
-      { "name": "Bits", "fields": ["numBits", "shift"] },
-      { "name": "Display", "fields": ["orientation", "onColor", "offColor"] }
+      {
+        "name": "PV",
+        "fields": [
+          "pv"
+        ]
+      },
+      {
+        "name": "Bits",
+        "fields": [
+          "numBits",
+          "shift"
+        ]
+      },
+      {
+        "name": "Display",
+        "fields": [
+          "orientation",
+          "onColor",
+          "offColor"
+        ]
+      }
     ]
   },
-
-  "defaults": { "width": 200, "height": 24 },
-
+  "defaults": {
+    "width": 200,
+    "height": 24
+  },
   "supportsPv": true,
   "supportsRules": true,
   "supportsChildren": false

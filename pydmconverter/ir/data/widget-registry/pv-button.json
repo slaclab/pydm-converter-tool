@@ -5,73 +5,176 @@
   "description": "Action button that writes press/release values to a PV.",
   "category": "controls",
   "paletteIcon": "pv-button.svg",
-
   "reactComponent": {
     "name": "PVButton",
     "module": "@canopy/widgets"
   },
-
   "qtMapping": {
     "class": "PyDMPushButton",
     "extends": "QPushButton",
     "header": "pydm.widgets.pushbutton"
   },
-
   "propSchema": {
     "$schema": "https://json-schema.org/draft-07/schema",
     "type": "object",
-    "required": ["pv"],
+    "required": [
+      "pv"
+    ],
     "properties": {
-      "pv": { "type": "string", "format": "pv-channel" },
+      "pv": {
+        "type": "string",
+        "format": "pv-channel"
+      },
       "readbackPV": {
         "type": "string",
         "format": "pv-channel",
         "description": "State source for toggle/on-off labeling (EDM indicatorPv); pv stays the write channel."
       },
-      "label": { "type": "string" },
-      "onLabel": { "type": "string" },
-      "offLabel": { "type": "string" },
+      "label": {
+        "type": "string"
+      },
+      "onLabel": {
+        "type": "string"
+      },
+      "offLabel": {
+        "type": "string"
+      },
       "buttonType": {
         "type": "string",
-        "enum": ["push", "toggle"],
+        "enum": [
+          "push",
+          "toggle"
+        ],
         "default": "push"
       },
       "kind": {
         "type": "string",
-        "enum": ["primary", "secondary", "tertiary", "danger", "ghost"],
+        "enum": [
+          "primary",
+          "secondary",
+          "tertiary",
+          "danger",
+          "ghost"
+        ],
         "default": "primary"
       },
-      "iconOnly": { "type": "boolean", "default": false },
-      "pressValue": { "type": ["number", "string"] },
-      "releaseValue": { "type": ["number", "string"] },
+      "iconOnly": {
+        "type": "boolean",
+        "default": false
+      },
+      "pressValue": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "releaseValue": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
       "fontSize": {
         "type": "number",
         "title": "Font Size (px)"
+      },
+      "labelType": {
+        "type": "string",
+        "enum": [
+          "literal",
+          "pvState"
+        ],
+        "default": "literal",
+        "description": "pvState renders the readback PV's current enum string as the face text (EDM menu-button behavior)."
+      },
+      "onColor": {
+        "type": "string"
+      },
+      "offColor": {
+        "type": "string"
+      },
+      "foregroundColor": {
+        "type": "string"
+      },
+      "backgroundColor": {
+        "type": "string"
       }
     }
   },
-
   "qtPropMap": {
-    "channel": { "to": "pv", "transform": "stripProtocol" },
-    "readbackChannel": { "to": "readbackPV", "transform": "stripProtocol" },
-    "pressValue": { "to": "pressValue" },
-    "releaseValue": { "to": "releaseValue" },
-    "text": { "to": "label" },
-    "onLabel": { "to": "onLabel" },
-    "offLabel": { "to": "offLabel" },
-    "buttonType": { "to": "buttonType" },
-    "fontSize": { "to": "fontSize" }
+    "channel": {
+      "to": "pv",
+      "transform": "stripProtocol"
+    },
+    "readbackChannel": {
+      "to": "readbackPV",
+      "transform": "stripProtocol"
+    },
+    "pressValue": {
+      "to": "pressValue"
+    },
+    "releaseValue": {
+      "to": "releaseValue"
+    },
+    "text": {
+      "to": "label"
+    },
+    "onLabel": {
+      "to": "onLabel"
+    },
+    "offLabel": {
+      "to": "offLabel"
+    },
+    "buttonType": {
+      "to": "buttonType"
+    },
+    "fontSize": {
+      "to": "fontSize"
+    },
+    "labelType": {
+      "to": "labelType"
+    },
+    "onColor": {
+      "to": "onColor"
+    },
+    "offColor": {
+      "to": "offColor"
+    },
+    "foregroundColor": {
+      "to": "foregroundColor"
+    },
+    "backgroundColor": {
+      "to": "backgroundColor"
+    }
   },
-
   "inspectorSchema": {
     "groups": [
-      { "name": "PV", "fields": ["pv", "readbackPV", "pressValue", "releaseValue"] },
-      { "name": "Display", "fields": ["label", "onLabel", "offLabel", "buttonType", "kind", "iconOnly"] }
+      {
+        "name": "PV",
+        "fields": [
+          "pv",
+          "readbackPV",
+          "pressValue",
+          "releaseValue"
+        ]
+      },
+      {
+        "name": "Display",
+        "fields": [
+          "label",
+          "onLabel",
+          "offLabel",
+          "buttonType",
+          "kind",
+          "iconOnly"
+        ]
+      }
     ]
   },
-
-  "defaults": { "width": 100, "height": 32 },
-
+  "defaults": {
+    "width": 100,
+    "height": 32
+  },
   "supportsPv": true,
   "supportsRules": true,
   "supportsChildren": false

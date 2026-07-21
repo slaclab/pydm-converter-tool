@@ -208,7 +208,8 @@
             {
               "type": "close_display"
             }
-          ]
+          ],
+          "fontSize": 12
         },
         "geometry": {
           "x": 420,
@@ -237,7 +238,8 @@
         "id": "w-012",
         "type": "pv-radio-group",
         "props": {
-          "pv": "${P}:MODE"
+          "pv": "${P}:MODE",
+          "fontSize": 12
         },
         "geometry": {
           "x": 200,
