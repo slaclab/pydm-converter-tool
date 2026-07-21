@@ -22,6 +22,7 @@ unknown-widget.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any, Callable
@@ -382,6 +383,46 @@ def _fixup_multiline_text_entry(obj: EDMObject, qt_props: dict[str, Any], warnin
     return None
 
 
+def _fixup_state_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeMessageButtonClass/activeButtonClass fixup: EDM buttons label via
+    onLabel/offLabel (buttonLabel is rare on these classes); the visible resting
+    label is offLabel. Distinct on/off labels are press-state behavior the web
+    button doesn't model — keep the resting label and say so.
+    """
+    if not qt_props.get("text"):
+        off_label = obj.properties.get("offLabel")
+        on_label = obj.properties.get("onLabel")
+        label = off_label or on_label
+        if label:
+            qt_props["text"] = normalize_macro_syntax(str(label))
+    on_label = obj.properties.get("onLabel")
+    off_label = obj.properties.get("offLabel")
+    if on_label and off_label and on_label != off_label:
+        warnings.append("EDM on/off button labels differ; resting (off) label kept")
+    return None
+
+
+def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """xyGraphClass fixup: EDM trace lists -> the registry's PyDM-style curves.
+
+    Each EDM yPv becomes one curve JSON string ({"y_channel": ...}); the registry
+    transform parses them. x channels have no time-series analog and are noted.
+    """
+    y_pvs = [pv for pv in _as_str_list(obj.properties.get("yPv")) if pv]
+    curves = [
+        json.dumps({"y_channel": normalize_macro_syntax(pv), "name": f"trace {index + 1}"})
+        for index, pv in enumerate(y_pvs)
+    ]
+    if curves:
+        qt_props["curves"] = curves
+    title = obj.properties.get("graphTitle")
+    if title:
+        qt_props["title"] = normalize_macro_syntax(str(title))
+    if obj.properties.get("xPv"):
+        warnings.append("EDM xyGraph x-channel dropped (rendered as time-series)")
+    return None
+
+
 def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """activeMeterClass fixup: warn when labelType isn't the literal-text default.
 
@@ -413,6 +454,9 @@ _CLASS_FIXUPS.update(
         "multilinetextentryclass": _fixup_multiline_text_entry,
         "activemeterclass": _fixup_meter,
         "activeindicatorclass": _fixup_bar,
+        "activemessagebuttonclass": _fixup_state_button,
+        "activebuttonclass": _fixup_state_button,
+        "xygraphclass": _fixup_xy_graph,
         # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
     }
 )
@@ -561,10 +605,18 @@ def edm_file_to_ir(
     colors = parse_colors_list(colors_path)
     top_level = edm_group_to_source_nodes(parser.ui, colors=colors)
     builder = IRBuilder(registry or VendoredRegistry())
+    # Screen background: the parser resolves bgColor to an (r, g, b, a) tuple.
+    background: str | None = None
+    bg = getattr(parser.ui, "properties", {}).get("bgColor") if getattr(parser.ui, "properties", None) else None
+    if hasattr(bg, "r") and hasattr(bg, "g") and hasattr(bg, "b"):
+        background = "#{:02x}{:02x}{:02x}".format(int(bg.r), int(bg.g), int(bg.b))
+    elif isinstance(bg, (tuple, list)) and len(bg) >= 3:
+        background = "#{:02x}{:02x}{:02x}".format(int(bg[0]), int(bg[1]), int(bg[2]))
     return builder.build_screen(
         screen_id=path.stem,
         title=path.stem,
         source_type="edl-converter",
         size=(parser.ui.width, parser.ui.height),
         top_level=top_level,
+        background=background,
     )

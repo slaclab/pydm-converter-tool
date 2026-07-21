@@ -61,6 +61,7 @@ class IRBuilder:
         size: tuple[Number, Number],
         top_level: list[SourceNode],
         macros: list[MacroDeclaration] | None = None,
+        background: str | None = None,
     ) -> ScreenIR:
         """Assemble a screen: an ``absolute-canvas`` root wrapping the top-level nodes.
 
@@ -79,10 +80,15 @@ class IRBuilder:
             width = max_x + MARGIN
         if max_y + MARGIN > height:
             height = max_y + MARGIN
+        root_props: dict = {"width": width, "height": height}
+        if background:
+            # The legacy display's field color; the renderer paints the canvas
+            # with it so converted screens don't sit on the app theme background.
+            root_props["backgroundColor"] = background
         root = WidgetNode(
             id=root_id,
             type=self.root_type,
-            props={"width": width, "height": height},
+            props=root_props,
             geometry=Geometry(x=0, y=0, width=width, height=height),
             children=children,
         )

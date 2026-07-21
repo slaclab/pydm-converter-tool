@@ -34,6 +34,7 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     # byte indicator / related display
     "byteclass": "PyDMByteIndicator",
     "relateddisplayclass": "PyDMRelatedDisplayButton",
+    "xygraphclass": "PyDMWaveformPlot",
     # graphics
     "activerectangleclass": "PyDMDrawingRectangle",
     "activecircleclass": "PyDMDrawingEllipse",
