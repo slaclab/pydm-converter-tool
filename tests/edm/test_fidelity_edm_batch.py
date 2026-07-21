@@ -52,5 +52,8 @@ def test_xygraph_traces_become_curve_json():
     _fixup_xy_graph(obj, qt_props, warnings)
     curves = [json.loads(c) for c in qt_props["curves"]]
     assert [c["y_channel"] for c in curves] == ["SIG:ONE", "SIG:TWO"]
+    # The single xPv pairs with the first trace (waveform-vs-waveform).
+    assert curves[0]["x_channel"] == "T:BASE"
+    assert "x_channel" not in curves[1]
     assert qt_props["title"] == "Kly Fwd"
-    assert any("x-channel" in w for w in warnings)
+    assert warnings == []

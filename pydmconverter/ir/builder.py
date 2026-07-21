@@ -167,7 +167,12 @@ class IRBuilder:
         )
 
     def _build_rules(self, specs: list[RuleSpec]) -> list[Rule]:
-        """Turn id-less RuleSpecs into Rules with allocated ``r-NNN`` ids."""
+        """Turn id-less RuleSpecs into Rules with allocated ``r-NNN`` ids.
+
+        Rule PVs that are ``calc://`` URLs (EDM CALC channels driving e.g.
+        visibility) are hoisted into screen formulas and referenced as
+        ``fox://<name>`` — the rule compiler inlines those client-side.
+        """
         rules: list[Rule] = []
         for spec in specs:
             rules.append(
@@ -175,12 +180,21 @@ class IRBuilder:
                     id=self.ids.rule(),
                     name=spec.name,
                     target_property=spec.target_property,
-                    pvs=[RulePV(name=name, trigger=trigger) for name, trigger in spec.pvs],
+                    pvs=[RulePV(name=self._hoist_pv(name), trigger=trigger) for name, trigger in spec.pvs],
                     conditions=[RuleCondition(expression=expr, value=value) for expr, value in spec.conditions],
                     default=spec.default,
                 )
             )
         return rules
+
+    def _hoist_pv(self, name: str) -> str:
+        """Lower a ``calc://`` PV reference to its ``fox://`` formula ref."""
+        if isinstance(name, str) and name.startswith("calc://"):
+            parsed = parse_calc_url(name)
+            if parsed:
+                expression, bindings = parsed
+                return f"fox://{self.formulas.intern(expression, bindings)}"
+        return name
 
     @staticmethod
     def _content_extent(nodes: list[WidgetNode]) -> tuple[Number, Number]:
@@ -206,10 +220,23 @@ class IRBuilder:
         return Geometry(x=x, y=y, width=width, height=height)
 
     def _collect_macros(self, root: WidgetNode) -> list[MacroDeclaration]:
-        """Declare every ``${VAR}`` referenced in any string prop, default ``""``."""
+        """Declare every ``${VAR}`` referenced in any string prop, default ``""``.
+
+        Recurses into structured props — action lists (shell commands, display
+        targets), macro dicts, curve JSON strings — where macro refs otherwise
+        hid undeclared.
+        """
         names: dict[str, None] = {}
 
         def note(value: object) -> None:
+            if isinstance(value, dict):
+                for item in value.values():
+                    note(item)
+                return
+            if isinstance(value, (list, tuple)):
+                for item in value:
+                    note(item)
+                return
             for ref in find_macro_references(value):
                 names.setdefault(ref, None)
 

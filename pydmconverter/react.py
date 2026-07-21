@@ -33,6 +33,8 @@ def convert_to_ir(
     *,
     registry: RegistryClient | None = None,
     color_list_path: str | Path | None = None,
+    calc_list_path: str | Path | None = None,
+    site: str | None = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
 
@@ -45,7 +47,13 @@ def convert_to_ir(
     if adapter is None:
         raise ValueError(f"--target react supports {', '.join(SUPPORTED_SUFFIXES)} inputs, not {suffix!r}")
     if suffix == ".edl":
-        return edm_file_to_ir(input_path, registry=registry, color_list_path=color_list_path)
+        return edm_file_to_ir(
+            input_path,
+            registry=registry,
+            color_list_path=color_list_path,
+            calc_list_path=calc_list_path,
+            site=site,
+        )
     return ui_file_to_ir(input_path, registry=registry)
 
 
@@ -55,6 +63,8 @@ def convert_bytes(
     kind: Literal["edl", "ui"],
     registry: RegistryClient | None = None,
     color_list_path: str | Path | None = None,
+    calc_list_path: str | Path | None = None,
+    site: str | None = None,
 ) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
@@ -75,7 +85,9 @@ def convert_bytes(
     try:
         staged = tmp_dir / f"screen.{kind}"
         staged.write_bytes(data)
-        return convert_to_ir(staged, registry=registry, color_list_path=color_list_path)
+        return convert_to_ir(
+            staged, registry=registry, color_list_path=color_list_path, calc_list_path=calc_list_path, site=site
+        )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -94,6 +106,8 @@ def convert_file(
     override: bool = False,
     registry: RegistryClient | None = None,
     color_list_path: str | Path | None = None,
+    calc_list_path: str | Path | None = None,
+    site: str | None = None,
 ) -> Path:
     """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
 
@@ -105,7 +119,12 @@ def convert_file(
     out = _screen_json_path(inp, Path(output_path))
     if out.is_file() and not override:
         raise FileExistsError(f"Output file '{out}' already exists. Use --override or -o to overwrite it.")
-    return write_screen_json(convert_to_ir(inp, registry=registry, color_list_path=color_list_path), out)
+    return write_screen_json(
+        convert_to_ir(
+            inp, registry=registry, color_list_path=color_list_path, calc_list_path=calc_list_path, site=site
+        ),
+        out,
+    )
 
 
 def convert_folder(
@@ -115,6 +134,8 @@ def convert_folder(
     override: bool = False,
     registry: RegistryClient | None = None,
     color_list_path: str | Path | None = None,
+    calc_list_path: str | Path | None = None,
+    site: str | None = None,
 ) -> tuple[int, list[str]]:
     """Recursively convert every ``.edl``/``.ui`` under ``input_dir``.
 
@@ -139,7 +160,16 @@ def convert_folder(
             logger.warning("Skipped: %s already exists. Use --override or -o to overwrite it.", out)
             continue
         try:
-            write_screen_json(convert_to_ir(source, registry=registry, color_list_path=color_list_path), out)
+            write_screen_json(
+                convert_to_ir(
+                    source,
+                    registry=registry,
+                    color_list_path=color_list_path,
+                    calc_list_path=calc_list_path,
+                    site=site,
+                ),
+                out,
+            )
         except Exception as exc:  # noqa: BLE001 - report and continue the walk
             failed.append(str(source))
             logger.warning("Failed to convert %s: %s", source, exc)

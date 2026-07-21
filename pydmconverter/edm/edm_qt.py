@@ -59,20 +59,24 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     # menuMuxClass deliberately absent: macro-muxing needs a design; stays unknown-widget.
 }
 
-# EDM attributes that name a PV channel.
-EDM_CHANNEL_ATTRS = ("controlPv", "indicatorPv", "readPv", "alarmPv", "pv", "filePv", "nullPv", "ctrl1Pv")
+# EDM attributes that name a data-PV channel, in PRIMARY-channel priority order.
+# When an object carries several (EDM buttons pair controlPv with indicatorPv),
+# controlPv wins: it is the write/primary channel; readPv/indicatorPv are
+# readbacks; the rest only ever appear alone. The adapter picks primary +
+# readback explicitly (ir_adapter._apply_channel_attrs) — funneling them all to
+# the single "channel" prop kept only the last attr parsed and re-pointed
+# widgets at the wrong PV.
+EDM_PRIMARY_CHANNEL_ORDER = ("controlPv", "readPv", "indicatorPv", "pv", "filePv", "nullPv", "ctrl1Pv")
+# Readback preference when a second data channel is present.
+EDM_READBACK_CHANNEL_ORDER = ("indicatorPv", "readPv")
+# alarmPv is deliberately NOT a data channel: it names the alarm-severity source
+# for alarm-color rules (ir_adapter._alarm_rules) and must never steal the
+# widget's channel (nor make a static label "live" — see has_pv).
+EDM_CHANNEL_ATTRS = EDM_PRIMARY_CHANNEL_ORDER + ("alarmPv",)
 
 # EDM attribute name -> Qt prop name (the key Beaver's qtPropMap consumes).
+# Channel attrs are absent on purpose: the adapter routes them itself.
 EDM_TO_QT_PROP: dict[str, str] = {
-    # channels (all funnel to "channel"; Beaver maps channel -> pv via stripProtocol)
-    "controlPv": "channel",
-    "indicatorPv": "channel",
-    "readPv": "channel",
-    "alarmPv": "channel",
-    "pv": "channel",
-    "filePv": "channel",
-    "nullPv": "channel",
-    "ctrl1Pv": "channel",  # mmvClass
     # text / labels (Beaver maps "text" -> text/label per widget)
     "value": "text",
     "label": "text",
@@ -86,9 +90,12 @@ EDM_TO_QT_PROP: dict[str, str] = {
     "fgAlarm": "alarmSensitiveContent",
     "alarmSensitiveContent": "alarmSensitiveContent",
     "alarmSensitiveBorder": "alarmSensitiveBorder",
-    # button values
+    # button values / state labels / behavior
     "pressValue": "pressValue",
     "releaseValue": "releaseValue",
+    "onLabel": "onLabel",
+    "offLabel": "offLabel",
+    "buttonType": "buttonType",
     # slider
     "scaleMin": "userMinimum",
     "scaleMax": "userMaximum",
@@ -127,8 +134,13 @@ EDM_TO_QT_PROP: dict[str, str] = {
 
 
 def has_pv(properties: dict[str, Any]) -> bool:
-    """True if the EDM object carries any PV channel attribute."""
-    return any(attr in properties for attr in EDM_CHANNEL_ATTRS)
+    """True if the EDM object carries a DATA channel attribute.
+
+    alarmPv does not count: it only feeds alarm-color rules, so e.g. a static
+    label with an alarmPv stays a static label (previously it converted to a
+    live pv-label bound to the alarm PV and displayed that PV's value).
+    """
+    return any(attr in properties for attr in EDM_PRIMARY_CHANNEL_ORDER)
 
 
 def resolve_qt_class(name_lower: str, properties: dict[str, Any]) -> str | None:
@@ -137,7 +149,13 @@ def resolve_qt_class(name_lower: str, properties: dict[str, Any]) -> str | None:
     A static ``activeXTextClass`` (no PV) is a label with fixed text, so it maps to
     ``QLabel`` (-> ``text-label``, which has a ``text`` prop). With a PV it is a live
     value display, so it maps to ``PyDMLabel`` (-> ``pv-label``).
+
+    A closed or filled ``activeLineClass`` is a polygon, not a polyline — the
+    polyline widget has no fill, so EDM's filled shapes (triangles, flow arrows)
+    rendered as empty outlines.
     """
     if name_lower == "activextextclass" and not has_pv(properties):
         return "QLabel"
+    if name_lower == "activelineclass" and (properties.get("fill") or properties.get("closePolygon")):
+        return "PyDMDrawingIrregularPolygon"
     return EDM_TO_QT_CLASS.get(name_lower)

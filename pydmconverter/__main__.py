@@ -41,7 +41,7 @@ def run(
     out_format="json",
 ):
     if target == "react":
-        run_react(input_file, output_file, override)
+        run_react(input_file, output_file, override, site=site, calc_list=calc_list)
         return
 
     input_path: Path = Path(input_file)
@@ -75,18 +75,20 @@ def run(
             print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
 
 
-def run_react(input_file, output_file, override) -> None:
+def run_react(input_file, output_file, override, site=None, calc_list=None) -> None:
     """Convert .edl/.ui to Canopy Screen IR JSON (the --target react path)."""
     from pydmconverter import react
 
     input_path = Path(input_file)
     output_path = Path(output_file)
     if input_path.is_file():
-        out = react.convert_file(input_path, output_path, override=override)
+        out = react.convert_file(input_path, output_path, override=override, calc_list_path=calc_list, site=site)
         print(f"Converted {input_path} -> {out}")
     else:
         output_path.mkdir(parents=True, exist_ok=True)
-        found, failed = react.convert_folder(input_path, output_path, override=override)
+        found, failed = react.convert_folder(
+            input_path, output_path, override=override, calc_list_path=calc_list, site=site
+        )
         if found == 0:
             print(f"No {' or '.join(react.SUPPORTED_SUFFIXES)} files found in {input_path}")
         else:

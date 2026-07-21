@@ -62,7 +62,13 @@ class EDMFileParser:
     #    re.DOTALL | re.MULTILINE,
     # )
 
-    def __init__(self, file_path: str | Path, output_file_path: str | Path, calc_list_file: str | None = None):
+    def __init__(
+        self,
+        file_path: str | Path,
+        output_file_path: str | Path,
+        calc_list_file: str | None = None,
+        calc_reuse_short: bool = True,
+    ):
         """Creates an instance of EDMFileParser for the given file_path
 
         Parameters
@@ -71,12 +77,17 @@ class EDMFileParser:
             EDM file to parse
         calc_list_file : str, optional
             Explicit path to a calc.list file used to resolve named CALC PVs
+        calc_reuse_short : bool, optional
+            Emit short ``calc://<id>`` reuse forms after a calc's first
+            appearance (PyDM plugin semantics). The react/IR target passes
+            False so every occurrence keeps its full query for formula hoisting.
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
         self.file_path = file_path
         self.output_file_path = output_file_path
         self.calc_list_file = calc_list_file
+        self.calc_reuse_short = calc_reuse_short
 
         try:
             with open(file_path, "r") as file:
@@ -102,7 +113,9 @@ class EDMFileParser:
         )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
-        self.text, _, _ = replace_calc_and_loc_in_edm_content(self.text, file_path, self.calc_list_file)
+        self.text, _, _ = replace_calc_and_loc_in_edm_content(
+            self.text, file_path, self.calc_list_file, calc_reuse_short=self.calc_reuse_short
+        )
         return self.text
 
     def parse_screen_properties(self) -> None:
@@ -262,7 +275,13 @@ class EDMFileParser:
             return EDMGroup()
         if not embedded_file.endswith(".edl"):
             embedded_file += ".edl"
-        edm_paths = os.environ.get("EDMDATAFILES", ".").split(":")
+        # EDM resolves symbol files beside the calling display first, then along
+        # EDMDATAFILES. Split on ":" only when it is not a Windows drive colon
+        # (":" followed by a path separator), and accept ";" separators too.
+        edm_paths: list[str] = [str(Path(self.file_path).parent)]
+        datafiles = os.environ.get("EDMDATAFILES", ".")
+        for chunk in datafiles.split(";"):
+            edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
         embedded_text = None
         for path in edm_paths:
             full_path = Path(path) / embedded_file
@@ -271,6 +290,7 @@ class EDMFileParser:
                     embedded_text = file.read()
                 break
         if embedded_text is None:
+            logger.warning(f"Symbol file {embedded_file!r} not found beside the display or on EDMDATAFILES")
             return EDMGroup()
 
         temp_group = EDMGroup()

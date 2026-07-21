@@ -63,6 +63,7 @@
     "penWidth": { "to": "lineWidth" },
     "penStyle": { "to": "lineStyle", "transform": "edmLineStyle" },
     "points": { "to": "points", "transform": "parsePoints" },
+    "closePolygon": { "to": "closed" },
     "brushFill": { "to": "fill" },
     "brushColor": { "to": "fillColor" },
     "opacity": { "to": "opacity" }

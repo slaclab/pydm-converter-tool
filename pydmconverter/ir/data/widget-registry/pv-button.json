@@ -23,7 +23,19 @@
     "required": ["pv"],
     "properties": {
       "pv": { "type": "string", "format": "pv-channel" },
+      "readbackPV": {
+        "type": "string",
+        "format": "pv-channel",
+        "description": "State source for toggle/on-off labeling (EDM indicatorPv); pv stays the write channel."
+      },
       "label": { "type": "string" },
+      "onLabel": { "type": "string" },
+      "offLabel": { "type": "string" },
+      "buttonType": {
+        "type": "string",
+        "enum": ["push", "toggle"],
+        "default": "push"
+      },
       "kind": {
         "type": "string",
         "enum": ["primary", "secondary", "tertiary", "danger", "ghost"],
@@ -41,16 +53,20 @@
 
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
+    "readbackChannel": { "to": "readbackPV", "transform": "stripProtocol" },
     "pressValue": { "to": "pressValue" },
     "releaseValue": { "to": "releaseValue" },
     "text": { "to": "label" },
+    "onLabel": { "to": "onLabel" },
+    "offLabel": { "to": "offLabel" },
+    "buttonType": { "to": "buttonType" },
     "fontSize": { "to": "fontSize" }
   },
 
   "inspectorSchema": {
     "groups": [
-      { "name": "PV", "fields": ["pv", "pressValue", "releaseValue"] },
-      { "name": "Display", "fields": ["label", "kind", "iconOnly"] }
+      { "name": "PV", "fields": ["pv", "readbackPV", "pressValue", "releaseValue"] },
+      { "name": "Display", "fields": ["label", "onLabel", "offLabel", "buttonType", "kind", "iconOnly"] }
     ]
   },
 

@@ -21,10 +21,39 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 _CHANNEL_PREFIXES = ("channel://", "ca://", "pva://")
 _NUMERIC = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)$")
 
+# EPICS CALC function names -> Fox namespace names (Canopy
+# src/canopy/fox/language/namespace.py). EPICS SQR is square ROOT; LOG is
+# log10 and LOGE/LN the natural log. Unknown names pass through and surface
+# via Fox validation instead of being guessed at.
+_CALC_TO_FOX_FUNCTIONS = {
+    "MAX": "max",
+    "MIN": "min",
+    "ABS": "abs",
+    "SQR": "sqrt",
+    "SQRT": "sqrt",
+    "EXP": "exp",
+    "LOG": "log10",
+    "LOGE": "log",
+    "LN": "log",
+    "CEIL": "ceil",
+    "FLOOR": "floor",
+    "SIN": "sin",
+    "COS": "cos",
+    "TAN": "tan",
+    "ASIN": "asin",
+    "ACOS": "acos",
+    "ATAN": "atan",
+    "ATAN2": "atan2",
+}
+_CALC_FUNCTION_RE = re.compile(r"\b(" + "|".join(_CALC_TO_FOX_FUNCTIONS) + r")\s*\(")
+
 
 def to_fox_expression(expression: str) -> str:
-    """Convert EPICS calc operators to Fox/Python. Idempotent (already applied at parse)."""
-    return expression.replace("^", "**").replace("#", "!=")
+    """Convert EPICS calc operators/functions to Fox/Python. Idempotent (the
+    parser already applies the operator conversions; function names are only
+    rewritten as call sites, so single-letter variables are never touched)."""
+    expression = expression.replace("^", "**").replace("#", "!=")
+    return _CALC_FUNCTION_RE.sub(lambda m: _CALC_TO_FOX_FUNCTIONS[m.group(1)] + "(", expression)
 
 
 def _strip_channel(value: str) -> str:
