@@ -1,0 +1,62 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 0
+y 0
+w 300
+h 200
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+fgColor index 14
+bgColor index 4
+textColor index 14
+endScreenProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 50
+h 20
+lineColor index 14
+visPv "CALC\\{MAX(A,B)}(SIG:ONE.SEVR,SIG:TWO.SEVR)"
+visMin "1"
+visMax "5"
+endObjectProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 40
+w 50
+h 20
+lineColor index 14
+visPv "CALC\\{MAX(A,B)}(SIG:ONE.SEVR,SIG:TWO.SEVR)"
+visMin "1"
+visMax "5"
+endObjectProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 70
+w 50
+h 20
+lineColor index 14
+visPv "CALC\\sum(LOC\\posVis=i:0,LOC\\ctlVis=i:0)"
+endObjectProperties

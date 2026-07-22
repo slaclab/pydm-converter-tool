@@ -5,45 +5,87 @@
   "description": "Status indicator that lights up based on a PV value.",
   "category": "indicators",
   "paletteIcon": "pv-led.svg",
-
   "reactComponent": {
     "name": "PVLed",
     "module": "@canopy/widgets"
   },
-
   "qtMapping": {
     "class": "PyDMSymbol",
     "extends": "QWidget",
     "header": "pydm.widgets.symbol"
   },
-
   "propSchema": {
     "$schema": "https://json-schema.org/draft-07/schema",
     "type": "object",
-    "required": ["pv"],
+    "required": [
+      "pv"
+    ],
     "properties": {
-      "pv": { "type": "string", "format": "pv-channel" },
-      "onValue": { "type": ["number", "string"], "default": 1 },
-      "onColor": { "type": "string", "default": "#3ddc84" },
-      "offColor": { "type": "string", "default": "#888888" },
-      "alarmSensitive": { "type": "boolean", "default": true }
+      "pv": {
+        "type": "string",
+        "format": "pv-channel"
+      },
+      "onValue": {
+        "type": [
+          "number",
+          "string"
+        ],
+        "default": 1
+      },
+      "onColor": {
+        "type": "string",
+        "default": "#3ddc84"
+      },
+      "offColor": {
+        "type": "string",
+        "default": "#888888"
+      },
+      "alarmSensitive": {
+        "type": "boolean",
+        "default": true
+      }
     }
   },
-
   "qtPropMap": {
-    "channel": { "to": "pv", "transform": "stripProtocol" }
+    "channel": {
+      "to": "pv",
+      "transform": "stripProtocol"
+    },
+    "onColor": {
+      "to": "onColor"
+    },
+    "offColor": {
+      "to": "offColor"
+    }
   },
-
   "inspectorSchema": {
     "groups": [
-      { "name": "PV", "fields": ["pv", "onValue"] },
-      { "name": "Appearance", "fields": ["onColor", "offColor"] },
-      { "name": "Alarm", "fields": ["alarmSensitive"] }
+      {
+        "name": "PV",
+        "fields": [
+          "pv",
+          "onValue"
+        ]
+      },
+      {
+        "name": "Appearance",
+        "fields": [
+          "onColor",
+          "offColor"
+        ]
+      },
+      {
+        "name": "Alarm",
+        "fields": [
+          "alarmSensitive"
+        ]
+      }
     ]
   },
-
-  "defaults": { "width": 24, "height": 24 },
-
+  "defaults": {
+    "width": 24,
+    "height": 24
+  },
   "supportsPv": true,
   "supportsRules": true,
   "supportsChildren": false

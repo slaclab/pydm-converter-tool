@@ -44,6 +44,12 @@ def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Opt
     if edmfiles:
         candidates.append(os.path.join(edmfiles, "calc.list"))
 
+    # A site colors.list usually lives in the EDM config dir, and calc.list
+    # sits beside it — so EDMCOLORFILE localizes calc.list too.
+    color_file = os.environ.get("EDMCOLORFILE", "")
+    if color_file:
+        candidates.append(os.path.join(os.path.dirname(color_file), "calc.list"))
+
     for candidate in candidates:
         if os.path.isfile(candidate):
             return candidate
@@ -580,7 +586,7 @@ def loc_conversion(edm_string: str) -> str:
 
 
 def replace_calc_and_loc_in_edm_content(
-    edm_content: str, filepath: str, calc_list_file: Optional[str] = None
+    edm_content: str, filepath: str, calc_list_file: Optional[str] = None, calc_reuse_short: bool = True
 ) -> Tuple[str, Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
     """
     Replace both CALC\\...(...) and LOC\\...=... references in the EDM file content
@@ -596,6 +602,11 @@ def replace_calc_and_loc_in_edm_content(
     calc_list_file : str, optional
         An explicit path to a calc.list file used to resolve named CALC PVs.
         Overrides the default calc.list search locations.
+    calc_reuse_short : bool, optional
+        When True (the PyDM target), the second and later appearances of a calc
+        use the short ``calc://<id>`` form (the plugin reuses the registered
+        config). The react/IR target passes False: every appearance carries the
+        full query so the formula hoister can lower each one independently.
 
     Returns
     -------
@@ -630,7 +641,7 @@ def replace_calc_and_loc_in_edm_content(
             encountered_calcs[edm_pv] = {"full": full_url, "short": short_url}
             return full_url
         else:
-            return encountered_calcs[edm_pv]["short"]
+            return encountered_calcs[edm_pv]["short" if calc_reuse_short else "full"]
 
     new_content = calc_pattern.sub(replace_calc_match, edm_content)
 

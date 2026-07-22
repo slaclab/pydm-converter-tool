@@ -36,11 +36,14 @@ def test_rectangle_invisible_becomes_opacity_100():
     assert rect.props["opacity"] == 100
 
 
-def test_rectangle_zero_width_promoted_and_alarm_warning():
+def test_rectangle_zero_width_promoted_and_alarm_rules():
     rect = _convert("graphics_rect.edl").root.children[2]
     assert rect.props["lineWidth"] == 1
-    assert len(rect.warnings) == 1
-    assert "lineAlarm, fillAlarm" in rect.warnings[0]
+    # alarmPv + lineAlarm/fillAlarm now become alarm-color rules, not a warning.
+    assert rect.warnings == []
+    assert [rule.target_property for rule in rect.rules] == ["lineColor", "fillColor"]
+    assert all(rule.pvs[0].name.endswith(":STAT.SEVR") for rule in rect.rules)
+    assert all(rule.default == "#00c000" for rule in rect.rules)
 
 
 # ---------------------------------------------------------------------------
@@ -83,11 +86,14 @@ def test_line_without_arrows_prop_gets_explicit_false_both_ends():
     assert "arrowEnd" in line.props
 
 
-def test_line_filled_closed_polygon_warns_and_drops_fill_props():
-    line = _convert("graphics_line.edl").root.children[2]
-    assert any("filled/closed polygon" in w for w in line.warnings)
-    assert "fill" not in line.props
-    assert "fillColor" not in line.props
+def test_line_filled_closed_polygon_becomes_polygon_widget():
+    polygon = _convert("graphics_line.edl").root.children[2]
+    assert polygon.type == "polygon"
+    assert not any("open polyline" in w for w in polygon.warnings)
+    assert polygon.props["fill"] is True
+    assert polygon.props["fillColor"]
+    assert polygon.props["closed"] is True
+    assert [(p["x"], p["y"]) for p in polygon.props["points"]] == [(0, 0), (30, 40), (60, 0)]
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,92 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 100
+y 100
+w 400
+h 300
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+fgColor index 14
+bgColor index 4
+textColor index 14
+ctlFgColor1 index 25
+ctlFgColor2 index 25
+ctlBgColor1 index 3
+ctlBgColor2 index 3
+topShadowColor index 1
+botShadowColor index 11
+endScreenProperties
+
+# (Embedded Window)
+object activePipClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 20
+y 20
+w 233
+h 137
+fgColor index 14
+bgColor index 3
+topShadowColor index 3
+botShadowColor index 3
+displaySource "menu"
+filePv "$(TEMLOCATION):INAPOSITION"
+numDsps 2
+displayFileName {
+  0 "TEMnocentroid"
+  1 "TEMcentroid"
+}
+menuLabel {
+  0 "Not in position"
+  1 "In Position"
+}
+noScroll
+endObjectProperties
+
+# (Embedded Window)
+object activePipClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 20
+y 170
+w 233
+h 100
+fgColor index 14
+bgColor index 3
+topShadowColor index 3
+botShadowColor index 3
+file "mgnt_unit_$(DISP)"
+sizeOfs 5
+numDsps 0
+noScroll
+endObjectProperties
+
+# (Shell Command)
+object shellCmdClass
+beginObjectProperties
+major 4
+minor 3
+release 0
+x 280
+y 20
+w 100
+h 24
+fgColor index 14
+bgColor index 3
+topShadowColor index 1
+botShadowColor index 11
+font "helvetica-medium-r-12.0"
+buttonLabel "Strip"
+numCmds 1
+command {
+  0 "StripTool $(STRIPCONFIG)"
+}
+endObjectProperties
