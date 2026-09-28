@@ -15,6 +15,52 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
+# One line of an EDM array tag: an unquoted index, then the value.
+_INDEXED_LINE_RE = re.compile(r"^\s*(\d+)(?:\s+(.*?))?\s*$")
+
+
+def _clean_block_value(value: str) -> str:
+    return value.strip(' "').replace('\\"', '"')
+
+
+class IndexedBlock(list):
+    """A brace-block value parsed from EDM ``<index> <value>`` lines.
+
+    Behaves as the compact list of values (what positional consumers always
+    saw); ``indices[i]`` is the EDM array index of item ``i``.
+    """
+
+    def __init__(self, values=(), indices=()):
+        super().__init__(values)
+        self.indices = list(indices)
+
+    def by_index(self) -> dict[int, str]:
+        """``{EDM index: value}`` (a repeated index keeps the last value, as EDM does)."""
+        return dict(zip(self.indices, self))
+
+
+def block_items(value) -> list[tuple[int, str]]:
+    """A brace-block prop value -> ``[(EDM array index, value)]``.
+
+    An :class:`IndexedBlock` keeps the indices the file wrote (``symbols { 2
+    "P=X" }`` is entry 2, not 0); another list is numbered by position and a bare
+    string is entry 0.
+    """
+    if isinstance(value, str):
+        return [(0, value)]
+    if not isinstance(value, list):
+        return []
+    items = [str(item) for item in value]
+    indices = getattr(value, "indices", None)
+    if indices is not None and len(indices) == len(items):
+        return list(zip(indices, items))
+    return list(enumerate(items))
+
+
+def _leading_int(value) -> int:
+    """EDM's integer read of a tag value (strtol): the leading integer, else 0."""
+    match = re.match(r"\s*([+-]?\d+)", str(value)) if value is not None and not isinstance(value, bool) else None
+    return int(match.group(1)) if match else 0
 
 
 @dataclass
@@ -530,10 +576,14 @@ class EDMFileParser:
 
     def generate_pv_ranges(
         self, properties: dict[str, bool | str | list[str]]
-    ) -> list[list[int, int]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
+    ) -> list[list[str]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
         """
         Given minValues and maxValues (through properties), generate the ranges
         that the min/maxValues represent.
+
+        EDM (symbol.cc) reads both as arrays indexed by state number, so an entry
+        lands on the state its index names (``minValues { 1 "1" }`` is state 1)
+        and a state the file leaves out keeps EDM's default 0.
 
         Parameters
         ----------
@@ -542,29 +592,15 @@ class EDMFileParser:
 
         Returns
         ----------
-        list[list[int, int]]
-            The list of pv ranges
+        list[list[str]]
+            ``[min, max]`` per state
         """
-        min_values = properties["minValues"]
-        max_values = properties["maxValues"]
-        num_states = int(properties["numStates"])
-        ranges = [[None, None] for _ in range(num_states)]
-        for i in range(len(min_values)):
-            separated_value = min_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][0] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][0] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed minValue attribute: {min_values}")
-        for i in range(len(max_values)):
-            separated_value = max_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][1] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][1] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed maxValue attribute: {max_values}")
+        num_states = _leading_int(properties.get("numStates"))
+        ranges = [["0", "0"] for _ in range(num_states)]
+        for column, key in ((0, "minValues"), (1, "maxValues")):
+            for index, value in block_items(properties.get(key)):
+                if 0 <= index < num_states:
+                    ranges[index][column] = value
         return ranges
 
     def populate_symbol_pvs(
@@ -714,7 +750,7 @@ class EDMFileParser:
                     properties[multi_line_key] = cleaned_prop
                     multi_line_prop = []
                 else:
-                    multi_line_prop.append(line.strip(' "').replace('\\"', '"'))
+                    multi_line_prop.append(line)
                 continue
 
             try:
@@ -733,33 +769,33 @@ class EDMFileParser:
 
     @staticmethod
     def remove_prepended_index(lines: list[str]) -> list[str]:
-        """Removes the prepended indices from the given multi-line property value
+        """Clean the raw lines of a multi-line (brace-block) property value.
+
+        EDM writes array tags (``displayFileName``, ``symbols``, ``minValues``,
+        ``xPoints``, ...) as ``<index> <value>`` lines, and may skip indices
+        (``symbols { 2 "P=X" }``) or start at 1. When every line carries an
+        unquoted leading index, the values are returned as an
+        :class:`IndexedBlock` whose ``indices`` keep each value's EDM index, so
+        consumers can align parallel arrays (a related display's ``symbols[i]``
+        belongs to its ``displayFileName[i]``). Otherwise (quoted text such as
+        ``value { "1 GeV" }``) every line is kept as text. Values lose their
+        surrounding quotes and ``\\"`` escapes either way.
 
         Parameters
         ----------
         lines : list[str]
-            List of lines in a multi-line property value to remove the prepended indices from
+            The raw lines between ``{`` and ``}``
 
         Returns
         -------
         list[str]
-            Lines of the multi-line property value with the prepended indices removed
+            The cleaned values (an :class:`IndexedBlock` for an indexed block)
         """
-        indices = []
-        values = []
-
-        def check_sequential(indices):
-            """Check if the list of indices is sequential (starting from 0 or 1)"""
-            return indices == list(range(len(indices))) or indices == list(range(1, len(indices) + 1))
-
-        for line in lines:
-            try:
-                k, v = line.split(maxsplit=1)
-                indices.append(int(k))
-                values.append(v.strip(' "').replace('\\"', '"'))
-            except ValueError:
-                return lines
-
-        if not check_sequential(indices):
-            return lines
-        return values
+        lines = [line for line in lines if line.strip()]
+        matches = [_INDEXED_LINE_RE.match(line) for line in lines]
+        if lines and all(matches):
+            return IndexedBlock(
+                [_clean_block_value(match.group(2) or "") for match in matches],
+                [int(match.group(1)) for match in matches],
+            )
+        return [_clean_block_value(line) for line in lines]

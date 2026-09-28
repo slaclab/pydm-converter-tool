@@ -36,7 +36,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
-from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject
+from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items
 from pydmconverter.edm.parser_helpers import (
     get_color_by_index,
     get_color_by_rgb,
@@ -746,22 +746,17 @@ def _fixup_bar(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     return None
 
 
-# Matches a leading "<int> " prefix that remove_prepended_index leaves in place
-# when the multi-line block's indices are non-sequential.
-_LEADING_INDEX_RE = re.compile(r"^\d+\s+")
-
-
-def _strip_leading_index(value: str) -> str:
-    return _LEADING_INDEX_RE.sub("", value, count=1)
-
-
 def _as_str_list(value: Any) -> list[str]:
     """Normalize a brace-block prop value to a list of strings (a bare str -> [str])."""
     if isinstance(value, list):
-        return [_strip_leading_index(str(item)) for item in value]
+        return [str(item) for item in value]
     if isinstance(value, str):
         return [value]
     return []
+
+
+def _by_index(value: Any) -> dict[int, str]:
+    return dict(block_items(value))
 
 
 def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
@@ -769,15 +764,15 @@ def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[st
 
     (buttonLabel -> text -> label is already handled globally.)
     """
-    commands = _as_str_list(obj.properties.get("command"))
+    commands = block_items(obj.properties.get("command"))
     if not commands:
         return None
-    labels = _as_str_list(obj.properties.get("commandLabel"))
+    labels = _by_index(obj.properties.get("commandLabel"))
 
     actions: list[dict[str, Any]] = []
-    for index, command in enumerate(commands):
+    for index, command in commands:
         action: dict[str, Any] = {"type": "shell_command", "command": normalize_macro_syntax(command)}
-        if index < len(labels):
+        if index in labels:
             action["label"] = normalize_macro_syntax(labels[index])
         actions.append(action)
 
@@ -862,12 +857,12 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     transform parses them. A parallel xPv entry rides along as ``x_channel``
     (waveform-vs-waveform traces; the plot renders time-series when absent).
     """
-    y_pvs = [pv for pv in _as_str_list(obj.properties.get("yPv")) if pv]
-    x_pvs = _as_str_list(obj.properties.get("xPv"))
+    y_pvs = [(index, pv) for index, pv in block_items(obj.properties.get("yPv")) if pv]
+    x_pvs = _by_index(obj.properties.get("xPv"))  # trace i plots yPv[i] against xPv[i]
     curves = []
-    for index, pv in enumerate(y_pvs):
-        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {index + 1}"}
-        if index < len(x_pvs) and x_pvs[index]:
+    for number, (index, pv) in enumerate(y_pvs, start=1):
+        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {number}"}
+        if x_pvs.get(index):
             curve["x_channel"] = normalize_macro_syntax(x_pvs[index])
         curves.append(json.dumps(curve))
     if curves:
@@ -878,16 +873,17 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     return None
 
 
-def _pip_menu_refs(obj: EDMObject) -> list[str]:
-    """displaySource=menu pip: the ``displayFileName`` entries as screen refs
-    (same normalization the ``screenRef`` transform applies — rule values bypass
-    ``qtPropMap`` transforms, so the adapter must pre-normalize)."""
-    refs: list[str] = []
-    for name in _as_str_list(obj.properties.get("displayFileName")):
+def _pip_menu_refs(obj: EDMObject) -> list[tuple[int, str]]:
+    """displaySource=menu pip: ``(EDM index, screen ref)`` per ``displayFileName``
+    entry (same normalization the ``screenRef`` transform applies — rule values
+    bypass ``qtPropMap`` transforms, so the adapter must pre-normalize). The
+    filePv value selects entry ``index``."""
+    refs: list[tuple[int, str]] = []
+    for index, name in block_items(obj.properties.get("displayFileName")):
         normalized = normalize_macro_syntax(name)
         ref = screen_ref(normalized)
         if isinstance(ref, str) and ref.strip():
-            refs.append(ref)
+            refs.append((index, ref))
     return refs
 
 
@@ -906,7 +902,7 @@ def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     if source in ("", "file"):
         return None
     if source == "menu":
-        names = _as_str_list(obj.properties.get("displayFileName"))
+        names = [name for _, name in sorted(block_items(obj.properties.get("displayFileName"))) if name.strip()]
         if names and obj.properties.get("filePv"):
             # Raw first entry: the builder's screenRef transform normalizes it.
             qt_props["filename"] = normalize_macro_syntax(names[0])
@@ -929,7 +925,7 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
     file_pv = obj.properties.get("filePv")
     if source != "menu" or not file_pv:
         return []
-    refs = _pip_menu_refs(obj)
+    refs = sorted(_pip_menu_refs(obj))
     if not refs:
         return []
     if isinstance(file_pv, list):
@@ -940,10 +936,36 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
             target_property="file",
             name="Embedded file (menu)",
             pvs=[(file_pv, True)],
-            conditions=[(f"{{0}} == {index}", ref) for index, ref in enumerate(refs)],
-            default=refs[0],
+            conditions=[(f"{{0}} == {index}", ref) for index, ref in refs],
+            default=refs[0][1],
         )
     ]
+
+
+def _fixup_related_display(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """relatedDisplayClass fixup: one target, with that target's own symbols.
+
+    EDM keeps ``displayFileName``/``symbols``/``menuLabel`` as parallel arrays
+    indexed by display number (related_display.cc): ``symbols[i]`` are the
+    macros for ``displayFileName[i]``, and a file may skip indices
+    (``symbols { 2 "P=X" }``). The IR button carries one target, so it takes the
+    lowest-numbered non-empty display and only that display's symbols (merging
+    every entry's symbols handed the first target the last entry's macros).
+    """
+    files = {index: name for index, name in block_items(obj.properties.get("displayFileName")) if name.strip()}
+    if not files:
+        return None
+    first = min(files)
+    qt_props["filenames"] = [normalize_macro_syntax(files[first])]
+    symbols = _by_index(obj.properties.get("symbols")).get(first)
+    macros = _to_macros(symbols) if symbols else {}
+    if macros:
+        qt_props["macros"] = macros
+    else:
+        qt_props.pop("macros", None)
+    if len(files) > 1:
+        warnings.append(f"EDM related display offers {len(files)} displays; only the first is carried")
+    return None
 
 
 def _fixup_choice_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
@@ -1084,6 +1106,7 @@ _CLASS_FIXUPS.update(
         "activemenubuttonclass": _fixup_menu_button,
         "xygraphclass": _fixup_xy_graph,
         "activepipclass": _fixup_pip,
+        "relateddisplayclass": _fixup_related_display,
         "activextextdspclass": _fixup_text_control,
         "activextextdspclassnoedit": _fixup_text_control,
         "textupdateclass": _fixup_textupdate,
@@ -1172,7 +1195,7 @@ def _symbol_state_vis(group: EDMGroup) -> VisTuple | None:
         vis_max = float(props["symbolMax"])
     except (TypeError, ValueError):
         return None
-    channel = normalize_macro_syntax(_strip_leading_index(str(channel)))
+    channel = normalize_macro_syntax(str(channel))
     return (channel, vis_min, vis_max, False)
 
 
