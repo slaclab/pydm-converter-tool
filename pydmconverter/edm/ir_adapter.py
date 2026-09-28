@@ -977,6 +977,32 @@ def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) 
     return None
 
 
+def _fixup_text_control(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeXTextDspClass(:noedit) fixup.
+
+    Alarm border (x_text_dsp_obj.cc): ``useAlarmBorder`` only acts together with
+    ``fgAlarm``; then the text keeps its static colour (drawn with
+    ``fgColor.pixelIndex()``) and a 2 px border in the alarm colour appears while
+    the PV is in alarm. Alone it does nothing.
+    """
+    if obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm"):
+        qt_props["alarmSensitiveBorder"] = True
+        qt_props.pop("alarmSensitiveContent", None)
+    return None
+
+
+def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """TextupdateClass/RegTextupdateClass fixup.
+
+    Alarm border (textupdate.cc redraw_text): with ``lineAlarm`` the border is
+    drawn in the alarm colour only while the PV is in alarm (width at least 1);
+    the text colour is governed by ``fgAlarm`` independently.
+    """
+    if obj.properties.get("lineAlarm"):
+        qt_props["alarmSensitiveBorder"] = True
+    return None
+
+
 _CLASS_FIXUPS.update(
     {
         "activerectangleclass": _apply_shared_drawing_fixup,
@@ -1002,6 +1028,10 @@ _CLASS_FIXUPS.update(
         "activemenubuttonclass": _fixup_menu_button,
         "xygraphclass": _fixup_xy_graph,
         "activepipclass": _fixup_pip,
+        "activextextdspclass": _fixup_text_control,
+        "activextextdspclassnoedit": _fixup_text_control,
+        "textupdateclass": _fixup_textupdate,
+        "regtextupdateclass": _fixup_textupdate,
         # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
     }
 )
