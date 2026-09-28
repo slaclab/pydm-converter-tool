@@ -17,6 +17,7 @@ unknown-widget fallback, screen metadata, and macro collection.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import replace
 from typing import Any
 
@@ -41,6 +42,11 @@ from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import DROP, apply_transform
 
 logger = logging.getLogger(__name__)
+
+# A macro-dict key a target screen could reference as ``${KEY}`` (MACRO_REF_RE's
+# charset). Other keys (e.g. a stray ``2 "P`` from a mis-split symbols line) can
+# never match a reference, so renaming them would only add noise.
+_REFERABLE_KEY_RE = re.compile(r"\w+")
 
 ROOT_CANVAS_TYPE = "absolute-canvas"
 UNKNOWN_WIDGET_TYPE = "unknown-widget"
@@ -285,8 +291,8 @@ class IRBuilder:
 
         Rewrites every ``${NAME}`` reference (props, recursively; rule PVs,
         expressions, values and defaults; formula expressions and bindings) and every
-        key of a ``macros`` prop (what a related/embedded display passes to its
-        target) with :func:`~pydmconverter.ir.macros.valid_macro_name`. The mapping
+        referable key of a ``macros`` prop (what a related/embedded display passes to
+        its target) with :func:`~pydmconverter.ir.macros.valid_macro_name`. The mapping
         is deterministic, so a caller and its converted target agree on the new
         name. Returns ``{old: new}`` for the names that changed.
         """
@@ -307,7 +313,11 @@ class IRBuilder:
                 return [fix(item) for item in value]
             if isinstance(value, dict):
                 return {
-                    (rename(key) if prop == "macros" and isinstance(key, str) else key): fix(item)
+                    (
+                        rename(key)
+                        if prop == "macros" and isinstance(key, str) and _REFERABLE_KEY_RE.fullmatch(key)
+                        else key
+                    ): fix(item)
                     for key, item in value.items()
                 }
             return value

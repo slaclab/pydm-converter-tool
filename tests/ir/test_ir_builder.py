@@ -167,7 +167,10 @@ def test_invalid_macro_names_renamed_consistently():
         SourceNode(qt_class="PyDMLabel", qt_props={"channel": "calc://sum?A=${6X6FBCKPV}&expr=A"}),
         SourceNode(
             qt_class="PyDMRelatedDisplayButton",
-            qt_props={"filenames": ["rf_mux_alarms.edl"], "macros": {"6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X"}},
+            qt_props={
+                "filenames": ["rf_mux_alarms.edl"],
+                "macros": {"6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X", '2 "Q': "junk"},
+            },
         ),
     ]
     screen = _screen(nodes)
@@ -175,7 +178,8 @@ def test_invalid_macro_names_renamed_consistently():
     assert label.props["pv"] == "${M_6X6FBCKPV}.NAME"
     assert label.rules[0].pvs[0].name == "${M_6X6FBCKPV}"
     assert [f.bindings for f in screen.formulas] == [{"A": "${M_6X6FBCKPV}"}]
-    assert button.props["macros"] == {"M_6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X"}
+    # Only keys a target could reference as ${KEY} are renamed; a mis-split key is left alone.
+    assert button.props["macros"] == {"M_6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X", '2 "Q': "junk"}
     assert [m.name for m in screen.macros] == ["M_6X6FBCKPV"]
     assert screen.root.warnings == [
         "Macro names the IR rejects were renamed (callers must pass the new name): 6X6FBCKPV -> M_6X6FBCKPV"
