@@ -252,3 +252,69 @@ def test_screen_size_expands_to_encompass_children():
     small = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 20))
     ir2 = b.build_screen(screen_id="t2", title="t", source_type="ui-converter", size=(710, 500), top_level=[small])
     assert (ir2.metadata.size.width, ir2.metadata.size.height) == (710, 500)
+
+
+def test_fixed_canvas_keeps_declared_size_and_counts_off_canvas_widgets():
+    """grow_to_fit=False (EDM): the window is exactly w x h. Overhanging and
+    parked-off-screen widgets stay in the IR; one root warning counts the ones
+    lying entirely outside."""
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    nodes = [
+        SourceNode(qt_class="QLabel", qt_props={"text": "in"}, geometry=(10, 10, 50, 20)),
+        SourceNode(qt_class="QLabel", qt_props={"text": "overhang"}, geometry=(180, 10, 50, 20)),
+        SourceNode(
+            qt_class=None,
+            registry_id="group",
+            geometry=(0, 55000039, 40, 40),
+            children=[
+                SourceNode(qt_class="QLabel", qt_props={"text": "a"}, geometry=(0, 55000039, 20, 20)),
+                SourceNode(qt_class="QLabel", qt_props={"text": "b"}, geometry=(20, 55000039, 20, 20)),
+            ],
+        ),
+    ]
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t", title="t", source_type="edl-converter", size=(200, 100), top_level=nodes, grow_to_fit=False
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (200, 100)
+    assert (ir.root.geometry.width, ir.root.geometry.height) == (200, 100)
+    assert len(ir.root.children) == 3  # nothing dropped
+    assert ir.root.warnings == [
+        "2 widget(s) lie entirely outside the 200x100 canvas; kept in the IR, clipped at runtime"
+    ]
+
+
+def test_fixed_canvas_without_off_canvas_widgets_has_no_warning():
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    child = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(0, 0, 200, 100))
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t", title="t", source_type="edl-converter", size=(200, 100), top_level=[child], grow_to_fit=False
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (200, 100)
+    assert ir.root.warnings == []
+
+
+def test_undeclared_dimension_is_sized_from_content():
+    """A None dimension (source declares none) is content extent + margin, even
+    when the canvas otherwise does not grow; screen notes land on the root."""
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    child = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 290))
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t",
+        title="t",
+        source_type="edl-converter",
+        size=(684, None),
+        top_level=[child],
+        grow_to_fit=False,
+        warnings=["note"],
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (684, 308)
+    assert ir.root.warnings == ["note"]

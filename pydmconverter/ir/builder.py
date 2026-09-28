@@ -58,28 +58,49 @@ class IRBuilder:
         screen_id: str,
         title: str,
         source_type: str,
-        size: tuple[Number, Number],
+        size: tuple[Number | None, Number | None],
         top_level: list[SourceNode],
         macros: list[MacroDeclaration] | None = None,
         background: str | None = None,
+        grow_to_fit: bool = True,
+        warnings: list[str] | None = None,
     ) -> ScreenIR:
         """Assemble a screen: an ``absolute-canvas`` root wrapping the top-level nodes.
 
         If ``macros`` is not supplied, declare every ``${VAR}`` referenced in props
         (default ``""``), so the screen is self-consistent (macros design M2/M9).
+
+        Canvas size: with ``grow_to_fit`` (the default; PyDM ``.ui`` windows
+        auto-grow/scroll) the canvas expands to the children's extent + an 8 px
+        margin rather than clip them. With ``grow_to_fit=False`` (EDM: the window is
+        exactly the declared w x h and clips; hidden objects are parked far
+        off-screen on purpose) the declared size is kept, off-canvas widgets stay in
+        the IR (the runtime clips them), and one root warning counts the widgets
+        lying entirely outside the canvas. A ``None`` dimension (the source declares
+        none) is always derived from the content extent + margin.
+
+        ``warnings`` are screen-level notes. The IR has no screen-level warnings
+        field, so they ride on the root canvas node, where consumers that walk the
+        node warnings (the Canopy conversion API) surface them.
         """
         width, height = size
         # Allocate the root id before children so the canvas stays w-001.
         root_id = self.ids.widget()
         children = [self._build_node(node) for node in top_level]
-        # PyDM windows auto-grow/scroll, so children can extend past the root
-        # rect; expand the canvas to encompass them rather than clip.
+        root_warnings = list(warnings or [])
         MARGIN = 8
         max_x, max_y = self._content_extent(children)
-        if max_x + MARGIN > width:
+        if width is None or (grow_to_fit and max_x + MARGIN > width):
             width = max_x + MARGIN
-        if max_y + MARGIN > height:
+        if height is None or (grow_to_fit and max_y + MARGIN > height):
             height = max_y + MARGIN
+        if not grow_to_fit:
+            outside = self._count_outside(children, width, height)
+            if outside:
+                root_warnings.append(
+                    f"{outside} widget(s) lie entirely outside the {width}x{height} canvas; "
+                    "kept in the IR, clipped at runtime"
+                )
         root_props: dict = {"width": width, "height": height}
         if background:
             # The legacy display's field color; the renderer paints the canvas
@@ -91,6 +112,7 @@ class IRBuilder:
             props=root_props,
             geometry=Geometry(x=0, y=0, width=width, height=height),
             children=children,
+            warnings=root_warnings,
         )
         declared = macros if macros is not None else self._collect_macros(root)
         return ScreenIR(
@@ -213,6 +235,25 @@ class IRBuilder:
         for n in nodes:
             visit(n)
         return max_x, max_y
+
+    @staticmethod
+    def _count_outside(nodes: list[WidgetNode], width: Number, height: Number) -> int:
+        """Leaf widgets (any depth) with a nonzero size lying entirely outside ``width x height``."""
+        count = 0
+
+        def visit(node: WidgetNode) -> None:
+            nonlocal count
+            if node.children:
+                for child in node.children:
+                    visit(child)
+                return
+            g = node.geometry
+            if g.width and g.height and (g.x >= width or g.y >= height or g.x + g.width <= 0 or g.y + g.height <= 0):
+                count += 1
+
+        for n in nodes:
+            visit(n)
+        return count
 
     @staticmethod
     def _geometry(geom: tuple[Number, Number, Number, Number]) -> Geometry:

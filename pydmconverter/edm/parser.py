@@ -107,6 +107,9 @@ class EDMFileParser:
 
         self.screen_properties_end = 0
         self.ui = EDMGroup()
+        # Screen dimensions ("width"/"height") the file does not declare as integers;
+        # left at 0 for the caller to size from the content (see parse_screen_properties).
+        self.missing_screen_size: list[str] = []
 
         self.parse_screen_properties()
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
@@ -131,13 +134,24 @@ class EDMFileParser:
 
     def parse_screen_properties(self) -> None:
         """Get the screen properties from the .edl file and set the UI
-        height and width
+        height and width.
+
+        A ``w``/``h`` that is missing or not an integer (template fragments write
+        ``h $(DISP_HEIGHT)``), or a file with no ``beginScreenProperties`` block at
+        all, does not abort the parse: the dimension stays 0 and is recorded in
+        ``missing_screen_size`` so the caller can size it from the content.
         """
         match = self.screen_prop_pattern.search(self.text)
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
-            size_properties = self.get_size_properties(screen_prop_text, strict=True)
+            for prop in ("width", "height"):
+                value = self._find_size(screen_prop_text, prop[0])
+                if value is None:
+                    logger.warning(f"Screen property '{prop[0]}' is missing or not an integer")
+                    self.missing_screen_size.append(prop)
+                else:
+                    setattr(self.ui, prop, value)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list()
@@ -146,9 +160,8 @@ class EDMFileParser:
                 edmColor = other_properties["bgColor"]
                 other_properties["bgColor"] = convert_color_property_to_qcolor(edmColor, color_data=color_list_dict)
             self.ui.properties = other_properties
-
-            self.ui.height = size_properties["height"]
-            self.ui.width = size_properties["width"]
+        else:
+            self.missing_screen_size = ["width", "height"]
 
     def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
         """Recursively parse the given text into a tree of EDMObjects and
@@ -642,11 +655,11 @@ class EDMFileParser:
         """
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
-            match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
-            if not match and strict:
+            value = EDMFileParser._find_size(text, prop[0])
+            if value is None and strict:
                 raise ValueError(f"Missing required property '{prop}' in widget.")
 
-            if not match:
+            if value is None:
                 """match_macro = re.search(rf"^{prop[0]}\\s+(\\$\\{{[A-Za-z_][A-Za-z0-9_]*\\}})", text, re.M)
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
@@ -657,9 +670,17 @@ class EDMFileParser:
                 size_properties[prop] = 1
                 # raise ValueError(f"Missing required property '{prop}' in widget.")
             else:
-                size_properties[prop] = int(match.group(1))
+                size_properties[prop] = value
 
         return size_properties
+
+    @staticmethod
+    def _find_size(text: str, key: str) -> int | None:
+        """Integer value of the ``x``/``y``/``w``/``h`` line in ``text``, or None when
+        absent or not an integer. EDM's tag reader skips leading whitespace, so an
+        indented ``  w 236`` counts."""
+        match = re.search(rf"^[ \t]*{key}\s+(-?\d+)", text, re.M)
+        return int(match.group(1)) if match else None
 
     @classmethod
     def get_object_properties(cls, text: str) -> dict[str, bool | str | list[str]]:

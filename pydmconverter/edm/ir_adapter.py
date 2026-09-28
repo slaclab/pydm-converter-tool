@@ -991,11 +991,24 @@ def edm_file_to_ir(
         background = "#{:02x}{:02x}{:02x}".format(int(bg.r), int(bg.g), int(bg.b))
     elif isinstance(bg, (tuple, list)) and len(bg) >= 3:
         background = "#{:02x}{:02x}{:02x}".format(int(bg[0]), int(bg[1]), int(bg[2]))
+    # The EDM window is exactly the declared w x h (objects outside it are clipped,
+    # hidden ones parked off-screen on purpose), so the canvas does not grow to fit.
+    # Only a dimension the file does not declare is sized from the content.
+    missing = parser.missing_screen_size
+    screen_warnings: list[str] = []
+    if missing:
+        keys = "/".join(dim[0] for dim in missing)
+        screen_warnings.append(f"EDM screen {keys} missing or not an integer; sized from the content extent")
     return builder.build_screen(
         screen_id=path.stem,
         title=path.stem,
         source_type="edl-converter",
-        size=(parser.ui.width, parser.ui.height),
+        size=(
+            None if "width" in missing else parser.ui.width,
+            None if "height" in missing else parser.ui.height,
+        ),
         top_level=top_level,
         background=background,
+        grow_to_fit=False,
+        warnings=screen_warnings,
     )
