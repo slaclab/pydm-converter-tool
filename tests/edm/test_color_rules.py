@@ -185,6 +185,14 @@ def test_text_control_rule_colour_follows_color_pv_and_dedupes(tmp_path):
     assert not any("dynamic color" in w for w in node.warnings)
 
 
+def test_text_control_alarm_border_keeps_the_static_rule_colour(tmp_path):
+    """With useAlarmBorder + fgAlarm EDM draws the text with fgColor.pixelIndex()."""
+    props = {"controlPv": "RF:VAL", "colorPv": "RF:ILCK", "fgColor": "index 86", "fgAlarm": True}
+    node = _object_to_source(_obj("activeXTextDspClassnoedit", {**props, "useAlarmBorder": True}), _palette(tmp_path))
+    assert node.qt_props["foregroundColor"] == "#00ffff"
+    assert node.rules == []
+
+
 def test_rule_colour_without_a_driving_pv_stays_static(tmp_path):
     obj = _obj("activeXTextDspClassnoedit", {"controlPv": "RF:VAL", "fgColor": "index 86"})
     node = _object_to_source(obj, _palette(tmp_path))

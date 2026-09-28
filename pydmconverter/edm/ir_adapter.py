@@ -560,6 +560,12 @@ def _color_rules(
     """
     name = obj.name.lower()
     drivers, driven_attrs = _RULE_COLOR_DRIVERS.get(name, ((), ()))
+    if name in ("activextextdspclass", "activextextdspclassnoedit") and (
+        obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm")
+    ):
+        # x_text_dsp_obj.cc draws the text with fgColor.pixelIndex() (the rule's
+        # static colour, never re-evaluated) when the alarm border is on.
+        driven_attrs = tuple(attr for attr in driven_attrs if attr != "fgColor")
     at_zero = _RULE_COLOR_AT_ZERO.get(name, ())
     rules: list[RuleSpec] = []
     notes: list[str] = []
