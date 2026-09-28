@@ -988,7 +988,18 @@ def _fixup_text_control(obj: EDMObject, qt_props: dict[str, Any], warnings: list
     if obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm"):
         qt_props["alarmSensitiveBorder"] = True
         qt_props.pop("alarmSensitiveContent", None)
+    # Precision: the PV's PREC when limitsFromDb is set or no precision is
+    # written (efPrecision null), else the widget's own precision.
+    if obj.properties.get("limitsFromDb") or "precision" not in obj.properties:
+        _precision_from_pv(obj, qt_props)
+    else:
+        _widget_precision(obj, qt_props)
     return None
+
+
+# TextupdateClass displayMode -> pv-label format (engineering notation has no
+# exact analog; exponential is the closest).
+_TEXTUPDATE_MODE_FORMAT = {"decimal": "default", "hex": "hex", "exp": "exponential", "engineer": "exponential"}
 
 
 def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
@@ -997,10 +1008,51 @@ def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[s
     Alarm border (textupdate.cc redraw_text): with ``lineAlarm`` the border is
     drawn in the alarm colour only while the PV is in alarm (width at least 1);
     the text colour is governed by ``fgAlarm`` independently.
+
+    Display mode and precision (textupdate.cc get_current_values): "default"
+    (absent) prints the PV's own string, i.e. the PV's PREC; decimal/exp/engineer
+    format with the widget's ``precision`` (0 when absent); hex ignores precision.
     """
     if obj.properties.get("lineAlarm"):
         qt_props["alarmSensitiveBorder"] = True
+    mode = str(obj.properties.get("displayMode", "default") or "default").strip().lower()
+    if mode in _TEXTUPDATE_MODE_FORMAT:
+        qt_props["displayFormat"] = _TEXTUPDATE_MODE_FORMAT[mode]
+    if mode == "engineer":
+        warnings.append("EDM engineering display mode approximated by exponential format")
+    if mode in ("decimal", "exp", "engineer"):
+        _widget_precision(obj, qt_props)
+    elif mode == "hex":
+        qt_props.pop("precision", None)
+    else:
+        _precision_from_pv(obj, qt_props)
     return None
+
+
+def _edm_int(value: Any) -> int:
+    """EDM's integer read of a tag value (strtol semantics): the leading integer, else 0."""
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    match = re.match(r"\s*([+-]?\d+)", str(value))
+    return int(match.group(1)) if match else 0
+
+
+def _widget_precision(obj: EDMObject, qt_props: dict[str, Any]) -> None:
+    """The widget's own ``precision`` (0 when absent), not the PV's."""
+    qt_props["precision"] = max(0, _edm_int(obj.properties.get("precision", 0)))
+    qt_props["precisionFromPV"] = False
+
+
+def _precision_from_pv(obj: EDMObject, qt_props: dict[str, Any]) -> None:
+    """The PV's PREC: drop the widget's number (it would override ``fromPV``); say
+    ``fromPV`` explicitly only when the file wrote a precision EDM ignores."""
+    qt_props.pop("precision", None)
+    if "precision" in obj.properties:
+        qt_props["precisionFromPV"] = True
+    else:
+        qt_props.pop("precisionFromPV", None)
 
 
 _CLASS_FIXUPS.update(
