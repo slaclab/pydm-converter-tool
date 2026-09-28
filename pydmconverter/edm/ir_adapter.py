@@ -592,7 +592,7 @@ def _color_rules(
             merged.pvs = [*merged.pvs, (channel, True)]
             merged.conditions = [*merged.conditions, *conditions]
             merged.default = default
-            merged.name = f"Alarm and color rule {rule.get('name')} ({target})"
+            merged.name = f"Alarm color ({target}) + color rule {rule.get('name')}"
             continue
         rules.append(
             RuleSpec(
@@ -942,6 +942,10 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
     ]
 
 
+# EDM attrs a class fixup maps itself (the generic prop loop skips them).
+_FIXUP_OWNED_ATTRS: dict[str, tuple[str, ...]] = {"relateddisplayclass": ("displayFileName", "symbols")}
+
+
 def _fixup_related_display(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """relatedDisplayClass fixup: one target, with that target's own symbols.
 
@@ -1124,9 +1128,10 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
     geometry: Geometry = (obj.x, obj.y, obj.width, obj.height)
     if qt_class is not None:
         use_display_bg = bool(obj.properties.get("useDisplayBg"))
+        fixup_owned = _FIXUP_OWNED_ATTRS.get(obj.name.lower(), ())
         for edm_attr, value in obj.properties.items():
             qt_prop = EDM_TO_QT_PROP.get(edm_attr)
-            if qt_prop is None:
+            if qt_prop is None or edm_attr in fixup_owned:
                 continue
             if qt_prop in _COLOR_PROPS:
                 if qt_prop == "backgroundColor" and use_display_bg:
