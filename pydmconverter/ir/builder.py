@@ -20,7 +20,7 @@ from typing import Any
 
 from pydmconverter.ir.fox import parse_calc_url
 from pydmconverter.ir.ids import FormulaPool, IdAllocator
-from pydmconverter.ir.macros import find_macro_references
+from pydmconverter.ir.macros import MACRO_REF_RE, find_macro_references, valid_macro_name
 from pydmconverter.ir.model import (
     Geometry,
     MacroDeclaration,
@@ -114,6 +114,10 @@ class IRBuilder:
             children=children,
             warnings=root_warnings,
         )
+        renamed = self._rename_invalid_macros(root)
+        if renamed:
+            pairs = ", ".join(f"{old} -> {new}" for old, new in sorted(renamed.items()))
+            root.warnings.append(f"Macro names the IR rejects were renamed (callers must pass the new name): {pairs}")
         declared = macros if macros is not None else self._collect_macros(root)
         return ScreenIR(
             id=screen_id,
@@ -259,6 +263,56 @@ class IRBuilder:
     def _geometry(geom: tuple[Number, Number, Number, Number]) -> Geometry:
         x, y, width, height = geom
         return Geometry(x=x, y=y, width=width, height=height)
+
+    def _rename_invalid_macros(self, root: WidgetNode) -> dict[str, str]:
+        """Rename macros whose names the IR rejects (``${6X6FBCKPV}``), consistently.
+
+        Rewrites every ``${NAME}`` reference (props, recursively; rule PVs,
+        expressions, values and defaults; formula expressions and bindings) and every
+        key of a ``macros`` prop (what a related/embedded display passes to its
+        target) with :func:`~pydmconverter.ir.macros.valid_macro_name`. The mapping
+        is deterministic, so a caller and its converted target agree on the new
+        name. Returns ``{old: new}`` for the names that changed.
+        """
+        renamed: dict[str, str] = {}
+
+        def rename(name: str) -> str:
+            new = valid_macro_name(name)
+            if new != name:
+                renamed[name] = new
+            return new
+
+        def fix(value: Any, prop: str | None = None) -> Any:
+            if isinstance(value, str):
+                if "${" not in value:
+                    return value
+                return MACRO_REF_RE.sub(lambda m: "${" + rename(m.group(1)) + "}", value)
+            if isinstance(value, list):
+                return [fix(item) for item in value]
+            if isinstance(value, dict):
+                return {
+                    (rename(key) if prop == "macros" and isinstance(key, str) else key): fix(item)
+                    for key, item in value.items()
+                }
+            return value
+
+        def visit(node: WidgetNode) -> None:
+            node.props = {key: fix(value, key) for key, value in node.props.items()}
+            for rule in node.rules:
+                for pv in rule.pvs:
+                    pv.name = fix(pv.name)
+                for condition in rule.conditions:
+                    condition.expression = fix(condition.expression)
+                    condition.value = fix(condition.value)
+                rule.default = fix(rule.default)
+            for child in node.children:
+                visit(child)
+
+        visit(root)
+        for formula in self.formulas.declarations:
+            formula.expression = fix(formula.expression)
+            formula.bindings = {key: fix(binding) for key, binding in formula.bindings.items()}
+        return renamed
 
     def _collect_macros(self, root: WidgetNode) -> list[MacroDeclaration]:
         """Declare every ``${VAR}`` referenced in any string prop, default ``""``.

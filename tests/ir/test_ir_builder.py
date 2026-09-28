@@ -133,6 +133,61 @@ def test_explicit_macros_override_collection():
     assert screen.macros == []
 
 
+def test_valid_macro_name():
+    from pydmconverter.ir.macros import valid_macro_name
+
+    assert valid_macro_name("PREFIX") == "PREFIX"
+    assert valid_macro_name("dev") == "dev"
+    assert valid_macro_name("6X6FBCKPV") == "M_6X6FBCKPV"
+    assert valid_macro_name("_P") == "M__P"
+    assert valid_macro_name("A-B") == "A_B"
+    assert valid_macro_name("") == ""
+
+
+def test_invalid_macro_names_renamed_consistently():
+    """llrf/rf_mux_alarms references $(6X6FBCKPV): the IR macro pattern rejects a
+    leading digit, which aborted the whole screen. Declaration, prop references,
+    rule PVs, formula bindings and passed-on macro keys all get the same rename."""
+    from pydmconverter.ir.source import RuleSpec
+
+    nodes = [
+        SourceNode(
+            qt_class="PyDMLabel",
+            qt_props={"channel": "${6X6FBCKPV}.NAME"},
+            rules=[
+                RuleSpec(
+                    target_property="visible",
+                    name="V",
+                    pvs=[("${6X6FBCKPV}", True)],
+                    conditions=[("{0} != 0", True)],
+                    default=False,
+                )
+            ],
+        ),
+        SourceNode(qt_class="PyDMLabel", qt_props={"channel": "calc://sum?A=${6X6FBCKPV}&expr=A"}),
+        SourceNode(
+            qt_class="PyDMRelatedDisplayButton",
+            qt_props={"filenames": ["rf_mux_alarms.edl"], "macros": {"6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X"}},
+        ),
+    ]
+    screen = _screen(nodes)
+    label, calc_label, button = screen.root.children
+    assert label.props["pv"] == "${M_6X6FBCKPV}.NAME"
+    assert label.rules[0].pvs[0].name == "${M_6X6FBCKPV}"
+    assert [f.bindings for f in screen.formulas] == [{"A": "${M_6X6FBCKPV}"}]
+    assert button.props["macros"] == {"M_6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X"}
+    assert [m.name for m in screen.macros] == ["M_6X6FBCKPV"]
+    assert screen.root.warnings == [
+        "Macro names the IR rejects were renamed (callers must pass the new name): 6X6FBCKPV -> M_6X6FBCKPV"
+    ]
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_valid_macro_names_leave_no_rename_warning():
+    screen = _screen([SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${PREFIX}:P"})])
+    assert screen.root.warnings == []
+
+
 def test_rules_get_ids_and_contribute_macros():
     """RuleSpecs become Rules with allocated r-NNN ids; rule PV macros are declared."""
     from pydmconverter.ir.source import RuleSpec
