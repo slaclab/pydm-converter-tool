@@ -46,7 +46,7 @@ controlPv "$(P):RATE"
 format "decimal"
 endObjectProperties
 
-# (Text Control, plain class - regression: still editable pv-text-input)
+# (Text Control, plain class with editable: stays a pv-text-input)
 object activeXTextDspClass
 beginObjectProperties
 major 4
@@ -57,4 +57,26 @@ y 70
 w 120
 h 18
 controlPv "$(P):SETPOINT"
+editable
+endObjectProperties
+
+# (Text Control, plain class without editable: read-only in EDM -> pv-label)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 7
+release 0
+x 10
+y 100
+w 120
+h 18
+controlPv "$(P):READBACK"
+font "helvetica-bold-r-14.0"
+fgColor rgb 0 0 65535
+fgAlarm
+bgColor rgb 65535 65535 65535
+format "hex"
+precision 2
+fontAlign "right"
+showUnits
 endObjectProperties

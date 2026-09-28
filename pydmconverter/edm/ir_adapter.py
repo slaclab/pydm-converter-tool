@@ -17,7 +17,8 @@ translated. Several classes carry EDM semantics with no Qt/web analog
 (freeze/ramp/updown increment behaviour, shell command execution); those are
 surfaced as node warnings rather than silently dropped. menuMuxClass is
 deliberately unmapped (macro-muxing needs a design) and falls through to
-unknown-widget.
+unknown-widget. activeXTextDspClass is a read-only pv-label unless its
+``editable`` flag is set (then pv-text-input), matching EDM's default.
 """
 
 from __future__ import annotations
