@@ -6,6 +6,8 @@ the FIRST condition's colour when none holds (that colour is also the rule's
 static pixel).
 """
 
+from pydmconverter.edm.ir_adapter import _alarm_palette, _object_to_source
+from pydmconverter.edm.parser import EDMObject
 from pydmconverter.edm.parser_helpers import (
     get_color_by_index,
     parse_color_rule_condition,
@@ -109,3 +111,42 @@ def test_rule_index_resolves_to_first_condition_colour(tmp_path):
 
 def test_undefined_index_is_still_none(tmp_path):
     assert get_color_by_index(_palette(tmp_path), "index 150") is None
+
+
+# ── alarm rules follow the palette's alarm block ─────────────────────────────
+
+
+def _obj(name, properties, w=10, h=10):
+    obj = EDMObject.__new__(EDMObject)
+    obj.name = name
+    obj.properties = properties
+    obj.x, obj.y, obj.width, obj.height = 0, 0, w, h
+    return obj
+
+
+def test_noalarm_star_keeps_the_static_colour_at_no_alarm(tmp_path):
+    """colors.list "noalarm : *": NO_ALARM shows the part's own colour, not green."""
+    colors = _palette(tmp_path)
+    obj = _obj(
+        "activeRectangleClass",
+        {"lineColor": "index 25", "fillColor": "index 30", "fill": True, "alarmPv": "X:STAT", "lineAlarm": True},
+    )
+    (rule,) = _object_to_source(obj, colors).rules
+    assert rule.target_property == "lineColor"
+    assert rule.default == "#0000ff"
+    assert rule.conditions == [("{0} == 1", "#ffff00"), ("{0} == 2", "#ff0000"), ("{0} >= 3", "#ffffff")]
+
+
+def test_named_noalarm_and_missing_entries(tmp_path):
+    colors = _palette(tmp_path)
+    colors["alarm"] = {"noalarm": "Monitor: NORMAL", "major": "purple-46"}
+    conditions, no_alarm = _alarm_palette(colors)
+    assert no_alarm == "#00ff00"
+    # An entry the block leaves out is palette index 0 (EDM specialIndex default).
+    assert conditions == [("{0} == 1", "#ffffff"), ("{0} == 2", "#800080"), ("{0} >= 3", "#ffffff")]
+
+
+def test_no_alarm_block_keeps_the_fixed_palette():
+    conditions, no_alarm = _alarm_palette({"static": {}})
+    assert no_alarm == "#00c000"
+    assert conditions[1] == ("{0} == 2", "#ff0000")

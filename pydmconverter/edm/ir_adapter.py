@@ -43,6 +43,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_colors_list,
     parse_edm_macros,
     search_color_list,
+    static_color_by_name,
 )
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
@@ -195,6 +196,11 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
     else:
         return None
 
+    return color_info_to_hex(color_info, color_data)
+
+
+def color_info_to_hex(color_info: dict[str, Any] | None, color_data: dict[str, Any] | None) -> str | None:
+    """A parsed colour entry (``{"rgb": [...]}``) -> "#rrggbb" (first state of a blinking colour)."""
     if not color_info:
         return None
 
@@ -223,13 +229,51 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
 _READBACK_CLASSES = {"activebuttonclass", "activemessagebuttonclass", "activemenubuttonclass"}
 
 # EDM alarm-severity palette (green / yellow / red / white-invalid) — what an
-# alarm-sensitive EDM part shows instead of its configured static color.
+# alarm-sensitive EDM part shows instead of its configured static color. Used
+# when no colors.list ``alarm { }`` block is available; a palette's block wins
+# (see _alarm_palette).
 _ALARM_RULE_CONDITIONS: list[tuple[str, str]] = [
     ("{0} == 1", "#ffff00"),
     ("{0} == 2", "#ff0000"),
     ("{0} >= 3", "#ffffff"),
 ]
 _ALARM_RULE_DEFAULT = "#00c000"
+# colors.list alarm-block key per severity condition above, in the same order.
+_ALARM_SEVERITY_KEYS = ("minor", "major", "invalid")
+# Marker: NO_ALARM shows the part's own static colour (alarm block "noalarm : *").
+_STATIC_COLOR = "static"
+
+
+def _named_color_hex(colors: dict[str, Any] | None, name: str) -> str | None:
+    return color_info_to_hex(static_color_by_name(colors or {}, name), colors)
+
+
+def _alarm_palette(colors: dict[str, Any] | None) -> tuple[list[tuple[str, str]], str]:
+    """Severity conditions and the NO_ALARM colour for alarm rules, from the palette.
+
+    EDM (color_pkg.cc, pvColor.cc) paints an alarm-sensitive part with the
+    colors.list ``alarm { }`` block's minor/major/invalid colours. ``noalarm : *``
+    means NO_ALARM keeps the part's own colour (returned as :data:`_STATIC_COLOR`),
+    a named colour replaces it, and an entry the block leaves out is palette
+    index 0 (EDM's specialIndex default). Without an alarm block the fixed
+    green/yellow/red/white palette applies (the converter's long-standing default).
+    """
+    alarm = (colors or {}).get("alarm") or {}
+    if not alarm:
+        return list(_ALARM_RULE_CONDITIONS), _ALARM_RULE_DEFAULT
+    index_zero = edm_color_to_hex("index 0", colors)
+
+    def resolve(key: str, default: str) -> str:
+        name = alarm.get(key)
+        return (_named_color_hex(colors, name) if name else index_zero) or default
+
+    conditions = [
+        (expr, resolve(key, fixed)) for key, (expr, fixed) in zip(_ALARM_SEVERITY_KEYS, _ALARM_RULE_CONDITIONS)
+    ]
+    if alarm.get("noalarm") == "*":
+        return conditions, _STATIC_COLOR
+    return conditions, resolve("noalarm", _ALARM_RULE_DEFAULT)
+
 
 # alarm flag -> IR target prop, per class family. Targets are IR prop names
 # (RuleSpecs pass through the builder untranslated).
@@ -257,14 +301,30 @@ def _severity_channel(pv: str) -> str:
     return _FIELD_SUFFIX_RE.sub("", pv) + ".SEVR"
 
 
-def _alarm_rules(obj: EDMObject) -> list[RuleSpec]:
+# IR colour target -> the Qt prop holding the part's resolved static colour.
+_TARGET_STATIC_QT_PROP = {
+    "lineColor": "penColor",
+    "fillColor": "brushColor",
+    "foregroundColor": "foregroundColor",
+    "backgroundColor": "backgroundColor",
+    "onColor": "onColor",
+    "offColor": "offColor",
+}
+
+
+def _alarm_rules(
+    obj: EDMObject, colors: dict[str, Any] | None = None, qt_props: dict[str, Any] | None = None
+) -> list[RuleSpec]:
     """EDM alarmPv + alarm flags -> alarm-color RuleSpecs (EDM severity palette).
 
     EDM semantics: an alarm-sensitive part tracks the alarm severity of
-    ``alarmPv`` (green when NO_ALARM — the static color only shows while
-    disconnected). Flags select what tracks: lineAlarm/fillAlarm on drawing
-    classes, fgAlarm/bgAlarm on label classes. alarmPv without any flag (or a
-    flag without alarmPv) does nothing, matching EDM.
+    ``alarmPv``: MINOR/MAJOR/INVALID paint the palette's alarm colours, and
+    NO_ALARM paints what the palette's ``noalarm`` entry says — with the SLAC
+    ``noalarm : *`` that is the part's own static colour (taken from
+    ``qt_props``). Without a palette alarm block NO_ALARM is green (see
+    :func:`_alarm_palette`). Flags select what tracks: lineAlarm/fillAlarm on
+    drawing classes, fgAlarm/bgAlarm on label classes. alarmPv without any flag
+    (or a flag without alarmPv) does nothing, matching EDM.
     """
     alarm_pv = obj.properties.get("alarmPv")
     if isinstance(alarm_pv, list):
@@ -279,16 +339,22 @@ def _alarm_rules(obj: EDMObject) -> list[RuleSpec]:
         targets = _LABEL_ALARM_TARGETS
     else:
         return []
+    conditions, no_alarm = _alarm_palette(colors)
     rules: list[RuleSpec] = []
     for flag, target in targets:
         if obj.properties.get(flag):
+            default = no_alarm
+            if default == _STATIC_COLOR:
+                # The part's own colour; one that did not resolve leaves the
+                # fixed green rather than a rule with no NO_ALARM colour.
+                default = (qt_props or {}).get(_TARGET_STATIC_QT_PROP[target]) or _ALARM_RULE_DEFAULT
             rules.append(
                 RuleSpec(
                     target_property=target,
                     name=f"Alarm color ({target})",
                     pvs=[(_severity_channel(alarm_pv), True)],
-                    conditions=list(_ALARM_RULE_CONDITIONS),
-                    default=_ALARM_RULE_DEFAULT,
+                    conditions=list(conditions),
+                    default=default,
                 )
             )
     return rules
@@ -722,7 +788,7 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
                 continue  # malformed font string: no size beats a wrong size
             qt_props[qt_prop] = coerced
         _apply_channel_attrs(obj, qt_props, warnings)
-        rules = _alarm_rules(obj) + _pip_rules(obj)
+        rules = _alarm_rules(obj, colors, qt_props) + _pip_rules(obj)
         if any(rule.target_property == "foregroundColor" for rule in rules):
             # The alarm rule replaces own-PV alarm sensitivity (EDM: alarmPv
             # overrides the widget's own channel as the alarm source).
