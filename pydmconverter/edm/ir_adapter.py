@@ -1350,6 +1350,7 @@ def edm_group_to_source_nodes(
                     f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
                     "on EDMDATAFILES; symbol not rendered"
                 )
+            group_node.warnings.extend(obj.properties.get("symbolWarnings") or ())
             try:
                 vis_tuples: list[VisTuple] = []
                 symbol_vis = _symbol_state_vis(obj)

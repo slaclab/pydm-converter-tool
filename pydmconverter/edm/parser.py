@@ -357,8 +357,11 @@ class EDMFileParser:
         for path in edm_paths:
             full_path = Path(path) / embedded_file
             if full_path.is_file():
-                with open(full_path, "r") as file:
-                    embedded_text = file.read()
+                raw = full_path.read_bytes()
+                try:
+                    embedded_text = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    embedded_text = raw.decode("latin-1")
                 break
         if embedded_text is None:
             logger.warning(f"Symbol file {embedded_file!r} not found beside the display or on EDMDATAFILES")
@@ -366,26 +369,73 @@ class EDMFileParser:
             # attach a node warning (nothing may disappear silently).
             return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
 
-        temp_group = EDMGroup()
-        match = self.screen_prop_pattern.search(embedded_text)
-        if match:
-            screen_properties_end = match.end()
+        # Symbol expansion runs at parse time, outside the adapter's per-object
+        # isolation: whatever a malformed symbol file or object does, the screen
+        # keeps the symbol's rect with a warning instead of failing.
+        try:
+            return self._expand_symbol(embedded_file, embedded_text, properties, size_properties)
+        except Exception as exc:  # noqa: BLE001 - one bad symbol must not abort the screen
+            logger.warning(f"Symbol file {embedded_file!r} could not be expanded", exc_info=True)
+            detail = str(exc).strip().splitlines()[0][:200] if str(exc).strip() else ""
+            return EDMGroup(
+                **size_properties,
+                properties={
+                    "symbolWarnings": [
+                        f"EDM symbol file '{embedded_file}' could not be expanded "
+                        f"({type(exc).__name__}: {detail}); symbol not rendered"
+                    ]
+                },
+            )
 
-        num_pvs = properties["numPvs"]
+    def _expand_symbol(
+        self,
+        embedded_file: str,
+        embedded_text: str,
+        properties: dict[str, bool | str | list[str]],
+        size_properties: dict[str, int],
+    ) -> EDMGroup:
+        """Explode a symbol file into one child group per state (EDM symbol.cc readSymbolFile).
+
+        EDM reads the file's top-level objects in order as the states and stops at
+        the first one that is not a group (states read so far are kept). A symbol
+        with no control PV (``numPvs`` 0 or absent, EDM's default, or a blank
+        ``controlPvs`` entry) draws state 1 only.
+        """
+        temp_group = EDMGroup()
+        warnings: list[str] = []
+        match = self.screen_prop_pattern.search(embedded_text)
+        screen_properties_end = match.end() if match else 0
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
+        states: list[EDMGroup] = []
+        for obj in temp_group.objects:
+            if not isinstance(obj, EDMGroup):
+                warnings.append(
+                    f"EDM symbol file '{embedded_file}' has a {getattr(obj, 'name', 'non-group')} object where "
+                    f"state {len(states)} should be a group; EDM stops reading states there"
+                )
+                break
+            states.append(obj)
+        temp_group.objects = states
+
+        num_pvs = _leading_int(properties.get("numPvs", 0))
+        control_pvs = [pv for _, pv in block_items(properties.get("controlPvs"))]
+        has_control = 0 < num_pvs <= len(control_pvs) and all(pv.strip() for pv in control_pvs[:num_pvs])
         self.resize_symbol_groups(temp_group, size_properties)
         self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
             self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
-        if "minValues" not in properties or "maxValues" not in properties:
+        if "minValues" not in properties and "maxValues" not in properties:
             ranges = None
         else:
             ranges = self.generate_pv_ranges(properties)
         self.remove_extra_groups(temp_group, ranges)
-        if num_pvs == 0 or num_pvs == "0":
-            self.remove_symbol_groups(temp_group, ranges)
+        if not has_control:
+            # symbol.cc: controlExists = 0 -> index = 1; drawActive draws state 1 only.
+            temp_group.objects = temp_group.objects[1:2]
         elif ranges is not None:
             self.populate_symbol_pvs(temp_group, properties, ranges)
+        if warnings:
+            temp_group.properties["symbolWarnings"] = warnings
         return temp_group
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
@@ -554,26 +604,6 @@ class EDMFileParser:
         while len(temp_group.objects) > len(ranges):
             logger.debug(f"Removed symbol group: {temp_group.objects.pop()}")
 
-    def remove_symbol_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
-        """
-        Given a group of symbol groups, remove all groups whose ranges do not include 1.
-        (This is done when no pvs are given and only the "1" group should be displayed)
-
-        Parameters
-        ----------
-        temp_group: EDMGroup
-            The EDMGroup making up each symbol group whose objects will be modified
-        ranges: list[list[str]]
-            A list encompassing the ranges (mainly the len(ranges) is important)
-        """
-        for i in range(
-            len(ranges) - 1, -1, -1
-        ):  # going backwards so I do not need to change indices when deleting objects
-            min_range = ranges[i][0] or float("-inf")
-            max_range = ranges[i][1] or float("inf")
-            if float(min_range) > 1 or float(max_range) <= 1:
-                temp_group.objects.pop(i)
-
     def generate_pv_ranges(
         self, properties: dict[str, bool | str | list[str]]
     ) -> list[list[str]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
@@ -620,8 +650,8 @@ class EDMFileParser:
         ranges: list[list[str]]
             The ranges taht determine the visPv ranges
         """
-        num_states = int(properties["numStates"])
-        if len(properties["controlPvs"]) > 1:
+        num_states = _leading_int(properties.get("numStates"))
+        if len(block_items(properties.get("controlPvs"))) > 1:
             logger.warning(f"This symbol object has more than one pV: {properties}")
         for i in range(
             min(len(temp_group.objects), num_states)
@@ -641,10 +671,8 @@ class EDMFileParser:
         properties: dict[str, bool | str | list[str]]
             Object properties from the activesymbolclass
         """
-        if "controlPvs" in properties:
-            symbol_channel = properties["controlPvs"][0]
-        else:
-            symbol_channel = None
+        control_pvs = [pv for _, pv in sorted(block_items(properties.get("controlPvs")))]
+        symbol_channel = control_pvs[0] if control_pvs else None
 
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
