@@ -147,8 +147,9 @@ class WidgetNode(IRModel):
     children: list[WidgetNode] = Field(default_factory=list)
     meta: NodeMeta | None = None
     # D11: populated on unknown-widget nodes (and any other convert-time note
-    # that belongs with a specific node). Screen-level diagnostics travel
-    # out-of-band, not in the IR (D12).
+    # that belongs with a specific node). The IR has no screen-level warnings
+    # field (D12), so the few screen-level notes the builder emits (off-canvas
+    # widgets, undeclared screen size, renamed macros) ride on the root canvas.
     warnings: list[str] = Field(default_factory=list)
 
 
