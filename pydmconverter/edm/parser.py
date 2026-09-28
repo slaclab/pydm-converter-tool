@@ -57,9 +57,13 @@ def block_items(value) -> list[tuple[int, str]]:
     return list(enumerate(items))
 
 
-def _leading_int(value) -> int:
-    """EDM's integer read of a tag value (strtol): the leading integer, else 0."""
-    match = re.match(r"\s*([+-]?\d+)", str(value)) if value is not None and not isinstance(value, bool) else None
+def edm_int(value) -> int:
+    """EDM's integer read of a tag value (strtol semantics): the leading integer, else 0."""
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    match = re.match(r"\s*([+-]?\d+)", str(value))
     return int(match.group(1)) if match else 0
 
 
@@ -417,7 +421,7 @@ class EDMFileParser:
             states.append(obj)
         temp_group.objects = states
 
-        num_pvs = _leading_int(properties.get("numPvs", 0))
+        num_pvs = edm_int(properties.get("numPvs", 0))
         control_pvs = [pv for _, pv in block_items(properties.get("controlPvs"))]
         has_control = 0 < num_pvs <= len(control_pvs) and all(pv.strip() for pv in control_pvs[:num_pvs])
         self.resize_symbol_groups(temp_group, size_properties)
@@ -625,7 +629,7 @@ class EDMFileParser:
         list[list[str]]
             ``[min, max]`` per state
         """
-        num_states = _leading_int(properties.get("numStates"))
+        num_states = edm_int(properties.get("numStates"))
         ranges = [["0", "0"] for _ in range(num_states)]
         for column, key in ((0, "minValues"), (1, "maxValues")):
             for index, value in block_items(properties.get(key)):
@@ -650,7 +654,7 @@ class EDMFileParser:
         ranges: list[list[str]]
             The ranges taht determine the visPv ranges
         """
-        num_states = _leading_int(properties.get("numStates"))
+        num_states = edm_int(properties.get("numStates"))
         if len(block_items(properties.get("controlPvs"))) > 1:
             logger.warning(f"This symbol object has more than one pV: {properties}")
         for i in range(

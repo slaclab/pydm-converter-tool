@@ -36,7 +36,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
-from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items
+from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, edm_int
 from pydmconverter.edm.parser_helpers import (
     get_color_by_index,
     get_color_by_rgb,
@@ -1059,19 +1059,9 @@ def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[s
     return None
 
 
-def _edm_int(value: Any) -> int:
-    """EDM's integer read of a tag value (strtol semantics): the leading integer, else 0."""
-    if isinstance(value, bool):
-        return 0
-    if isinstance(value, (int, float)):
-        return int(value)
-    match = re.match(r"\s*([+-]?\d+)", str(value))
-    return int(match.group(1)) if match else 0
-
-
 def _widget_precision(obj: EDMObject, qt_props: dict[str, Any]) -> None:
     """The widget's own ``precision`` (0 when absent), not the PV's."""
-    qt_props["precision"] = max(0, _edm_int(obj.properties.get("precision", 0)))
+    qt_props["precision"] = max(0, edm_int(obj.properties.get("precision", 0)))
     qt_props["precisionFromPV"] = False
 
 
