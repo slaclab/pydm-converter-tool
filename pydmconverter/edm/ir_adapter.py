@@ -1015,6 +1015,10 @@ def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[s
     """
     if obj.properties.get("lineAlarm"):
         qt_props["alarmSensitiveBorder"] = True
+    if not obj.properties.get("fill"):
+        # redraw_text fills the background only when "fill" is set; otherwise the
+        # display shows through.
+        qt_props.pop("backgroundColor", None)
     mode = str(obj.properties.get("displayMode", "default") or "default").strip().lower()
     if mode in _TEXTUPDATE_MODE_FORMAT:
         qt_props["displayFormat"] = _TEXTUPDATE_MODE_FORMAT[mode]

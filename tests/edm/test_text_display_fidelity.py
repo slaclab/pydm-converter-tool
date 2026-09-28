@@ -97,3 +97,14 @@ def test_textupdate_exp_and_hex_modes_map_to_formats():
 def test_textupdate_engineer_mode_is_noted():
     source = _object_to_source(_obj("TextupdateClass", {"controlPv": "X:VAL", "displayMode": "engineer"}))
     assert any("engineering" in warning for warning in source.warnings)
+
+
+# ── background fill ──────────────────────────────────────────────────────────
+
+
+def test_textupdate_background_only_when_filled():
+    """textupdate.cc redraw_text: XFillRectangle only if is_filled."""
+    bare = _ir_props(_obj("TextupdateClass", {"controlPv": "X:VAL", "bgColor": "rgb 0 0 65535"}))
+    assert "backgroundColor" not in bare
+    filled = _ir_props(_obj("TextupdateClass", {"controlPv": "X:VAL", "bgColor": "rgb 0 0 65535", "fill": True}))
+    assert filled["backgroundColor"] == "#0000ff"
