@@ -23,6 +23,7 @@ unknown-widget.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from pathlib import Path
@@ -46,8 +47,10 @@ from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
-from pydmconverter.ir.source import RuleSpec, SourceNode
+from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
+
+logger = logging.getLogger(__name__)
 
 # An EDM visibility spec: (visPv, visMin, visMax, visInvert). visMin/visMax are
 # numbers (EDM atof semantics, see _vis_limit), or None when the EDM object only
@@ -899,6 +902,11 @@ def edm_group_to_source_nodes(
 
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
     to resolve "index N" color props to hex.
+
+    Errors are isolated per object: an object whose conversion raises becomes an
+    ``unknown-widget`` placeholder carrying the failure as its warning, and a group
+    whose visibility cannot be converted keeps its children with a warning, so one
+    bad object never aborts the screen.
     """
     nodes: list[SourceNode] = []
     for obj in group.objects:
@@ -918,24 +926,38 @@ def edm_group_to_source_nodes(
                     f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
                     "on EDMDATAFILES; symbol not rendered"
                 )
-            vis_tuples: list[VisTuple] = []
-            symbol_vis = _symbol_state_vis(obj)
-            if symbol_vis is not None:
-                vis_tuples.append(symbol_vis)
-            group_vis = _vis_tuple(obj.properties, group_node.warnings)
-            if group_vis is not None:
-                vis_tuples.append(group_vis)
-            if vis_tuples:
-                group_node.rules = [_visibility_rule_spec(vis_tuples)]
+            try:
+                vis_tuples: list[VisTuple] = []
+                symbol_vis = _symbol_state_vis(obj)
+                if symbol_vis is not None:
+                    vis_tuples.append(symbol_vis)
+                group_vis = _vis_tuple(obj.properties, group_node.warnings)
+                if group_vis is not None:
+                    vis_tuples.append(group_vis)
+                if vis_tuples:
+                    group_node.rules = [_visibility_rule_spec(vis_tuples)]
+            except Exception as exc:  # noqa: BLE001 - keep the group and its children
+                logger.warning("EDM group visibility failed to convert", exc_info=True)
+                group_node.warnings.append(f"EDM group visibility not converted ({type(exc).__name__}: {exc})")
             nodes.append(group_node)
         elif isinstance(obj, EDMObject):
             if obj.name.lower() in skip_classes:
                 continue
-            node = _object_to_source(obj, colors)
-            own_vis = _vis_tuple(obj.properties, node.warnings)
-            if own_vis is not None:
-                # Append: the node may already carry alarm-color rules.
-                node.rules.append(_visibility_rule_spec([own_vis]))
+            try:
+                node = _object_to_source(obj, colors)
+                own_vis = _vis_tuple(obj.properties, node.warnings)
+                if own_vis is not None:
+                    # Append: the node may already carry alarm-color rules.
+                    node.rules.append(_visibility_rule_spec([own_vis]))
+            except Exception as exc:  # noqa: BLE001 - one bad object must not abort the screen
+                logger.warning("EDM %s failed to convert; emitting a placeholder", obj.name, exc_info=True)
+                node = SourceNode(
+                    qt_class=None,
+                    geometry=(obj.x, obj.y, obj.width, obj.height),
+                    raw_class=obj.name,
+                    raw_props=dict(obj.properties),
+                    placeholder_reason=conversion_failure(obj.name, exc),
+                )
             nodes.append(node)
     return nodes
 

@@ -16,6 +16,8 @@ unknown-widget fallback, screen metadata, and macro collection.
 
 from __future__ import annotations
 
+import logging
+from dataclasses import replace
 from typing import Any
 
 from pydmconverter.ir.fox import parse_calc_url
@@ -35,8 +37,10 @@ from pydmconverter.ir.model import (
     WidgetNode,
 )
 from pydmconverter.ir.registry import RegistryClient, WidgetDefinition
-from pydmconverter.ir.source import RuleSpec, SourceNode
+from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import DROP, apply_transform
+
+logger = logging.getLogger(__name__)
 
 ROOT_CANVAS_TYPE = "absolute-canvas"
 UNKNOWN_WIDGET_TYPE = "unknown-widget"
@@ -133,6 +137,18 @@ class IRBuilder:
         )
 
     def _build_node(self, node: SourceNode) -> WidgetNode:
+        """Build one node; a node that fails to build becomes an ``unknown-widget``
+        placeholder (with a warning) instead of aborting the whole screen."""
+        if node.placeholder_reason is None:
+            try:
+                return self._build_resolved(node)
+            except Exception as exc:  # noqa: BLE001 - one bad widget must not abort the screen
+                logger.warning("Building %s failed; emitting a placeholder", node.original_class, exc_info=True)
+                # Rules may be what failed; the placeholder does without them.
+                node = replace(node, rules=[], placeholder_reason=conversion_failure(node.original_class, exc))
+        return self._unknown_node(node)
+
+    def _build_resolved(self, node: SourceNode) -> WidgetNode:
         definition = self.registry.by_id(node.registry_id) if node.registry_id else None
         if definition is None and node.qt_class:
             definition = self.registry.by_qt_class(node.qt_class)
@@ -181,7 +197,7 @@ class IRBuilder:
         """A D11 placeholder — nothing disappears silently."""
         original = node.original_class
         warnings = list(node.warnings)
-        warnings.append(f"No registry entry for {original}; rendering placeholder")
+        warnings.append(node.placeholder_reason or f"No registry entry for {original}; rendering placeholder")
         return WidgetNode(
             id=self.ids.widget(),
             type=UNKNOWN_WIDGET_TYPE,
