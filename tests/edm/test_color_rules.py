@@ -6,13 +6,15 @@ the FIRST condition's colour when none holds (that colour is also the rule's
 static pixel).
 """
 
-from pydmconverter.edm.ir_adapter import _alarm_palette, _object_to_source
+from pydmconverter.edm.ir_adapter import _alarm_palette, _object_to_source, edm_file_to_ir
 from pydmconverter.edm.parser import EDMObject
 from pydmconverter.edm.parser_helpers import (
     get_color_by_index,
     parse_color_rule_condition,
     parse_colors_list,
 )
+from pydmconverter.ir.emit import to_wire_dict
+from pydmconverter.ir.schema import validate_screen_json
 
 _PALETTE = """4 0 0
 max=0x10000
@@ -150,3 +152,129 @@ def test_no_alarm_block_keeps_the_fixed_palette():
     conditions, no_alarm = _alarm_palette({"static": {}})
     assert no_alarm == "#00c000"
     assert conditions[1] == ("{0} == 2", "#ff0000")
+
+
+# ── rule colours become value-driven IR rules ────────────────────────────────
+
+
+def test_drawing_rule_colour_is_driven_by_alarm_pv(tmp_path):
+    """rectangle_obj.cc: evalRule(fillColor, alarmPv->get_double())."""
+    obj = _obj("activeRectangleClass", {"fillColor": "index 84", "fill": True, "alarmPv": "CRYO:STAT"})
+    node = _object_to_source(obj, _palette(tmp_path))
+    assert node.qt_props["brushColor"] == "#800080"  # static = first result colour
+    (rule,) = node.rules
+    assert rule.target_property == "fillColor"
+    assert rule.pvs == [("CRYO:STAT", True)]
+    assert rule.conditions == [("{0} == -1", "#800080"), ("{0} == 2", "#ff0000"), ("{0} == 1", "#ffff00")]
+    assert rule.default == "#800080"
+
+
+def test_text_control_rule_colour_follows_color_pv_and_dedupes(tmp_path):
+    """x_text_dsp_obj.cc: colorPv's value callback re-evaluates fg and bg rules."""
+    obj = _obj(
+        "activeXTextDspClassnoedit",
+        {"controlPv": "RF:VAL", "colorPv": "RF:ILCK", "fgColor": "index 86", "bgColor": "index 25"},
+    )
+    node = _object_to_source(obj, _palette(tmp_path))
+    (rule,) = node.rules
+    assert rule.target_property == "foregroundColor"
+    assert rule.pvs == [("RF:ILCK", True)]
+    # The repeated "= 30" collapses: only the first can ever match.
+    assert rule.conditions == [("{0} == 30", "#00ffff"), ("{0} == 3", "#0000ff")]
+    assert rule.default == "#00ffff"
+    assert not any("dynamic color" in w for w in node.warnings)
+
+
+def test_rule_colour_without_a_driving_pv_stays_static(tmp_path):
+    obj = _obj("activeXTextDspClassnoedit", {"controlPv": "RF:VAL", "fgColor": "index 86"})
+    node = _object_to_source(obj, _palette(tmp_path))
+    assert node.qt_props["foregroundColor"] == "#00ffff"
+    assert node.rules == []
+
+
+def test_textupdate_fg_uses_control_pv_and_fill_is_evaluated_at_zero(tmp_path):
+    """textupdate.cc: the text colour takes colorPv, else the main PV; the fill
+    ColorHelper is never given a value, so its rule is evalRule(index, 0)."""
+    obj = _obj(
+        "TextupdateClass",
+        {"controlPv": "BCS:SUM", "fgColor": "index 110", "bgColor": "index 84", "fill": True},
+    )
+    node = _object_to_source(obj, _palette(tmp_path))
+    (rule,) = node.rules
+    assert rule.target_property == "foregroundColor"
+    assert rule.pvs == [("BCS:SUM", True)]
+    assert rule.conditions == [
+        ("({0} >= 0) and ({0} < 1)", "#800080"),
+        ("({0} >= 1) and ({0} < 2)", "#00ff00"),
+    ]
+    # Rule 84 at value 0: no condition holds -> its static (first) colour.
+    assert node.qt_props["backgroundColor"] == "#800080"
+
+
+def test_alarm_flag_and_rule_colour_merge_into_one_rule(tmp_path):
+    """pvColor.cc: MINOR/MAJOR/INVALID paint alarm colours; NO_ALARM (noalarm *)
+    paints the evaluated rule colour."""
+    obj = _obj("activeRectangleClass", {"lineColor": "index 110", "alarmPv": "X:STAT", "lineAlarm": True})
+    (rule,) = _object_to_source(obj, _palette(tmp_path)).rules
+    assert rule.pvs == [("X:STAT.SEVR", True), ("X:STAT", True)]
+    assert rule.conditions[:3] == [("{0} == 1", "#ffff00"), ("{0} == 2", "#ff0000"), ("{0} >= 3", "#ffffff")]
+    assert rule.conditions[3] == ("({1} >= 0) and ({1} < 1)", "#800080")
+    assert rule.default == "#800080"
+
+
+def test_join_default_and_blink_note(tmp_path):
+    obj = _obj("activeRectangleClass", {"lineColor": "index 111", "alarmPv": "X:VAL"})
+    node = _object_to_source(obj, _palette(tmp_path))
+    (rule,) = node.rules
+    assert rule.conditions == [("({0} < 5) and ({0} > 0)", "#0000ff")]
+    assert rule.default == "#ff0000"  # "default : red-blink", first (steady) state
+    assert any("blinking colour 'red-blink'" in w for w in node.warnings)
+
+
+def test_related_display_rule_colour_has_no_prop_to_drive(tmp_path):
+    obj = _obj("relatedDisplayClass", {"bgColor": "index 84", "colorPv": "X:VAL", "displayFileName": ["a.edl"]})
+    node = _object_to_source(obj, _palette(tmp_path))
+    assert node.rules == []
+    assert node.warnings == []
+
+
+def test_rule_colour_screen_validates(tmp_path):
+    palette = tmp_path / "colors.list"
+    palette.write_text(_PALETTE, encoding="utf-8")
+    edl = tmp_path / "rules.edl"
+    edl.write_text(
+        """4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 100
+h 100
+endScreenProperties
+
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 20
+h 20
+lineColor index 110
+fill
+fillColor index 86
+alarmPv "$(P):STAT"
+lineAlarm
+endObjectProperties
+""",
+        encoding="utf-8",
+    )
+    wire = to_wire_dict(edm_file_to_ir(edl, color_list_path=palette))
+    validate_screen_json(wire)
+    (rect,) = wire["root"]["children"]
+    assert rect["props"]["lineColor"] == "#800080"
+    assert rect["props"]["fillColor"] == "#00ffff"
+    assert [r["targetProperty"] for r in rect["rules"]] == ["lineColor", "fillColor"]

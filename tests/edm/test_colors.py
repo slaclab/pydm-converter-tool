@@ -88,13 +88,15 @@ def test_unresolvable_color_drops_prop_with_warning():
     assert any("index 9999" in warning for warning in widget.warnings)
 
 
-def test_dynamic_color_flag_warns_and_prop_map_drops_color():
+def test_color_pv_with_static_colors_is_a_no_op_and_prop_map_drops_color():
     """pv-text-input's qtPropMap has no foregroundColor entry, so the resolved
-    rgb color is silently dropped by the allowlist; the colorPv flag still warns."""
+    rgb color is dropped by the allowlist. colorPv only feeds colors.list rule
+    colours (EDM evalRule is a no-op on a static colour), so it earns no warning."""
     widget = _by_type_list()[3]
     assert widget.type == "pv-text-input"
     assert "foregroundColor" not in widget.props
-    assert any("dynamic color" in warning for warning in widget.warnings)
+    assert not any("dynamic color" in warning for warning in widget.warnings)
+    assert widget.rules == []
 
 
 def test_colors_screen_validates():

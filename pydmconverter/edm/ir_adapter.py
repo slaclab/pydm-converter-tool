@@ -42,6 +42,7 @@ from pydmconverter.edm.parser_helpers import (
     get_color_by_rgb,
     parse_colors_list,
     parse_edm_macros,
+    rule_static_color,
     search_color_list,
     static_color_by_name,
 )
@@ -357,6 +358,252 @@ def _alarm_rules(
                     default=default,
                 )
             )
+    return rules
+
+
+# ── colors.list rule colours ──────────────────────────────────────────────────
+#
+# A rule colour index is dynamic: EDM calls colorInfoClass::evalRule(index, v)
+# with a PV value v and paints the first condition's colour that holds (else
+# the rule's static colour = its first result colour). Which PV supplies v is
+# per class (EDM baselib/pvFactory sources, the evalRule call sites):
+#   rectangle/circle/arc/line, xText, xRegText: alarmPv (line/fill, fg/bg)
+#   xTextDsp(:noedit): colorPv (fg and bg)
+#   Textupdate/RegTextupdate: fg from colorPv, else the controlPv; the fill
+#     colour's helper is never fed a value, so it is evalRule(index, 0) — static
+#   Button/MessageButton: colorPv (on, off, fg); MenuButton/UpDown/Ramp: colorPv (bg, fg)
+#   relatedDisplay: colorPv (fg, bg)
+# Everything else never evaluates rules and shows the static colour.
+_RULE_COLOR_DRIVERS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    **{
+        name: (("alarmPv",), ("lineColor", "fillColor"))
+        for name in ("activerectangleclass", "activecircleclass", "activearcclass", "activelineclass")
+    },
+    "activextextclass": (("alarmPv",), ("fgColor", "bgColor")),
+    "activexregtextclass": (("alarmPv",), ("fgColor", "bgColor")),
+    "activextextdspclass": (("colorPv",), ("fgColor", "bgColor")),
+    "activextextdspclassnoedit": (("colorPv",), ("fgColor", "bgColor")),
+    "textupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
+    "regtextupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
+    "activebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
+    "activemessagebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
+    "activemenubuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "activeupdownbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "activerampbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "relateddisplayclass": (("colorPv",), ("fgColor", "bgColor")),
+}
+# Colour attrs EDM evaluates at a fixed value of 0 (a ColorHelper nobody feeds).
+_RULE_COLOR_AT_ZERO: dict[str, tuple[str, ...]] = {
+    "textupdateclass": ("bgColor",),
+    "regtextupdateclass": ("bgColor",),
+}
+_REGISTRY: VendoredRegistry | None = None
+
+
+def _mapped_color_target(qt_class: str | None, qt_prop: str) -> str | None:
+    """The IR prop ``qt_prop`` lands on for ``qt_class`` (vendored registry), or None when dropped."""
+    global _REGISTRY
+    if qt_class is None:
+        return None
+    if _REGISTRY is None:
+        _REGISTRY = VendoredRegistry()
+    definition = _REGISTRY.by_qt_class(qt_class)
+    spec = definition.qt_prop_map.get(qt_prop) if definition else None
+    return spec.get("to") if spec else None
+
+
+def _color_rule(colors: dict[str, Any] | None, value: Any) -> tuple[int, dict[str, Any]] | None:
+    """``(index, rule)`` when ``value`` ("index N") names a colors.list rule colour."""
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"index\s+(\d+)\s*$", value.strip())
+    if not match:
+        return None
+    index = int(match.group(1))
+    if index in (colors or {}).get("static", {}):
+        return None
+    rule = (colors or {}).get("rules", {}).get(index)
+    return (index, rule) if rule else None
+
+
+def _format_rule_number(value: float) -> str:
+    return str(_as_number(float(value)))
+
+
+def _condition_expression(condition: dict[str, Any], token: str) -> str | None:
+    """One parsed rule condition -> a rule expression on ``token`` ("{0}"); None for ``default``."""
+    if condition.get("default"):
+        return None
+    terms = [f"{token} {op} {_format_rule_number(value)}" for op, value in condition["terms"]]
+    if len(terms) == 1:
+        return terms[0]
+    joiner = " and " if condition.get("connector") == "&&" else " or "
+    return joiner.join(f"({term})" for term in terms)
+
+
+def _evaluate_condition(condition: dict[str, Any], value: float) -> bool:
+    if condition.get("default"):
+        return True
+    ops = {
+        "==": lambda a, b: a == b,
+        "!=": lambda a, b: a != b,
+        ">": lambda a, b: a > b,
+        ">=": lambda a, b: a >= b,
+        "<": lambda a, b: a < b,
+        "<=": lambda a, b: a <= b,
+    }
+    results = [ops[op](value, arg) for op, arg in condition["terms"]]
+    if len(results) == 1:
+        return results[0]
+    return (results[0] and results[1]) if condition.get("connector") == "&&" else (results[0] or results[1])
+
+
+def _rule_ladder(
+    colors: dict[str, Any] | None, index: int, rule: dict[str, Any], token: str, notes: list[str]
+) -> tuple[list[tuple[str, str]], str | None]:
+    """A colors.list rule -> ordered ``(expression, hex)`` conditions and its no-match hex.
+
+    First true condition wins (EDM evalRule and the IR rule contract agree);
+    ``&&``/``||`` joins fold into the next condition; a ``default`` ends the
+    ladder (later conditions are unreachable) and repeated expressions are
+    dropped. Blinking result colours render their first (steady) state, noted.
+    """
+    static = rule_static_color(colors or {}, index)
+    default = color_info_to_hex(static, colors)
+    conditions: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    pending: tuple[str, str] | None = None  # (expression, join operator) awaiting the next condition
+
+    def colour(name: str) -> str | None:
+        entry = static_color_by_name(colors or {}, name)
+        if entry is not None and len(entry.get("rgb") or ()) >= 6:
+            notes.append(f"EDM blinking colour '{name}' in colour rule '{rule.get('name')}' rendered steady")
+        return color_info_to_hex(entry, colors)
+
+    if static is not None and len(static.get("rgb") or ()) >= 6:
+        notes.append(f"EDM blinking colour '{static.get('name')}' in colour rule '{rule.get('name')}' rendered steady")
+    for condition in rule.get("conditions", ()):
+        expression = _condition_expression(condition, token)
+        if pending is not None:
+            pending_expr, join = pending
+            if expression is None:
+                expression = pending_expr
+            else:
+                expression = f"({expression}) {'and' if join == '&&' else 'or'} ({pending_expr})"
+            pending = None
+        if condition.get("join"):
+            if expression is not None:
+                pending = (expression, condition["join"])
+            continue
+        hex_color = colour(condition["color"])
+        if hex_color is None:
+            continue  # an unknown colour name: EDM refuses the palette; keep the rest
+        if expression is None:  # "default": always true, nothing after it can apply
+            default = hex_color
+            break
+        if expression in seen:
+            continue
+        seen.add(expression)
+        conditions.append((expression, hex_color))
+    return conditions, default
+
+
+def _rule_color_at(colors: dict[str, Any] | None, index: int, rule: dict[str, Any], value: float) -> str | None:
+    """EDM evalRule(index, value) as hex: the first condition holding at ``value``."""
+    pending: tuple[bool, str] | None = None
+    for condition in rule.get("conditions", ()):
+        result = _evaluate_condition(condition, value)
+        if pending is not None:
+            held, join = pending
+            result = (result and held) if join == "&&" else (result or held)
+            pending = None
+        if condition.get("join"):
+            pending = (result, condition["join"])
+            continue
+        if result:
+            hex_color = _named_color_hex(colors, condition["color"])
+            if hex_color is not None:
+                return hex_color
+    return color_info_to_hex(rule_static_color(colors or {}, index), colors)
+
+
+def _driver_channel(obj: EDMObject, attrs: tuple[str, ...]) -> str | None:
+    for attr in attrs:
+        value = obj.properties.get(attr)
+        if isinstance(value, list):
+            value = value[0] if value else ""
+        if isinstance(value, str) and value.strip():
+            return _to_channel(value)
+    return None
+
+
+def _color_rules(
+    obj: EDMObject,
+    qt_class: str | None,
+    qt_props: dict[str, Any],
+    colors: dict[str, Any] | None,
+    alarm_rules: list[RuleSpec],
+    warnings: list[str],
+) -> list[RuleSpec]:
+    """colors.list rule colours on ``obj`` -> value-driven colour RuleSpecs.
+
+    The static prop already holds the rule's static colour (its first result
+    colour, get_color_by_index). A rule is added when the class feeds the
+    colour a PV value (see _RULE_COLOR_DRIVERS) and the widget carries the
+    prop; a colour EDM evaluates at 0 is replaced by that fixed result. When an
+    alarm rule already drives the same prop (alarmPv + lineAlarm/fillAlarm/
+    fgAlarm/bgAlarm) and the palette keeps the own colour at NO_ALARM, the two
+    merge into one rule: severity colours first, then the value ladder (EDM
+    pvColor.cc: alarm colours override, NO_ALARM shows the evaluated rule
+    colour). A palette with a named NO_ALARM colour never shows the rule while
+    alarm-sensitive, so the alarm rule stands alone.
+    """
+    name = obj.name.lower()
+    drivers, driven_attrs = _RULE_COLOR_DRIVERS.get(name, ((), ()))
+    at_zero = _RULE_COLOR_AT_ZERO.get(name, ())
+    rules: list[RuleSpec] = []
+    notes: list[str] = []
+    for edm_attr, value in obj.properties.items():
+        qt_prop = EDM_TO_QT_PROP.get(edm_attr)
+        if qt_prop not in _COLOR_PROPS or qt_prop not in qt_props:
+            continue
+        found = _color_rule(colors, value)
+        if found is None:
+            continue
+        index, rule = found
+        if edm_attr in at_zero:
+            fixed = _rule_color_at(colors, index, rule, 0.0)
+            if fixed is not None:
+                qt_props[qt_prop] = fixed
+            continue
+        channel = _driver_channel(obj, drivers) if edm_attr in driven_attrs else None
+        # No channel: EDM shows the static colour. No target: the widget drops
+        # this colour prop altogether (the static colour too).
+        target = _mapped_color_target(qt_class, qt_prop) if channel else None
+        if target is None:
+            continue
+        merged = next((r for r in alarm_rules if r.target_property == target), None)
+        if merged is not None and _alarm_palette(colors)[1] != _STATIC_COLOR:
+            continue  # a named NO_ALARM colour hides the rule colour while alarm-sensitive
+        conditions, default = _rule_ladder(colors, index, rule, "{1}" if merged else "{0}", notes)
+        if default is None:
+            continue
+        if merged is not None:
+            merged.pvs = [*merged.pvs, (channel, True)]
+            merged.conditions = [*merged.conditions, *conditions]
+            merged.default = default
+            merged.name = f"Alarm and color rule {rule.get('name')} ({target})"
+            continue
+        rules.append(
+            RuleSpec(
+                target_property=target,
+                name=f"Color rule {rule.get('name')} ({target})",
+                pvs=[(channel, True)],
+                conditions=conditions,
+                default=default,
+            )
+        )
+    warnings.extend(dict.fromkeys(notes))
     return rules
 
 
@@ -788,13 +1035,14 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
                 continue  # malformed font string: no size beats a wrong size
             qt_props[qt_prop] = coerced
         _apply_channel_attrs(obj, qt_props, warnings)
-        rules = _alarm_rules(obj, colors, qt_props) + _pip_rules(obj)
-        if any(rule.target_property == "foregroundColor" for rule in rules):
+        alarm_rules = _alarm_rules(obj, colors, qt_props)
+        if any(rule.target_property == "foregroundColor" for rule in alarm_rules):
             # The alarm rule replaces own-PV alarm sensitivity (EDM: alarmPv
             # overrides the widget's own channel as the alarm source).
             qt_props.pop("alarmSensitiveContent", None)
-        if obj.properties.get("colorPv"):
-            warnings.append("EDM dynamic color (colorPv) is not supported; static colors emitted")
+        # colorPv only ever feeds colors.list rule colours (evalRule is a no-op on
+        # a static index), so _color_rules covers it: no separate warning.
+        rules = alarm_rules + _color_rules(obj, qt_class, qt_props, colors, alarm_rules, warnings) + _pip_rules(obj)
         if obj.properties.get("bgAlarm") and not any(rule.target_property == "backgroundColor" for rule in rules):
             warnings.append("EDM dynamic color (bgAlarm) is not supported; static colors emitted")
         fixup = _CLASS_FIXUPS.get(obj.name.lower())
