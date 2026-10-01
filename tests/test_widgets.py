@@ -22,6 +22,7 @@ from pydmconverter.widgets import (
     PyDMDrawingPolyline,
     PyDMWaveformPlot,
     PyDMAnalogIndicator,
+    QWidget,
 )
 
 from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawable, Hidable
@@ -422,6 +423,90 @@ def test_pydmrelateddisplay_button_list_titles():
     assert stringlist is not None
     strings = [s.text for s in stringlist.findall("string")]
     assert strings == ["asynOctet Interface I/O", "Register interfaces I/O", "Serial port parameters"]
+
+
+# --- Tests for Qt mnemonic (&) escaping ---
+
+
+def test_qpushbutton_text_escapes_ampersand():
+    """QPushButton text has mnemonics enabled, so a literal & must become &&."""
+    button = QPushButton(text="PLC & UPS")
+    properties: List[ET.Element] = button.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    assert prop_dict.get("text") == "PLC && UPS"
+
+
+def test_pydmpushbutton_on_label_escapes_ampersand():
+    widget = PyDMPushButton(on_label="On & Off")
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    assert prop_dict.get("text") == "On && Off"
+
+
+def test_pydmrelateddisplay_button_list_titles_escapes_ampersand():
+    """List-valued titles should have each entry escaped for Qt menu actions."""
+    widget = PyDMRelatedDisplayButton()
+    widget.titles = ["A & B", "C"]
+    widget.displayFileName = ["a.edl", "c.edl"]
+
+    properties: List[ET.Element] = widget.generate_properties()
+
+    titles_prop = next((p for p in properties if p.get("name") == "titles"), None)
+    assert titles_prop is not None
+    stringlist = titles_prop.find("stringlist")
+    assert stringlist is not None
+    strings = [s.text for s in stringlist.findall("string")]
+    assert strings == ["A && B", "C"]
+
+
+def test_pydmrelateddisplay_button_str_titles_escapes_ampersand():
+    """A str-valued titles attribute should also be escaped."""
+    widget = PyDMRelatedDisplayButton(titles="A & B")
+    widget.displayFileName = ["a.edl"]
+
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    assert prop_dict.get("titles") == "A && B"
+
+
+def test_pydmshellcommand_titles_escape_ampersand():
+    widget = PyDMShellCommand(command=["ls"], titles=["Do & See"])
+    properties: List[ET.Element] = widget.generate_properties()
+
+    titles_prop = next((p for p in properties if p.get("name") == "titles"), None)
+    assert titles_prop is not None
+    stringlist = titles_prop.find("stringlist")
+    assert stringlist is not None
+    strings = [s.text for s in stringlist.findall("string")]
+    assert strings == ["Do && See"]
+
+
+def test_qwidget_title_attribute_escapes_ampersand():
+    """QWidget.title (QTabWidget page title) is emitted as an <attribute>, not a <property>."""
+    widget = QWidget(title="Tab & Co")
+    properties: List[ET.Element] = widget.generate_properties()
+
+    title_attr = next((p for p in properties if p.tag == "attribute" and p.get("name") == "title"), None)
+    assert title_attr is not None
+    string_el = title_attr.find("string")
+    assert string_el is not None
+    assert string_el.text == "Tab && Co"
+
+
+def test_qlabel_text_not_escaped():
+    """Regression guard: QLabel renders & literally and must not be escaped."""
+    widget = QLabel(text="A & B")
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    assert prop_dict.get("text") == "A & B"
+
+
+def test_pydmlabel_text_not_escaped():
+    """Regression guard: PyDMLabel renders & literally and must not be escaped."""
+    widget = PyDMLabel(text="A & B")
+    properties: List[ET.Element] = widget.generate_properties()
+    prop_dict = {prop.get("name"): get_property_value(prop) for prop in properties}
+    assert prop_dict.get("text") == "A & B"
 
 
 # --- Tests for QComboBox ---

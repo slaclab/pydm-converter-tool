@@ -4,6 +4,7 @@ import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
 from pydmconverter.custom_types import RGBA, RuleArguments
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -429,6 +430,34 @@ class Double(XMLConvertible):
         double_tag: etree.Element = etree.SubElement(prop, "double")  # Need to use double because float is unsupported
         double_tag.text = str(self.value)
         return prop
+
+
+def escape_qt_mnemonic(text):
+    """Escape ``&`` as ``&&`` for Qt widgets that treat ``&`` as a mnemonic marker.
+
+    QPushButton, tab titles, QMenu actions, QGroupBox, QCheckBox and QRadioButton
+    swallow a single ``&`` and underline the next character; a literal ampersand
+    must be written ``&&``. QLabel renders ``&`` literally, so this must NOT be
+    applied to label text. Idempotent: already-escaped ``&&`` is left alone, so
+    ``"A && B"`` stays ``"A && B"`` and never becomes ``"A &&&& B"``.
+    Non-string inputs pass through unchanged.
+    """
+    if not isinstance(text, str) or "&" not in text:
+        return text
+    # Collapse any existing "&&" to a single "&", then double every "&".
+    return text.replace("&&", "&").replace("&", "&&")
+
+
+def unescape_qt_mnemonic(text):
+    """Inverse of :func:`escape_qt_mnemonic`: ``&&`` -> ``&``.
+
+    Used when reading Qt ``.ui`` text destined for a renderer that shows ``&``
+    literally (the react/IR target). A stray single ``&`` (a real Qt mnemonic
+    marker) is dropped, matching what Qt would display.
+    """
+    if not isinstance(text, str) or "&" not in text:
+        return text
+    return re.sub(r"&(&?)", r"\1", text)
 
 
 @dataclass
@@ -1622,6 +1651,7 @@ class Legible(Tangible):
     text: Optional[str] = None
     font: dict = field(default_factory=dict)
     alignment: Optional[str] = None
+    text_has_mnemonics: ClassVar[bool] = False
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1634,7 +1664,8 @@ class Legible(Tangible):
         """
         properties: List[etree.Element] = super().generate_properties()
         if self.text is not None:
-            properties.append(Text("text", self.text).to_xml())
+            value = escape_qt_mnemonic(self.text) if self.text_has_mnemonics else self.text
+            properties.append(Text("text", value).to_xml())
         if self.font:
             properties.append(Font(**self.font).to_xml())
         if self.alignment is not None:

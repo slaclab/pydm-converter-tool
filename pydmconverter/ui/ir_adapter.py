@@ -18,6 +18,7 @@ from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode
+from pydmconverter.widgets_helpers import unescape_qt_mnemonic
 
 _SKIP = object()
 
@@ -59,6 +60,25 @@ _PYDM_RULE_PROPERTY_MAP = {
 
 # Boolean targets whose ``initial_value`` string is coerced to a real bool.
 _BOOLEAN_RULE_TARGETS = {"visible", "enabled"}
+
+# Issue #157: the .ui emitter now writes `&&` for button text (and related
+# titles) so Qt Designer/QPushButton don't treat a lone `&` as a mnemonic
+# marker. The react/IR path has no mnemonic concept, so for these Qt classes
+# we unescape `&&` -> `&` back to what the user actually sees. QLabel/PyDMLabel
+# text is deliberately excluded: PyQt5 renders `&` in a QLabel literally.
+_MNEMONIC_TEXT_CLASSES = frozenset(
+    {
+        "QPushButton",
+        "PyDMPushButton",
+        "PyDMRelatedDisplayButton",
+        "PyDMShellCommand",
+        "QCheckBox",
+        "QRadioButton",
+        "QGroupBox",
+        "QToolButton",
+    }
+)
+_MNEMONIC_TEXT_PROPS = frozenset({"text", "titles"})
 
 _CH_TOKEN = re.compile(r"ch\[\s*(\d+)\s*\]")
 _CHANNEL_PREFIX = re.compile(r"^(?:ca|pva)://")
@@ -379,6 +399,18 @@ def _widget_to_sources(widget: ET.Element, source_dir: Path | None) -> list[Sour
         value = _scalar_property(prop)
         if value is not _SKIP and name:
             props[name] = value
+
+    # Issue #157: undo the emitter's `&&` mnemonic-escaping for button-like
+    # classes only (text/titles), so the react/IR target shows a literal `&`.
+    if qt_class in _MNEMONIC_TEXT_CLASSES:
+        for prop_name in _MNEMONIC_TEXT_PROPS:
+            if prop_name not in props:
+                continue
+            value = props[prop_name]
+            if isinstance(value, list):
+                props[prop_name] = [unescape_qt_mnemonic(v) for v in value]
+            else:
+                props[prop_name] = unescape_qt_mnemonic(value)
 
     warnings: list[str] = []
     rules = _parse_rules(rules_text, warnings)
