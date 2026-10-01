@@ -33,6 +33,8 @@ from pydmconverter.widgets_helpers import (
     Text,
     BoolRule,
     MultiRule,
+    escape_qt_mnemonic,
+    unescape_qt_mnemonic,
 )
 
 
@@ -685,3 +687,52 @@ class TestMultiRuleExpression:
         rule = MultiRule("Visible", [])
         result = rule.get_expression(0, True, None, None, None)
         assert result == "ch[0]==1"
+
+
+def test_escape_qt_mnemonic_basic():
+    assert escape_qt_mnemonic("A & B") == "A && B"
+
+
+def test_escape_qt_mnemonic_idempotent():
+    assert escape_qt_mnemonic("A && B") == "A && B"
+
+
+def test_escape_qt_mnemonic_single_ampersand():
+    assert escape_qt_mnemonic("&") == "&&"
+
+
+def test_escape_qt_mnemonic_empty_string():
+    assert escape_qt_mnemonic("") == ""
+
+
+def test_escape_qt_mnemonic_no_ampersand():
+    assert escape_qt_mnemonic("no amp") == "no amp"
+
+
+def test_escape_qt_mnemonic_none_passthrough():
+    assert escape_qt_mnemonic(None) is None
+
+
+def test_unescape_qt_mnemonic_basic():
+    assert unescape_qt_mnemonic("A && B") == "A & B"
+
+
+def test_unescape_qt_mnemonic_multiple():
+    assert unescape_qt_mnemonic("PLC &&&& X") == "PLC && X"
+
+
+def test_unescape_qt_mnemonic_empty_string():
+    assert unescape_qt_mnemonic("") == ""
+
+
+def test_unescape_qt_mnemonic_no_ampersand():
+    assert unescape_qt_mnemonic("no amp") == "no amp"
+
+
+def test_unescape_qt_mnemonic_none_passthrough():
+    assert unescape_qt_mnemonic(None) is None
+
+
+def test_escape_unescape_round_trip():
+    original = "PLC & UPS"
+    assert unescape_qt_mnemonic(escape_qt_mnemonic(original)) == original
