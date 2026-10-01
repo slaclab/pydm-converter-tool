@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import textwrap
+from pathlib import Path
 
 from pydmconverter.edm.converter import convert, build_customwidgets_element, add_widgets_to_parent
 from pydmconverter.widgets import PyDMLabel, PyDMFrame
@@ -121,6 +122,95 @@ def test_convert_with_background_color(tmp_path):
         assert style_string is not None, "StyleSheet property should have a string element"
         assert style_string.text is not None, "StyleSheet string element should have text content"
         assert "background-color" in style_string.text, "StyleSheet should contain background-color property"
+
+
+def test_convert_with_explicit_color_list(tmp_path, monkeypatch):
+    """Test that an explicit color_list_file is used to resolve the screen bgColor."""
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    monkeypatch.delenv("EDMFILES", raising=False)
+
+    palette = tmp_path / "colors.list"
+    palette.write_text(
+        '4 0 0\n\nmax=0x10000\n\nstatic 14 "Yellow" { 0xffff 0 0 }\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        x 0
+        y 0
+        w 800
+        h 600
+        bgColor index 14
+        endScreenProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file), color_list_file=str(palette))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    style_props = root.findall(".//property[@name='styleSheet']")
+    assert len(style_props) > 0, "Should have a styleSheet property"
+    style_string = style_props[0].find("string")
+    assert style_string is not None
+    assert style_string.text is not None
+    assert "rgba(255, 0, 0, 255)" in style_string.text, (
+        f"Expected red background from explicit palette, got: {style_string.text}"
+    )
+
+
+def test_convert_explicit_color_list_beats_env(tmp_path, monkeypatch):
+    """Test that an explicit color_list_file takes priority over EDMCOLORFILE."""
+    env_palette = Path(__file__).parent / "fixtures" / "colors.list"
+    monkeypatch.setenv("EDMCOLORFILE", str(env_palette))
+    monkeypatch.delenv("EDMFILES", raising=False)
+
+    palette = tmp_path / "colors.list"
+    palette.write_text(
+        '4 0 0\n\nmax=0x10000\n\nstatic 14 "Yellow" { 0xffff 0 0 }\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        x 0
+        y 0
+        w 800
+        h 600
+        bgColor index 14
+        endScreenProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file), color_list_file=str(palette))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    style_props = root.findall(".//property[@name='styleSheet']")
+    assert len(style_props) > 0, "Should have a styleSheet property"
+    style_string = style_props[0].find("string")
+    assert style_string is not None
+    assert style_string.text is not None
+    assert "rgba(255, 0, 0, 255)" in style_string.text, (
+        f"Expected explicit red palette to beat EDMCOLORFILE yellow, got: {style_string.text}"
+    )
 
 
 def test_build_customwidgets_element():

@@ -880,7 +880,8 @@ def edm_file_to_ir(
     ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``;
     an explicit ``color_list_path`` wins over all of those. If no palette is found,
     "index N" colors cannot be resolved and are dropped with a node warning ("rgb ..."
-    colors resolve without a palette).
+    colors resolve without a palette). The same palette also resolves the screen's own
+    ``bgColor``.
 
     ``calc_list_path`` points at an EDM ``calc.list`` used to resolve named
     ``CALC\\`` PVs; when omitted the parser searches beside the input file, then
@@ -896,6 +897,7 @@ def edm_file_to_ir(
         str(path.with_suffix(".ui")),
         calc_list_file=str(calc_list_path) if calc_list_path else None,
         calc_reuse_short=False,
+        color_list_file=str(color_list_path) if color_list_path else None,
     )
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)

@@ -68,6 +68,7 @@ class EDMFileParser:
         output_file_path: str | Path,
         calc_list_file: str | None = None,
         calc_reuse_short: bool = True,
+        color_list_file: str | None = None,
     ):
         """Creates an instance of EDMFileParser for the given file_path
 
@@ -81,6 +82,10 @@ class EDMFileParser:
             Emit short ``calc://<id>`` reuse forms after a calc's first
             appearance (PyDM plugin semantics). The react/IR target passes
             False so every occurrence keeps its full query for formula hoisting.
+        color_list_file : str, optional
+            Explicit path to an EDM ``colors.list`` palette used to resolve the
+            screen's own ``bgColor``. Falls back to ``EDMCOLORFILE``,
+            ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list`` when omitted.
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -88,6 +93,7 @@ class EDMFileParser:
         self.output_file_path = output_file_path
         self.calc_list_file = calc_list_file
         self.calc_reuse_short = calc_reuse_short
+        self.color_list_file = color_list_file
 
         try:
             with open(file_path, "r") as file:
@@ -129,7 +135,7 @@ class EDMFileParser:
             size_properties = self.get_size_properties(screen_prop_text, strict=True)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
-                color_list_filepath = search_color_list()
+                color_list_filepath = search_color_list(self.color_list_file)
                 color_list_dict = parse_colors_list(color_list_filepath)
 
                 edmColor = other_properties["bgColor"]

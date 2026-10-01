@@ -133,3 +133,62 @@ def test_explicit_param_beats_env(monkeypatch, tmp_path):
     ir = convert_to_ir(COLORS_FILE, color_list_path=str(alt_colors))
     widget = ir.root.children[0]
     assert widget.props["foregroundColor"] == "#ff0000"
+
+
+# --- screen bgColor (issue #158) ---------------------------------------------------
+
+_SCREEN_EDL = """4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 200
+h 100
+font "helvetica-medium-r-12.0"
+bgColor index 25
+endScreenProperties
+"""
+
+
+def _write_screen_edl(tmp_path):
+    edl_path = tmp_path / "screen.edl"
+    edl_path.write_text(_SCREEN_EDL, encoding="utf-8", newline="\n")
+    return edl_path
+
+
+def test_explicit_color_list_resolves_screen_bgcolor(monkeypatch, tmp_path):
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    monkeypatch.delenv("EDMFILES", raising=False)
+    edl_path = _write_screen_edl(tmp_path)
+    palette = tmp_path / "colors.list"
+    palette.write_text(
+        '4 0 0\n\nmax=0x10000\n\nstatic 25 "Controller" { 0xffff 0 0 }\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    ir = convert_to_ir(edl_path, color_list_path=str(palette))
+    assert ir.root.props["backgroundColor"] == "#ff0000"
+
+
+def test_explicit_color_list_beats_env_for_screen_bgcolor(monkeypatch, tmp_path):
+    monkeypatch.setenv("EDMCOLORFILE", str(COLORS_FIXTURE))
+    monkeypatch.delenv("EDMFILES", raising=False)
+    edl_path = _write_screen_edl(tmp_path)
+    palette = tmp_path / "colors.list"
+    palette.write_text(
+        '4 0 0\n\nmax=0x10000\n\nstatic 25 "Controller" { 0xffff 0 0 }\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    ir = convert_to_ir(edl_path, color_list_path=str(palette))
+    assert ir.root.props["backgroundColor"] == "#ff0000"
+
+
+def test_env_color_list_still_resolves_screen_bgcolor(monkeypatch, tmp_path):
+    monkeypatch.setenv("EDMCOLORFILE", str(COLORS_FIXTURE))
+    monkeypatch.delenv("EDMFILES", raising=False)
+    edl_path = _write_screen_edl(tmp_path)
+    ir = convert_to_ir(edl_path)
+    assert ir.root.props["backgroundColor"] == "#0000ff"
