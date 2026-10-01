@@ -872,7 +872,7 @@ def traverse_group(
     return pydm_widgets, menu_mux_buttons
 
 
-def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
+def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_file: str | None = None):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
 
@@ -880,6 +880,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
     ----------
     parser : EDMFileParser
         The EDMFileParser instance containing parsed EDM objects and groups.
+    color_list_file : str, optional
+        Explicit path to an EDM ``colors.list`` palette used to resolve "index N"
+        colors. Falls back to ``EDMCOLORFILE``, ``$EDMFILES/colors.list``, then
+        ``/etc/edm/colors.list`` when omitted.
 
     Returns
     -------
@@ -891,7 +895,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None):
     skip_widgets = get_skip_widgets(site)
 
     used_classes = set()
-    color_list_filepath = search_color_list()
+    color_list_filepath = search_color_list(color_list_file)
     color_list_dict = parse_colors_list(color_list_filepath)
 
     # Pre-process: populate embedded tab bars

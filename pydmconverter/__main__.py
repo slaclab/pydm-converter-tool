@@ -37,11 +37,12 @@ def run(
     scrollable=False,
     site=None,
     calc_list=None,
+    color_list=None,
     target="pydm",
     out_format="json",
 ):
     if target == "react":
-        run_react(input_file, output_file, override, site=site, calc_list=calc_list)
+        run_react(input_file, output_file, override, site=site, calc_list=calc_list, color_list=color_list)
         return
 
     input_path: Path = Path(input_file)
@@ -53,7 +54,14 @@ def run(
         if output_path.is_file() and not override:
             raise FileExistsError(f"Output file '{output_path}' already exists. Use --override or -o to overwrite it.")
         copy_img_files(input_path.parent, output_path.parent)
-        convert(str(input_path), str(output_path), scrollable, site=site, calc_list_file=calc_list)
+        convert(
+            str(input_path),
+            str(output_path),
+            scrollable,
+            site=site,
+            calc_list_file=calc_list,
+            color_list_file=color_list,
+        )
     else:
         if input_file_type[0] != ".":  # prepending . so it will not pick up other file types with same suffix
             input_file_type = "." + input_file_type
@@ -61,7 +69,14 @@ def run(
         files_found: int
         files_failed: list[str]
         files_found, files_failed = convert_files_in_folder(
-            input_path, output_path, input_file_type, override, scrollable, site=site, calc_list=calc_list
+            input_path,
+            output_path,
+            input_file_type,
+            override,
+            scrollable,
+            site=site,
+            calc_list=calc_list,
+            color_list=color_list,
         )
 
         if files_found == 0:
@@ -75,19 +90,31 @@ def run(
             print(f"Failed files: {', '.join(map(lambda path: str(path), files_failed))}")
 
 
-def run_react(input_file, output_file, override, site=None, calc_list=None) -> None:
+def run_react(input_file, output_file, override, site=None, calc_list=None, color_list=None) -> None:
     """Convert .edl/.ui to Canopy Screen IR JSON (the --target react path)."""
     from pydmconverter import react
 
     input_path = Path(input_file)
     output_path = Path(output_file)
     if input_path.is_file():
-        out = react.convert_file(input_path, output_path, override=override, calc_list_path=calc_list, site=site)
+        out = react.convert_file(
+            input_path,
+            output_path,
+            override=override,
+            calc_list_path=calc_list,
+            color_list_path=color_list,
+            site=site,
+        )
         print(f"Converted {input_path} -> {out}")
     else:
         output_path.mkdir(parents=True, exist_ok=True)
         found, failed = react.convert_folder(
-            input_path, output_path, override=override, calc_list_path=calc_list, site=site
+            input_path,
+            output_path,
+            override=override,
+            calc_list_path=calc_list,
+            color_list_path=color_list,
+            site=site,
         )
         if found == 0:
             print(f"No {' or '.join(react.SUPPORTED_SUFFIXES)} files found in {input_path}")
@@ -114,6 +141,7 @@ def run_cli(args: argparse.Namespace) -> None:
     scrollable: bool = args.scrollable
     site: str = args.site
     calc_list: str = args.calc_list
+    color_list: str = args.color_list
     run(
         input_file,
         output_file,
@@ -122,6 +150,7 @@ def run_cli(args: argparse.Namespace) -> None:
         scrollable,
         site=site,
         calc_list=calc_list,
+        color_list=color_list,
         target=args.target,
         out_format=args.format,
     )
@@ -180,6 +209,7 @@ def convert_files_in_folder(
     scrollable: bool,
     site=None,
     calc_list=None,
+    color_list=None,
 ) -> tuple[int, list[str]]:
     """Recursively runs convert on files in directory and subdirectories
 
@@ -215,7 +245,14 @@ def convert_files_in_folder(
             logging.warning(f"Skipped: {output_file_path} already exists. Use --override or -o to overwrite it.")
         else:
             try:
-                convert(file, output_file_path, scrollable, site=site, calc_list_file=calc_list)
+                convert(
+                    file,
+                    output_file_path,
+                    scrollable,
+                    site=site,
+                    calc_list_file=calc_list,
+                    color_list_file=color_list,
+                )
             except Exception as e:
                 files_failed.append(str(file))
                 logging.warning(f"Failed to convert {file}: {e}")
@@ -224,7 +261,14 @@ def convert_files_in_folder(
     subdirectories = [item for item in input_path.iterdir() if item.is_dir()]
     for subdir in subdirectories:
         sub_found, sub_failed = convert_files_in_folder(
-            subdir, output_path / subdir.name, input_file_type, override, scrollable, site=site, calc_list=calc_list
+            subdir,
+            output_path / subdir.name,
+            input_file_type,
+            override,
+            scrollable,
+            site=site,
+            calc_list=calc_list,
+            color_list=color_list,
         )
         files_found += sub_found
         files_failed += sub_failed
@@ -291,6 +335,12 @@ def main() -> None:
         type=str,
         default=None,
         help="Path to an EDM calc.list file used to resolve named CALC PVs",
+    )
+    parser.add_argument(
+        "--color-list",
+        type=str,
+        default=None,
+        help="Path to an EDM colors.list palette used to resolve 'index N' colors (overrides EDMCOLORFILE)",
     )
     parser.add_argument(
         "--target",
