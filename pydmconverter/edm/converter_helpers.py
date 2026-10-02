@@ -36,6 +36,7 @@ from pydmconverter.edm.parser_helpers import (
 )
 from pydmconverter.edm.menumux import generate_menumux_file
 from pydmconverter.exceptions import AttributeConversionError
+import ast
 import logging
 import math
 import os
@@ -210,8 +211,6 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "arrows": "arrows",
     "fontAlign": "alignment",
     "displayFileName": "displayFileName",
-    "embeddedHeight": "embeddedHeight",
-    "embeddedWidth": "embeddedWidth",
     "numBits": "numBits",
     "startAngle": "startAngle",
     "totalAngle": "spanAngle",
@@ -236,6 +235,15 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "showLimits": "showLimitLabels",
     "labels": "rowLabels",
 }
+
+# Choice-button property holding the pages of the menu embedded window it
+# absorbed (set by pair_menu_pips, read by populate_tab_bar).
+TAB_PAGES = "_tab_pages"
+
+# Group property: its visibility rule starts true rather than false.
+STARTS_VISIBLE = "_starts_visible"
+
+LOC_NAME_PATTERN = re.compile(r"loc://([^?&\s\"',]+)")
 
 COLOR_ATTRIBUTES: set = {
     "fgColor",
@@ -483,7 +491,7 @@ def resolve_widget_type(obj: EDMObject):
     if not widget_type:
         return None
 
-    if name == "activechoicebuttonclass" and ("tabs" not in obj.properties or not obj.properties["tabs"]):
+    if name == "activechoicebuttonclass" and TAB_PAGES not in obj.properties:
         channel = search_for_edm_attr(obj, "channel")
         if not channel:
             logger.warning(f"Could not find channel in object: {obj.name}")
@@ -512,6 +520,11 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
                 macro_dict = parse_edm_macros(value[0])
                 value = macro_dict
                 logger.info(f"Converted single macro to dict: {value}")
+            elif isinstance(widget, PyDMEmbeddedDisplay) and is_menu_pip(obj) and value:
+                # A menu window has one symbols entry per displayFileName entry: take the shown one's.
+                index = shown_display_index(obj)
+                value = parse_edm_macros(value[index]) if index < len(value) else {}
+                logger.info(f"Converted shown display's macros to dict: {value}")
             else:
                 parsed_macros = []
                 for macro_str in value:
@@ -640,15 +653,14 @@ def apply_widget_post_processing(
             display_filenames = obj.properties["displayFileName"]
             filename_to_set = None
             if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
-                filename_to_set = display_filenames[0]
+                filename_to_set = display_filenames[shown_display_index(obj)]
             elif isinstance(display_filenames, dict) and len(display_filenames) > 0:
                 filename_to_set = display_filenames[0]
             elif isinstance(display_filenames, str):
                 filename_to_set = display_filenames
 
             if isinstance(filename_to_set, str):
-                if filename_to_set.endswith(".edl"):
-                    filename_to_set = filename_to_set[:-4] + ".ui"
+                # PyDMEmbeddedDisplay maps the EDM name to its .ui name when serialized.
                 widget.filename = filename_to_set
                 logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
 
@@ -767,6 +779,8 @@ def traverse_group(
             vis_invert = bool(obj.properties.get("visInvert", False))
             if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
                 curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"], vis_invert)]
+                if obj.properties.get(STARTS_VISIBLE):
+                    curr_vispv = [curr_vispv[0] + (True,)]
             elif "visPv" in obj.properties:
                 curr_vispv = [(obj.properties["visPv"], None, None, vis_invert)]
             else:
@@ -864,6 +878,13 @@ def traverse_group(
                 parent_pydm_group,
             )
 
+            # Widgets built inside a container (tab pages) need their classes declared too.
+            nested = list(getattr(widget, "children", []))
+            while nested:
+                child = nested.pop()
+                used_classes.add(type(child).__name__)
+                nested.extend(getattr(child, "children", []))
+
             pydm_widgets.append(widget)
             logger.info(f"Added {widget.name} to root")
         else:
@@ -898,10 +919,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     color_list_filepath = search_color_list(color_list_file)
     color_list_dict = parse_colors_list(color_list_filepath)
 
-    # Pre-process: populate embedded tab bars
-    pip_objects = find_objects(parser.ui, "activepipclass")
-    for pip_object in pip_objects:
-        create_embedded_tabs(pip_object, parser.ui)
+    # Pre-process: choice buttons driving menu embedded windows become tabs or switched displays
+    pair_menu_pips(parser.ui, color_list_dict)
 
     # Pre-process: remove overlapping text labels on related display buttons
     text_objects = find_objects(parser.ui, "activextextclass")
@@ -1091,37 +1110,36 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     return extra_sliders
 
 
-def populate_tab_bar(obj: EDMObject, widget):
-    tab_names = obj.properties.get("tabs", [])
-    if not tab_names and widget.channel is not None:
-        # tab_names = get_channel_tabs(widget.channel)
-        tab_names = None
-    if not tab_names:
+def populate_tab_bar(obj: EDMObject, widget: QTabWidget) -> None:
+    """Build the pages of a choice button that absorbed a menu embedded window (see pair_menu_pips)."""
+    spec = obj.properties.get(TAB_PAGES)
+    if spec is None:
+        # A choice button without a channel to become a PyDMEnumButton.
         logger.warning(f"No tab names found in {obj.name}. Skipping.")
         return
-
-    if "displayFileName" in obj.properties and obj.properties["displayFileName"] is not None:
-        file_list = obj.properties["displayFileName"]
-        for index, tab_name in enumerate(tab_names):
-            widget_name = re.sub(r"[^a-zA-Z0-9_]", "_", tab_name)
-            if widget_name and widget_name[0].isdigit():
-                widget_name = f"tab_{widget_name}"
-            child_widget = QWidget(title=tab_name)
-            widget.add_child(child_widget)
-            embedded_widget = PyDMEmbeddedDisplay(
-                name=f"{widget_name}_embedded",
-                x=0,
-                y=0,
-                filename=file_list[index],
+    # The pages switch on their own, so the tab widget needs no channel.
+    widget.channel = None
+    widget.tab_bar_height = spec["tab_bar_height"]
+    widget.tab_bar_left = spec["tab_bar_left"]
+    widget.tab_width = spec["tab_width"]
+    widget.border_color = spec["border_color"]
+    widget.current_index = spec["current_index"]
+    widget.select_color = spec["select_color"]
+    for index, page in enumerate(spec["pages"]):
+        child_widget = QWidget(title=page["title"])
+        child_widget.add_child(
+            PyDMEmbeddedDisplay(
+                name=f"{widget.name}_page{index}",
+                x=spec["page_x"],
+                y=spec["page_y"],
+                width=spec["page_width"],
+                height=spec["page_height"],
+                filename=page["filename"],
+                macros=page["macros"],
                 visible=True,
-                height=500,
-                width=500,
             )
-            child_widget.add_child(embedded_widget)
-    else:
-        for tab_name in tab_names:
-            child_widget = QWidget(title=tab_name)
-            widget.add_child(child_widget)
+        )
+        widget.add_child(child_widget)
 
 
 def get_channel_tabs(channel: str, timeout: float = 0.5) -> List[str]:
@@ -1132,172 +1150,217 @@ def get_channel_tabs(channel: str, timeout: float = 0.5) -> List[str]:
     return None
 
 
-def count_loc_variable_instances(group: EDMGroup, channel_name: str) -> int:
-    """
-    Count how many times a location variable channel appears in the widget tree.
-
-    Parameters
-    ----------
-    group : EDMGroup
-        The group to search within
-    channel_name : str
-        The channel name to search for (e.g., "loc://myVar")
-
-    Returns
-    -------
-    int
-        Number of instances found
-    """
-    count = 0
-
-    def search_recursive(g: EDMGroup):
-        nonlocal count
-        for obj in g.objects:
-            if isinstance(obj, EDMGroup):
-                search_recursive(obj)
-            elif hasattr(obj, "properties"):
-                # Check all properties for the channel
-                for key, value in obj.properties.items():
-                    if isinstance(value, str) and channel_name in value:
-                        count += 1
-                        break  # Count this object once
-
-    search_recursive(group)
-    return count
+def _loc_names(obj: EDMObject) -> set:
+    """Every loc:// variable name the object's properties reference."""
+    names = set()
+    for value in obj.properties.values():
+        for item in value if isinstance(value, list) else [value]:
+            if isinstance(item, str):
+                names.update(LOC_NAME_PATTERN.findall(item))
+    return names
 
 
-def create_hidden_frame_for_loc_variable(loc_variable: str, central_widget: EDMGroup) -> None:
-    """
-    Create a hidden PyDMFrame with the location variable to satisfy
-    the minimum 2-instance requirement for embedded tabs.
-
-    The frame is invisible and positioned at (0,0) with 0 size so it
-    doesn't interfere with clicks or disrupt the UI.
-
-    Parameters
-    ----------
-    loc_variable : str
-        The location variable (e.g., "loc://myVar?init=['tab1', 'tab2']")
-    central_widget : EDMGroup
-        The central widget group to add the hidden frame to
-    """
-    channel_name = loc_variable.split("?")[0]
-
-    hidden_frame = EDMObject(
-        name="Group",
-        properties={
-            "visPv": channel_name,
-            "visInvert": True,
-            "visMin": 0,
-            "visMax": 1,
-        },
-        x=0,
-        y=0,
-        width=0,
-        height=0,
-    )
-
-    central_widget.add_object(hidden_frame)
-    logger.info(f"Created hidden PyDMFrame for location variable: {channel_name}")
+def _loc_enum_strings(url: str) -> List[str]:
+    """States of an enum loc:// URL. parser_helpers.loc_conversion writes them
+    last, as a Python list literal (the form PyDM's local plugin reads)."""
+    _, found, literal = url.partition("&enum_string=")
+    if not found:
+        return []
+    try:
+        return [str(state) for state in ast.literal_eval(literal)]
+    except (ValueError, SyntaxError):
+        return []
 
 
-def create_embedded_tabs(obj: EDMObject, central_widget: EDMGroup) -> bool:
-    """
-    If needed, creates tabs from local variables of this embedded display.
-
-    Parameters
-    ----------
-    obj : EDMObject
-        The activePipClass EDMFileObject instance that will be used to generate tabs and embedded displays. (This object is an activePipClass).
-
-    Returns
-    -------
-    bool
-        Returns true if embedded tabs added, returns false if unable to create embedded tabs
-    """
-    searched_arr = None
-    loc_variable = None
-    channel_name = None
-
-    logger.debug(f"Object properties: {dict(obj.properties.items())}")
-    for prop_name, prop_val in obj.properties.items():
-        if isinstance(prop_val, str) and (
-            "loc://" in prop_val or "LOC\\" in prop_val
-        ):  # TODO: is it possible to have multiple loc\\ in the same embedded display?
-            searched_arr = prop_val.split("=")
-            loc_variable = prop_val  # Save full location variable string
-            channel_name = prop_val.split("?")[0]
-
-    if int(obj.properties["numDsps"]) <= 1 or searched_arr is None:
-        return False
-
-    if loc_variable and channel_name:
-        instance_count = count_loc_variable_instances(central_widget, channel_name)
-
-        if instance_count < 2:
-            logger.info(f"Location variable {channel_name} only appears {instance_count} time(s)")
-            logger.info("Creating hidden PyDMFrame to satisfy minimum instance requirement")
-            create_hidden_frame_for_loc_variable(loc_variable, central_widget)
-
-    string_list = searched_arr[-1]
-
-    if string_list.startswith("[") and string_list.endswith("]"):
-        channel_list = string_list[1:-1].split(", ")
-        tab_names = [item.strip("'") for item in channel_list]
-    else:
-        tab_names = [string_list.strip("'")]
-
-    for i in range(len(tab_names)):
-        if not tab_names[i]:
-            tab_names.pop(i)
-    tab_widget = search_group(central_widget, "activeChoiceButtonClass", channel_name, "Pv")
-    if tab_widget is None:
-        return False
-
-    tab_widget.properties["tabs"] = tab_names
-    tab_widget.properties["displayFileName"] = obj.properties["displayFileName"]
-    tab_widget.properties["embeddedHeight"] = obj.height
-    tab_widget.properties["embeddedWidth"] = obj.width
-    # tab_widget.properties["w"] = tab_widget.properties["w"] + obj.properties["w"] #prob not use
-    # tab_widget.properties["height"] = tab_widget.properties["height"] + obj.properties["height"]
-    return True
+def _loc_init(url: str) -> int:
+    match = re.search(r"[?&]init=(-?\d+)", url)
+    return int(match.group(1)) if match else 0
 
 
-def search_group(
-    group: EDMGroup, widget_type: str, prop_val: str, prop_name_suffix: str = "Pv"
-) -> EDMObject:  # TODO: May need to check for edgecases with multiple tabs
-    """
-    Recursively search through all nodes in an EDMGroup for a specified widget type
-    and a property-value pair where property names end with a specific suffix.
+def _as_list(value) -> list:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
 
-    Parameters
-    ----------
-    group : EDMGroup
-        The EDMGroup to search within.
-    widget_type : str
-        The type of widget to search for.
-    property_val: str
-        The expected value.
-    prop_name_suffix : str
-        The suffix that property names should end with to be checked.
 
-    Returns
-    -------
-    Optional[EDMObject]
-        Returns the found EDMObject if it matches the criteria, else None.
-    """
+def is_menu_pip(obj: EDMObject) -> bool:
+    """An embedded window whose filePv picks among its displayFileName entries."""
+    return obj.name.lower() == "activepipclass" and str(obj.properties.get("displaySource", "")).lower() == "menu"
+
+
+def shown_display_index(obj: EDMObject) -> int:
+    """The displayFileName/symbols entry an embedded window shows when it opens:
+    a menu window starts at its filePv's initial value, any other at entry 0."""
+    if not is_menu_pip(obj):
+        return 0
+    file_pv = obj.properties.get("filePv")
+    index = _loc_init(file_pv) if isinstance(file_pv, str) and file_pv.startswith("loc://") else 0
+    count = len(_as_list(obj.properties.get("displayFileName")))
+    return index if 0 <= index < count else 0
+
+
+def _walk_objects(group: EDMGroup, hidden: bool = False):
+    """Yield (object, parent group, whether an enclosing group has a visibility PV)."""
     for obj in group.objects:
         if isinstance(obj, EDMGroup):
-            child_object = search_group(obj, widget_type, prop_val, prop_name_suffix)
-            if child_object is not None:
-                return child_object
-        elif obj.name.lower() == widget_type.lower():
-            for key, value in obj.properties.items():
-                if key.endswith(prop_name_suffix):
-                    if value is not None and prop_val in value:  # prop_val == value
-                        return obj
+            group_hidden = hidden or "visPv" in obj.properties or "symbolChannel" in obj.properties
+            yield from _walk_objects(obj, group_hidden)
+        else:
+            yield obj, group, hidden
 
-    return None
+
+def _fits_tab_bar(pip: EDMObject, pip_parent: EDMGroup, hidden: bool, choice: EDMObject, choice_parent) -> bool:
+    """A horizontal choice button sitting directly on top of the window, sharing
+    its group and with no visibility of its own, reads as a tab bar."""
+    if choice_parent is not pip_parent or hidden:
+        return False
+    if "visPv" in pip.properties or "visPv" in choice.properties:
+        return False
+    if str(choice.properties.get("orientation", "")).lower() != "horizontal":
+        return False
+    gap = pip.y - (choice.y + choice.height)
+    inside = pip.x - 8 <= choice.x and choice.x + choice.width <= pip.x + pip.width + 8
+    return -4 <= gap <= 12 and inside
+
+
+def pair_menu_pips(root: EDMGroup, color_list_dict) -> None:
+    """
+    Convert each menu embedded window that a choice button drives.
+
+    In EDM the two are separate widgets sharing a LOC\\ variable: the choice
+    button writes it (its states are the variable's enum strings) and the
+    window shows displayFileName[value]. When the button sits on top of the
+    window and nothing else uses the variable, the pair becomes one QTabWidget:
+    the choice button carries the pages and the window is removed. Otherwise
+    the button stays a PyDMEnumButton and the window becomes one embedded
+    display per file, shown only at its index, so EDM's layout and every other
+    user of the variable keep working.
+    """
+    objects = list(_walk_objects(root))
+    for pip, parent, hidden in objects:
+        if not is_menu_pip(pip):
+            continue
+        file_pv = pip.properties.get("filePv")
+        match = LOC_NAME_PATTERN.search(file_pv) if isinstance(file_pv, str) else None
+        files = _as_list(pip.properties.get("displayFileName"))
+        if not match or not files:
+            continue
+        name = match.group(1)
+        users = [(obj, group) for obj, group, _ in objects if obj is not pip and name in _loc_names(obj)]
+        choices = [(obj, group) for obj, group in users if obj.name.lower() == "activechoicebuttonclass"]
+        if not choices:
+            continue
+
+        # The richest reference defines the variable: most enum strings, then any config at all.
+        references = [file_pv] + [
+            value
+            for obj, _ in users
+            for value in obj.properties.values()
+            if isinstance(value, str) and (value == f"loc://{name}" or value.startswith(f"loc://{name}?"))
+        ]
+        definition = max(references, key=lambda url: (len(_loc_enum_strings(url)), "?" in url))
+
+        if len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
+            _absorb_pip_into_tabs(pip, parent, choices[0][0], files, definition, color_list_dict)
+        else:
+            _stack_pip_displays(pip, parent, name, files, definition, users)
+
+
+def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dict) -> None:
+    """Turn the choice button into a tab widget covering both rects, one page per file."""
+    enum_strings = _loc_enum_strings(definition)
+    labels = _as_list(pip.properties.get("menuLabel"))
+    symbols = _as_list(pip.properties.get("symbols"))
+    pages = []
+    for index, file in enumerate(files):
+        # Tab titles are what EDM's choice button shows: the variable's enum strings.
+        title = enum_strings[index] if index < len(enum_strings) else ""
+        if not title and index < len(labels) and labels[index] != "\x18":
+            title = labels[index]
+        if not title:
+            title = os.path.splitext(os.path.basename(file))[0]
+        symbol = symbols[index] if index < len(symbols) else ""
+        pages.append({"title": title, "filename": file, "macros": parse_edm_macros(symbol) if symbol else {}})
+
+    left = min(choice.x, pip.x)
+    right = max(choice.x + choice.width, pip.x + pip.width)
+    gap = max(pip.y - (choice.y + choice.height), 0)
+    init = _loc_init(definition)
+    colors = {
+        key: convert_color_property_to_qcolor(choice.properties[key], color_data=color_list_dict)
+        for key in ("selectColor", "botShadowColor")
+        if choice.properties.get(key)
+    }
+    choice.properties[TAB_PAGES] = {
+        "pages": pages,
+        "tab_bar_height": choice.height,
+        "tab_bar_left": choice.x - left,
+        "tab_width": choice.width // len(pages),
+        "page_x": pip.x - left,
+        "page_y": gap,
+        "page_width": pip.width,
+        "page_height": pip.height,
+        "current_index": init if 0 < init < len(files) else None,
+        "select_color": colors.get("selectColor"),
+        "border_color": colors.get("botShadowColor"),
+    }
+    choice.x = left
+    choice.width = right - left
+    choice.height = choice.height + gap + pip.height
+    parent.objects.remove(pip)
+    logger.info(f"Converted choice button and menu embedded window on {definition} to tabs")
+
+
+def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
+    """Replace the window with one embedded display per file, each visible only
+    while the variable equals its index (a group visPv in [i, i + 1))."""
+    symbols = _as_list(pip.properties.get("symbols"))
+    start = _loc_init(definition)
+    if not 0 <= start < len(files):
+        start = 0
+    shared = {
+        key: value
+        for key, value in pip.properties.items()
+        if key not in ("filePv", "displayFileName", "symbols", "menuLabel", "numDsps")
+    }
+    stack = []
+    for index, file in enumerate(files):
+        properties = dict(shared, displayFileName=[file], numDsps="1")
+        if index < len(symbols) and symbols[index]:
+            properties["symbols"] = [symbols[index]]
+        display = EDMObject(name=pip.name, x=pip.x, y=pip.y, width=pip.width, height=pip.height, properties=properties)
+        stack.append(
+            EDMGroup(
+                x=pip.x,
+                y=pip.y,
+                width=pip.width,
+                height=pip.height,
+                objects=[display],
+                properties={
+                    "visPv": f"loc://{name}",
+                    "visMin": str(index),
+                    "visMax": str(index + 1),
+                    # Qt sizes the screen to what is visible when it first shows,
+                    # so the starting display must not begin hidden.
+                    STARTS_VISIBLE: index == start,
+                },
+            )
+        )
+    position = parent.objects.index(pip)
+    parent.objects[position : position + 1] = stack
+
+    # PyDM's local plugin takes a variable's type, initial value and enum
+    # strings from the first channel that connects and ignores later ones. The
+    # window carried the full definition; hand it to the choice buttons (which
+    # need the enum strings for their states) and to every other configured use.
+    for obj, _ in users:
+        is_choice = obj.name.lower() == "activechoicebuttonclass"
+        for key, value in obj.properties.items():
+            if not isinstance(value, str):
+                continue
+            if value.startswith(f"loc://{name}?") or (is_choice and value == f"loc://{name}"):
+                obj.properties[key] = definition
+    logger.info(f"Stacked {len(files)} embedded displays switched by {definition}")
 
 
 def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):

@@ -1045,12 +1045,19 @@ class MultiRule(XMLConvertible):
         if not expression_list:
             return ""
         expression_str = "(" + ") and (".join(expression_list) + ")"
+        # Until its channels connect the widget shows the initial value: true
+        # only when every condition asks for it.
+        starts_true = (
+            bool(self.rule_list)
+            and self.hide_on_disconnect_channel is None
+            and all(initial_value for _, _, initial_value, *_ in self.rule_list)
+        )
 
         output_string = (
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "false", '
+            f'"initial_value": "{"true" if starts_true else "false"}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -1720,7 +1727,10 @@ class Controllable(Tangible):
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
         if self.visPvList is not None:
             for elem in self.visPvList:
-                if len(elem) == 4:
+                group_initial = False
+                if len(elem) == 5:
+                    group_channel, group_min, group_max, group_invert, group_initial = elem
+                elif len(elem) == 4:
                     group_channel, group_min, group_max, group_invert = elem
                 else:
                     group_channel, group_min, group_max = elem
@@ -1729,7 +1739,7 @@ class Controllable(Tangible):
                     RuleArguments(
                         "Visible",
                         group_channel,
-                        False,
+                        group_initial,
                         not group_invert,
                         group_min,
                         group_max,
