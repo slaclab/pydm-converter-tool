@@ -1,63 +1,6 @@
 {
   "id": "polygon",
-  "version": "1.0.0",
-  "displayName": "Polygon",
-  "description": "Closed polygon from a list of vertices. Vertices are relative to the widget's top-left corner.",
-  "category": "drawing",
-  "paletteIcon": "polygon.svg",
-
-  "reactComponent": {
-    "name": "Polygon",
-    "module": "@canopy/widgets"
-  },
-
-  "qtMapping": {
-    "class": "PyDMDrawingIrregularPolygon",
-    "extends": "PyDMDrawingPolyline",
-    "header": "pydm.widgets.drawing"
-  },
-
-  "propSchema": {
-    "$schema": "https://json-schema.org/draft-07/schema",
-    "type": "object",
-    "properties": {
-      "lineColor": { "type": "string", "default": "#6f6f6f" },
-      "lineWidth": { "type": "number", "minimum": 0, "default": 2 },
-      "lineStyle": {
-        "type": "string",
-        "enum": ["solid", "dashed", "dotted"],
-        "default": "solid"
-      },
-      "points": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["x", "y"],
-          "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" }
-          },
-          "additionalProperties": false
-        },
-        "description": "Vertices relative to the widget's top-left corner."
-      },
-      "closed": {
-        "type": "boolean",
-        "default": true,
-        "description": "Whether the outline is closed (polygon) or left open (polyline)."
-      },
-      "fill": { "type": "boolean", "default": false },
-      "fillColor": { "type": "string" },
-      "opacity": {
-        "type": "number",
-        "minimum": 0,
-        "maximum": 100,
-        "default": 0,
-        "description": "Transparency percent; 100 = fully transparent (carries EDM's 'invisible' flag)."
-      }
-    }
-  },
-
+  "qtMapping": { "class": "PyDMDrawingIrregularPolygon", "extends": "PyDMDrawingPolyline", "header": "pydm.widgets.drawing" },
   "qtPropMap": {
     "penColor": { "to": "lineColor" },
     "penWidth": { "to": "lineWidth" },
@@ -67,17 +10,5 @@
     "brushFill": { "to": "fill" },
     "brushColor": { "to": "fillColor" },
     "opacity": { "to": "opacity" }
-  },
-
-  "inspectorSchema": {
-    "groups": [
-      { "name": "Appearance", "fields": ["lineColor", "lineWidth", "lineStyle", "fill", "fillColor", "opacity"] }
-    ]
-  },
-
-  "defaults": { "width": 100, "height": 100 },
-
-  "supportsPv": false,
-  "supportsRules": true,
-  "supportsChildren": false
+  }
 }
