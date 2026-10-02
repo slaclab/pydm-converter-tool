@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
 import logging
 
-from pydmconverter.widgets_helpers import PageHeader
+from pydmconverter.widgets_helpers import Geometry, PageHeader
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,7 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
         style_sheet_elem.text = f"background-color: {bg_color};"
 
     add_widgets_to_parent(pydm_widgets, central_widget)
+    fit_geometry_to_children(central_widget, edm_parser.ui.width, edm_parser.ui.height)
 
     customwidgets_el = build_customwidgets_element(used_classes)
     ui_element.append(customwidgets_el)
@@ -124,3 +125,22 @@ def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
+
+
+def fit_geometry_to_children(parent_element, min_width, min_height):
+    """Give a layout-less container an explicit geometry that covers its child widgets.
+
+    Without one, Qt calls adjustSize() on it when it is first shown and sizes it to the
+    children visible at that moment, so a widget hidden at startup by a Visible rule (EDM
+    visPv) is clipped when it later appears. The rect is at least min_width x min_height and
+    reaches the furthest child's right/bottom edge, so widgets placed past the screen's
+    declared size stay visible when the window is enlarged.
+    """
+    width, height = min_width, min_height
+    for child in parent_element.findall("widget"):
+        rect = child.find("property[@name='geometry']/rect")
+        if rect is None:
+            continue
+        width = max(width, int(rect.findtext("x")) + int(rect.findtext("width")))
+        height = max(height, int(rect.findtext("y")) + int(rect.findtext("height")))
+    parent_element.insert(0, Geometry(0, 0, width, height).to_xml())
