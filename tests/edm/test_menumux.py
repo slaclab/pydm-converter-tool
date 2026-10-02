@@ -1,11 +1,12 @@
 """EDM menu mux screens: the generated .py swaps macros on the embedded .ui (#65)."""
 
+import ast
+import sys
 import textwrap
 
 import pytest
 
 from pydmconverter.edm.converter import convert
-from pydmconverter.edm.parser import EDMObject
 
 SCREEN = textwrap.dedent(
     r"""
@@ -100,9 +101,27 @@ def test_generated_screen_compiles_and_names_its_ui_without_a_path(menumux_scree
     # PyDM resolves this against the .py's own directory, wherever PyDM was started.
     assert 'self.embedded.filename = "screen.ui"' in code
     assert "def __init__(self, parent=None, args=None, macros=None):" in code
+    # The screen runs where only qtpy and pydm are installed.
+    assert "pydmconverter" not in code
 
 
-def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot):
+def test_menu_without_tags_is_labelled_by_its_values(tmp_path, monkeypatch):
+    source = tmp_path / "untagged.edl"
+    source.write_text(SCREEN.replace('symbolTag {\n  0 "Off"\n  1 "On"\n}\n', ""))
+    assert "symbolTag" not in source.read_text()
+    monkeypatch.chdir(tmp_path)
+    convert(str(source), str(tmp_path / "untagged.ui"))
+
+    module = ast.parse((tmp_path / "untagged.py").read_text())
+    (menus,) = [
+        ast.literal_eval(node.value)
+        for node in ast.walk(module)
+        if isinstance(node, ast.Assign) and getattr(node.targets[0], "attr", None) == "menus"
+    ]
+    assert menus[0]["items"] == ["0", "1"]
+
+
+def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot, monkeypatch):
     pytest.importorskip("pydm")
     from pydm.data_plugins import plugin_for_address
     from pydm.display import load_file
@@ -112,6 +131,9 @@ def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot):
         connection = plugin_for_address("loc://x").connections.get(VARIABLE)
         return None if connection is None else connection.value
 
+    # Load as on a PyDM install without the converter.
+    for module in ("pydmconverter", "pydmconverter.edm", "pydmconverter.edm.parser"):
+        monkeypatch.setitem(sys.modules, module, None)
     screen = load_file(str(menumux_screen), macros={"START": "1"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
@@ -131,7 +153,7 @@ def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot):
 
     # initialState reads like strtol and falls back to the first item.
     def initial(state, count=5):
-        return screen.initial_index(EDMObject(properties={"initialState": state}), count)
+        return screen.initial_index(state, count)
 
     assert initial("${START}+1") == 1
     assert initial("3") == 3

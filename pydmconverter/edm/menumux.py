@@ -1,4 +1,6 @@
 import logging
+import pprint
+import textwrap
 from pathlib import Path
 from pydmconverter.edm.parser import EDMObject
 
@@ -12,6 +14,26 @@ def generate_menumux_file(menumux_buttons: list[EDMObject], output_path: str | P
 
     add_menumux_indices(menumux_buttons)
 
+    # The screen gets its menus as plain literals, so it runs with only qtpy and
+    # pydm installed: position, item labels, (macro, value per item) pairs and
+    # the EDM initialState.
+    menus = [
+        {
+            "x": obj.x,
+            "y": obj.y,
+            "width": obj.width,
+            "height": obj.height,
+            "items": menu_items(obj),
+            "macros": [
+                (names[0], values)
+                for names, values in zip(obj.properties["symbolIndices"], obj.properties["valueIndices"])
+            ],
+            "initialState": str(obj.properties.get("initialState", "0")),
+        }
+        for obj in menumux_buttons
+    ]
+    menus_literal = textwrap.indent(pprint.pformat(menus, width=100, sort_dicts=False), " " * 8).lstrip()
+
     # The .ui sits next to the generated .py, and PyDM resolves an embedded
     # display's relative filename against the .py's directory.
     code = f"""from qtpy.QtWidgets import (
@@ -21,7 +43,6 @@ from qtpy.QtCore import QCoreApplication
 from pydm import Display
 from pydm.widgets import PyDMEmbeddedDisplay
 from pydm.widgets.rules import unregister_widget_rules
-from pydmconverter.edm.parser import EDMObject
 import json
 import re
 
@@ -30,8 +51,8 @@ class MenuMuxScreen(Display):
         super().__init__(parent=parent, args=args, macros=macros)
 
         self.muxes = []
-        self.menumux_buttons = {menumux_buttons}
-        self.macro_mappings = []  # Each entry: (macro_name, [value0, value1, ...])
+        self.menus = {menus_literal}
+        self.macro_mappings = []  # Each entry: [(macro_name, [value0, value1, ...]), ...]
         self.current_macros = dict()  # Dict of current macros to apply
 
         self.container = QWidget()
@@ -42,29 +63,21 @@ class MenuMuxScreen(Display):
         self.embedded.filename = "{output_path.name}"
         self.stack_layout.addWidget(self.embedded)
 
-        for i, obj in enumerate(self.menumux_buttons):
+        for i, menu in enumerate(self.menus):
             combo = QComboBox(self.container)
-            combo.setFixedHeight(obj.height)
-            combo.setFixedWidth(obj.width)
-            combo.move(obj.x, obj.y)
+            combo.setFixedHeight(menu["height"])
+            combo.setFixedWidth(menu["width"])
+            combo.move(menu["x"], menu["y"])
             combo.raise_()
 
-            # Get symbol and values for first index
-            macro_names_list = obj.properties["symbolIndices"]
-            values_list = obj.properties["valueIndices"]
-            symbols = obj.properties["symbolTag"]
-
-            combo.addItems(symbols)
-            combo.setCurrentIndex(self.initial_index(obj, combo.count()))
+            combo.addItems(menu["items"])
+            combo.setCurrentIndex(self.initial_index(menu["initialState"], combo.count()))
             combo.currentIndexChanged.connect(
                 lambda selected_index, combo_index=i: self.update_display(combo_index, selected_index)
             )
 
             self.muxes.append(combo)
-            inner_mapping = []
-            for i in range(len(macro_names_list)):
-                inner_mapping.append((macro_names_list[i][0], values_list[i]))
-            self.macro_mappings.append(inner_mapping)
+            self.macro_mappings.append(menu["macros"])
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.container)
@@ -74,7 +87,7 @@ class MenuMuxScreen(Display):
             self.set_menu_macros(j, combo.currentIndex())
         self.load()
 
-    def initial_index(self, obj, count):
+    def initial_index(self, state, count):
         # EDM's initialState: the index of the first item shown. It may use
         # the screen's macros ("${{initDev}}") and is read like strtol, so
         # "3+1" is 3; anything unusable starts at 0.
@@ -82,7 +95,7 @@ class MenuMuxScreen(Display):
         text = re.sub(
             "[$][{{(]([A-Za-z0-9_]+)[}})]",
             lambda m: str(macros.get(m.group(1), m.group(0))),
-            str(obj.properties.get("initialState", "0")),
+            state,
         )
         match = re.match("[ ]*(-?[0-9]+)", text)
         index = int(match.group(1)) if match else 0
@@ -115,6 +128,16 @@ class MenuMuxScreen(Display):
         f.write(code)
 
     logger.info(f"Generated: {file_path}")
+
+
+def menu_items(obj: EDMObject) -> list[str]:
+    """A menu mux's item labels. Without symbolTag EDM shows blank items, so
+    label each item by its first macro's value instead."""
+    tags = obj.properties.get("symbolTag")
+    if tags:
+        return tags
+    values = obj.properties["valueIndices"]
+    return list(values[0]) if values else []
 
 
 def add_menumux_indices(menumux_buttons):
