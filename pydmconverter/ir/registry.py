@@ -1,16 +1,14 @@
 """Widget registry access.
 
 The converter resolves a source widget (EDM class -> Qt class, or a Qt class
-straight from a ``.ui``) to a Canopy widget definition: its registry id (the IR
-``type``), ``qtPropMap`` (drives prop translation), ``propSchema`` (the bindable
-surface for rules), and ``defaults``.
+straight from a ``.ui``) to a registry definition: its id (the IR ``type``), its
+``qtMapping`` and its ``qtPropMap`` (drives prop translation).
 
-In the Canopy backend this is an in-process call to ``canopy.beaver.gateway``.
-Here, with Beaver not yet merged and no canopy dependency, we read a vendored
-snapshot of the Beaver ``widget-registry-data/widgets/*.json`` files (provenance
-in ``data/widget-registry/.beaver-snapshot-sha``). Both satisfy
-:class:`RegistryClient`; the converter only depends on the protocol, so the port
-is a one-class swap (:class:`BeaverGatewayRegistry`).
+The definitions live in ``data/widget-registry/*.json`` and are the source of
+truth for the Qt mappings; edit them here. They carry only what the converter
+reads. The IR contract for each type (its props and ``supports*`` flags) is
+published by slaclab/canopy-spec, and editor metadata lives with the screen
+widget set.
 
 A registry miss returns ``None`` so the IR builder can emit a D11
 ``unknown-widget`` node — the converter never crashes on an unknown class.
@@ -28,10 +26,10 @@ WIDGET_REGISTRY_DIR = Path(__file__).parent / "data" / "widget-registry"
 
 
 class WidgetDefinition(BaseModel):
-    """A Canopy widget definition (subset of the Beaver meta-schema we consume).
+    """A registry definition: an IR widget type and how Qt widgets map onto it.
 
-    Unknown fields (``paletteIcon``, ``inspectorSchema``, ``description``, ...) are
-    ignored so the snapshot can carry more than the converter reads.
+    Unknown fields are ignored, so a definition carrying more than the converter
+    reads still loads.
     """
 
     model_config = ConfigDict(
@@ -41,27 +39,18 @@ class WidgetDefinition(BaseModel):
     )
 
     id: str
-    version: str | None = None
-    display_name: str | None = None
-    category: str | None = None
-    react_component: dict[str, Any] = {}
     qt_mapping: dict[str, Any] | None = None
-    prop_schema: dict[str, Any] = {}
     qt_prop_map: dict[str, Any] = {}
-    defaults: dict[str, Any] = {}
-    supports_pv: bool = False
-    supports_rules: bool = False
-    supports_children: bool = False
 
     @property
     def qt_class(self) -> str | None:
-        """The Qt class this widget maps from, if any (``None`` for SB-native ids)."""
+        """The Qt class this widget maps from, if any (``None`` for ids with no Qt analog)."""
         return (self.qt_mapping or {}).get("class")
 
 
 @runtime_checkable
 class RegistryClient(Protocol):
-    """The seam. Both the vendored snapshot and the Canopy gateway implement it."""
+    """The seam the IR builder resolves widgets through."""
 
     def by_id(self, widget_id: str) -> WidgetDefinition | None: ...
 
@@ -69,7 +58,7 @@ class RegistryClient(Protocol):
 
 
 class VendoredRegistry:
-    """:class:`RegistryClient` backed by the vendored Beaver snapshot on disk.
+    """:class:`RegistryClient` backed by the bundled definitions on disk.
 
     Lazily loads and indexes the JSON definitions on first lookup, then caches.
     """
@@ -102,19 +91,3 @@ class VendoredRegistry:
     def widget_ids(self) -> list[str]:
         self._ensure_loaded()
         return sorted(self._by_id)
-
-
-class BeaverGatewayRegistry:
-    """Canopy-port target: :class:`RegistryClient` over ``canopy.beaver.gateway``.
-
-    Intentionally not implemented in pydm-converter-tool (no canopy dependency).
-    When this package becomes ``src/canopy/converter/``, implement these two
-    methods as thin in-process calls into the Beaver gateway. Kept here so the
-    swap point is explicit.
-    """
-
-    def by_id(self, widget_id: str) -> WidgetDefinition | None:
-        raise NotImplementedError("BeaverGatewayRegistry lands in the Canopy port (canopy.beaver.gateway)")
-
-    def by_qt_class(self, qt_class: str) -> WidgetDefinition | None:
-        raise NotImplementedError("BeaverGatewayRegistry lands in the Canopy port (canopy.beaver.gateway)")

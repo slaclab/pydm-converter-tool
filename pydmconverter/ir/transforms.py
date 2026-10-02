@@ -1,9 +1,9 @@
 """Prop-transform library.
 
-Beaver widget definitions name a transform per mapped Qt prop
-(``"transform": "stripProtocol"``); the function lives here. The set below is
-exactly what the vendored registry references — keep it in lock-step with Beaver
-(canopy issue #18). A name in a definition with no implementation here is a
+Registry definitions (``data/widget-registry/*.json``) name a transform per
+mapped Qt prop (``"transform": "stripProtocol"``); the function lives here. The
+set below is exactly what the registry references. A name in a definition with no
+implementation here is a
 silent prop drop, so :func:`apply_transform` raises on an unknown name and the
 ``test_transforms_cover_registry`` test asserts full coverage.
 
@@ -250,7 +250,5 @@ def apply_transform(name: str, value: Any) -> Any:
     try:
         fn = TRANSFORMS[name]
     except KeyError:
-        raise KeyError(
-            f"unknown prop transform {name!r}; implement it here and keep in lock-step with Beaver (canopy #18)"
-        ) from None
+        raise KeyError(f"unknown prop transform {name!r}; implement it here") from None
     return fn(value)
