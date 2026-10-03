@@ -2,6 +2,7 @@ import re
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
+from typing import Sequence
 from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
     parse_colors_list,
@@ -68,6 +69,7 @@ class EDMFileParser:
         output_file_path: str | Path,
         calc_list_file: str | None = None,
         calc_reuse_short: bool = True,
+        search_paths: Sequence[str | Path] | None = None,
     ):
         """Creates an instance of EDMFileParser for the given file_path
 
@@ -81,6 +83,10 @@ class EDMFileParser:
             Emit short ``calc://<id>`` reuse forms after a calc's first
             appearance (PyDM plugin semantics). The react/IR target passes
             False so every occurrence keeps its full query for formula hoisting.
+        search_paths : Sequence[str | Path], optional
+            Extra directories searched for symbol files (activeSymbolClass) and
+            calc.list, after the file's own directory and before EDMDATAFILES
+            (e.g. the original directory of an upload staged in a temp dir).
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -88,6 +94,7 @@ class EDMFileParser:
         self.output_file_path = output_file_path
         self.calc_list_file = calc_list_file
         self.calc_reuse_short = calc_reuse_short
+        self.search_paths = [str(path) for path in search_paths or ()]
 
         try:
             with open(file_path, "r") as file:
@@ -114,7 +121,11 @@ class EDMFileParser:
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         self.text, _, _ = replace_calc_and_loc_in_edm_content(
-            self.text, file_path, self.calc_list_file, calc_reuse_short=self.calc_reuse_short
+            self.text,
+            file_path,
+            self.calc_list_file,
+            calc_reuse_short=self.calc_reuse_short,
+            search_paths=self.search_paths,
         )
         return self.text
 
@@ -276,9 +287,10 @@ class EDMFileParser:
         if not embedded_file.endswith(".edl"):
             embedded_file += ".edl"
         # EDM resolves symbol files beside the calling display first, then along
-        # EDMDATAFILES. Split on ":" only when it is not a Windows drive colon
-        # (":" followed by a path separator), and accept ";" separators too.
-        edm_paths: list[str] = [str(Path(self.file_path).parent)]
+        # EDMDATAFILES (explicit search_paths go before it). Split on ":" only when
+        # it is not a Windows drive colon (":" followed by a path separator), and
+        # accept ";" separators too.
+        edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
         datafiles = os.environ.get("EDMDATAFILES", ".")
         for chunk in datafiles.split(";"):
             edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
@@ -291,7 +303,9 @@ class EDMFileParser:
                 break
         if embedded_text is None:
             logger.warning(f"Symbol file {embedded_file!r} not found beside the display or on EDMDATAFILES")
-            return EDMGroup()
+            # Keep the symbol's rect and name the missing file so the IR adapter can
+            # attach a node warning (nothing may disappear silently).
+            return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
 
         temp_group = EDMGroup()
         match = self.screen_prop_pattern.search(embedded_text)

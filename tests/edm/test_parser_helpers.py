@@ -65,6 +65,27 @@ def test_search_calc_list(tmp_path, monkeypatch):
     assert result is None, "Expected None if no calc.list is found."
 
 
+def test_search_calc_list_search_paths_after_local_before_edmfiles(tmp_path, monkeypatch):
+    """search_paths are tried after the file's own directory and before $EDMFILES."""
+    staged_dir = tmp_path / "staged"
+    staged_dir.mkdir()
+    fake_file = staged_dir / "screen.edl"
+    fake_file.touch()
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    origin_calc = origin / "calc.list"
+    origin_calc.touch()
+    edmfiles = tmp_path / "edmfiles"
+    edmfiles.mkdir()
+    (edmfiles / "calc.list").touch()
+    monkeypatch.setenv("EDMFILES", str(edmfiles))
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+
+    assert search_calc_list(str(fake_file), search_paths=[str(tmp_path / "empty"), str(origin)]) == str(origin_calc)
+    (staged_dir / "calc.list").touch()
+    assert search_calc_list(str(fake_file), search_paths=[str(origin)]) == str(staged_dir / "calc.list")
+
+
 def test_parse_calc_list(tmp_path):
     """
     Test that parse_calc_list correctly parses a calc.list file, ignoring comments
@@ -299,7 +320,7 @@ def test_replace_calc_and_loc_in_edm_content(
         edm_content, filepath="/some/fake/edm_file.edl"
     )
 
-    mock_search_calc_list.assert_called_once_with("/some/fake/edm_file.edl", None)
+    mock_search_calc_list.assert_called_once_with("/some/fake/edm_file.edl", None, None)
     mock_parse_calc_list.assert_called_once_with("/fake/path/calc.list")
 
     assert "calc://sum?A=channel://pv1&B=channel://pv2&expr=A+B" in new_content

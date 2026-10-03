@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from pydmconverter.edm.edm_qt import (
     EDM_PRIMARY_CHANNEL_ORDER,
@@ -843,6 +843,12 @@ def edm_group_to_source_nodes(
                 raw_props=dict(obj.properties),
                 children=edm_group_to_source_nodes(obj, colors=colors, skip_classes=skip_classes),
             )
+            missing_symbol = obj.properties.get("symbolFileNotFound")
+            if missing_symbol:
+                group_node.warnings.append(
+                    f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
+                    "on EDMDATAFILES; symbol not rendered"
+                )
             vis_tuples: list[VisTuple] = []
             symbol_vis = _symbol_state_vis(obj)
             if symbol_vis is not None:
@@ -872,6 +878,7 @@ def edm_file_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    search_paths: Sequence[str | Path] | None = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` file and build its Screen IR.
 
@@ -887,6 +894,11 @@ def edm_file_to_ir(
     ``$EDMFILES/calc.list``, then beside ``$EDMCOLORFILE``. Unresolvable named
     calcs stay as warnings. ``site`` applies site skip rules (same vocabulary as
     the PyDM target, e.g. ``"slac"`` drops exit buttons).
+
+    ``search_paths`` are extra directories, searched after the file's own directory
+    and before ``EDMDATAFILES``, for activeSymbolClass symbol files and (after the
+    file's own directory) for ``calc.list``. A symbol file that cannot be found
+    leaves an empty group with a node warning.
     """
     from pydmconverter.sites import get_skip_widgets
 
@@ -896,6 +908,7 @@ def edm_file_to_ir(
         str(path.with_suffix(".ui")),
         calc_list_file=str(calc_list_path) if calc_list_path else None,
         calc_reuse_short=False,
+        search_paths=search_paths,
     )
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
