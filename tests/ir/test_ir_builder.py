@@ -133,6 +133,65 @@ def test_explicit_macros_override_collection():
     assert screen.macros == []
 
 
+def test_valid_macro_name():
+    from pydmconverter.ir.macros import valid_macro_name
+
+    assert valid_macro_name("PREFIX") == "PREFIX"
+    assert valid_macro_name("dev") == "dev"
+    assert valid_macro_name("6X6FBCKPV") == "M_6X6FBCKPV"
+    assert valid_macro_name("_P") == "M__P"
+    assert valid_macro_name("A-B") == "A_B"
+    assert valid_macro_name("") == ""
+
+
+def test_invalid_macro_names_renamed_consistently():
+    """llrf/rf_mux_alarms references $(6X6FBCKPV): the IR macro pattern rejects a
+    leading digit, which aborted the whole screen. Declaration, prop references,
+    rule PVs, formula bindings and passed-on macro keys all get the same rename."""
+    from pydmconverter.ir.source import RuleSpec
+
+    nodes = [
+        SourceNode(
+            qt_class="PyDMLabel",
+            qt_props={"channel": "${6X6FBCKPV}.NAME"},
+            rules=[
+                RuleSpec(
+                    target_property="visible",
+                    name="V",
+                    pvs=[("${6X6FBCKPV}", True)],
+                    conditions=[("{0} != 0", True)],
+                    default=False,
+                )
+            ],
+        ),
+        SourceNode(qt_class="PyDMLabel", qt_props={"channel": "calc://sum?A=${6X6FBCKPV}&expr=A"}),
+        SourceNode(
+            qt_class="PyDMRelatedDisplayButton",
+            qt_props={
+                "filenames": ["rf_mux_alarms.edl"],
+                "macros": {"6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X", '2 "Q': "junk"},
+            },
+        ),
+    ]
+    screen = _screen(nodes)
+    label, calc_label, button = screen.root.children
+    assert label.props["pv"] == "${M_6X6FBCKPV}.NAME"
+    assert label.rules[0].pvs[0].name == "${M_6X6FBCKPV}"
+    assert [f.bindings for f in screen.formulas] == [{"A": "${M_6X6FBCKPV}"}]
+    # Only keys a target could reference as ${KEY} are renamed; a mis-split key is left alone.
+    assert button.props["macros"] == {"M_6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X", '2 "Q': "junk"}
+    assert [m.name for m in screen.macros] == ["M_6X6FBCKPV"]
+    assert screen.root.warnings == [
+        "Macro names the IR rejects were renamed (callers must pass the new name): 6X6FBCKPV -> M_6X6FBCKPV"
+    ]
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_valid_macro_names_leave_no_rename_warning():
+    screen = _screen([SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${PREFIX}:P"})])
+    assert screen.root.warnings == []
+
+
 def test_rules_get_ids_and_contribute_macros():
     """RuleSpecs become Rules with allocated r-NNN ids; rule PV macros are declared."""
     from pydmconverter.ir.source import RuleSpec
@@ -252,3 +311,69 @@ def test_screen_size_expands_to_encompass_children():
     small = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 20))
     ir2 = b.build_screen(screen_id="t2", title="t", source_type="ui-converter", size=(710, 500), top_level=[small])
     assert (ir2.metadata.size.width, ir2.metadata.size.height) == (710, 500)
+
+
+def test_fixed_canvas_keeps_declared_size_and_counts_off_canvas_widgets():
+    """grow_to_fit=False (EDM): the window is exactly w x h. Overhanging and
+    parked-off-screen widgets stay in the IR; one root warning counts the ones
+    lying entirely outside."""
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    nodes = [
+        SourceNode(qt_class="QLabel", qt_props={"text": "in"}, geometry=(10, 10, 50, 20)),
+        SourceNode(qt_class="QLabel", qt_props={"text": "overhang"}, geometry=(180, 10, 50, 20)),
+        SourceNode(
+            qt_class=None,
+            registry_id="group",
+            geometry=(0, 55000039, 40, 40),
+            children=[
+                SourceNode(qt_class="QLabel", qt_props={"text": "a"}, geometry=(0, 55000039, 20, 20)),
+                SourceNode(qt_class="QLabel", qt_props={"text": "b"}, geometry=(20, 55000039, 20, 20)),
+            ],
+        ),
+    ]
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t", title="t", source_type="edl-converter", size=(200, 100), top_level=nodes, grow_to_fit=False
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (200, 100)
+    assert (ir.root.geometry.width, ir.root.geometry.height) == (200, 100)
+    assert len(ir.root.children) == 3  # nothing dropped
+    assert ir.root.warnings == [
+        "2 widget(s) lie entirely outside the 200x100 canvas; kept in the IR, clipped at runtime"
+    ]
+
+
+def test_fixed_canvas_without_off_canvas_widgets_has_no_warning():
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    child = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(0, 0, 200, 100))
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t", title="t", source_type="edl-converter", size=(200, 100), top_level=[child], grow_to_fit=False
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (200, 100)
+    assert ir.root.warnings == []
+
+
+def test_undeclared_dimension_is_sized_from_content():
+    """A None dimension (source declares none) is content extent + margin, even
+    when the canvas otherwise does not grow; screen notes land on the root."""
+    from pydmconverter.ir.builder import IRBuilder
+    from pydmconverter.ir.registry import VendoredRegistry
+    from pydmconverter.ir.source import SourceNode
+
+    child = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 290))
+    ir = IRBuilder(VendoredRegistry()).build_screen(
+        screen_id="t",
+        title="t",
+        source_type="edl-converter",
+        size=(684, None),
+        top_level=[child],
+        grow_to_fit=False,
+        warnings=["note"],
+    )
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (684, 308)
+    assert ir.root.warnings == ["note"]

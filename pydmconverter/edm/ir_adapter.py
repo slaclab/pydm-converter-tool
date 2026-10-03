@@ -17,12 +17,15 @@ translated. Several classes carry EDM semantics with no Qt/web analog
 (freeze/ramp/updown increment behaviour, shell command execution); those are
 surfaced as node warnings rather than silently dropped. menuMuxClass is
 deliberately unmapped (macro-muxing needs a design) and falls through to
-unknown-widget.
+unknown-widget. activeXTextDspClass is a read-only pv-label unless its
+``editable`` flag is set (then pv-text-input), matching EDM's default.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import math
 import re
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -33,23 +36,28 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
-from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject
+from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, edm_int
 from pydmconverter.edm.parser_helpers import (
     get_color_by_index,
     get_color_by_rgb,
     parse_colors_list,
     parse_edm_macros,
+    rule_static_color,
     search_color_list,
+    static_color_by_name,
 )
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
-from pydmconverter.ir.source import RuleSpec, SourceNode
+from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
 
+logger = logging.getLogger(__name__)
+
 # An EDM visibility spec: (visPv, visMin, visMax, visInvert). visMin/visMax are
-# None when the EDM object only declares visPv (visible-when-nonzero).
+# numbers (EDM atof semantics, see _vis_limit), or None when the EDM object only
+# declares visPv (visible-when-nonzero).
 VisTuple = tuple[str, "float | None", "float | None", bool]
 
 # A SourceNode geometry tuple: absolute (x, y, width, height).
@@ -189,6 +197,11 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
     else:
         return None
 
+    return color_info_to_hex(color_info, color_data)
+
+
+def color_info_to_hex(color_info: dict[str, Any] | None, color_data: dict[str, Any] | None) -> str | None:
+    """A parsed colour entry (``{"rgb": [...]}``) -> "#rrggbb" (first state of a blinking colour)."""
     if not color_info:
         return None
 
@@ -217,13 +230,51 @@ def edm_color_to_hex(value: Any, color_data: dict[str, Any] | None) -> str | Non
 _READBACK_CLASSES = {"activebuttonclass", "activemessagebuttonclass", "activemenubuttonclass"}
 
 # EDM alarm-severity palette (green / yellow / red / white-invalid) — what an
-# alarm-sensitive EDM part shows instead of its configured static color.
+# alarm-sensitive EDM part shows instead of its configured static color. Used
+# when no colors.list ``alarm { }`` block is available; a palette's block wins
+# (see _alarm_palette).
 _ALARM_RULE_CONDITIONS: list[tuple[str, str]] = [
     ("{0} == 1", "#ffff00"),
     ("{0} == 2", "#ff0000"),
     ("{0} >= 3", "#ffffff"),
 ]
 _ALARM_RULE_DEFAULT = "#00c000"
+# colors.list alarm-block key per severity condition above, in the same order.
+_ALARM_SEVERITY_KEYS = ("minor", "major", "invalid")
+# Marker: NO_ALARM shows the part's own static colour (alarm block "noalarm : *").
+_STATIC_COLOR = "static"
+
+
+def _named_color_hex(colors: dict[str, Any] | None, name: str) -> str | None:
+    return color_info_to_hex(static_color_by_name(colors or {}, name), colors)
+
+
+def _alarm_palette(colors: dict[str, Any] | None) -> tuple[list[tuple[str, str]], str]:
+    """Severity conditions and the NO_ALARM colour for alarm rules, from the palette.
+
+    EDM (color_pkg.cc, pvColor.cc) paints an alarm-sensitive part with the
+    colors.list ``alarm { }`` block's minor/major/invalid colours. ``noalarm : *``
+    means NO_ALARM keeps the part's own colour (returned as :data:`_STATIC_COLOR`),
+    a named colour replaces it, and an entry the block leaves out is palette
+    index 0 (EDM's specialIndex default). Without an alarm block the fixed
+    green/yellow/red/white palette applies (the converter's long-standing default).
+    """
+    alarm = (colors or {}).get("alarm") or {}
+    if not alarm:
+        return list(_ALARM_RULE_CONDITIONS), _ALARM_RULE_DEFAULT
+    index_zero = edm_color_to_hex("index 0", colors)
+
+    def resolve(key: str, default: str) -> str:
+        name = alarm.get(key)
+        return (_named_color_hex(colors, name) if name else index_zero) or default
+
+    conditions = [
+        (expr, resolve(key, fixed)) for key, (expr, fixed) in zip(_ALARM_SEVERITY_KEYS, _ALARM_RULE_CONDITIONS)
+    ]
+    if alarm.get("noalarm") == "*":
+        return conditions, _STATIC_COLOR
+    return conditions, resolve("noalarm", _ALARM_RULE_DEFAULT)
+
 
 # alarm flag -> IR target prop, per class family. Targets are IR prop names
 # (RuleSpecs pass through the builder untranslated).
@@ -251,14 +302,30 @@ def _severity_channel(pv: str) -> str:
     return _FIELD_SUFFIX_RE.sub("", pv) + ".SEVR"
 
 
-def _alarm_rules(obj: EDMObject) -> list[RuleSpec]:
+# IR colour target -> the Qt prop holding the part's resolved static colour.
+_TARGET_STATIC_QT_PROP = {
+    "lineColor": "penColor",
+    "fillColor": "brushColor",
+    "foregroundColor": "foregroundColor",
+    "backgroundColor": "backgroundColor",
+    "onColor": "onColor",
+    "offColor": "offColor",
+}
+
+
+def _alarm_rules(
+    obj: EDMObject, colors: dict[str, Any] | None = None, qt_props: dict[str, Any] | None = None
+) -> list[RuleSpec]:
     """EDM alarmPv + alarm flags -> alarm-color RuleSpecs (EDM severity palette).
 
     EDM semantics: an alarm-sensitive part tracks the alarm severity of
-    ``alarmPv`` (green when NO_ALARM — the static color only shows while
-    disconnected). Flags select what tracks: lineAlarm/fillAlarm on drawing
-    classes, fgAlarm/bgAlarm on label classes. alarmPv without any flag (or a
-    flag without alarmPv) does nothing, matching EDM.
+    ``alarmPv``: MINOR/MAJOR/INVALID paint the palette's alarm colours, and
+    NO_ALARM paints what the palette's ``noalarm`` entry says — with the SLAC
+    ``noalarm : *`` that is the part's own static colour (taken from
+    ``qt_props``). Without a palette alarm block NO_ALARM is green (see
+    :func:`_alarm_palette`). Flags select what tracks: lineAlarm/fillAlarm on
+    drawing classes, fgAlarm/bgAlarm on label classes. alarmPv without any flag
+    (or a flag without alarmPv) does nothing, matching EDM.
     """
     alarm_pv = obj.properties.get("alarmPv")
     if isinstance(alarm_pv, list):
@@ -273,18 +340,276 @@ def _alarm_rules(obj: EDMObject) -> list[RuleSpec]:
         targets = _LABEL_ALARM_TARGETS
     else:
         return []
+    conditions, no_alarm = _alarm_palette(colors)
     rules: list[RuleSpec] = []
     for flag, target in targets:
         if obj.properties.get(flag):
+            default = no_alarm
+            if default == _STATIC_COLOR:
+                # The part's own colour; one that did not resolve leaves the
+                # fixed green rather than a rule with no NO_ALARM colour.
+                default = (qt_props or {}).get(_TARGET_STATIC_QT_PROP[target]) or _ALARM_RULE_DEFAULT
             rules.append(
                 RuleSpec(
                     target_property=target,
                     name=f"Alarm color ({target})",
                     pvs=[(_severity_channel(alarm_pv), True)],
-                    conditions=list(_ALARM_RULE_CONDITIONS),
-                    default=_ALARM_RULE_DEFAULT,
+                    conditions=list(conditions),
+                    default=default,
                 )
             )
+    return rules
+
+
+# ── colors.list rule colours ──────────────────────────────────────────────────
+#
+# A rule colour index is dynamic: EDM calls colorInfoClass::evalRule(index, v)
+# with a PV value v and paints the first condition's colour that holds (else
+# the rule's static colour = its first result colour). Which PV supplies v is
+# per class (EDM baselib/pvFactory sources, the evalRule call sites):
+#   rectangle/circle/arc/line, xText, xRegText: alarmPv (line/fill, fg/bg)
+#   xTextDsp(:noedit): colorPv (fg and bg)
+#   Textupdate/RegTextupdate: fg from colorPv, else the controlPv; the fill
+#     colour's helper is never fed a value, so it is evalRule(index, 0) — static
+#   Button/MessageButton: colorPv (on, off, fg); MenuButton/UpDown/Ramp: colorPv (bg, fg)
+#   relatedDisplay: colorPv (fg, bg)
+# Everything else never evaluates rules and shows the static colour.
+_RULE_COLOR_DRIVERS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    **{
+        name: (("alarmPv",), ("lineColor", "fillColor"))
+        for name in ("activerectangleclass", "activecircleclass", "activearcclass", "activelineclass")
+    },
+    "activextextclass": (("alarmPv",), ("fgColor", "bgColor")),
+    "activexregtextclass": (("alarmPv",), ("fgColor", "bgColor")),
+    "activextextdspclass": (("colorPv",), ("fgColor", "bgColor")),
+    "activextextdspclassnoedit": (("colorPv",), ("fgColor", "bgColor")),
+    "textupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
+    "regtextupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
+    "activebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
+    "activemessagebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
+    "activemenubuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "activeupdownbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "activerampbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
+    "relateddisplayclass": (("colorPv",), ("fgColor", "bgColor")),
+}
+# Colour attrs EDM evaluates at a fixed value of 0 (a ColorHelper nobody feeds).
+_RULE_COLOR_AT_ZERO: dict[str, tuple[str, ...]] = {
+    "textupdateclass": ("bgColor",),
+    "regtextupdateclass": ("bgColor",),
+}
+_REGISTRY: VendoredRegistry | None = None
+
+
+def _mapped_color_target(qt_class: str | None, qt_prop: str) -> str | None:
+    """The IR prop ``qt_prop`` lands on for ``qt_class`` (vendored registry), or None when dropped."""
+    global _REGISTRY
+    if qt_class is None:
+        return None
+    if _REGISTRY is None:
+        _REGISTRY = VendoredRegistry()
+    definition = _REGISTRY.by_qt_class(qt_class)
+    spec = definition.qt_prop_map.get(qt_prop) if definition else None
+    return spec.get("to") if spec else None
+
+
+def _color_rule(colors: dict[str, Any] | None, value: Any) -> tuple[int, dict[str, Any]] | None:
+    """``(index, rule)`` when ``value`` ("index N") names a colors.list rule colour."""
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"index\s+(\d+)\s*$", value.strip())
+    if not match:
+        return None
+    index = int(match.group(1))
+    if index in (colors or {}).get("static", {}):
+        return None
+    rule = (colors or {}).get("rules", {}).get(index)
+    return (index, rule) if rule else None
+
+
+def _format_rule_number(value: float) -> str:
+    return str(_as_number(float(value)))
+
+
+def _condition_expression(condition: dict[str, Any], token: str) -> str | None:
+    """One parsed rule condition -> a rule expression on ``token`` ("{0}"); None for ``default``."""
+    if condition.get("default"):
+        return None
+    terms = [f"{token} {op} {_format_rule_number(value)}" for op, value in condition["terms"]]
+    if len(terms) == 1:
+        return terms[0]
+    joiner = " and " if condition.get("connector") == "&&" else " or "
+    return joiner.join(f"({term})" for term in terms)
+
+
+def _evaluate_condition(condition: dict[str, Any], value: float) -> bool:
+    if condition.get("default"):
+        return True
+    ops = {
+        "==": lambda a, b: a == b,
+        "!=": lambda a, b: a != b,
+        ">": lambda a, b: a > b,
+        ">=": lambda a, b: a >= b,
+        "<": lambda a, b: a < b,
+        "<=": lambda a, b: a <= b,
+    }
+    results = [ops[op](value, arg) for op, arg in condition["terms"]]
+    if len(results) == 1:
+        return results[0]
+    return (results[0] and results[1]) if condition.get("connector") == "&&" else (results[0] or results[1])
+
+
+def _rule_ladder(
+    colors: dict[str, Any] | None, index: int, rule: dict[str, Any], token: str, notes: list[str]
+) -> tuple[list[tuple[str, str]], str | None]:
+    """A colors.list rule -> ordered ``(expression, hex)`` conditions and its no-match hex.
+
+    First true condition wins (EDM evalRule and the IR rule contract agree);
+    ``&&``/``||`` joins fold into the next condition; a ``default`` ends the
+    ladder (later conditions are unreachable) and repeated expressions are
+    dropped. Blinking result colours render their first (steady) state, noted.
+    """
+    static = rule_static_color(colors or {}, index)
+    default = color_info_to_hex(static, colors)
+    conditions: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    pending: tuple[str, str] | None = None  # (expression, join operator) awaiting the next condition
+
+    def colour(name: str) -> str | None:
+        entry = static_color_by_name(colors or {}, name)
+        if entry is not None and len(entry.get("rgb") or ()) >= 6:
+            notes.append(f"EDM blinking colour '{name}' in colour rule '{rule.get('name')}' rendered steady")
+        return color_info_to_hex(entry, colors)
+
+    if static is not None and len(static.get("rgb") or ()) >= 6:
+        notes.append(f"EDM blinking colour '{static.get('name')}' in colour rule '{rule.get('name')}' rendered steady")
+    for condition in rule.get("conditions", ()):
+        expression = _condition_expression(condition, token)
+        if pending is not None:
+            pending_expr, join = pending
+            if expression is None:
+                expression = pending_expr
+            else:
+                expression = f"({expression}) {'and' if join == '&&' else 'or'} ({pending_expr})"
+            pending = None
+        if condition.get("join"):
+            if expression is not None:
+                pending = (expression, condition["join"])
+            continue
+        hex_color = colour(condition["color"])
+        if hex_color is None:
+            continue  # an unknown colour name: EDM refuses the palette; keep the rest
+        if expression is None:  # "default": always true, nothing after it can apply
+            default = hex_color
+            break
+        if expression in seen:
+            continue
+        seen.add(expression)
+        conditions.append((expression, hex_color))
+    return conditions, default
+
+
+def _rule_color_at(colors: dict[str, Any] | None, index: int, rule: dict[str, Any], value: float) -> str | None:
+    """EDM evalRule(index, value) as hex: the first condition holding at ``value``."""
+    pending: tuple[bool, str] | None = None
+    for condition in rule.get("conditions", ()):
+        result = _evaluate_condition(condition, value)
+        if pending is not None:
+            held, join = pending
+            result = (result and held) if join == "&&" else (result or held)
+            pending = None
+        if condition.get("join"):
+            pending = (result, condition["join"])
+            continue
+        if result:
+            hex_color = _named_color_hex(colors, condition["color"])
+            if hex_color is not None:
+                return hex_color
+    return color_info_to_hex(rule_static_color(colors or {}, index), colors)
+
+
+def _driver_channel(obj: EDMObject, attrs: tuple[str, ...]) -> str | None:
+    for attr in attrs:
+        value = obj.properties.get(attr)
+        if isinstance(value, list):
+            value = value[0] if value else ""
+        if isinstance(value, str) and value.strip():
+            return _to_channel(value)
+    return None
+
+
+def _color_rules(
+    obj: EDMObject,
+    qt_class: str | None,
+    qt_props: dict[str, Any],
+    colors: dict[str, Any] | None,
+    alarm_rules: list[RuleSpec],
+    warnings: list[str],
+) -> list[RuleSpec]:
+    """colors.list rule colours on ``obj`` -> value-driven colour RuleSpecs.
+
+    The static prop already holds the rule's static colour (its first result
+    colour, get_color_by_index). A rule is added when the class feeds the
+    colour a PV value (see _RULE_COLOR_DRIVERS) and the widget carries the
+    prop; a colour EDM evaluates at 0 is replaced by that fixed result. When an
+    alarm rule already drives the same prop (alarmPv + lineAlarm/fillAlarm/
+    fgAlarm/bgAlarm) and the palette keeps the own colour at NO_ALARM, the two
+    merge into one rule: severity colours first, then the value ladder (EDM
+    pvColor.cc: alarm colours override, NO_ALARM shows the evaluated rule
+    colour). A palette with a named NO_ALARM colour never shows the rule while
+    alarm-sensitive, so the alarm rule stands alone.
+    """
+    name = obj.name.lower()
+    drivers, driven_attrs = _RULE_COLOR_DRIVERS.get(name, ((), ()))
+    if name in ("activextextdspclass", "activextextdspclassnoedit") and (
+        obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm")
+    ):
+        # x_text_dsp_obj.cc draws the text with fgColor.pixelIndex() (the rule's
+        # static colour, never re-evaluated) when the alarm border is on.
+        driven_attrs = tuple(attr for attr in driven_attrs if attr != "fgColor")
+    at_zero = _RULE_COLOR_AT_ZERO.get(name, ())
+    rules: list[RuleSpec] = []
+    notes: list[str] = []
+    for edm_attr, value in obj.properties.items():
+        qt_prop = EDM_TO_QT_PROP.get(edm_attr)
+        if qt_prop not in _COLOR_PROPS or qt_prop not in qt_props:
+            continue
+        found = _color_rule(colors, value)
+        if found is None:
+            continue
+        index, rule = found
+        if edm_attr in at_zero:
+            fixed = _rule_color_at(colors, index, rule, 0.0)
+            if fixed is not None:
+                qt_props[qt_prop] = fixed
+            continue
+        channel = _driver_channel(obj, drivers) if edm_attr in driven_attrs else None
+        # No channel: EDM shows the static colour. No target: the widget drops
+        # this colour prop altogether (the static colour too).
+        target = _mapped_color_target(qt_class, qt_prop) if channel else None
+        if target is None:
+            continue
+        merged = next((r for r in alarm_rules if r.target_property == target), None)
+        if merged is not None and _alarm_palette(colors)[1] != _STATIC_COLOR:
+            continue  # a named NO_ALARM colour hides the rule colour while alarm-sensitive
+        conditions, default = _rule_ladder(colors, index, rule, "{1}" if merged else "{0}", notes)
+        if default is None:
+            continue
+        if merged is not None:
+            merged.pvs = [*merged.pvs, (channel, True)]
+            merged.conditions = [*merged.conditions, *conditions]
+            merged.default = default
+            merged.name = f"Alarm color ({target}) + color rule {rule.get('name')}"
+            continue
+        rules.append(
+            RuleSpec(
+                target_property=target,
+                name=f"Color rule {rule.get('name')} ({target})",
+                pvs=[(channel, True)],
+                conditions=conditions,
+                default=default,
+            )
+        )
+    warnings.extend(dict.fromkeys(notes))
     return rules
 
 
@@ -427,22 +752,17 @@ def _fixup_bar(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     return None
 
 
-# Matches a leading "<int> " prefix that remove_prepended_index leaves in place
-# when the multi-line block's indices are non-sequential.
-_LEADING_INDEX_RE = re.compile(r"^\d+\s+")
-
-
-def _strip_leading_index(value: str) -> str:
-    return _LEADING_INDEX_RE.sub("", value, count=1)
-
-
 def _as_str_list(value: Any) -> list[str]:
     """Normalize a brace-block prop value to a list of strings (a bare str -> [str])."""
     if isinstance(value, list):
-        return [_strip_leading_index(str(item)) for item in value]
+        return [str(item) for item in value]
     if isinstance(value, str):
         return [value]
     return []
+
+
+def _by_index(value: Any) -> dict[int, str]:
+    return dict(block_items(value))
 
 
 def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
@@ -450,15 +770,15 @@ def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[st
 
     (buttonLabel -> text -> label is already handled globally.)
     """
-    commands = _as_str_list(obj.properties.get("command"))
+    commands = block_items(obj.properties.get("command"))
     if not commands:
         return None
-    labels = _as_str_list(obj.properties.get("commandLabel"))
+    labels = _by_index(obj.properties.get("commandLabel"))
 
     actions: list[dict[str, Any]] = []
-    for index, command in enumerate(commands):
+    for index, command in commands:
         action: dict[str, Any] = {"type": "shell_command", "command": normalize_macro_syntax(command)}
-        if index < len(labels):
+        if index in labels:
             action["label"] = normalize_macro_syntax(labels[index])
         actions.append(action)
 
@@ -543,12 +863,12 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     transform parses them. A parallel xPv entry rides along as ``x_channel``
     (waveform-vs-waveform traces; the plot renders time-series when absent).
     """
-    y_pvs = [pv for pv in _as_str_list(obj.properties.get("yPv")) if pv]
-    x_pvs = _as_str_list(obj.properties.get("xPv"))
+    y_pvs = [(index, pv) for index, pv in block_items(obj.properties.get("yPv")) if pv]
+    x_pvs = _by_index(obj.properties.get("xPv"))  # trace i plots yPv[i] against xPv[i]
     curves = []
-    for index, pv in enumerate(y_pvs):
-        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {index + 1}"}
-        if index < len(x_pvs) and x_pvs[index]:
+    for number, (index, pv) in enumerate(y_pvs, start=1):
+        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {number}"}
+        if x_pvs.get(index):
             curve["x_channel"] = normalize_macro_syntax(x_pvs[index])
         curves.append(json.dumps(curve))
     if curves:
@@ -559,16 +879,17 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     return None
 
 
-def _pip_menu_refs(obj: EDMObject) -> list[str]:
-    """displaySource=menu pip: the ``displayFileName`` entries as screen refs
-    (same normalization the ``screenRef`` transform applies — rule values bypass
-    ``qtPropMap`` transforms, so the adapter must pre-normalize)."""
-    refs: list[str] = []
-    for name in _as_str_list(obj.properties.get("displayFileName")):
+def _pip_menu_refs(obj: EDMObject) -> list[tuple[int, str]]:
+    """displaySource=menu pip: ``(EDM index, screen ref)`` per ``displayFileName``
+    entry (same normalization the ``screenRef`` transform applies — rule values
+    bypass ``qtPropMap`` transforms, so the adapter must pre-normalize). The
+    filePv value selects entry ``index``."""
+    refs: list[tuple[int, str]] = []
+    for index, name in block_items(obj.properties.get("displayFileName")):
         normalized = normalize_macro_syntax(name)
         ref = screen_ref(normalized)
         if isinstance(ref, str) and ref.strip():
-            refs.append(ref)
+            refs.append((index, ref))
     return refs
 
 
@@ -587,7 +908,7 @@ def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     if source in ("", "file"):
         return None
     if source == "menu":
-        names = _as_str_list(obj.properties.get("displayFileName"))
+        names = [name for _, name in sorted(block_items(obj.properties.get("displayFileName"))) if name.strip()]
         if names and obj.properties.get("filePv"):
             # Raw first entry: the builder's screenRef transform normalizes it.
             qt_props["filename"] = normalize_macro_syntax(names[0])
@@ -610,7 +931,7 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
     file_pv = obj.properties.get("filePv")
     if source != "menu" or not file_pv:
         return []
-    refs = _pip_menu_refs(obj)
+    refs = sorted(_pip_menu_refs(obj))
     if not refs:
         return []
     if isinstance(file_pv, list):
@@ -621,10 +942,40 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
             target_property="file",
             name="Embedded file (menu)",
             pvs=[(file_pv, True)],
-            conditions=[(f"{{0}} == {index}", ref) for index, ref in enumerate(refs)],
-            default=refs[0],
+            conditions=[(f"{{0}} == {index}", ref) for index, ref in refs],
+            default=refs[0][1],
         )
     ]
+
+
+# EDM attrs a class fixup maps itself (the generic prop loop skips them).
+_FIXUP_OWNED_ATTRS: dict[str, tuple[str, ...]] = {"relateddisplayclass": ("displayFileName", "symbols")}
+
+
+def _fixup_related_display(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """relatedDisplayClass fixup: one target, with that target's own symbols.
+
+    EDM keeps ``displayFileName``/``symbols``/``menuLabel`` as parallel arrays
+    indexed by display number (related_display.cc): ``symbols[i]`` are the
+    macros for ``displayFileName[i]``, and a file may skip indices
+    (``symbols { 2 "P=X" }``). The IR button carries one target, so it takes the
+    lowest-numbered non-empty display and only that display's symbols (merging
+    every entry's symbols handed the first target the last entry's macros).
+    """
+    files = {index: name for index, name in block_items(obj.properties.get("displayFileName")) if name.strip()}
+    if not files:
+        return None
+    first = min(files)
+    qt_props["filenames"] = [normalize_macro_syntax(files[first])]
+    symbols = _by_index(obj.properties.get("symbols")).get(first)
+    macros = _to_macros(symbols) if symbols else {}
+    if macros:
+        qt_props["macros"] = macros
+    else:
+        qt_props.pop("macros", None)
+    if len(files) > 1:
+        warnings.append(f"EDM related display offers {len(files)} displays; only the first is carried")
+    return None
 
 
 def _fixup_choice_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
@@ -658,6 +1009,78 @@ def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) 
     return None
 
 
+def _fixup_text_control(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activeXTextDspClass(:noedit) fixup.
+
+    Alarm border (x_text_dsp_obj.cc): ``useAlarmBorder`` only acts together with
+    ``fgAlarm``; then the text keeps its static colour (drawn with
+    ``fgColor.pixelIndex()``) and a 2 px border in the alarm colour appears while
+    the PV is in alarm. Alone it does nothing.
+    """
+    if obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm"):
+        qt_props["alarmSensitiveBorder"] = True
+        qt_props.pop("alarmSensitiveContent", None)
+    # Precision: the PV's PREC when limitsFromDb is set or no precision is
+    # written (efPrecision null), else the widget's own precision.
+    if obj.properties.get("limitsFromDb") or "precision" not in obj.properties:
+        _precision_from_pv(obj, qt_props)
+    else:
+        _widget_precision(obj, qt_props)
+    return None
+
+
+# TextupdateClass displayMode -> pv-label format (engineering notation has no
+# exact analog; exponential is the closest).
+_TEXTUPDATE_MODE_FORMAT = {"decimal": "default", "hex": "hex", "exp": "exponential", "engineer": "exponential"}
+
+
+def _fixup_textupdate(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """TextupdateClass/RegTextupdateClass fixup.
+
+    Alarm border (textupdate.cc redraw_text): with ``lineAlarm`` the border is
+    drawn in the alarm colour only while the PV is in alarm (width at least 1);
+    the text colour is governed by ``fgAlarm`` independently.
+
+    Display mode and precision (textupdate.cc get_current_values): "default"
+    (absent) prints the PV's own string, i.e. the PV's PREC; decimal/exp/engineer
+    format with the widget's ``precision`` (0 when absent); hex ignores precision.
+    """
+    if obj.properties.get("lineAlarm"):
+        qt_props["alarmSensitiveBorder"] = True
+    if not obj.properties.get("fill"):
+        # redraw_text fills the background only when "fill" is set; otherwise the
+        # display shows through.
+        qt_props.pop("backgroundColor", None)
+    mode = str(obj.properties.get("displayMode", "default") or "default").strip().lower()
+    if mode in _TEXTUPDATE_MODE_FORMAT:
+        qt_props["displayFormat"] = _TEXTUPDATE_MODE_FORMAT[mode]
+    if mode == "engineer":
+        warnings.append("EDM engineering display mode approximated by exponential format")
+    if mode in ("decimal", "exp", "engineer"):
+        _widget_precision(obj, qt_props)
+    elif mode == "hex":
+        qt_props.pop("precision", None)
+    else:
+        _precision_from_pv(obj, qt_props)
+    return None
+
+
+def _widget_precision(obj: EDMObject, qt_props: dict[str, Any]) -> None:
+    """The widget's own ``precision`` (0 when absent), not the PV's."""
+    qt_props["precision"] = max(0, edm_int(obj.properties.get("precision", 0)))
+    qt_props["precisionFromPV"] = False
+
+
+def _precision_from_pv(obj: EDMObject, qt_props: dict[str, Any]) -> None:
+    """The PV's PREC: drop the widget's number (it would override ``fromPV``); say
+    ``fromPV`` explicitly only when the file wrote a precision EDM ignores."""
+    qt_props.pop("precision", None)
+    if "precision" in obj.properties:
+        qt_props["precisionFromPV"] = True
+    else:
+        qt_props.pop("precisionFromPV", None)
+
+
 _CLASS_FIXUPS.update(
     {
         "activerectangleclass": _apply_shared_drawing_fixup,
@@ -683,6 +1106,11 @@ _CLASS_FIXUPS.update(
         "activemenubuttonclass": _fixup_menu_button,
         "xygraphclass": _fixup_xy_graph,
         "activepipclass": _fixup_pip,
+        "relateddisplayclass": _fixup_related_display,
+        "activextextdspclass": _fixup_text_control,
+        "activextextdspclassnoedit": _fixup_text_control,
+        "textupdateclass": _fixup_textupdate,
+        "regtextupdateclass": _fixup_textupdate,
         # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
     }
 )
@@ -696,9 +1124,10 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
     geometry: Geometry = (obj.x, obj.y, obj.width, obj.height)
     if qt_class is not None:
         use_display_bg = bool(obj.properties.get("useDisplayBg"))
+        fixup_owned = _FIXUP_OWNED_ATTRS.get(obj.name.lower(), ())
         for edm_attr, value in obj.properties.items():
             qt_prop = EDM_TO_QT_PROP.get(edm_attr)
-            if qt_prop is None:
+            if qt_prop is None or edm_attr in fixup_owned:
                 continue
             if qt_prop in _COLOR_PROPS:
                 if qt_prop == "backgroundColor" and use_display_bg:
@@ -716,13 +1145,14 @@ def _object_to_source(obj: EDMObject, colors: dict[str, Any] | None = None) -> S
                 continue  # malformed font string: no size beats a wrong size
             qt_props[qt_prop] = coerced
         _apply_channel_attrs(obj, qt_props, warnings)
-        rules = _alarm_rules(obj) + _pip_rules(obj)
-        if any(rule.target_property == "foregroundColor" for rule in rules):
+        alarm_rules = _alarm_rules(obj, colors, qt_props)
+        if any(rule.target_property == "foregroundColor" for rule in alarm_rules):
             # The alarm rule replaces own-PV alarm sensitivity (EDM: alarmPv
             # overrides the widget's own channel as the alarm source).
             qt_props.pop("alarmSensitiveContent", None)
-        if obj.properties.get("colorPv"):
-            warnings.append("EDM dynamic color (colorPv) is not supported; static colors emitted")
+        # colorPv only ever feeds colors.list rule colours (evalRule is a no-op on
+        # a static index), so _color_rules covers it: no separate warning.
+        rules = alarm_rules + _color_rules(obj, qt_class, qt_props, colors, alarm_rules, warnings) + _pip_rules(obj)
         if obj.properties.get("bgAlarm") and not any(rule.target_property == "backgroundColor" for rule in rules):
             warnings.append("EDM dynamic color (bgAlarm) is not supported; static colors emitted")
         fixup = _CLASS_FIXUPS.get(obj.name.lower())
@@ -766,12 +1196,74 @@ def _symbol_state_vis(group: EDMGroup) -> VisTuple | None:
         vis_max = float(props["symbolMax"])
     except (TypeError, ValueError):
         return None
-    channel = normalize_macro_syntax(_strip_leading_index(str(channel)))
+    channel = normalize_macro_syntax(str(channel))
     return (channel, vis_min, vis_max, False)
 
 
-def _vis_tuple(properties: dict[str, Any]) -> VisTuple | None:
-    """Extract an EDM visibility tuple ``(visPv, visMin, visMax, visInvert)``, or None."""
+# The leading number C's strtod() accepts (what EDM's atof() reads): hex first,
+# since the decimal pattern would otherwise stop at the "0" of "0x...".
+_HEX_PREFIX_RE = re.compile(r"[+-]?0[xX](?:[0-9a-fA-F]+\.?[0-9a-fA-F]*|\.[0-9a-fA-F]+)(?:[pP][+-]?\d+)?")
+_DEC_PREFIX_RE = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+_SPECIAL_PREFIX_RE = re.compile(r"[+-]?(?:inf(?:inity)?|nan)", re.IGNORECASE)
+
+
+def _edm_atof(text: str) -> float:
+    """C ``atof()`` semantics: the longest numeric prefix (decimal, hex, inf/nan), else 0.0."""
+    text = text.lstrip()
+    hex_match = _HEX_PREFIX_RE.match(text)
+    if hex_match:
+        token = hex_match.group(0)
+        sign = -1.0 if token.startswith("-") else 1.0
+        return sign * float.fromhex(token.lstrip("+-"))
+    match = _DEC_PREFIX_RE.match(text) or _SPECIAL_PREFIX_RE.match(text)
+    return float(match.group(0)) if match else 0.0
+
+
+def _vis_limit(attr: str, value: Any, warnings: list[str]) -> float | None:
+    """One EDM ``visMin``/``visMax`` string -> the number EDM compares against.
+
+    EDM stores both as strings and evaluates them with ``atof()`` after macro
+    substitution, so a non-numeric value (a PV name, "MAJOR") counts as 0 and a
+    numeric prefix ("1`", "0x80") counts as that number. A value that *starts*
+    with a macro depends on the caller's substitution and cannot be evaluated at
+    convert time: ``None`` (the caller drops that visibility rule).
+    """
+    if isinstance(value, bool):
+        text = ""  # a bare "visMin" line (no value) parses as True
+    elif isinstance(value, (int, float)):
+        return float(value)
+    else:
+        text = str(value) if value is not None else ""
+    if text.lstrip().startswith(("${", "$(")):
+        warnings.append(
+            f"EDM {attr} '{text}' depends on a macro and cannot be evaluated at convert time; "
+            "visibility rule dropped (widget always shown)"
+        )
+        return None
+    number = _edm_atof(text)
+    if not math.isfinite(number):
+        warnings.append(f"EDM {attr} '{text}' is not a finite number; visibility rule dropped (widget always shown)")
+        return None
+    try:
+        exact = float(text)
+    except ValueError:
+        exact = None
+    if exact != number:
+        warnings.append(
+            f"EDM {attr} '{text}' is not a plain number; evaluated as {_as_number(number)} (EDM atof semantics)"
+        )
+    return number
+
+
+def _vis_tuple(properties: dict[str, Any], warnings: list[str] | None = None) -> VisTuple | None:
+    """Extract an EDM visibility tuple ``(visPv, visMin, visMax, visInvert)``, or None.
+
+    visMin/visMax are converted with EDM's ``atof()`` semantics (see
+    :func:`_vis_limit`); notes about non-numeric limits go to ``warnings``. A limit
+    that cannot be evaluated drops the tuple (no rule) rather than aborting.
+    """
+    if warnings is None:
+        warnings = []
     vis_pv = properties.get("visPv")
     if not vis_pv:
         return None
@@ -782,7 +1274,11 @@ def _vis_tuple(properties: dict[str, Any]) -> VisTuple | None:
     vis_min = properties.get("visMin")
     vis_max = properties.get("visMax")
     if vis_min is not None and vis_max is not None:
-        return (vis_pv, vis_min, vis_max, invert)
+        low = _vis_limit("visMin", vis_min, warnings)
+        high = _vis_limit("visMax", vis_max, warnings) if low is not None else None
+        if low is None or high is None:
+            return None
+        return (vis_pv, low, high, invert)
     return (vis_pv, None, None, invert)
 
 
@@ -790,7 +1286,8 @@ def _visibility_rule_spec(vis_tuples: list[VisTuple]) -> RuleSpec:
     """Combine EDM visibility tuples (own + inherited group vis) into one ``visible`` rule.
 
     EDM is visible when, for every tuple, ``visMin <= value < visMax`` (or ``value != 0``
-    when no range), with ``visInvert`` flipping that tuple. Multiple tuples AND together
+    when no range; the limits are already numbers, see :func:`_vis_limit`), with
+    ``visInvert`` flipping that tuple. Multiple tuples AND together
     (PyDM semantics). The single condition is true exactly when the widget is visible.
     """
     pv_index: dict[str, int] = {}
@@ -830,6 +1327,11 @@ def edm_group_to_source_nodes(
 
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
     to resolve "index N" color props to hex.
+
+    Errors are isolated per object: an object whose conversion raises becomes an
+    ``unknown-widget`` placeholder carrying the failure as its warning, and a group
+    whose visibility cannot be converted keeps its children with a warning, so one
+    bad object never aborts the screen.
     """
     nodes: list[SourceNode] = []
     for obj in group.objects:
@@ -849,24 +1351,39 @@ def edm_group_to_source_nodes(
                     f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
                     "on EDMDATAFILES; symbol not rendered"
                 )
-            vis_tuples: list[VisTuple] = []
-            symbol_vis = _symbol_state_vis(obj)
-            if symbol_vis is not None:
-                vis_tuples.append(symbol_vis)
-            group_vis = _vis_tuple(obj.properties)
-            if group_vis is not None:
-                vis_tuples.append(group_vis)
-            if vis_tuples:
-                group_node.rules = [_visibility_rule_spec(vis_tuples)]
+            group_node.warnings.extend(obj.properties.get("symbolWarnings") or ())
+            try:
+                vis_tuples: list[VisTuple] = []
+                symbol_vis = _symbol_state_vis(obj)
+                if symbol_vis is not None:
+                    vis_tuples.append(symbol_vis)
+                group_vis = _vis_tuple(obj.properties, group_node.warnings)
+                if group_vis is not None:
+                    vis_tuples.append(group_vis)
+                if vis_tuples:
+                    group_node.rules = [_visibility_rule_spec(vis_tuples)]
+            except Exception as exc:  # noqa: BLE001 - keep the group and its children
+                logger.warning("EDM group visibility failed to convert", exc_info=True)
+                group_node.warnings.append(f"EDM group visibility not converted ({type(exc).__name__}: {exc})")
             nodes.append(group_node)
         elif isinstance(obj, EDMObject):
             if obj.name.lower() in skip_classes:
                 continue
-            node = _object_to_source(obj, colors)
-            own_vis = _vis_tuple(obj.properties)
-            if own_vis is not None:
-                # Append: the node may already carry alarm-color rules.
-                node.rules.append(_visibility_rule_spec([own_vis]))
+            try:
+                node = _object_to_source(obj, colors)
+                own_vis = _vis_tuple(obj.properties, node.warnings)
+                if own_vis is not None:
+                    # Append: the node may already carry alarm-color rules.
+                    node.rules.append(_visibility_rule_spec([own_vis]))
+            except Exception as exc:  # noqa: BLE001 - one bad object must not abort the screen
+                logger.warning("EDM %s failed to convert; emitting a placeholder", obj.name, exc_info=True)
+                node = SourceNode(
+                    qt_class=None,
+                    geometry=(obj.x, obj.y, obj.width, obj.height),
+                    raw_class=obj.name,
+                    raw_props=dict(obj.properties),
+                    placeholder_reason=conversion_failure(obj.name, exc),
+                )
             nodes.append(node)
     return nodes
 
@@ -922,11 +1439,24 @@ def edm_file_to_ir(
         background = "#{:02x}{:02x}{:02x}".format(int(bg.r), int(bg.g), int(bg.b))
     elif isinstance(bg, (tuple, list)) and len(bg) >= 3:
         background = "#{:02x}{:02x}{:02x}".format(int(bg[0]), int(bg[1]), int(bg[2]))
+    # The EDM window is exactly the declared w x h (objects outside it are clipped,
+    # hidden ones parked off-screen on purpose), so the canvas does not grow to fit.
+    # Only a dimension the file does not declare is sized from the content.
+    missing = parser.missing_screen_size
+    screen_warnings: list[str] = []
+    if missing:
+        keys = "/".join(dim[0] for dim in missing)
+        screen_warnings.append(f"EDM screen {keys} missing or not an integer; sized from the content extent")
     return builder.build_screen(
         screen_id=path.stem,
         title=path.stem,
         source_type="edl-converter",
-        size=(parser.ui.width, parser.ui.height),
+        size=(
+            None if "width" in missing else parser.ui.width,
+            None if "height" in missing else parser.ui.height,
+        ),
         top_level=top_level,
         background=background,
+        grow_to_fit=False,
+        warnings=screen_warnings,
     )

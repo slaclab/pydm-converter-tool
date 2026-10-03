@@ -5,7 +5,7 @@ import json
 
 from pydmconverter.edm.edm_qt import EDM_TO_QT_CLASS
 from pydmconverter.edm.ir_adapter import _fixup_state_button, _fixup_xy_graph
-from pydmconverter.edm.parser import EDMObject
+from pydmconverter.edm.parser import EDMFileParser, EDMObject
 
 
 def _obj(name, properties):
@@ -48,7 +48,8 @@ def test_xygraph_maps_to_waveform_plot_class():
 def test_xygraph_traces_become_curve_json():
     qt_props = {}
     warnings = []
-    obj = _obj("xyGraphClass", {"yPv": ["0 SIG:ONE", "1 SIG:TWO"], "graphTitle": "Kly Fwd", "xPv": "T:BASE"})
+    y_pvs = EDMFileParser.get_object_properties('yPv {\n  0 "SIG:ONE"\n  1 "SIG:TWO"\n}')["yPv"]
+    obj = _obj("xyGraphClass", {"yPv": y_pvs, "graphTitle": "Kly Fwd", "xPv": "T:BASE"})
     _fixup_xy_graph(obj, qt_props, warnings)
     curves = [json.loads(c) for c in qt_props["curves"]]
     assert [c["y_channel"] for c in curves] == ["SIG:ONE", "SIG:TWO"]
@@ -57,3 +58,12 @@ def test_xygraph_traces_become_curve_json():
     assert "x_channel" not in curves[1]
     assert qt_props["title"] == "Kly Fwd"
     assert warnings == []
+
+
+def test_xygraph_pairs_sparse_trace_arrays_by_index():
+    """yPv { 2 A 3 B } with xPv { 2 X }: trace 2 plots A against X; B is a time series."""
+    props = EDMFileParser.get_object_properties('yPv {\n  2 "A"\n  3 "B"\n}\nxPv {\n  2 "X"\n}')
+    qt_props = {}
+    _fixup_xy_graph(_obj("xyGraphClass", props), qt_props, [])
+    curves = [json.loads(c) for c in qt_props["curves"]]
+    assert [(c["y_channel"], c.get("x_channel")) for c in curves] == [("A", "X"), ("B", None)]

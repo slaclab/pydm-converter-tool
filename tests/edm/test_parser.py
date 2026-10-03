@@ -223,6 +223,45 @@ def test_parse_groups_desync_redirect(tmp_path):
     assert group.objects[0].name == "activeXTextClass"
 
 
+def test_screen_size_macro_or_missing_does_not_abort(tmp_path):
+    """Template fragments write ``h $(DISP_HEIGHT)``; the parse records the gap
+    (the IR adapter sizes it from content) instead of raising."""
+    test_file = tmp_path / "tmpl.edl"
+    test_file.write_text(
+        textwrap.dedent("""
+        beginScreenProperties
+        x 581
+        y 305
+        w 684
+        h $(DISP_HEIGHT)
+        endScreenProperties
+    """)
+    )
+    parser = EDMFileParser(test_file, tmp_path / "tmpl.ui")
+    assert parser.ui.width == 684
+    assert parser.ui.height == 0
+    assert parser.missing_screen_size == ["height"]
+
+
+def test_screen_size_accepts_indented_line(tmp_path):
+    """EDM's tag reader skips leading whitespace (llrf/cleanup/oneMBBOBits: ``  w 236``)."""
+    test_file = tmp_path / "indented.edl"
+    test_file.write_text("beginScreenProperties\nx 0\ny 0\n  w 236\nh 485\nendScreenProperties\n")
+    parser = EDMFileParser(test_file, tmp_path / "indented.ui")
+    assert (parser.ui.width, parser.ui.height) == (236, 485)
+    assert parser.missing_screen_size == []
+
+
+def test_screen_without_properties_block_is_missing_both(tmp_path):
+    test_file = tmp_path / "fragment.edl"
+    test_file.write_text(
+        "object activeRectangleClass\nbeginObjectProperties\nx 1\ny 2\nw 3\nh 4\nendObjectProperties\n"
+    )
+    parser = EDMFileParser(test_file, tmp_path / "fragment.ui")
+    assert parser.missing_screen_size == ["width", "height"]
+    assert (parser.ui.width, parser.ui.height) == (0, 0)
+
+
 def test_get_size_properties():
     """Test that the size properties are extracted correctly"""
     test_data = textwrap.dedent("""

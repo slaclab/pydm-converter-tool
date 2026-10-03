@@ -34,11 +34,31 @@ def test_noedit_textdsp_decimal_format_normalizes_to_default():
     assert label.props["format"] == "default"
 
 
-def test_plain_textdsp_class_regression_still_text_input():
-    """A plain activeXTextDspClass (no :noedit) must keep mapping to pv-text-input."""
+def test_editable_textdsp_class_is_text_input():
+    """A plain activeXTextDspClass with ``editable`` set is an input (pv-text-input)."""
     text_input = _convert("textdsp.edl").root.children[2]
     assert text_input.type == "pv-text-input"
     assert text_input.props["pv"] == "${P}:SETPOINT"
+
+
+def test_textdsp_class_without_editable_is_read_only_label():
+    """EDM's Text Control defaults to NOT editable (x_text_dsp_obj.cc loads
+    ``editable`` with default 0 and refuses input when clear), so without the flag
+    it is a value display: pv-label carrying colors, format, precision, alignment,
+    units, font and alarm sensitivity, like TextupdateClass."""
+    label = _convert("textdsp.edl").root.children[3]
+    assert label.type == "pv-label"
+    assert label.props == {
+        "pv": "${P}:READBACK",
+        "precision": 2,
+        "showUnits": True,
+        "alarmSensitive": True,
+        "format": "hex",
+        "foregroundColor": "#0000ff",
+        "backgroundColor": "#ffffff",
+        "fontSize": 14,
+        "align": "right",
+    }
 
 
 # ---------------------------------------------------------------------------
