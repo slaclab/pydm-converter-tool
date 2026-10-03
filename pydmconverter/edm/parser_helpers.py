@@ -1,13 +1,15 @@
 import os
 import re
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Sequence, Tuple, Any
 from pydmconverter.custom_types import RGBA
 
 logger = logging.getLogger(__name__)
 
 
-def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Optional[str]:
+def search_calc_list(
+    file_path: str, cli_calc_file: Optional[str] = None, search_paths: Optional[Sequence[str]] = None
+) -> Optional[str]:
     """
     Search for a calc.list file and return its full path, returns None if no calc.list is found.
 
@@ -16,7 +18,9 @@ def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Opt
     1. cli_calc_file, if provided.
     2. calc.list in the same directory as file_path.
     3. calc.list in a config subdirectory next to file_path.
-    4. $EDMFILES/calc.list.
+    4. calc.list (then config/calc.list) in each of search_paths, in order.
+    5. $EDMFILES/calc.list.
+    6. calc.list beside $EDMCOLORFILE.
 
     Parameters
     ----------
@@ -25,6 +29,9 @@ def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Opt
     cli_calc_file : str, optional
         An explicit path to a calc.list file (e.g. from the --calc-list CLI
         option). If provided and valid, it overrides the other locations.
+    search_paths : Sequence[str], optional
+        Extra directories to search, e.g. the directory an uploaded screen came
+        from when the file itself was staged elsewhere.
 
     Returns
     -------
@@ -39,6 +46,9 @@ def search_calc_list(file_path: str, cli_calc_file: Optional[str] = None) -> Opt
         os.path.join(directory, "calc.list"),
         os.path.join(directory, "config", "calc.list"),
     ]
+    for search_dir in search_paths or ():
+        candidates.append(os.path.join(str(search_dir), "calc.list"))
+        candidates.append(os.path.join(str(search_dir), "config", "calc.list"))
 
     edmfiles = os.environ.get("EDMFILES", "")
     if edmfiles:
@@ -586,7 +596,11 @@ def loc_conversion(edm_string: str) -> str:
 
 
 def replace_calc_and_loc_in_edm_content(
-    edm_content: str, filepath: str, calc_list_file: Optional[str] = None, calc_reuse_short: bool = True
+    edm_content: str,
+    filepath: str,
+    calc_list_file: Optional[str] = None,
+    calc_reuse_short: bool = True,
+    search_paths: Optional[Sequence[str]] = None,
 ) -> Tuple[str, Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
     """
     Replace both CALC\\...(...) and LOC\\...=... references in the EDM file content
@@ -607,6 +621,8 @@ def replace_calc_and_loc_in_edm_content(
         use the short ``calc://<id>`` form (the plugin reuses the registered
         config). The react/IR target passes False: every appearance carries the
         full query so the formula hoister can lower each one independently.
+    search_paths : Sequence[str], optional
+        Extra directories searched for calc.list (see :func:`search_calc_list`).
 
     Returns
     -------
@@ -619,7 +635,7 @@ def replace_calc_and_loc_in_edm_content(
         A dictionary of all encountered LOC references, similarly mapping each
         unique original LOC reference to "full" and "short" addresses.
     """
-    calc_list_path = search_calc_list(filepath, calc_list_file)
+    calc_list_path = search_calc_list(filepath, calc_list_file, search_paths)
     calc_dict = parse_calc_list(calc_list_path)
 
     encountered_calcs: Dict[str, Dict[str, str]] = {}

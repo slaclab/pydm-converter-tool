@@ -70,3 +70,62 @@ def test_convert_folder(tmp_path):
     assert failed == []
     assert (tmp_path / "out" / "a.screen.json").is_file()
     assert (tmp_path / "out" / "nested" / "b.screen.json").is_file()
+
+
+# --- convert_bytes keeps the upload's identity (filename / search_paths) -------
+
+EDM_FIXTURES = Path(__file__).parent / "edm" / "fixtures"
+
+
+def test_convert_bytes_without_filename_keeps_screen_id():
+    """Backward compatible: no filename -> the fixed "screen" id/title."""
+    ir = react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl")
+    assert (ir.id, ir.metadata.title) == ("screen", "screen")
+
+
+def test_convert_bytes_filename_sets_id_and_title():
+    edm = react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl", filename="vac_gunb_main.edl")
+    assert (edm.id, edm.metadata.title) == ("vac_gunb_main", "vac_gunb_main")
+    ui = react.convert_bytes(UI_FIXTURE.read_bytes(), kind="ui", filename="mc_overview.ui")
+    assert ui.id == "mc_overview"
+
+
+def test_convert_bytes_filename_is_reduced_to_a_safe_basename():
+    data = EDM_FIXTURE.read_bytes()
+    assert react.convert_bytes(data, kind="edl", filename="../../etc/sub/vac.edl").id == "vac"
+    assert react.convert_bytes(data, kind="edl", filename="C:\\screens\\vac.EDL").id == "vac"
+    assert react.convert_bytes(data, kind="edl", filename="vac").id == "vac"  # suffix appended for dispatch
+    assert react.convert_bytes(data, kind="edl", filename="..").id == "screen"
+
+
+def test_convert_bytes_symbol_needs_search_paths():
+    """The staged copy lives in a private temp dir, so the symbol file beside the
+    original display is only found via search_paths; without it the symbol is an
+    empty group whose warning names the missing file (it used to vanish)."""
+    data = (EDM_FIXTURES / "symbol_two_state.edl").read_bytes()
+
+    missing = react.convert_bytes(data, kind="edl", filename="symbol_two_state.edl").root.children[0]
+    assert missing.type == "group"
+    assert missing.children == []
+    assert (missing.geometry.x, missing.geometry.y, missing.geometry.width, missing.geometry.height) == (50, 60, 24, 24)
+    assert any("symbol file 'symbol_states.edl' not found" in w for w in missing.warnings)
+
+    found = react.convert_bytes(
+        data, kind="edl", filename="symbol_two_state.edl", search_paths=[str(EDM_FIXTURES)]
+    ).root.children[0]
+    assert len([child for child in found.children if child.type == "group"]) == 2
+    assert not any("not found" in w for w in found.warnings)
+
+
+def test_convert_bytes_calc_list_found_via_search_paths(monkeypatch):
+    """A named CALC\\sum resolves from a calc.list in a search path directory."""
+    monkeypatch.delenv("EDMFILES", raising=False)
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    data = (EDM_FIXTURES / "calc_rules.edl").read_bytes()
+
+    def sum_formulas(ir):
+        return [f for f in ir.formulas if f.expression in ("{A}+{B}", "A+B")]
+
+    assert sum_formulas(react.convert_bytes(data, kind="edl", filename="calc_rules.edl")) == []
+    ir = react.convert_bytes(data, kind="edl", filename="calc_rules.edl", search_paths=[EDM_FIXTURES])
+    assert len(sum_formulas(ir)) == 1
