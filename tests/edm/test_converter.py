@@ -373,6 +373,99 @@ def test_convert_related_display_invisible_to_flat(tmp_path):
     assert bool_element.text == "true", "flat property should be set to true when invisible is present"
 
 
+def test_convert_escapes_ampersand_for_qt_mnemonics(tmp_path):
+    """Button-family text/titles get && escaping; QLabel text stays a literal single &."""
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        # (Related Display)
+        object relatedDisplayClass
+        beginObjectProperties
+        major 4
+        minor 4
+        release 0
+        x 100
+        y 100
+        w 150
+        h 50
+        fgColor index 14
+        bgColor index 0
+        buttonLabel "PLC & UPS Diagnostics"
+        numPvs 4
+        numDsps 1
+        displayFileName {
+          0 "a.edl"
+        }
+        menuLabel {
+          0 "Sub & Menu"
+        }
+        endObjectProperties
+
+        # (Static Text)
+        object activeXTextClass
+        beginObjectProperties
+        major 4
+        minor 1
+        release 1
+        x 300
+        y 100
+        w 150
+        h 30
+        fgColor index 14
+        value {
+          "Foo & Bar"
+        }
+        endObjectProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    assert output_file.exists()
+
+    tree = ET.parse(output_file)
+    root = tree.getroot()
+
+    related_display_buttons = [w for w in root.iter("widget") if w.get("class") == "PyDMRelatedDisplayButton"]
+    assert len(related_display_buttons) == 1, "Should have one PyDMRelatedDisplayButton"
+    button = related_display_buttons[0]
+
+    text_prop = button.find("property[@name='text']")
+    assert text_prop is not None, "Button should have a text property"
+    text_string = text_prop.find("string")
+    assert text_string is not None
+    assert text_string.text == "PLC && UPS Diagnostics"
+
+    # menuLabel is carried through as the PyDM `titles` stringlist (QMenu actions).
+    titles_prop = button.find("property[@name='titles']")
+    assert titles_prop is not None, "Related display should have a titles property"
+    stringlist = titles_prop.find("stringlist")
+    assert stringlist is not None, "titles should be a stringlist"
+    titles = [s.text for s in stringlist.findall("string")]
+    assert titles == ["Sub && Menu"]
+
+    label_widgets = [w for w in root.iter("widget") if w.get("class") in ("PyDMLabel", "QLabel")]
+    assert len(label_widgets) == 1, "Should have one label widget for activeXTextClass"
+    label = label_widgets[0]
+    label_text_prop = label.find("property[@name='text']")
+    assert label_text_prop is not None
+    label_text_string = label_text_prop.find("string")
+    assert label_text_string is not None
+    assert label_text_string.text == "Foo & Bar"
+
+
 def test_convert_shell_command_to_commands_property(tmp_path):
     """Test that EDM shellCmdClass command property maps to PyDM commands property."""
     edm_content = textwrap.dedent("""

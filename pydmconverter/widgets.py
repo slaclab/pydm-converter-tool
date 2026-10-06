@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from typing import ClassVar, List, Optional, Dict
 from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
@@ -23,6 +23,7 @@ from pydmconverter.widgets_helpers import (
     StringList,
     Row,
     Column,
+    escape_qt_mnemonic,
 )
 import logging
 from epics import PV
@@ -394,6 +395,7 @@ class QPushButton(
     icon: Optional[str] = None
     checkable: Optional[bool] = None
     checked: Optional[bool] = None
+    text_has_mnemonics: ClassVar[bool] = True
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -577,7 +579,7 @@ class PyDMPushButton(PyDMPushButtonBase):
         if self.write_when_release is not None:
             properties.append(Bool("writeWhenRelease", self.write_when_release).to_xml())
         if self.on_label is not None:
-            properties.append(Str("text", self.on_label).to_xml())
+            properties.append(Str("text", escape_qt_mnemonic(self.on_label)).to_xml())
         if self.is_freeze_button is not None and not self.is_freeze_button:
             properties.append(Str("pressValue", "1").to_xml())
         if self.is_freeze_button is not None and self.is_freeze_button:
@@ -684,7 +686,7 @@ class PyDMShellCommand(PyDMPushButtonBase, StyleSheetObject):
             properties.append(StringList("commands", self.command).to_xml())
             # Generate titles property if titles is set, otherwise PyDM will use default titles
             if self.titles is not None:
-                properties.append(StringList("titles", self.titles).to_xml())
+                properties.append(StringList("titles", [escape_qt_mnemonic(t) for t in self.titles]).to_xml())
         return properties
 
 
@@ -737,9 +739,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         #    properties.append(Str("filenames", self.filenames).to_xml()) #TODO: Maybe come back and include this if it comes up in edm
         if self.titles is not None:
             if isinstance(self.titles, list):
-                properties.append(StringList("titles", self.titles).to_xml())
+                properties.append(StringList("titles", [escape_qt_mnemonic(t) for t in self.titles]).to_xml())
             else:
-                properties.append(Str("titles", self.titles).to_xml())
+                properties.append(Str("titles", escape_qt_mnemonic(self.titles)).to_xml())
         if self.macros is not None:
             properties.append(Str("macros", self.macros).to_xml())
         # if self.open_in_new_window is not None:
@@ -1382,7 +1384,7 @@ class QWidget(Alarmable):
         if self.title is not None:
             title_element = ET.Element("attribute", name="title")
             title_string_element = ET.Element("string")
-            title_string_element.text = self.title
+            title_string_element.text = escape_qt_mnemonic(self.title)
             title_element.append(title_string_element)
             properties.append(title_element)
 

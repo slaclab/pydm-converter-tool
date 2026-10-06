@@ -304,6 +304,71 @@ def test_font_pixelsize_used_verbatim(tmp_path):
     assert ir.root.children[0].props["fontSize"] == 15
 
 
+def test_button_text_double_ampersand_unescaped(tmp_path):
+    """Issue #157: the .ui emitter writes `&&` for button text so Qt doesn't treat
+    a lone `&` as a mnemonic marker; the react/IR path has no mnemonic concept and
+    must show the user's literal `&` (button text lands in IR as `label`)."""
+    ui = tmp_path / "button.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMRelatedDisplayButton" name="btn">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>150</width><height>30</height></rect></property>
+  <property name="text"><string>PLC &amp;&amp; UPS Diagnostics</string></property>
+  <property name="filenames"><stringlist><string>plc.ui</string></stringlist></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    button = ir.root.children[0]
+    assert button.props["label"] == "PLC & UPS Diagnostics"
+
+
+def test_related_display_titles_unescaped():
+    """`titles` (plural) isn't in related-display-button's qtPropMap, so it never
+    surfaces into IR props (builder._map_props drops anything not in qtPropMap) —
+    but the SourceNode-level unescaping must still happen (defense in depth /
+    future-proofing), so assert directly on the SourceNode qt_props."""
+    import xml.etree.ElementTree as ET
+
+    from pydmconverter.ui.ir_adapter import _widget_to_sources
+
+    widget_xml = """<widget class="PyDMRelatedDisplayButton" name="btn">
+      <property name="geometry"><rect><x>0</x><y>0</y><width>150</width><height>30</height></rect></property>
+      <property name="titles"><stringlist><string>Sub &amp;&amp; Menu</string></stringlist></property>
+    </widget>"""
+    widget = ET.fromstring(widget_xml)
+    nodes = _widget_to_sources(widget, None)
+    assert nodes[0].qt_props["titles"] == ["Sub & Menu"]
+
+
+def test_label_text_ampersand_untouched(tmp_path):
+    """Regression guard: QLabel/PyDMLabel text is never unescaped (PyQt5 renders
+    `&` in a QLabel literally, so there is no mnemonic to undo)."""
+    ui = tmp_path / "label_amp.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="centralwidget">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMLabel" name="lbl_dbl">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>80</width><height>20</height></rect></property>
+  <property name="text"><string>A &amp;&amp; B</string></property>
+ </widget>
+ <widget class="PyDMLabel" name="lbl_single">
+  <property name="geometry"><rect><x>0</x><y>30</y><width>80</width><height>20</height></rect></property>
+  <property name="text"><string>A &amp; B</string></property>
+ </widget>
+</widget></ui>"""
+    )
+    ir = ui_file_to_ir(ui)
+    lbl_dbl, lbl_single = ir.root.children[0], ir.root.children[1]
+    assert lbl_dbl.props["text"] == "A && B"
+    assert lbl_single.props["text"] == "A & B"
+
+
 def test_font_without_size_emits_nothing(tmp_path):
     """A <font> with no point/pixel size must not add a bogus fontSize prop
     (runtime default stands) and must never crash the conversion."""
