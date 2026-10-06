@@ -32,16 +32,22 @@ from epics import PV
 
 def edm_to_ui_filename(file_string: str) -> str:
     """
-    Map an EDM display name to its converted .ui name. EDM appends ".edl" to a
-    name without that suffix, so "GigE_controls" and "GigE_controls.edl" both
-    become "GigE_controls.ui"; any other dot stays part of the name. Anything
-    after ".edl" (legacy "name.edl;P=..." entries) is dropped.
+    Map an EDM display name to its converted .ui name.
+
+    A name that is already a ".ui" file is returned unchanged. Otherwise any
+    legacy macro suffix ("name.edl;P=...") is dropped at the first ";", a
+    trailing ".edl" is stripped, and ".ui" is appended. EDM appends ".edl" to a
+    name that lacks the suffix, so "GigE_controls" and "GigE_controls.edl" both
+    become "GigE_controls.ui". Dots anywhere else stay part of the name, so
+    "GigE_v1.2" becomes "GigE_v1.2.ui" and "screen.edl.bak" becomes
+    "screen.edl.bak.ui".
     """
     if file_string.endswith(".ui"):
         return file_string
-    if ".edl" in file_string:
-        file_string = file_string[: file_string.index(".edl")]
-    return f"{file_string}.ui"
+    name = file_string.partition(";")[0]
+    if name.endswith(".edl"):
+        name = name[: -len(".edl")]
+    return f"{name}.ui"
 
 
 @dataclass
@@ -770,16 +776,11 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
             properties.append(StringList("filenames", converted_filenames).to_xml())
         return properties
 
-    def convert_filetype(self, file_string: str) -> None:
+    def convert_filetype(self, file_string: str) -> str:
         """
-        Converts file strings of .<type> to .ui
+        Converts an EDM display name to its .ui name
         """
-        filearr = file_string.split(".")
-        if len(filearr) > 1:
-            filename = ".".join(filearr[:-1])
-        else:
-            filename = file_string
-        return f"{filename}.ui"
+        return edm_to_ui_filename(file_string)
 
 
 @dataclass

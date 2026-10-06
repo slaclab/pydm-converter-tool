@@ -920,7 +920,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     color_list_dict = parse_colors_list(color_list_filepath)
 
     # Pre-process: choice buttons driving menu embedded windows become tabs or switched displays
-    pair_menu_pips(parser.ui, color_list_dict)
+    pair_menu_pips(parser.ui, color_list_dict, skip_widgets=skip_widgets)
 
     # Pre-process: remove overlapping text labels on related display buttons
     text_objects = find_objects(parser.ui, "activextextclass")
@@ -1142,14 +1142,6 @@ def populate_tab_bar(obj: EDMObject, widget: QTabWidget) -> None:
         widget.add_child(child_widget)
 
 
-def get_channel_tabs(channel: str, timeout: float = 0.5) -> List[str]:
-    # pv = PV(channel, connection_timeout=timeout)
-    # pv = PV(channel)
-    # if pv and pv.enum_strs:
-    #    return list(pv.enum_strs)
-    return None
-
-
 def _loc_names(obj: EDMObject) -> set:
     """Every loc:// variable name the object's properties reference."""
     names = set()
@@ -1183,8 +1175,11 @@ def _as_list(value) -> list:
     return value if isinstance(value, list) else [value]
 
 
-def is_menu_pip(obj: EDMObject) -> bool:
+def is_menu_pip(obj) -> bool:
     """An embedded window whose filePv picks among its displayFileName entries."""
+    if not isinstance(obj, EDMObject):
+        # Groups carry properties but no class name, so they are never a window.
+        return False
     return obj.name.lower() == "activepipclass" and str(obj.properties.get("displaySource", "")).lower() == "menu"
 
 
@@ -1200,9 +1195,16 @@ def shown_display_index(obj: EDMObject) -> int:
 
 
 def _walk_objects(group: EDMGroup, hidden: bool = False):
-    """Yield (object, parent group, whether an enclosing group has a visibility PV)."""
+    """Yield (object, parent group, whether an enclosing group has a visibility PV).
+
+    Groups are yielded alongside their leaves: a group's own visibility PV can
+    reference a LOC variable, which makes the group a user of that variable.
+    A group is yielded with the enclosing hidden flag, since its own visibility
+    PV hides its children rather than itself.
+    """
     for obj in group.objects:
         if isinstance(obj, EDMGroup):
+            yield obj, group, hidden
             group_hidden = hidden or "visPv" in obj.properties or "symbolChannel" in obj.properties
             yield from _walk_objects(obj, group_hidden)
         else:
@@ -1216,14 +1218,17 @@ def _fits_tab_bar(pip: EDMObject, pip_parent: EDMGroup, hidden: bool, choice: ED
         return False
     if "visPv" in pip.properties or "visPv" in choice.properties:
         return False
-    if str(choice.properties.get("orientation", "")).lower() != "horizontal":
+    # EDM lays a choice button's states out to fill its rect, so a wide box reads
+    # horizontally and a tall one vertically; the declared orientation property is
+    # optional and unreliable. Same rule as ir_adapter._fixup_choice_button.
+    if choice.width < choice.height:
         return False
     gap = pip.y - (choice.y + choice.height)
     inside = pip.x - 8 <= choice.x and choice.x + choice.width <= pip.x + pip.width + 8
     return -4 <= gap <= 12 and inside
 
 
-def pair_menu_pips(root: EDMGroup, color_list_dict) -> None:
+def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) -> None:
     """
     Convert each menu embedded window that a choice button drives.
 
@@ -1235,8 +1240,24 @@ def pair_menu_pips(root: EDMGroup, color_list_dict) -> None:
     the button stays a PyDMEnumButton and the window becomes one embedded
     display per file, shown only at its index, so EDM's layout and every other
     user of the variable keep working.
+
+    skip_widgets is the site's set of EDM classes to drop; pairing rewrites both
+    widgets together, so a site dropping either one leaves the tree untouched.
     """
+    if skip_widgets and {"activechoicebuttonclass", "activepipclass"} & skip_widgets:
+        logger.info("Skipping menu embedded window pairing (site rule)")
+        return
+
+    # A $(!W) LOC variable is per-screen; the parser leaves a __UNIQUE__ marker
+    # (EDMFileParser.modify_text) that apply_widget_post_processing only resolves
+    # on an embedded display's own channel. The stacked path instead writes the
+    # name into visPv/controlPv strings, so resolve the marker here, once per
+    # screen, to the same name for every widget sharing the variable.
+    token = str(id(root))[-6:]
+
     objects = list(_walk_objects(root))
+    # objects holds a reference to every walked object, so keying by id is safe.
+    loc_names = {id(obj): _loc_names(obj) for obj, _, _ in objects}
     for pip, parent, hidden in objects:
         if not is_menu_pip(pip):
             continue
@@ -1245,9 +1266,15 @@ def pair_menu_pips(root: EDMGroup, color_list_dict) -> None:
         files = _as_list(pip.properties.get("displayFileName"))
         if not match or not files:
             continue
-        name = match.group(1)
-        users = [(obj, group) for obj, group, _ in objects if obj is not pip and name in _loc_names(obj)]
-        choices = [(obj, group) for obj, group in users if obj.name.lower() == "activechoicebuttonclass"]
+        # The name as it appears in the tree, marker included: users and the
+        # definition are matched on this form, then the marker is resolved.
+        marked_name = match.group(1)
+        users = [(obj, group) for obj, group, _ in objects if obj is not pip and marked_name in loc_names[id(obj)]]
+        choices = [
+            (obj, group)
+            for obj, group in users
+            if isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
+        ]
         if not choices:
             continue
 
@@ -1256,14 +1283,20 @@ def pair_menu_pips(root: EDMGroup, color_list_dict) -> None:
             value
             for obj, _ in users
             for value in obj.properties.values()
-            if isinstance(value, str) and (value == f"loc://{name}" or value.startswith(f"loc://{name}?"))
+            if isinstance(value, str) and (value == f"loc://{marked_name}" or value.startswith(f"loc://{marked_name}?"))
         ]
         definition = max(references, key=lambda url: (len(_loc_enum_strings(url)), "?" in url))
 
+        name = marked_name.replace("__UNIQUE__", token)
+        if name != marked_name:
+            definition = definition.replace("__UNIQUE__", token)
+
         if len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
+            # Tabs switch on their own and never emit the variable, so the
+            # marked name never reaches the output.
             _absorb_pip_into_tabs(pip, parent, choices[0][0], files, definition, color_list_dict)
         else:
-            _stack_pip_displays(pip, parent, name, files, definition, users)
+            _stack_pip_displays(pip, parent, name, files, definition, users, marked_name)
 
 
 def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dict) -> None:
@@ -1311,9 +1344,16 @@ def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dic
     logger.info(f"Converted choice button and menu embedded window on {definition} to tabs")
 
 
-def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
+def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name=None) -> None:
     """Replace the window with one embedded display per file, each visible only
-    while the variable equals its index (a group visPv in [i, i + 1))."""
+    while the variable equals its index (a group visPv in [i, i + 1)).
+
+    name is the resolved variable name, marked_name the form still carrying the
+    parser's __UNIQUE__ marker (the same when there is no marker); user
+    properties are matched on the marked form and rewritten to the resolved one.
+    """
+    if marked_name is None:
+        marked_name = name
     symbols = _as_list(pip.properties.get("symbols"))
     start = _loc_init(definition)
     if not 0 <= start < len(files):
@@ -1354,12 +1394,17 @@ def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
     # window carried the full definition; hand it to the choice buttons (which
     # need the enum strings for their states) and to every other configured use.
     for obj, _ in users:
-        is_choice = obj.name.lower() == "activechoicebuttonclass"
+        is_choice = isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         for key, value in obj.properties.items():
             if not isinstance(value, str):
                 continue
-            if value.startswith(f"loc://{name}?") or (is_choice and value == f"loc://{name}"):
+            if value.startswith(f"loc://{marked_name}?") or (is_choice and value == f"loc://{marked_name}"):
                 obj.properties[key] = definition
+            elif marked_name != name:
+                # A plain reference carrying no configuration (a label's visPv,
+                # say) keeps the marker otherwise, naming a different variable
+                # than the displays it is meant to track.
+                obj.properties[key] = value.replace(f"loc://{marked_name}", f"loc://{name}")
     logger.info(f"Stacked {len(files)} embedded displays switched by {definition}")
 
 

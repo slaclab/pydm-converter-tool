@@ -23,6 +23,7 @@ from pydmconverter.widgets import (
     PyDMWaveformPlot,
     PyDMAnalogIndicator,
     QWidget,
+    edm_to_ui_filename,
 )
 
 from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawable, Hidable
@@ -423,6 +424,37 @@ def test_pydmrelateddisplay_button_list_titles():
     assert stringlist is not None
     strings = [s.text for s in stringlist.findall("string")]
     assert strings == ["asynOctet Interface I/O", "Register interfaces I/O", "Serial port parameters"]
+
+
+def test_edm_to_ui_filename():
+    """EDM display names map to .ui names without eating unrelated dots."""
+    # EDM appends ".edl" to a bare name, so both forms converge.
+    assert edm_to_ui_filename("GigE_controls") == "GigE_controls.ui"
+    assert edm_to_ui_filename("GigE_controls.edl") == "GigE_controls.ui"
+    # A legacy "name.edl;P=..." macro suffix is dropped.
+    assert edm_to_ui_filename("a.edl;P=1") == "a.ui"
+    # A version dot is part of the name, not an extension.
+    assert edm_to_ui_filename("GigE_v1.2") == "GigE_v1.2.ui"
+    # ".edl" only counts as an extension when it is the actual suffix.
+    assert edm_to_ui_filename("screen.edl.bak") == "screen.edl.bak.ui"
+    assert edm_to_ui_filename("sub.edl_v2/screen") == "sub.edl_v2/screen.ui"
+    # An already-converted name passes through untouched.
+    assert edm_to_ui_filename("x.ui") == "x.ui"
+
+
+def test_pydmrelateddisplay_button_filenames_converted():
+    """displayFileName entries are converted via edm_to_ui_filename, not split on the last dot."""
+    widget = PyDMRelatedDisplayButton()
+    widget.displayFileName = ["GigE_v1.2", "a.edl;P=1"]
+
+    properties: List[ET.Element] = widget.generate_properties()
+
+    filenames_prop = next((p for p in properties if p.get("name") == "filenames"), None)
+    assert filenames_prop is not None
+    stringlist = filenames_prop.find("stringlist")
+    assert stringlist is not None
+    strings = [s.text for s in stringlist.findall("string")]
+    assert strings == ["GigE_v1.2.ui", "a.ui"]
 
 
 # --- Tests for Qt mnemonic (&) escaping ---

@@ -1023,13 +1023,15 @@ class MultiRule(XMLConvertible):
         expression_list = []
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
-                rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+                channel = rule.channel
                 replacement_init = None
                 if channel.startswith("loc://") and "init=${" in channel:
                     replacement_init = channel[channel.find("init=") + len("init=") :]
                     replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax, replacement_init))
+                expression_list.append(
+                    self.get_expression(i, rule.show_on_true, rule.visMin, rule.visMax, replacement_init)
+                )
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
             replacement_init = None
@@ -1050,7 +1052,7 @@ class MultiRule(XMLConvertible):
         starts_true = (
             bool(self.rule_list)
             and self.hide_on_disconnect_channel is None
-            and all(initial_value for _, _, initial_value, *_ in self.rule_list)
+            and all(rule.initial_value for rule in self.rule_list)
         )
 
         output_string = (
