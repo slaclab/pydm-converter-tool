@@ -51,9 +51,11 @@ CUSTOM_WIDGET_DEFINITIONS = {
 }
 
 
-def convert(input_path, output_path, scrollable=False, site=None, calc_list_file=None):
+def convert(input_path, output_path, scrollable=False, site=None, calc_list_file=None, color_list_file=None):
     try:
-        edm_parser = EDMFileParser(input_path, output_path, calc_list_file=calc_list_file)
+        edm_parser = EDMFileParser(
+            input_path, output_path, calc_list_file=calc_list_file, color_list_file=color_list_file
+        )
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:
         logger.error("File Not Found")
@@ -61,7 +63,7 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
 
     # edm_parser.ui, _, _ = replace_calc_and_loc_in_edm_content(edm_parser.ui, input_path)
 
-    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser, site=site)
+    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser, site=site, color_list_file=color_list_file)
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
     page_header = PageHeader()

@@ -223,6 +223,41 @@ def test_parse_groups_desync_redirect(tmp_path):
     assert group.objects[0].name == "activeXTextClass"
 
 
+def test_parser_uses_explicit_color_list_for_screen_bgcolor(tmp_path, monkeypatch):
+    """An explicit ``color_list_file`` resolves the screen's own ``bgColor`` index,
+    independent of ``EDMCOLORFILE``/``EDMFILES`` env vars (issue #158)."""
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    monkeypatch.delenv("EDMFILES", raising=False)
+
+    test_data = textwrap.dedent("""
+        4 0 0
+        beginScreenProperties
+        major 4
+        minor 0
+        release 0
+        x 0
+        y 0
+        w 200
+        h 100
+        font "helvetica-medium-r-12.0"
+        bgColor index 25
+        endScreenProperties
+    """)
+    edl = tmp_path / "screen.edl"
+    edl.write_text(test_data, encoding="utf-8", newline="\n")
+
+    palette = tmp_path / "colors.list"
+    palette.write_text(
+        '4 0 0\n\nmax=0x10000\n\nstatic 25 "Controller" { 0xffff 0 0 }\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    parser = EDMFileParser(str(edl), str(tmp_path / "out.ui"), color_list_file=str(palette))
+    r, g, b, _a = parser.ui.properties["bgColor"]
+    assert (r, g, b) == (255, 0, 0)
+
+
 def test_get_size_properties():
     """Test that the size properties are extracted correctly"""
     test_data = textwrap.dedent("""
