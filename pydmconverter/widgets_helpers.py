@@ -1023,13 +1023,15 @@ class MultiRule(XMLConvertible):
         expression_list = []
         if self.rule_list is not None:
             for i, rule in enumerate(self.rule_list):
-                rule_type, channel, initial_value, show_on_true, visMin, visMax = rule
+                channel = rule.channel
                 replacement_init = None
                 if channel.startswith("loc://") and "init=${" in channel:
                     replacement_init = channel[channel.find("init=") + len("init=") :]
                     replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
-                expression_list.append(self.get_expression(i, show_on_true, visMin, visMax, replacement_init))
+                expression_list.append(
+                    self.get_expression(i, rule.show_on_true, rule.visMin, rule.visMax, replacement_init)
+                )
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
             replacement_init = None
@@ -1045,12 +1047,19 @@ class MultiRule(XMLConvertible):
         if not expression_list:
             return ""
         expression_str = "(" + ") and (".join(expression_list) + ")"
+        # Until its channels connect the widget shows the initial value: true
+        # only when every condition asks for it.
+        starts_true = (
+            bool(self.rule_list)
+            and self.hide_on_disconnect_channel is None
+            and all(rule.initial_value for rule in self.rule_list)
+        )
 
         output_string = (
             "{"
             f'"name": "{self.rule_type}", '
             f'"property": "{self.rule_type}", '
-            f'"initial_value": "false", '
+            f'"initial_value": "{"true" if starts_true else "false"}", '
             f'"expression": "{expression_str}", '
             f'"channels": [{", ".join(channel_list)}], '
             f'"notes": "{self.notes}"'
@@ -1720,7 +1729,10 @@ class Controllable(Tangible):
             properties.append(PyDMToolTip(self.pydm_tool_tip).to_xml())
         if self.visPvList is not None:
             for elem in self.visPvList:
-                if len(elem) == 4:
+                group_initial = False
+                if len(elem) == 5:
+                    group_channel, group_min, group_max, group_invert, group_initial = elem
+                elif len(elem) == 4:
                     group_channel, group_min, group_max, group_invert = elem
                 else:
                     group_channel, group_min, group_max = elem
@@ -1729,7 +1741,7 @@ class Controllable(Tangible):
                     RuleArguments(
                         "Visible",
                         group_channel,
-                        False,
+                        group_initial,
                         not group_invert,
                         group_min,
                         group_max,

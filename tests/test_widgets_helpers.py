@@ -36,6 +36,7 @@ from pydmconverter.widgets_helpers import (
     escape_qt_mnemonic,
     unescape_qt_mnemonic,
 )
+from pydmconverter.custom_types import RuleArguments
 
 
 def test_XMLConvertible():
@@ -687,6 +688,24 @@ class TestMultiRuleExpression:
         rule = MultiRule("Visible", [])
         result = rule.get_expression(0, True, None, None, None)
         assert result == "ch[0]==1"
+
+    def test_keyword_constructed_rule_arguments(self):
+        """RuleArguments field names must match how MultiRule reads them.
+
+        Built by keyword, initial_value=True must drive "initial_value": "true"
+        and show_on_true=False must produce the inverted expression.
+        """
+        rule = RuleArguments(
+            rule_type="Visible",
+            channel="ca://X",
+            initial_value=True,
+            show_on_true=False,
+            visMin=None,
+            visMax=None,
+        )
+        result = MultiRule("Visible", [rule]).to_string()
+        assert '"initial_value": "true"' in result
+        assert '"expression": "(ch[0]!=1)"' in result
 
 
 def test_escape_qt_mnemonic_basic():

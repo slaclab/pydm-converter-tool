@@ -23,18 +23,18 @@ class RGBA:
 class RuleArguments:
     rule_type: str
     channel: str
-    show_on_true: bool
     initial_value: bool
+    show_on_true: bool
     visMin: Optional[Union[int, float, str]]
     visMax: Optional[Union[int, float, str]]
 
     def __iter__(self):
         yield self.rule_type
         yield self.channel
-        yield self.show_on_true
         yield self.initial_value
+        yield self.show_on_true
         yield self.visMin
         yield self.visMax
 
     def to_tuple(self):
-        return (self.rule_type, self.channel, self.show_on_true, self.initial_value, self.visMin, self.visMax)
+        return (self.rule_type, self.channel, self.initial_value, self.show_on_true, self.visMin, self.visMax)
