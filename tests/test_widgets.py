@@ -22,11 +22,13 @@ from pydmconverter.widgets import (
     PyDMDrawingPolyline,
     PyDMWaveformPlot,
     PyDMAnalogIndicator,
+    PyDMEmbeddedDisplay,
     QWidget,
     edm_to_ui_filename,
 )
 
 from pydmconverter.widgets_helpers import XMLSerializableMixin, Alarmable, Drawable, Hidable
+from pydmconverter.custom_types import RGBA
 
 
 def get_property_value(prop: etree.Element) -> Optional[str]:
@@ -770,3 +772,45 @@ def test_pydmanalogindicator_defaults():
     assert "showUnits" not in prop_dict
     assert "precision" not in prop_dict
     assert "title" not in prop_dict
+
+
+def last_style_sheet(element: etree.Element) -> str:
+    """The last styleSheet property, the one the .ui loader leaves in effect."""
+    return get_property_value(element.findall("property[@name='styleSheet']")[-1])
+
+
+def test_pydmembeddeddisplay_pip_border_scoped_to_widget():
+    widget = PyDMEmbeddedDisplay(name="activePipClass123", foreground_color=RGBA(0, 0, 255))
+    style = last_style_sheet(widget.to_xml())
+
+    # Unscoped, Qt would also draw the border on the embedded screen's widgets.
+    assert style == (
+        "* { color: rgba(0, 0, 255, 255);background-color: none; } "
+        "PyDMEmbeddedDisplay#activePipClass123 { border: 1px solid black; }"
+    )
+
+
+def test_pydmembeddeddisplay_pip_border_selector_uses_object_name():
+    element = PyDMEmbeddedDisplay(name="activePipClass42").to_xml()
+    style = last_style_sheet(element)
+
+    assert element.get("name") == "activePipClass42"
+    assert style == "* { background-color: none; } PyDMEmbeddedDisplay#activePipClass42 { border: 1px solid black; }"
+
+
+def test_pydmembeddeddisplay_pip_background_stays_unscoped():
+    widget = PyDMEmbeddedDisplay(name="activePipClass7", background_color=RGBA(200, 200, 200))
+    style = last_style_sheet(widget.to_xml())
+
+    assert style == (
+        "* { background-color: rgba(200, 200, 200, 255); } "
+        "PyDMEmbeddedDisplay#activePipClass7 { border: 1px solid black; }"
+    )
+
+
+def test_pydmembeddeddisplay_non_pip_has_no_border():
+    widget = PyDMEmbeddedDisplay(name="activeChoiceButtonClass1_page0", foreground_color=RGBA(0, 0, 255))
+
+    assert last_style_sheet(widget.to_xml()) == "color: rgba(0, 0, 255, 255);background-color: none;"
+    plain = PyDMEmbeddedDisplay(name="activeChoiceButtonClass1_page1")
+    assert last_style_sheet(plain.to_xml()) == "background-color: transparent;"

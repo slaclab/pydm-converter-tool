@@ -1195,11 +1195,16 @@ class StyleSheet(XMLConvertible):
 
     Attributes
     ----------
-    lines : List[str]
-        A list of stylesheet lines.
+    styles : Dict[str, Any]
+        Declarations for the widget. With no selector Qt applies them to the
+        widget and every descendant.
+    scoped : Dict[str, Dict[str, Any]]
+        Declarations keyed by the selector they apply to, e.g.
+        ``{"PyDMEmbeddedDisplay#name": {"border": "1px solid black"}}``.
     """
 
     styles: Dict[str, Any]
+    scoped: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     def _format_value(self, key: str, value: Any) -> str:
         if isinstance(value, RGBA) and key in ("color", "background-color"):
@@ -1225,6 +1230,15 @@ class StyleSheet(XMLConvertible):
         style_str: str = self.to_style_string()
         if "background-color" not in self.styles:
             style_str += "background-color: none;"
+        if self.scoped:
+            # Qt reads a sheet without selectors as "* { ... }" and drops a sheet that
+            # mixes bare declarations with selector rules, so the unscoped ones go
+            # under "*" explicitly.
+            rules = [f"* {{ {style_str} }}"]
+            for selector, styles in self.scoped.items():
+                declarations = " ".join(self._format_value(k, v) for k, v in styles.items())
+                rules.append(f"{selector} {{ {declarations} }}")
+            style_str = " ".join(rules)
         string_elem.text = style_str
         return prop
 
