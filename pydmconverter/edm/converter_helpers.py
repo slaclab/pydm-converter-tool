@@ -579,9 +579,23 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
     elif edm_attr in ("xPv", "yPv") and isinstance(value, list):
         value = block_list(value)
     elif edm_attr in ("menuLabel", "commandLabel"):
-        # EDM uses \x18 (CAN character) as a placeholder meaning "use the filename".
-        # Strip these so PyDM falls back to its default title behavior.
-        if isinstance(value, list):
+        # \x18 (CAN character) is a placeholder some files hold for "no label".
+        entries = None
+        if isinstance(widget, PyDMRelatedDisplayButton):
+            entries = obj.properties.get("displayFileName")
+        elif isinstance(widget, PyDMShellCommand):
+            entries = obj.properties.get("command")
+        if entries:
+            # EDM (related_display.cc, shell_cmd.cc) pairs label[i] with displayFileName[i]
+            # or command[i] by array index, and a file may skip indices; PyDM pairs titles
+            # with filenames/commands by position. One title per entry, in entry order: a
+            # missing label is EDM's empty one (a blank menu item), and with no label at
+            # all PyDM's default titles (the filenames/commands) stand.
+            labels = {index: label for index, label in block_items(value) if label != "\x18"}
+            value = [labels.get(index, "") for index, _ in block_items(entries)]
+            if not any(value):
+                return None
+        elif isinstance(value, list):
             value = [v for v in value if v != "\x18"]
             if not value:
                 return None
