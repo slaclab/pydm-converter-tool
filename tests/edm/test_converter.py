@@ -2,7 +2,9 @@ import xml.etree.ElementTree as ET
 import textwrap
 from pathlib import Path
 
-from pydmconverter.edm.converter import convert, build_customwidgets_element, add_widgets_to_parent
+import pytest
+
+from pydmconverter.edm.converter import convert, build_customwidgets_element, add_widgets_to_parent, content_extent
 from pydmconverter.widgets import PyDMLabel, PyDMFrame
 
 
@@ -122,6 +124,151 @@ def test_convert_with_background_color(tmp_path):
         assert style_string is not None, "StyleSheet property should have a string element"
         assert style_string.text is not None, "StyleSheet string element should have text content"
         assert "background-color" in style_string.text, "StyleSheet should contain background-color property"
+
+
+CENTRAL_GEOMETRY_SCREEN = """
+    4 0 1
+    beginScreenProperties
+    x 50
+    y 60
+    w 400
+    h 300
+    bgColor index 14
+    endScreenProperties
+
+    # (Static Text)
+    object activeXTextClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 1
+    x 10
+    y 10
+    w 100
+    h 20
+    endObjectProperties
+
+    # (Rectangle hidden at startup, near the bottom)
+    object activeRectangleClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 0
+    x 20
+    y 200
+    w 300
+    h 80
+    visPv "TEST:VIS"
+    visMin "1"
+    visMax "2"
+    endObjectProperties
+"""
+
+OVERFLOW_RECTANGLE = """
+    # (Rectangle extending past the screen's right and bottom edges)
+    object activeRectangleClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 0
+    x 350
+    y 260
+    w 100
+    h 80
+    endObjectProperties
+"""
+
+
+SCREEN_RECT = {"x": "0", "y": "0", "width": "400", "height": "300"}
+OVERFLOW_RECT = {"x": "0", "y": "0", "width": "450", "height": "340"}
+
+
+def _convert_ui_root(tmp_path, edm_content, scrollable):
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(textwrap.dedent(edm_content))
+
+    convert(str(input_file), str(output_file), scrollable=scrollable)
+
+    return ET.parse(output_file).getroot()
+
+
+def _geometry_rect(widget):
+    return {child.tag: child.text for child in widget.find("property[@name='geometry']/rect")}
+
+
+def _central_widget_rect(tmp_path, edm_content, scrollable):
+    central_widget = _convert_ui_root(tmp_path, edm_content, scrollable).find(".//widget[@name='centralwidget']")
+    assert central_widget is not None
+
+    properties = central_widget.findall("property")
+    assert properties[0].get("name") == "geometry", "geometry should be centralwidget's first property"
+    return {child.tag: child.text for child in properties[0].find("rect")}
+
+
+@pytest.mark.parametrize("scrollable", [False, True])
+def test_centralwidget_has_screen_geometry(tmp_path, scrollable):
+    """centralwidget is sized to the full screen, not left for Qt to adjustSize().
+
+    Without an explicit geometry, Qt sizes centralwidget to the children visible when
+    the display is first shown, permanently clipping a rule-hidden (visPv) widget that
+    lies below/right of them once it later becomes visible.
+    """
+    rect = _central_widget_rect(tmp_path, CENTRAL_GEOMETRY_SCREEN, scrollable)
+    assert rect == SCREEN_RECT
+
+
+@pytest.mark.parametrize("scrollable", [False, True])
+def test_centralwidget_geometry_covers_widgets_past_screen_size(tmp_path, scrollable):
+    """A widget past the declared screen size grows centralwidget to its right/bottom edge,
+    so it is not clipped when the window is enlarged."""
+    rect = _central_widget_rect(tmp_path, CENTRAL_GEOMETRY_SCREEN + OVERFLOW_RECTANGLE, scrollable)
+    assert rect == OVERFLOW_RECT
+
+
+@pytest.mark.parametrize(
+    "edm_content, content_rect",
+    [(CENTRAL_GEOMETRY_SCREEN, SCREEN_RECT), (CENTRAL_GEOMETRY_SCREEN + OVERFLOW_RECTANGLE, OVERFLOW_RECT)],
+)
+@pytest.mark.parametrize("scrollable", [False, True])
+def test_page_geometry_covers_content(tmp_path, edm_content, content_rect, scrollable):
+    """Form keeps the declared screen size while centralwidget (and, when scrollable,
+    scrollAreaWidgetContents) covers the content, so overflow can be scrolled to."""
+    root = _convert_ui_root(tmp_path, edm_content, scrollable)
+
+    assert _geometry_rect(root.find("widget[@name='Form']")) == SCREEN_RECT
+
+    central_widget = root.find(".//widget[@name='centralwidget']")
+    assert len(central_widget.findall("property[@name='geometry']")) == 1
+    assert _geometry_rect(central_widget) == content_rect
+
+    scroll_contents = root.find(".//widget[@name='scrollAreaWidgetContents']")
+    if scrollable:
+        assert _geometry_rect(root.find(".//widget[@name='scrollArea']")) == SCREEN_RECT
+        assert _geometry_rect(scroll_contents) == content_rect
+    else:
+        assert scroll_contents is None
+
+
+def _widget_with_rect(**parts):
+    widget = ET.Element("widget")
+    rect = ET.SubElement(ET.SubElement(widget, "property", attrib={"name": "geometry"}), "rect")
+    for tag, text in parts.items():
+        ET.SubElement(rect, tag).text = text
+    return widget
+
+
+def test_content_extent_ignores_unparseable_geometry():
+    """A child with an incomplete or non-numeric rect is skipped; float text is truncated."""
+    elements = [
+        _widget_with_rect(x="500", y="500", width="100"),  # height missing
+        _widget_with_rect(x="abc", y="0", width="900", height="900"),
+        ET.Element("widget"),  # no geometry at all
+        _widget_with_rect(x="12.5", y="20", width="100.9", height="30"),
+    ]
+
+    assert content_extent(elements, 100, 40) == (112, 50)
+    assert content_extent([], 400, 300) == (400, 300)
 
 
 def test_convert_with_explicit_color_list(tmp_path, monkeypatch):
