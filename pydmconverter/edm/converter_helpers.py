@@ -27,6 +27,7 @@ from pydmconverter.widgets import (
     PyDMSlider,
     PyDMWaveformTable,
     PyDMAnalogIndicator,
+    edm_to_ui_filename,
 )
 from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
@@ -560,11 +561,21 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
         value = color_list
     elif edm_attr in ("menuLabel", "commandLabel"):
         # EDM uses \x18 (CAN character) as a placeholder meaning "use the filename".
-        # Strip these so PyDM falls back to its default title behavior.
+        # PyDM titles menu entries by position and shows an empty title as a blank
+        # item, so a missing or placeholder label takes the title PyDM gives an
+        # entry past the end of the list: its .ui file or its command.
         if isinstance(value, list):
-            value = [v for v in value if v != "\x18"]
-            if not value:
+            if not any(label and label != "\x18" for label in value):
                 return None
+            if edm_attr == "menuLabel":
+                files = _as_list(obj.properties.get("displayFileName"))
+                targets = [edm_to_ui_filename(file) if file else "" for file in files]
+            else:
+                targets = _as_list(obj.properties.get("command"))
+            value = [
+                label if label and label != "\x18" else (targets[index] if index < len(targets) else "")
+                for index, label in enumerate(value)
+            ]
         elif value == "\x18":
             return None
 

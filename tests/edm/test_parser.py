@@ -302,3 +302,90 @@ def test_get_object_properties(test_property, expected):
     """
     result_property = EDMFileParser.get_object_properties(test_property)
     assert result_property == expected
+
+
+@pytest.mark.parametrize(
+    "block, expected",
+    [
+        # EDM omits every entry left at its default (""), so the indices skip.
+        pytest.param('  1 "b"\n  2 "c"', ["", "b", "c"], id="leading-omission"),
+        pytest.param('  0 "a"\n  2 "c"', ["a", "", "c"], id="middle-omission"),
+        pytest.param('  0 "a"\n  4 "e"', ["a", "", "", "", "e"], id="middle-run-omission"),
+        pytest.param('  0 "a"\n  1 "b"', ["a", "b"], id="trailing-omission-is-shorter"),
+        pytest.param('  3 "d"', ["", "", "", "d"], id="only-last-entry"),
+        pytest.param('  0 ""\n  1 "b"', ["", "b"], id="explicit-empty-entry"),
+        pytest.param("  0\n  1 calcExamples.edl", ["", "calcExamples.edl"], id="bare-index"),
+        pytest.param('  0 "a"\n  1 "b"\n  1 "c"', ["a", "c"], id="repeated-index-last-wins"),
+        pytest.param(
+            '  0 "Record parameters\n"\n  1 "Serial port\n"', ["Record parameters", "Serial port"], id="continued"
+        ),
+        pytest.param('  1 "P=$(P),CAM=$(CAM)"', ["", "P=$(P),CAM=$(CAM)"], id="macros"),
+        pytest.param('  2 "say \\"hi\\" now"', ["", "", 'say "hi" now'], id="escaped-quotes"),
+    ],
+)
+def test_get_object_properties_indexed_array(block, expected):
+    """Each value of an indexed array sits at its index, omitted entries are ""."""
+    result = EDMFileParser.get_object_properties(f"symbols {{\n{block}\n}}\n")
+    assert result == {"symbols": expected}
+
+
+def test_get_object_properties_issue_repro():
+    """A gap no longer leaves the raw "<index> "<value>" lines in the result."""
+    result = EDMFileParser.get_object_properties('value0 {\n  0 "a"\n  2 "c"\n}\n')
+    assert result == {"value0": ["a", "", "c"]}
+
+
+@pytest.mark.parametrize(
+    "block, expected",
+    [
+        pytest.param('  "line1"\n  "line2"', ["line1", "line2"], id="quoted-lines"),
+        pytest.param('  "1 GeV"', ["1 GeV"], id="digit-led-line"),
+        pytest.param('  "0 a"\n  "1 b"', ["0 a", "1 b"], id="digit-led-lines"),
+        pytest.param('  "Sensor"\n  ""\n  "1  16"', ["Sensor", "", "1  16"], id="empty-line"),
+    ],
+)
+def test_get_object_properties_text_block(block, expected):
+    """Quoted text lines are not array entries, even when they start with a number."""
+    result = EDMFileParser.get_object_properties(f"value {{\n{block}\n}}\n")
+    assert result == {"value": expected}
+
+
+def test_menu_entries_stay_aligned_after_leading_omission():
+    """asta_main.edl: the label of command 0 is empty, so EDM starts commandLabel at 1."""
+    properties = EDMFileParser.get_object_properties(
+        textwrap.dedent("""\
+            numCmds 3
+            commandLabel {
+              1 "Grafana"
+              2 "Java Viewer"
+            }
+            command {
+              0 "messagelogviewer.bash"
+              1 "firefox https://grafana"
+              2 "messagelogviewer.bash"
+            }
+        """)
+    )
+    labels, commands = properties["commandLabel"], properties["command"]
+    assert labels == ["", "Grafana", "Java Viewer"]
+    assert dict(zip(commands, labels))["firefox https://grafana"] == "Grafana"
+
+
+def test_generate_pv_ranges_fills_omitted_bounds_with_zero():
+    """clock.edl: EDM omits state 0's minimum (its default, 0) and starts minValues at 1."""
+    properties = EDMFileParser.get_object_properties(
+        textwrap.dedent("""\
+            numStates 4
+            minValues {
+              1 1
+              2 2
+            }
+            maxValues {
+              0 1
+              1 2
+              2 3
+            }
+        """)
+    )
+    parser = EDMFileParser.__new__(EDMFileParser)
+    assert parser.generate_pv_ranges(properties) == [["0", "1"], ["1", "2"], ["2", "3"], ["0", "0"]]

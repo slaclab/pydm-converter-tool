@@ -427,19 +427,13 @@ def _fixup_bar(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     return None
 
 
-# Matches a leading "<int> " prefix that remove_prepended_index leaves in place
-# when the multi-line block's indices are non-sequential.
-_LEADING_INDEX_RE = re.compile(r"^\d+\s+")
-
-
-def _strip_leading_index(value: str) -> str:
-    return _LEADING_INDEX_RE.sub("", value, count=1)
-
-
 def _as_str_list(value: Any) -> list[str]:
-    """Normalize a brace-block prop value to a list of strings (a bare str -> [str])."""
+    """Normalize a brace-block prop value to a list of strings (a bare str -> [str]).
+
+    A list is positional: an entry EDM omitted is "" and keeps its place.
+    """
     if isinstance(value, list):
-        return [_strip_leading_index(str(item)) for item in value]
+        return [str(item) for item in value]
     if isinstance(value, str):
         return [value]
     return []
@@ -457,13 +451,29 @@ def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[st
 
     actions: list[dict[str, Any]] = []
     for index, command in enumerate(commands):
+        if not command:
+            continue
         action: dict[str, Any] = {"type": "shell_command", "command": normalize_macro_syntax(command)}
-        if index < len(labels):
+        if index < len(labels) and labels[index]:
             action["label"] = normalize_macro_syntax(labels[index])
         actions.append(action)
+    if not actions:
+        return None
 
     qt_props["actions"] = actions
     warnings.append("EDM shell commands carried as actions; the web runtime does not execute shell commands")
+    return None
+
+
+def _fixup_related_display(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """relatedDisplayClass fixup: the button opens the first display it lists.
+
+    An entry EDM omitted is "" (PyDM skips it); drop those so ``filenames`` ->
+    ``file`` (screenRef takes the first) lands on a real display.
+    """
+    filenames = qt_props.get("filenames")
+    if isinstance(filenames, list):
+        qt_props["filenames"] = [name for name in filenames if name]
     return None
 
 
@@ -543,11 +553,13 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     transform parses them. A parallel xPv entry rides along as ``x_channel``
     (waveform-vs-waveform traces; the plot renders time-series when absent).
     """
-    y_pvs = [pv for pv in _as_str_list(obj.properties.get("yPv")) if pv]
+    y_pvs = _as_str_list(obj.properties.get("yPv"))
     x_pvs = _as_str_list(obj.properties.get("xPv"))
     curves = []
     for index, pv in enumerate(y_pvs):
-        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {index + 1}"}
+        if not pv:
+            continue
+        curve: dict[str, Any] = {"y_channel": normalize_macro_syntax(pv), "name": f"trace {len(curves) + 1}"}
         if index < len(x_pvs) and x_pvs[index]:
             curve["x_channel"] = normalize_macro_syntax(x_pvs[index])
         curves.append(json.dumps(curve))
@@ -559,16 +571,18 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     return None
 
 
-def _pip_menu_refs(obj: EDMObject) -> list[str]:
+def _pip_menu_refs(obj: EDMObject) -> list[tuple[int, str]]:
     """displaySource=menu pip: the ``displayFileName`` entries as screen refs
     (same normalization the ``screenRef`` transform applies — rule values bypass
-    ``qtPropMap`` transforms, so the adapter must pre-normalize)."""
-    refs: list[str] = []
-    for name in _as_str_list(obj.properties.get("displayFileName")):
+    ``qtPropMap`` transforms, so the adapter must pre-normalize), each with the
+    filePv value that selects it. Empty entries are skipped, keeping the others'
+    values."""
+    refs: list[tuple[int, str]] = []
+    for index, name in enumerate(_as_str_list(obj.properties.get("displayFileName"))):
         normalized = normalize_macro_syntax(name)
         ref = screen_ref(normalized)
         if isinstance(ref, str) and ref.strip():
-            refs.append(ref)
+            refs.append((index, ref))
     return refs
 
 
@@ -587,7 +601,8 @@ def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
     if source in ("", "file"):
         return None
     if source == "menu":
-        names = _as_str_list(obj.properties.get("displayFileName"))
+        # The first file listed, matching the file rule's default (an omitted entry is "").
+        names = [name for name in _as_str_list(obj.properties.get("displayFileName")) if name]
         if names and obj.properties.get("filePv"):
             # Raw first entry: the builder's screenRef transform normalizes it.
             qt_props["filename"] = normalize_macro_syntax(names[0])
@@ -621,8 +636,8 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
             target_property="file",
             name="Embedded file (menu)",
             pvs=[(file_pv, True)],
-            conditions=[(f"{{0}} == {index}", ref) for index, ref in enumerate(refs)],
-            default=refs[0],
+            conditions=[(f"{{0}} == {index}", ref) for index, ref in refs],
+            default=refs[0][1],
         )
     ]
 
@@ -669,6 +684,7 @@ _CLASS_FIXUPS.update(
         "activevsbarclass": _fixup_bar,
         # text / buttons / indicators
         "shellcmdclass": _fixup_shell_cmd,
+        "relateddisplayclass": _fixup_related_display,
         "activeexitbuttonclass": _fixup_exit_button,
         "activefreezebuttonclass": _fixup_freeze_button,
         "activerampbuttonclass": _fixup_ramp_button,
@@ -766,7 +782,7 @@ def _symbol_state_vis(group: EDMGroup) -> VisTuple | None:
         vis_max = float(props["symbolMax"])
     except (TypeError, ValueError):
         return None
-    channel = normalize_macro_syntax(_strip_leading_index(str(channel)))
+    channel = normalize_macro_syntax(str(channel))
     return (channel, vis_min, vis_max, False)
 
 

@@ -24,3 +24,12 @@ def test_related_display_class():
 
 def test_screen_validates():
     assert validate_screen_json(to_wire_dict(edm_file_to_ir(FIXTURE))) == []
+
+
+def test_related_display_opens_first_listed_display(tmp_path):
+    """dc282Brd.edl: entry 0 is unused, so displayFileName and symbols start at index 1."""
+    text = FIXTURE.read_text().replace('  0 "subscreen"', '  1 "subscreen"').replace('  0 "DEV=$(P)"', '  1 "DEV=$(P)"')
+    edl = tmp_path / "related.edl"
+    edl.write_text(text)
+    rel = {c.type: c for c in edm_file_to_ir(edl).root.children}["related-display-button"]
+    assert rel.props == {"file": "subscreen.screen.json", "label": "Open", "macros": {"DEV": "${P}"}}

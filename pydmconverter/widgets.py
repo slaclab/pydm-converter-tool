@@ -772,7 +772,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         if (
             self.displayFileName is not None and self.displayFileName
         ):  # TODO: Come back and find out why sometimes an empty list
-            converted_filenames = list(map(self.convert_filetype, self.displayFileName))
+            # An empty entry stays empty so PyDM skips it without shifting the titles and macros.
+            converted_filenames = [self.convert_filetype(name) if name else "" for name in self.displayFileName]
             properties.append(StringList("filenames", converted_filenames).to_xml())
         return properties
 
@@ -1209,7 +1210,8 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         Generate XML elements for PyDMEmbeddedDisplay properties.
         """
         properties = super().generate_properties()
-        if self.filename is not None:
+        # An empty name (an omitted displayFileName entry) shows nothing, not ".ui".
+        if self.filename:
             converted_filename = self.convert_filetype(self.filename)
             properties.append(Str("filename", converted_filename).to_xml())
         if self.macros:
@@ -1744,6 +1746,9 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
 
         curve_string_list = []
         for i in range(max_len):
+            if not self.y_channel[i]:
+                # EDM omits an unused trace's yPv entry, leaving nothing to plot.
+                continue
             curve_string = (
                 "{"
                 f'"name": "", '

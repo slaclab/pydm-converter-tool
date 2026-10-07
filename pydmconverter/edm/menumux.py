@@ -89,14 +89,30 @@ class MenuMuxScreen(Display):
     logger.info(f"Generated: {file_path}")
 
 
+def _pad(values, length: int) -> list[str]:
+    """EDM omits an array property's trailing empty entries; put them back."""
+    values = values if isinstance(values, list) else [values]
+    if len(values) >= length:
+        return values
+    return values + [""] * (length - len(values))
+
+
 def add_menumux_indices(menumux_buttons):
     for obj in menumux_buttons:
+        # One menu item per numItems: a combo box entry and a value per macro.
+        num_items = int(obj.properties.get("numItems", 0))
+        obj.properties["symbolTag"] = _pad(obj.properties.get("symbolTag", []), num_items)
         index = 0
         symbol_indices = []
         value_indices = []
         while f"symbol{index}" in obj.properties and f"value{index}" in obj.properties:
-            symbol_indices.append(obj.properties[f"symbol{index}"])
-            value_indices.append(obj.properties[f"value{index}"])
+            names = _pad(obj.properties[f"symbol{index}"], 1)
+            if not names[0]:
+                # The generated screen takes the macro name from item 0; EDM omitted
+                # it there, so use the first name it did write.
+                names = [next((name for name in names if name), "")] + names[1:]
+            symbol_indices.append(names)
+            value_indices.append(_pad(obj.properties[f"value{index}"], num_items))
             index += 1
         obj.properties["symbolIndices"] = symbol_indices
         obj.properties["valueIndices"] = value_indices

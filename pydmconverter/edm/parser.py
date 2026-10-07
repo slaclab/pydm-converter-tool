@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
 
+# One entry of an EDM array property, "<index> <value>" (the value may be absent).
+INDEXED_LINE_PATTERN = re.compile(r"(\d+)(?:\s+(.*))?")
+
 
 @dataclass
 class EDMObjectBase:
@@ -527,23 +530,15 @@ class EDMFileParser:
         min_values = properties["minValues"]
         max_values = properties["maxValues"]
         num_states = int(properties["numStates"])
-        ranges = [[None, None] for _ in range(num_states)]
-        for i in range(len(min_values)):
-            separated_value = min_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][0] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][0] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed minValue attribute: {min_values}")
-        for i in range(len(max_values)):
-            separated_value = max_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][1] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][1] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed maxValue attribute: {max_values}")
+        # EDM leaves out every bound equal to its default, 0 (e.g. state 0's minimum),
+        # so an omitted or empty entry is 0.
+        ranges = [["0", "0"] for _ in range(num_states)]
+        for i, value in enumerate(min_values[:num_states]):
+            if value:
+                ranges[i][0] = value
+        for i, value in enumerate(max_values[:num_states]):
+            if value:
+                ranges[i][1] = value
         return ranges
 
     def populate_symbol_pvs(
@@ -685,7 +680,7 @@ class EDMFileParser:
                     properties[multi_line_key] = cleaned_prop
                     multi_line_prop = []
                 else:
-                    multi_line_prop.append(line.strip(' "').replace('\\"', '"'))
+                    multi_line_prop.append(line)
                 continue
 
             try:
@@ -704,7 +699,16 @@ class EDMFileParser:
 
     @staticmethod
     def remove_prepended_index(lines: list[str]) -> list[str]:
-        """Removes the prepended indices from the given multi-line property value
+        """Turn the lines of a multi-line property value into its list of values
+
+        EDM writes an array property as "<index> <value>" lines and leaves out
+        every entry holding the default (an empty string), so the indices can
+        start above 0 or skip some. Each value lands at its index and the
+        omitted entries are "". A line without a leading index continues the
+        previous entry (a quoted string spanning lines), and a repeated index
+        replaces the earlier entry. A block whose first line has no index, such
+        as the quoted lines of a text value, is not an array: its lines are
+        returned unquoted.
 
         Parameters
         ----------
@@ -714,23 +718,27 @@ class EDMFileParser:
         Returns
         -------
         list[str]
-            Lines of the multi-line property value with the prepended indices removed
+            Values of the multi-line property, with the prepended indices removed
         """
-        indices = []
-        values = []
 
-        def check_sequential(indices):
-            """Check if the list of indices is sequential (starting from 0 or 1)"""
-            return indices == list(range(len(indices))) or indices == list(range(1, len(indices) + 1))
+        def unquote(value: str) -> str:
+            return value.strip(' "\n').replace('\\"', '"')
 
+        # A quoted line never matches, so text such as "1 GeV" keeps its digits.
+        if not lines or not INDEXED_LINE_PATTERN.fullmatch(lines[0].strip()):
+            return [unquote(line) for line in lines]
+
+        entries = {}
+        index = None
         for line in lines:
-            try:
-                k, v = line.split(maxsplit=1)
-                indices.append(int(k))
-                values.append(v.strip(' "').replace('\\"', '"'))
-            except ValueError:
-                return lines
+            match = INDEXED_LINE_PATTERN.fullmatch(line.strip())
+            if match:
+                index = int(match.group(1))
+                entries[index] = match.group(2) or ""
+            else:
+                entries[index] += "\n" + line.strip()
 
-        if not check_sequential(indices):
-            return lines
+        values = [""] * (max(entries) + 1)
+        for index, value in entries.items():
+            values[index] = unquote(value)
         return values
