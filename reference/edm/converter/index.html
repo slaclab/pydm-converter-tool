@@ -682,6 +682,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#edm.converter.content_extent" class="md-nav__link">
+    <span class="md-ellipsis">
+      content_extent
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="content_extent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edm.converter.content_extent--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.converter.content_extent--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -879,6 +912,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#edm.converter.content_extent" class="md-nav__link">
+    <span class="md-ellipsis">
+      content_extent
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="content_extent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edm.converter.content_extent--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm.converter.content_extent--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -925,6 +991,115 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.converter.content_extent" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">content_extent</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">min_width</span><span class="p">,</span> <span class="n">min_height</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the (width, height) a layout-less container needs to cover its child widgets.</p>
+<p>Without an explicit geometry, Qt calls adjustSize() on such a container when it is first
+shown and sizes it to the children visible at that moment, so a widget hidden at startup by
+a Visible rule (EDM visPv) is clipped when it later appears. The extent is at least
+min_width x min_height and reaches the furthest child's right/bottom edge, so widgets placed
+past the screen's declared size stay reachable.</p>
+<h4 id="edm.converter.content_extent--parameters">Parameters</h4>
+<p>elements : Iterable[ET.Element]
+    Serialized child <widget> elements.
+min_width : int
+    The smallest width to return, normally the screen's declared width.
+min_height : int
+    The smallest height to return, normally the screen's declared height.</p>
+<h4 id="edm.converter.content_extent--returns">Returns</h4>
+<p>tuple[int, int]
+    The (width, height) covering the minimum size and every child's geometry. A child
+    whose geometry rect is missing, incomplete or non-numeric is ignored.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/converter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_extent</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">min_width</span><span class="p">,</span> <span class="n">min_height</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the (width, height) a layout-less container needs to cover its child widgets.</span>
+
+<span class="sd">    Without an explicit geometry, Qt calls adjustSize() on such a container when it is first</span>
+<span class="sd">    shown and sizes it to the children visible at that moment, so a widget hidden at startup by</span>
+<span class="sd">    a Visible rule (EDM visPv) is clipped when it later appears. The extent is at least</span>
+<span class="sd">    min_width x min_height and reaches the furthest child&#39;s right/bottom edge, so widgets placed</span>
+<span class="sd">    past the screen&#39;s declared size stay reachable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    elements : Iterable[ET.Element]</span>
+<span class="sd">        Serialized child &lt;widget&gt; elements.</span>
+<span class="sd">    min_width : int</span>
+<span class="sd">        The smallest width to return, normally the screen&#39;s declared width.</span>
+<span class="sd">    min_height : int</span>
+<span class="sd">        The smallest height to return, normally the screen&#39;s declared height.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[int, int]</span>
+<span class="sd">        The (width, height) covering the minimum size and every child&#39;s geometry. A child</span>
+<span class="sd">        whose geometry rect is missing, incomplete or non-numeric is ignored.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">min_width</span><span class="p">,</span> <span class="n">min_height</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="n">rect</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;property[@name=&#39;geometry&#39;]/rect&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rect</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">rect</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">part</span><span class="p">)))</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">w</span><span class="p">)</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

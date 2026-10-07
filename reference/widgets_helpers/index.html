@@ -1854,6 +1854,54 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader" class="md-nav__link">
+    <span class="md-ellipsis">
+      PageHeader
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PageHeader">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_page_header
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create_page_header">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#widgets_helpers.PenColor" class="md-nav__link">
     <span class="md-ellipsis">
       PenColor
@@ -4145,6 +4193,54 @@
         
           <li class="md-nav__item">
   <a href="#widgets_helpers.OnOffColor.to_xml--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader" class="md-nav__link">
+    <span class="md-ellipsis">
+      PageHeader
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PageHeader">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_page_header
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create_page_header">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#widgets_helpers.PageHeader.create_page_header--returns" class="md-nav__link">
     <span class="md-ellipsis">
       Returns
     </span>
@@ -10212,6 +10308,588 @@ alpha : int, optional
     <span class="n">color</span><span class="p">:</span> <span class="n">Color</span> <span class="o">=</span> <span class="n">Color</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
     <span class="n">prop</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">color</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">prop</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="widgets_helpers.PageHeader" class="doc doc-heading">
+            <code>PageHeader</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1934</span>
+<span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span>
+<span class="normal">1940</span>
+<span class="normal">1941</span>
+<span class="normal">1942</span>
+<span class="normal">1943</span>
+<span class="normal">1944</span>
+<span class="normal">1945</span>
+<span class="normal">1946</span>
+<span class="normal">1947</span>
+<span class="normal">1948</span>
+<span class="normal">1949</span>
+<span class="normal">1950</span>
+<span class="normal">1951</span>
+<span class="normal">1952</span>
+<span class="normal">1953</span>
+<span class="normal">1954</span>
+<span class="normal">1955</span>
+<span class="normal">1956</span>
+<span class="normal">1957</span>
+<span class="normal">1958</span>
+<span class="normal">1959</span>
+<span class="normal">1960</span>
+<span class="normal">1961</span>
+<span class="normal">1962</span>
+<span class="normal">1963</span>
+<span class="normal">1964</span>
+<span class="normal">1965</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span>
+<span class="normal">1975</span>
+<span class="normal">1976</span>
+<span class="normal">1977</span>
+<span class="normal">1978</span>
+<span class="normal">1979</span>
+<span class="normal">1980</span>
+<span class="normal">1981</span>
+<span class="normal">1982</span>
+<span class="normal">1983</span>
+<span class="normal">1984</span>
+<span class="normal">1985</span>
+<span class="normal">1986</span>
+<span class="normal">1987</span>
+<span class="normal">1988</span>
+<span class="normal">1989</span>
+<span class="normal">1990</span>
+<span class="normal">1991</span>
+<span class="normal">1992</span>
+<span class="normal">1993</span>
+<span class="normal">1994</span>
+<span class="normal">1995</span>
+<span class="normal">1996</span>
+<span class="normal">1997</span>
+<span class="normal">1998</span>
+<span class="normal">1999</span>
+<span class="normal">2000</span>
+<span class="normal">2001</span>
+<span class="normal">2002</span>
+<span class="normal">2003</span>
+<span class="normal">2004</span>
+<span class="normal">2005</span>
+<span class="normal">2006</span>
+<span class="normal">2007</span>
+<span class="normal">2008</span>
+<span class="normal">2009</span>
+<span class="normal">2010</span>
+<span class="normal">2011</span>
+<span class="normal">2012</span>
+<span class="normal">2013</span>
+<span class="normal">2014</span>
+<span class="normal">2015</span>
+<span class="normal">2016</span>
+<span class="normal">2017</span>
+<span class="normal">2018</span>
+<span class="normal">2019</span>
+<span class="normal">2020</span>
+<span class="normal">2021</span>
+<span class="normal">2022</span>
+<span class="normal">2023</span>
+<span class="normal">2024</span>
+<span class="normal">2025</span>
+<span class="normal">2026</span>
+<span class="normal">2027</span>
+<span class="normal">2028</span>
+<span class="normal">2029</span>
+<span class="normal">2030</span>
+<span class="normal">2031</span>
+<span class="normal">2032</span>
+<span class="normal">2033</span>
+<span class="normal">2034</span>
+<span class="normal">2035</span>
+<span class="normal">2036</span>
+<span class="normal">2037</span>
+<span class="normal">2038</span>
+<span class="normal">2039</span>
+<span class="normal">2040</span>
+<span class="normal">2041</span>
+<span class="normal">2042</span>
+<span class="normal">2043</span>
+<span class="normal">2044</span>
+<span class="normal">2045</span>
+<span class="normal">2046</span>
+<span class="normal">2047</span>
+<span class="normal">2048</span>
+<span class="normal">2049</span>
+<span class="normal">2050</span>
+<span class="normal">2051</span>
+<span class="normal">2052</span>
+<span class="normal">2053</span>
+<span class="normal">2054</span>
+<span class="normal">2055</span>
+<span class="normal">2056</span>
+<span class="normal">2057</span>
+<span class="normal">2058</span>
+<span class="normal">2059</span>
+<span class="normal">2060</span>
+<span class="normal">2061</span>
+<span class="normal">2062</span>
+<span class="normal">2063</span>
+<span class="normal">2064</span>
+<span class="normal">2065</span>
+<span class="normal">2066</span>
+<span class="normal">2067</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PageHeader</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_page_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edm_parser</span><span class="p">,</span> <span class="n">scrollable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build the .ui skeleton (Form, optional scroll area, centralwidget) for a screen.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        edm_parser : EDMFileParser</span>
+<span class="sd">            Parser whose ui holds the screen&#39;s declared size and properties.</span>
+<span class="sd">        scrollable : bool, optional</span>
+<span class="sd">            Wrap centralwidget in a QScrollArea, by default False.</span>
+<span class="sd">        content_size : tuple[int, int], optional</span>
+<span class="sd">            (width, height) needed to cover the screen&#39;s widgets. centralwidget, and in</span>
+<span class="sd">            scrollable mode scrollAreaWidgetContents, are given this size so content placed past</span>
+<span class="sd">            the declared screen size stays reachable; Form and the scroll area keep the declared</span>
+<span class="sd">            size. Defaults to the declared screen size.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple[ET.Element, ET.Element]</span>
+<span class="sd">            The &lt;ui&gt; root element and the centralwidget element to add widgets to.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">content_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">content_size</span> <span class="o">=</span> <span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">content_width</span><span class="p">,</span> <span class="n">content_height</span> <span class="o">=</span> <span class="n">content_size</span>
+
+        <span class="n">ui_element</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="s2">&quot;ui&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;4.0&quot;</span><span class="p">})</span>
+
+        <span class="n">class_element</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">ui_element</span><span class="p">,</span> <span class="s2">&quot;class&quot;</span><span class="p">)</span>
+        <span class="n">class_element</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;QWidget&quot;</span>
+
+        <span class="n">main_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+            <span class="n">ui_element</span><span class="p">,</span>
+            <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+            <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="n">geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+        <span class="n">rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        if scrollable:  # Setting max values for the screen to be initially</span>
+<span class="sd">            ET.SubElement(rect, &quot;width&quot;).text = str(min(edm_parser.ui.width, 120))</span>
+<span class="sd">            ET.SubElement(rect, &quot;height&quot;).text = str(min(edm_parser.ui.height, 80))</span>
+<span class="sd">        else:</span>
+<span class="sd">            ET.SubElement(rect, &quot;width&quot;).text = str(edm_parser.ui.width)</span>
+<span class="sd">            ET.SubElement(rect, &quot;height&quot;).text = str(edm_parser.ui.height)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+
+        <span class="n">screen_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">properties</span>
+
+        <span class="c1"># Set window title from EDM screen properties if available, otherwise use default</span>
+        <span class="n">window_title</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;windowTitle&quot;</span><span class="p">})</span>
+        <span class="n">title_string</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">window_title</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">)</span>
+        <span class="n">title_string</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">screen_properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;PyDM Screen&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_screen_properties</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="n">screen_properties</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">scrollable</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating scrollable PyDM window&quot;</span><span class="p">)</span>
+            <span class="n">layout</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;layout&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QVBoxLayout&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;verticalLayout&quot;</span><span class="p">})</span>
+            <span class="n">layout_item</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">layout</span><span class="p">,</span> <span class="s2">&quot;item&quot;</span><span class="p">)</span>
+            <span class="n">scroll_area</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">layout_item</span><span class="p">,</span> <span class="s2">&quot;widget&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QScrollArea&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;scrollArea&quot;</span><span class="p">})</span>
+
+            <span class="n">sa_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+            <span class="n">sa_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+            <span class="n">widget_resizable</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;widgetResizable&quot;</span><span class="p">})</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">widget_resizable</span><span class="p">,</span> <span class="s2">&quot;bool&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;false&quot;</span>
+
+            <span class="n">scroll_contents</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+                <span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;widget&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;scrollAreaWidgetContents&quot;</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">sc_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_contents</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+            <span class="n">sc_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_width</span><span class="p">)</span>
+            <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_height</span><span class="p">)</span>
+
+            <span class="n">central_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+                <span class="n">scroll_contents</span><span class="p">,</span>
+                <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+                <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;centralwidget&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">central_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+                <span class="n">main_widget</span><span class="p">,</span>
+                <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+                <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;centralwidget&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+
+        <span class="c1"># centralwidget has no layout; without an explicit geometry Qt adjustSize()s it to the</span>
+        <span class="c1"># children visible at first show, clipping rule-hidden widgets that appear later.</span>
+        <span class="n">cw_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">central_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+        <span class="n">cw_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_width</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_height</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ui_element</span><span class="p">,</span> <span class="n">central_widget</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;def add_screen_properties(self, main_widget: ET.Element, properties: dict[str, Any]) -&gt; None:</span>
+<span class="sd">        if &quot;bgColor&quot; in properties:</span>
+<span class="sd">            style_prop = ET.SubElement(main_widget, &quot;property&quot;, attrib={&quot;name&quot;: &quot;styleSheet&quot;})</span>
+<span class="sd">            style_string = ET.SubElement(style_prop, &quot;string&quot;)</span>
+<span class="sd">            style_string.text = f&quot;#Form {{ background-color: rgba{properties[&#39;bgColor&#39;]} }}&quot;  # commented code adds bg to all child widgets but for now, this is fine</span>
+<span class="sd">            # TODO: There is a bug that the background does not show up normally but does in designer&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_screen_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">main_widget</span><span class="p">:</span> <span class="n">ET</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;bgColor&quot;</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
+            <span class="n">style_prop</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;styleSheet&quot;</span><span class="p">})</span>
+            <span class="n">style_string</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">style_prop</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">)</span>
+
+            <span class="n">central_bg_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;background-color&quot;</span><span class="p">:</span> <span class="n">properties</span><span class="p">[</span><span class="s2">&quot;bgColor&quot;</span><span class="p">]}</span>
+            <span class="n">style_string</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">StyleSheet</span><span class="p">(</span><span class="n">central_bg_dict</span><span class="p">)</span><span class="o">.</span><span class="n">to_style_string</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="widgets_helpers.PageHeader.create_page_header" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_page_header</span><span class="p">(</span><span class="n">edm_parser</span><span class="p">,</span> <span class="n">scrollable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_size</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build the .ui skeleton (Form, optional scroll area, centralwidget) for a screen.</p>
+<h5 id="widgets_helpers.PageHeader.create_page_header--parameters">Parameters</h5>
+<p>edm_parser : EDMFileParser
+    Parser whose ui holds the screen's declared size and properties.
+scrollable : bool, optional
+    Wrap centralwidget in a QScrollArea, by default False.
+content_size : tuple[int, int], optional
+    (width, height) needed to cover the screen's widgets. centralwidget, and in
+    scrollable mode scrollAreaWidgetContents, are given this size so content placed past
+    the declared screen size stays reachable; Form and the scroll area keep the declared
+    size. Defaults to the declared screen size.</p>
+<h5 id="widgets_helpers.PageHeader.create_page_header--returns">Returns</h5>
+<p>tuple[ET.Element, ET.Element]
+    The <ui> root element and the centralwidget element to add widgets to.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/widgets_helpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span>
+<span class="normal">1940</span>
+<span class="normal">1941</span>
+<span class="normal">1942</span>
+<span class="normal">1943</span>
+<span class="normal">1944</span>
+<span class="normal">1945</span>
+<span class="normal">1946</span>
+<span class="normal">1947</span>
+<span class="normal">1948</span>
+<span class="normal">1949</span>
+<span class="normal">1950</span>
+<span class="normal">1951</span>
+<span class="normal">1952</span>
+<span class="normal">1953</span>
+<span class="normal">1954</span>
+<span class="normal">1955</span>
+<span class="normal">1956</span>
+<span class="normal">1957</span>
+<span class="normal">1958</span>
+<span class="normal">1959</span>
+<span class="normal">1960</span>
+<span class="normal">1961</span>
+<span class="normal">1962</span>
+<span class="normal">1963</span>
+<span class="normal">1964</span>
+<span class="normal">1965</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span>
+<span class="normal">1975</span>
+<span class="normal">1976</span>
+<span class="normal">1977</span>
+<span class="normal">1978</span>
+<span class="normal">1979</span>
+<span class="normal">1980</span>
+<span class="normal">1981</span>
+<span class="normal">1982</span>
+<span class="normal">1983</span>
+<span class="normal">1984</span>
+<span class="normal">1985</span>
+<span class="normal">1986</span>
+<span class="normal">1987</span>
+<span class="normal">1988</span>
+<span class="normal">1989</span>
+<span class="normal">1990</span>
+<span class="normal">1991</span>
+<span class="normal">1992</span>
+<span class="normal">1993</span>
+<span class="normal">1994</span>
+<span class="normal">1995</span>
+<span class="normal">1996</span>
+<span class="normal">1997</span>
+<span class="normal">1998</span>
+<span class="normal">1999</span>
+<span class="normal">2000</span>
+<span class="normal">2001</span>
+<span class="normal">2002</span>
+<span class="normal">2003</span>
+<span class="normal">2004</span>
+<span class="normal">2005</span>
+<span class="normal">2006</span>
+<span class="normal">2007</span>
+<span class="normal">2008</span>
+<span class="normal">2009</span>
+<span class="normal">2010</span>
+<span class="normal">2011</span>
+<span class="normal">2012</span>
+<span class="normal">2013</span>
+<span class="normal">2014</span>
+<span class="normal">2015</span>
+<span class="normal">2016</span>
+<span class="normal">2017</span>
+<span class="normal">2018</span>
+<span class="normal">2019</span>
+<span class="normal">2020</span>
+<span class="normal">2021</span>
+<span class="normal">2022</span>
+<span class="normal">2023</span>
+<span class="normal">2024</span>
+<span class="normal">2025</span>
+<span class="normal">2026</span>
+<span class="normal">2027</span>
+<span class="normal">2028</span>
+<span class="normal">2029</span>
+<span class="normal">2030</span>
+<span class="normal">2031</span>
+<span class="normal">2032</span>
+<span class="normal">2033</span>
+<span class="normal">2034</span>
+<span class="normal">2035</span>
+<span class="normal">2036</span>
+<span class="normal">2037</span>
+<span class="normal">2038</span>
+<span class="normal">2039</span>
+<span class="normal">2040</span>
+<span class="normal">2041</span>
+<span class="normal">2042</span>
+<span class="normal">2043</span>
+<span class="normal">2044</span>
+<span class="normal">2045</span>
+<span class="normal">2046</span>
+<span class="normal">2047</span>
+<span class="normal">2048</span>
+<span class="normal">2049</span>
+<span class="normal">2050</span>
+<span class="normal">2051</span>
+<span class="normal">2052</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_page_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edm_parser</span><span class="p">,</span> <span class="n">scrollable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">content_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build the .ui skeleton (Form, optional scroll area, centralwidget) for a screen.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    edm_parser : EDMFileParser</span>
+<span class="sd">        Parser whose ui holds the screen&#39;s declared size and properties.</span>
+<span class="sd">    scrollable : bool, optional</span>
+<span class="sd">        Wrap centralwidget in a QScrollArea, by default False.</span>
+<span class="sd">    content_size : tuple[int, int], optional</span>
+<span class="sd">        (width, height) needed to cover the screen&#39;s widgets. centralwidget, and in</span>
+<span class="sd">        scrollable mode scrollAreaWidgetContents, are given this size so content placed past</span>
+<span class="sd">        the declared screen size stays reachable; Form and the scroll area keep the declared</span>
+<span class="sd">        size. Defaults to the declared screen size.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[ET.Element, ET.Element]</span>
+<span class="sd">        The &lt;ui&gt; root element and the centralwidget element to add widgets to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">content_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">content_size</span> <span class="o">=</span> <span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+    <span class="n">content_width</span><span class="p">,</span> <span class="n">content_height</span> <span class="o">=</span> <span class="n">content_size</span>
+
+    <span class="n">ui_element</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="s2">&quot;ui&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;4.0&quot;</span><span class="p">})</span>
+
+    <span class="n">class_element</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">ui_element</span><span class="p">,</span> <span class="s2">&quot;class&quot;</span><span class="p">)</span>
+    <span class="n">class_element</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;QWidget&quot;</span>
+
+    <span class="n">main_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">ui_element</span><span class="p">,</span>
+        <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+        <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="n">geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+    <span class="n">rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    if scrollable:  # Setting max values for the screen to be initially</span>
+<span class="sd">        ET.SubElement(rect, &quot;width&quot;).text = str(min(edm_parser.ui.width, 120))</span>
+<span class="sd">        ET.SubElement(rect, &quot;height&quot;).text = str(min(edm_parser.ui.height, 80))</span>
+<span class="sd">    else:</span>
+<span class="sd">        ET.SubElement(rect, &quot;width&quot;).text = str(edm_parser.ui.width)</span>
+<span class="sd">        ET.SubElement(rect, &quot;height&quot;).text = str(edm_parser.ui.height)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+
+    <span class="n">screen_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">properties</span>
+
+    <span class="c1"># Set window title from EDM screen properties if available, otherwise use default</span>
+    <span class="n">window_title</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;windowTitle&quot;</span><span class="p">})</span>
+    <span class="n">title_string</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">window_title</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">)</span>
+    <span class="n">title_string</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">screen_properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;PyDM Screen&quot;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_screen_properties</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="n">screen_properties</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">scrollable</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating scrollable PyDM window&quot;</span><span class="p">)</span>
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">main_widget</span><span class="p">,</span> <span class="s2">&quot;layout&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QVBoxLayout&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;verticalLayout&quot;</span><span class="p">})</span>
+        <span class="n">layout_item</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">layout</span><span class="p">,</span> <span class="s2">&quot;item&quot;</span><span class="p">)</span>
+        <span class="n">scroll_area</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">layout_item</span><span class="p">,</span> <span class="s2">&quot;widget&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QScrollArea&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;scrollArea&quot;</span><span class="p">})</span>
+
+        <span class="n">sa_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+        <span class="n">sa_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sa_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">edm_parser</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">widget_resizable</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;widgetResizable&quot;</span><span class="p">})</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">widget_resizable</span><span class="p">,</span> <span class="s2">&quot;bool&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;false&quot;</span>
+
+        <span class="n">scroll_contents</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+            <span class="n">scroll_area</span><span class="p">,</span> <span class="s2">&quot;widget&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;scrollAreaWidgetContents&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">sc_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">scroll_contents</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+        <span class="n">sc_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_width</span><span class="p">)</span>
+        <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">sc_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_height</span><span class="p">)</span>
+
+        <span class="n">central_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+            <span class="n">scroll_contents</span><span class="p">,</span>
+            <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+            <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;centralwidget&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">central_widget</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+            <span class="n">main_widget</span><span class="p">,</span>
+            <span class="s2">&quot;widget&quot;</span><span class="p">,</span>
+            <span class="n">attrib</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;QWidget&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;centralwidget&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+    <span class="c1"># centralwidget has no layout; without an explicit geometry Qt adjustSize()s it to the</span>
+    <span class="c1"># children visible at first show, clipping rule-hidden widgets that appear later.</span>
+    <span class="n">cw_geometry</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">central_widget</span><span class="p">,</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;geometry&quot;</span><span class="p">})</span>
+    <span class="n">cw_rect</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_geometry</span><span class="p">,</span> <span class="s2">&quot;rect&quot;</span><span class="p">)</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_width</span><span class="p">)</span>
+    <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">cw_rect</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_height</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ui_element</span><span class="p">,</span> <span class="n">central_widget</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
