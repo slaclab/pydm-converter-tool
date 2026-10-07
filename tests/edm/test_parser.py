@@ -1,6 +1,6 @@
 import pytest
 import textwrap
-from pydmconverter.edm.parser import EDMGroup, EDMObject, EDMFileParser
+from pydmconverter.edm.parser import EDMGroup, EDMObject, EDMFileParser, literal_macro_clashes, read_edm_string
 
 
 def test_EDMObject():
@@ -334,6 +334,47 @@ def test_get_size_properties():
             {"command": ['pydm -m "DEV=WIGG:LTUS:724" file.ui &']},
         ),
         ('label "some \\"quoted\\" text"', {"label": 'some "quoted" text'}),
+        # xray/ims_aux.edl: escaped backslashes and a value ending in escaped quotes
+        (
+            "\n".join(
+                ["command {", r'  0 "gnome-terminal -e \"bash -c \\\"/reg/pmgrUtils.sh dmapply $(MOTOR)\\\"\""', "}"]
+            ),
+            {"command": [r'gnome-terminal -e "bash -c \"/reg/pmgrUtils.sh dmapply $(MOTOR)\""']},
+        ),
+        # Archive/lcls-old/mgnt_undh_sec1.edl: a value starting and ending with an escaped quote
+        (
+            "\n".join(["symbols {", r'  0 "\"U=USEG:UNDH:1850,crat=CRAT:UNDH:UC18\" "', "}"]),
+            {"symbols": ['"U=USEG:UNDH:1850,crat=CRAT:UNDH:UC18" ']},
+        ),
+        # misc/dbs_llrf.edl: a label starting with an escaped quote
+        (
+            "\n".join(
+                ["commandLabel {", r'  0 "\"Recovering L3 Phase\" Wiki Article"', '  1 "6x6 Help EDM Panel"', "}"]
+            ),
+            {"commandLabel": ['"Recovering L3 Phase" Wiki Article', "6x6 Help EDM Panel"]},
+        ),
+        (r'onLabel "UC13\" "', {"onLabel": 'UC13" '}),
+        (r'buttonLabel "Y1(X)', {"buttonLabel": "Y1(X)"}),
+        # a quoted brace is a value, not the start of a block
+        (r'foo "\{"' + "\nbar baz", {"foo": "{", "bar": "baz"}),
+        # llrf/scllrfPRCBits.edl: a tab before the opening quote
+        ('value {\n\t   "bit 8"\n}', {"value": ["bit 8"]}),
+        # spaces inside the quotes are kept, as EDM keeps them
+        ('value {\n  "Currently: "\n  "  indented"\n}', {"value": ["Currently: ", "  indented"]}),
+        ('label "       L1S Phase"', {"label": "       L1S Phase"}),
+        ('buttonLabel "   IOC:BSY0:MG01..."', {"buttonLabel": "   IOC:BSY0:MG01..."}),
+        ('title "  "', {"title": "  "}),
+        # except around a PV name, which an IOC would not resolve (event/mpgPatternDiags.edl,
+        # llrf/gun_interlocks.edl); an all-space PV is no PV
+        ('controlPv "IOC:${LOCA}:${UNIT}:PATTERND-2.N  "', {"controlPv": "IOC:${LOCA}:${UNIT}:PATTERND-2.N"}),
+        (
+            'colorPv " GUN:GUNB:100:PRC:INLK_STATUS_MSBITS_R.BF"',
+            {"colorPv": "GUN:GUNB:100:PRC:INLK_STATUS_MSBITS_R.BF"},
+        ),
+        ('visPv " "', {"visPv": ""}),
+        ('dataPvStr "X:IMAGE "', {"dataPvStr": "X:IMAGE"}),
+        ('pv "X:Y "', {"pv": "X:Y"}),
+        ('xPv {\n  0 " X:A"\n  1 "X:B "\n}', {"xPv": ["X:A", "X:B"]}),
     ],
 )
 def test_get_object_properties(test_property, expected):
@@ -348,3 +389,100 @@ def test_get_object_properties(test_property, expected):
     """
     result_property = EDMFileParser.get_object_properties(test_property)
     assert result_property == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (r'"plain"', "plain"),
+        (r'"a \"b\" c"', 'a "b" c'),
+        (r'"\"starts and ends quoted\""', '"starts and ends quoted"'),
+        # EDM's writer escapes \ " { and } with a backslash; any \x reads as x
+        (r'"/home/physics/Desktop\\ Icons/scripts"', r"/home/physics/Desktop\ Icons/scripts"),
+        (
+            r'"for m in \{1..5\}; do caput $(P)CM$\{m\}:CALIBRATE.PROC 1 ; done"',
+            "for m in {1..5}; do caput $(P)CM${m}:CALIBRATE.PROC 1 ; done",
+        ),
+        (r'"ends with a backslash\\"', "ends with a backslash\\"),
+        (r'"LOC\\name=i:0"', r"LOC\name=i:0"),
+        # the first unescaped quote closes the value
+        (r'"closed"  ', "closed"),
+        # a missing closing quote reads to the end of the line
+        (r'"Y1(X)', "Y1(X)"),
+        # a line break ends the value (a stray \r in the file reads as one)
+        ('"Record parameters\n"', "Record parameters"),
+        ('"cd ../burt; burtwb -f interp.load\n "', "cd ../burt; burtwb -f interp.load"),
+        (r'"dangling\\', "dangling\\"),
+        # spaces inside the quotes are kept, as EDM keeps them
+        (r'"Currently: "', "Currently: "),
+        (r'"  "', "  "),
+        ('"\tTab"', "\tTab"),
+        (r'"no closing quote  ', "no closing quote  "),
+        (r'""', ""),
+        ('\t "tabbed"', "tabbed"),
+        # unquoted values keep the old handling
+        ("bar", "bar"),
+        ("5 ", "5"),
+        (r"LOC\\name", r"LOC\\name"),
+        (r"pydm -m \"P=X\" a.ui", 'pydm -m "P=X" a.ui'),
+    ],
+)
+def test_read_edm_string(value, expected):
+    assert read_edm_string(value) == expected
+
+
+def test_remove_prepended_index_unquotes_each_value():
+    lines = [r'  0 "\"U=X\" "', r'  2 "a\\b\{c\}"']
+    values = EDMFileParser.remove_prepended_index(lines)
+    assert list(values) == ['"U=X" ', r"a\b{c}"]
+    assert values.indices == [0, 2]
+
+
+def test_pv_block_keeps_its_indices():
+    properties = EDMFileParser.get_object_properties('controlPvs {\n  0 "A "\n  2 " B"\n}')
+    assert list(properties["controlPvs"]) == ["A", "B"]
+    assert properties["controlPvs"].indices == [0, 2]
+
+
+def test_read_edm_string_can_mark_a_literal_dollar_brace():
+    """EDM expands only $(NAME), so $\\{m\\} reads as literal text (a shell variable).
+    With literal_brace, a brace read right after a "$" is marked so it can't pass
+    for a $(NAME) macro, which modify_text has already written as ${NAME}."""
+    value = r'"for m in \{1..5\}; do caput ${P}CM$\{m\}:CAL 1; echo \$\{x\} $\\\{y\} ; done"'
+    assert read_edm_string(value) == r"for m in {1..5}; do caput ${P}CM${m}:CAL 1; echo ${x} $\{y} ; done"
+    assert read_edm_string(value, "#") == r"for m in {1..5}; do caput ${P}CM$#m}:CAL 1; echo $#x} $\{y} ; done"
+    props = EDMFileParser.get_object_properties('command {\n  0 "echo $\\{A\\}"\n}\nlabel "$\\{B\\}"', "#")
+    assert props == {"command": ["echo $#A}"], "label": "$#B}"}
+
+
+def test_parser_marks_literal_dollar_braces_only_when_asked(tmp_path):
+    edl = tmp_path / "shell.edl"
+    edl.write_text(
+        "beginScreenProperties\nw 100\nh 100\nendScreenProperties\n"
+        "object activeGroupClass\nbeginObjectProperties\nx 0\ny 0\nw 50\nh 20\nbeginGroup\n\n"
+        "object shellCmdClass\nbeginObjectProperties\nx 0\ny 0\nw 50\nh 20\n"
+        'command {\n  0 "caput $(CM):CM$\\{m\\}CAL 1"\n}\nendObjectProperties\n\n'
+        "endGroup\nendObjectProperties\n"
+    )
+    for literal_brace, command in ((None, "caput ${CM}:CM${m}CAL 1"), ("#", "caput ${CM}:CM$#m}CAL 1")):
+        parser = EDMFileParser(str(edl), str(tmp_path / "shell.ui"), literal_brace=literal_brace)
+        (group,) = parser.ui.objects
+        (shell,) = group.objects
+        assert shell.properties["command"] == [command]
+
+
+def test_literal_macro_clashes():
+    text = 'command {\n  0 "restart $\\{LOCA\\} ${LOCA} $\\{HOME\\}"\n}\nvisPv "${P}"'
+    assert literal_macro_clashes(text) == ["LOCA"]
+    assert literal_macro_clashes('label "${LOCA}"') == []
+
+
+def test_parser_knows_whether_it_read_a_literal_dollar_brace(tmp_path):
+    edl = tmp_path / "shell.edl"
+    for command, expected in (('"echo $\\{HOME\\}"', True), ('"echo $(HOME)"', False)):
+        edl.write_text(
+            "beginScreenProperties\nw 100\nh 100\nendScreenProperties\n"
+            f"object shellCmdClass\nbeginObjectProperties\nx 0\ny 0\nw 50\nh 20\ncommand {{\n  0 {command}\n}}\n"
+            "endObjectProperties\n"
+        )
+        assert EDMFileParser(str(edl), str(tmp_path / "shell.ui")).literal_braces is expected

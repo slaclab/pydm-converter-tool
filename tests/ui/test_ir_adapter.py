@@ -502,3 +502,31 @@ def test_related_display_pretty_printed_macros_string(tmp_path):
         tmp_path, '<property name="macros" stdset="0"><string>{\n "P": "A"\n}</string></property>'
     )
     assert button.props["macros"] == {"P": "A"}
+
+
+def test_shell_command_only_names_default_to_themselves(tmp_path):
+    """A ${NAME} only shell commands use is a shell variable to PyDM unless a macro
+    is passed (an EDM $\\{NAME\\} converts to this). The default "" would blank it,
+    so it defaults to its own ${NAME}; a name used elsewhere is a macro."""
+    ui = tmp_path / "shell.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="Form">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMShellCommand" name="cmd">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>20</height></rect></property>
+  <property name="commands" stdset="0"><stringlist><string>echo ${HOME} ${P}</string></stringlist></property>
+ </widget>
+ <widget class="QLabel" name="label">
+  <property name="geometry"><rect><x>0</x><y>30</y><width>100</width><height>20</height></rect></property>
+  <property name="text"><string>${P}</string></property>
+ </widget>
+</widget></ui>"""
+    )
+    screen = ui_file_to_ir(ui)
+    assert [(m.name, m.default) for m in screen.macros] == [("HOME", "${HOME}"), ("P", "")]
+    shell, _ = screen.root.children
+    assert shell.props["command"] == "echo ${HOME} ${P}"
+    assert not shell.warnings and not screen.root.warnings
+    validate_screen_json(to_wire_dict(screen))

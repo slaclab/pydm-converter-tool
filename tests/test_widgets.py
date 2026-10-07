@@ -1,3 +1,4 @@
+import json
 import xml.etree.ElementTree as ET
 import xml.etree.ElementTree as etree
 
@@ -745,6 +746,24 @@ def test_waveformplot_no_limits_enables_autorange():
     properties = widget.generate_properties()
     yaxes_prop = next((p for p in properties if p.get("name") == "yAxes"), None)
     assert yaxes_prop is None
+
+
+def test_waveformplot_axis_and_curve_strings_are_valid_json():
+    """A backslash or quote in a label or channel is escaped in the yAxes/curves JSON."""
+    label, x_channel, y_channel = 'Gap "mm"', r"CALC\sum(A,B)", "ca://Y"
+    widget = PyDMWaveformPlot(
+        minYRange=0,
+        maxYRange=1,
+        yLabel=label,
+        x_channel=[x_channel],
+        y_channel=[y_channel],
+        plotColor=[(255, 0, 0, 255)],
+    )
+    properties = {p.get("name"): p for p in widget.generate_properties()}
+    y_axis = json.loads(properties["yAxes"].find("stringlist").find("string").text)
+    assert y_axis["label"] == label
+    curve = json.loads(properties["curves"].find("stringlist").find("string").text)
+    assert (curve["x_channel"], curve["y_channel"]) == (x_channel, y_channel)
 
 
 # --- Tests for PyDMAnalogIndicator ---

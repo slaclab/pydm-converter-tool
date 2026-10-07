@@ -3,6 +3,7 @@ from typing import Any, ClassVar, List, Optional, Tuple, Union, Dict
 import xml.etree.ElementTree as etree
 from xml.etree import ElementTree as ET
 from pydmconverter.custom_types import RGBA, RuleArguments
+import json
 import logging
 import re
 
@@ -20,6 +21,17 @@ HIDDEN_WIDGET_TYPES = [
     "mzxygraphclass",
     "activerampbuttonclass",
 ]
+
+
+def _json_text(value: str) -> str:
+    """``value`` escaped for use between the quotes of a JSON string (``\\``, ``"``, control characters)."""
+    return json.dumps(value, ensure_ascii=False)[1:-1]
+
+
+def _json_object(value: dict) -> str:
+    """value as the JSON text PyDM reads for a rule or curve: every string
+    escaped, separated by ", " and ": " like PyDM's own."""
+    return json.dumps(value, ensure_ascii=False)
 
 
 class XMLConvertible:
@@ -964,23 +976,16 @@ class BoolRule(XMLConvertible):
             show_on_false_string = "True if ch[0]!=1 else False"
         expression = show_on_true_string if self.show_on_true else show_on_false_string
 
-        output_string = (
-            "{"
-            f'"name": "{self.rule_type}_{self.channel}", '
-            f'"property": "{self.rule_type}", '
-            f'"initial_value": "{self.initial_value}", '
-            f'"expression": "{expression}", '
-            '"channels": ['
-            "{"
-            f'"channel": "{self.channel}", '
-            '"trigger": true, '
-            '"use_enum": false'
-            "}"
-            "], "
-            '"notes": "{self.notes}"'
-            "}"
+        return _json_object(
+            {
+                "name": f"{self.rule_type}_{self.channel}",
+                "property": self.rule_type,
+                "initial_value": str(self.initial_value),
+                "expression": expression,
+                "channels": [{"channel": self.channel, "trigger": True, "use_enum": False}],
+                "notes": self.notes,
+            }
         )
-        return output_string
 
 
 @dataclass
@@ -1028,7 +1033,7 @@ class MultiRule(XMLConvertible):
                 if channel.startswith("loc://") and "init=${" in channel:
                     replacement_init = channel[channel.find("init=") + len("init=") :]
                     replacement_init = replacement_init[: replacement_init.find("}") + 1]
-                channel_list.append(f'{{"channel": "{channel}", "trigger": true, "use_enum": false}}')
+                channel_list.append({"channel": channel, "trigger": True, "use_enum": False})
                 expression_list.append(
                     self.get_expression(i, rule.show_on_true, rule.visMin, rule.visMax, replacement_init)
                 )
@@ -1041,9 +1046,7 @@ class MultiRule(XMLConvertible):
                 ]
                 replacement_init = replacement_init[: replacement_init.find("}") + 1]
             expression_list.append(self.get_hide_on_disconnect_expression(new_index, replacement_init))
-            channel_list.append(
-                f'{{"channel": "{self.hide_on_disconnect_channel}", "trigger": true, "use_enum": false}}'
-            )
+            channel_list.append({"channel": self.hide_on_disconnect_channel, "trigger": True, "use_enum": False})
         if not expression_list:
             return ""
         expression_str = "(" + ") and (".join(expression_list) + ")"
@@ -1055,17 +1058,16 @@ class MultiRule(XMLConvertible):
             and all(rule.initial_value for rule in self.rule_list)
         )
 
-        output_string = (
-            "{"
-            f'"name": "{self.rule_type}", '
-            f'"property": "{self.rule_type}", '
-            f'"initial_value": "{"true" if starts_true else "false"}", '
-            f'"expression": "{expression_str}", '
-            f'"channels": [{", ".join(channel_list)}], '
-            f'"notes": "{self.notes}"'
-            "}"
+        return _json_object(
+            {
+                "name": self.rule_type,
+                "property": self.rule_type,
+                "initial_value": "true" if starts_true else "false",
+                "expression": expression_str,
+                "channels": channel_list,
+                "notes": self.notes,
+            }
         )
-        return output_string
 
     def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
         """

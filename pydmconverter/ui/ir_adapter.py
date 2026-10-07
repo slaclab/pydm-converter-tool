@@ -16,6 +16,7 @@ from typing import Any
 
 from pydmconverter.edm.parser_helpers import parse_edm_macros, resolve_inside
 from pydmconverter.ir.builder import IRBuilder
+from pydmconverter.ir.macros import find_macro_references
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode
@@ -512,6 +513,46 @@ def _widget_to_sources(
     ]
 
 
+# PyDMShellCommand props holding the commands it runs.
+_SHELL_COMMAND_PROPS = ("commands", "command")
+
+
+def _shell_only_macros(nodes: list[SourceNode]) -> set[str]:
+    """The names of the ``${NAME}`` refs that only shell commands use.
+
+    In a PyDM screen a shell command's ``${NAME}`` is a macro when one of that
+    name is passed, and otherwise PyDMShellCommand expands it from the
+    environment; an EDM shell variable (``$\\{NAME\\}``) converts to exactly this.
+    The IR's default ``""`` would blank it, so these names default to their own
+    ``${NAME}``: a passed value still replaces it, and otherwise the runtime,
+    which substitutes once, leaves the text for the shell.
+    """
+    in_commands: set[str] = set()
+    elsewhere: set[str] = set()
+
+    def note(value: Any, names: set[str]) -> None:
+        if isinstance(value, dict):
+            value = list(value.values())
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                note(item, names)
+        else:
+            names.update(find_macro_references(value))
+
+    def visit(node: SourceNode) -> None:
+        for key, value in node.qt_props.items():
+            shell = node.qt_class == "PyDMShellCommand" and key in _SHELL_COMMAND_PROPS
+            note(value, in_commands if shell else elsewhere)
+        for rule in node.rules:
+            note([rule.name, rule.pvs, rule.conditions, rule.default], elsewhere)
+        for child in node.children:
+            visit(child)
+
+    for node in nodes:
+        visit(node)
+    return in_commands - elsewhere
+
+
 def _string_property(widget: ET.Element, name: str) -> str | None:
     for prop in widget.findall("property"):
         if prop.get("name") == name:
@@ -554,6 +595,7 @@ def ui_file_to_ir(
     top_level: list[SourceNode] = []
     for child in _child_widgets(root_widget):
         top_level.extend(_widget_to_sources(child, source_dir, confine_file_refs=confine_file_refs))
+    shell_only = _shell_only_macros(top_level)
     builder = IRBuilder(registry or VendoredRegistry())
     return builder.build_screen(
         screen_id=path.stem,
@@ -561,4 +603,6 @@ def ui_file_to_ir(
         source_type="ui-converter",
         size=size,
         top_level=top_level,
+        macro_defaults={name: f"${{{name}}}" for name in shell_only},
+        literal_braces=False,
     )

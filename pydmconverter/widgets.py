@@ -25,6 +25,8 @@ from pydmconverter.widgets_helpers import (
     Column,
     escape_qt_mnemonic,
     Font,
+    _json_object,
+    _json_text,
 )
 import logging
 from epics import PV
@@ -1683,7 +1685,7 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 "{"
                 '"name": "Axis 1", '
                 '"orientation": "left", '
-                f'"label": "{self.yLabel}", '
+                f'"label": "{_json_text(self.yLabel)}", '
                 f'"minRange": {self.minYRange}, '
                 f'"maxRange": {self.maxYRange}, '
                 f'"autoRange": {self.auto_range}, '
@@ -1756,16 +1758,17 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
                 # A trace without a yPv (an index the EDM file leaves out) plots nothing.
                 continue
             color = self.plotColor[i] if i < len(self.plotColor) and self.plotColor[i] else default_color
-            curve_string = (
-                "{"
-                f'"name": "", '
-                f'"x_channel": "{x_channel}", '
-                f'"y_channel": "{y_channel}", '
-                f'"color": "{self.rgba_to_hex(*color)}", '
-                f'"yAxisName": "Axis 1"'
-                "}"
+            curve_string_list.append(
+                _json_object(
+                    {
+                        "name": "",
+                        "x_channel": x_channel,
+                        "y_channel": y_channel,
+                        "color": self.rgba_to_hex(*color),
+                        "yAxisName": "Axis 1",
+                    }
+                )
             )
-            curve_string_list.append(curve_string)
         return curve_string_list
 
     def rgba_to_hex(self, r, g, b, a=255) -> str:

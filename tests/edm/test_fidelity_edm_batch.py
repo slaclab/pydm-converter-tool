@@ -34,6 +34,16 @@ def test_state_button_notes_differing_labels_and_keeps_resting():
     assert any("resting" in w for w in warnings)
 
 
+def test_state_button_labels_differing_only_in_padding_match():
+    # xray/vac_iso_valve.edl: onLabel "Cancel " / offLabel "Cancel"
+    qt_props = {}
+    warnings = []
+    obj = _obj("activeMessageButtonClass", {"onLabel": "Cancel ", "offLabel": "Cancel"})
+    _fixup_state_button(obj, qt_props, warnings)
+    assert qt_props["text"] == "Cancel"
+    assert warnings == []
+
+
 def test_state_button_keeps_existing_text():
     qt_props = {"text": "Authored"}
     obj = _obj("activeMessageButtonClass", {"offLabel": "Ignored"})

@@ -49,7 +49,7 @@ from pydmconverter.edm.parser_helpers import (
     static_color_by_name,
 )
 from pydmconverter.ir.builder import IRBuilder
-from pydmconverter.ir.macros import normalize_macro_syntax
+from pydmconverter.ir.macros import LITERAL_BRACE, normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
@@ -878,7 +878,8 @@ def _fixup_state_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list
         # EDM's Button is a toggle unless buttonType says otherwise; the web
         # button defaults to momentary push, so the default must be written.
         qt_props.setdefault("buttonType", "toggle")
-    if on_label and off_label and on_label != off_label and "readbackChannel" not in qt_props:
+    # Labels that differ only in their padding ("Cancel " / "Cancel") look the same.
+    if on_label and off_label and str(on_label).strip() != str(off_label).strip() and "readbackChannel" not in qt_props:
         warnings.append("EDM on/off button labels differ; resting (off) label kept (no readback channel)")
     return None
 
@@ -1515,6 +1516,7 @@ def edm_file_to_ir(
         color_list_file=str(color_list_path) if color_list_path else None,
         search_paths=search_paths,
         confine_file_refs=confine_file_refs,
+        literal_brace=LITERAL_BRACE,
     )
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
@@ -1550,4 +1552,5 @@ def edm_file_to_ir(
         background=background,
         grow_to_fit=False,
         warnings=screen_warnings,
+        literal_braces=parser.literal_braces,
     )

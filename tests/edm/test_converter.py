@@ -1064,3 +1064,58 @@ def test_convert_meter_widget(tmp_path):
     show_units = widget.find("property[@name='showUnits']")
     assert show_units is not None, "Widget should have showUnits property"
     assert show_units.find("bool").text == "true"
+
+
+@pytest.mark.parametrize("on_label, off_label, buttons", [("Cancel ", "Cancel", 1), ("Open", "Cancel", 2)])
+def test_message_button_off_variant_ignores_label_padding(tmp_path, on_label, off_label, buttons):
+    """Labels that differ only in padding (xray/vac_iso_valve.edl) get no separate off button."""
+    edm_content = textwrap.dedent(f"""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 200
+        h 100
+        endScreenProperties
+
+        object activeMessageButtonClass
+        beginObjectProperties
+        major 4
+        minor 0
+        release 0
+        x 10
+        y 10
+        w 80
+        h 20
+        controlPv "X:BYPASS"
+        pressValue "0"
+        onLabel "{on_label}"
+        offLabel "{off_label}"
+        endObjectProperties
+    """)
+    input_file = tmp_path / "button.edl"
+    output_file = tmp_path / "button.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    widgets = ET.parse(output_file).getroot().iter("widget")
+    assert sum(widget.get("class") == "PyDMPushButton" for widget in widgets) == buttons
+
+
+def test_convert_warns_when_a_shell_variable_shares_a_macro_name(tmp_path, caplog):
+    r"""camac/camac_lu_from_epics_detail.edl: $\{LOCA\} (a shell variable) next to the
+    $(LOCA) macro. Both read as ${LOCA}, which PyDM substitutes."""
+    source = tmp_path / "shell.edl"
+    source.write_text(
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 200\nh 100\nendScreenProperties\n\n"
+        "object shellCmdClass\nbeginObjectProperties\nmajor 4\nminor 2\nrelease 0\nx 10\ny 10\nw 100\nh 30\n"
+        'numCmds 1\ncommand {\n  0 "luCWRestart $\\{LOCA\\} $(LOCA) $\\{HOME\\}"\n}\nendObjectProperties\n'
+    )
+    convert(str(source), str(tmp_path / "shell.ui"))
+    assert "luCWRestart ${LOCA} ${LOCA} ${HOME}" in (tmp_path / "shell.ui").read_text()
+    (warning,) = [r.getMessage() for r in caplog.records if "shares its name with a macro" in r.getMessage()]
+    assert warning.endswith(": LOCA")

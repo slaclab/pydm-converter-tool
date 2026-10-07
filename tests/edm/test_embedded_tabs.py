@@ -605,7 +605,9 @@ def test_dense_blocks_convert_as_positional_lists(tmp_path, monkeypatch, arrange
 
     remove_prepended_index = EDMFileParser.remove_prepended_index
     monkeypatch.setattr(
-        EDMFileParser, "remove_prepended_index", staticmethod(lambda lines: list(remove_prepended_index(lines)))
+        EDMFileParser,
+        "remove_prepended_index",
+        staticmethod(lambda lines, *args: list(remove_prepended_index(lines, *args))),
     )
     convert_objects(tmp_path / "positional", *objects)
 
