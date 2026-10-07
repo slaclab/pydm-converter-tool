@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 from dataclasses import dataclass, field
 from pydmconverter.edm.parser_helpers import (
+    SearchPaths,
     convert_color_property_to_qcolor,
+    normalize_search_paths,
     parse_colors_list,
     search_color_list,
     replace_calc_and_loc_in_edm_content,
@@ -14,6 +16,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
+
+
+def _read_edm_text(path) -> str:
+    """Read an EDM file as text, falling back to Latin-1 when it isn't valid UTF-8."""
+    try:
+        with open(path, "r") as file:
+            return file.read()
+    except UnicodeDecodeError as e:
+        logger.warning(f"Could not read file as UTF-8 (bad byte at {e.start}): {e}. Switching to Latin-1...")
+        with open(path, "r", encoding="latin-1") as file:
+            return file.read()
 
 
 @dataclass
@@ -69,6 +82,7 @@ class EDMFileParser:
         calc_list_file: str | None = None,
         calc_reuse_short: bool = True,
         color_list_file: str | None = None,
+        search_paths: SearchPaths = None,
     ):
         """Creates an instance of EDMFileParser for the given file_path
 
@@ -86,6 +100,10 @@ class EDMFileParser:
             Explicit path to an EDM ``colors.list`` palette used to resolve the
             screen's own ``bgColor``. Falls back to ``EDMCOLORFILE``,
             ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list`` when omitted.
+        search_paths : str | Path | Sequence[str | Path], optional
+            Extra directories searched for symbol files (activeSymbolClass) and
+            calc.list, after the file's own directory and before EDMDATAFILES
+            (e.g. the original directory of an upload staged in a temp dir).
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -94,14 +112,11 @@ class EDMFileParser:
         self.calc_list_file = calc_list_file
         self.calc_reuse_short = calc_reuse_short
         self.color_list_file = color_list_file
+        self.search_paths = normalize_search_paths(search_paths)
+        # Symbol file text keyed by the normalized symbol file name (None when not found).
+        self._symbol_texts: dict[str, str | None] = {}
 
-        try:
-            with open(file_path, "r") as file:
-                self.text = file.read()
-        except UnicodeDecodeError as e:
-            logger.warning(f"Could not read file as UTF-8 (bad byte at {e.start}): {e}. Switching to Latin-1...")
-            with open(file_path, "r", encoding="latin-1") as file:
-                self.text = file.read()
+        self.text = _read_edm_text(file_path)
         self.modify_text(file_path)
 
         self.screen_properties_end = 0
@@ -120,7 +135,11 @@ class EDMFileParser:
         pattern = r"\\*\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         self.text, _, _ = replace_calc_and_loc_in_edm_content(
-            self.text, file_path, self.calc_list_file, calc_reuse_short=self.calc_reuse_short
+            self.text,
+            file_path,
+            self.calc_list_file,
+            calc_reuse_short=self.calc_reuse_short,
+            search_paths=self.search_paths,
         )
         return self.text
 
@@ -278,33 +297,42 @@ class EDMFileParser:
         embedded_file = properties.get("file")
         if not embedded_file:
             logger.warning("No embedded file specified in properties.")
-            return EDMGroup()
+            # An empty value means the symbol named no file.
+            return EDMGroup(**size_properties, properties={"symbolFileNotFound": ""})
         if not embedded_file.endswith(".edl"):
             embedded_file += ".edl"
-        # EDM resolves symbol files beside the calling display first, then along
-        # EDMDATAFILES. Split on ":" only when it is not a Windows drive colon
-        # (":" followed by a path separator), and accept ";" separators too.
-        edm_paths: list[str] = [str(Path(self.file_path).parent)]
-        datafiles = os.environ.get("EDMDATAFILES", ".")
-        for chunk in datafiles.split(";"):
-            edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
-        embedded_text = None
-        for path in edm_paths:
-            full_path = Path(path) / embedded_file
-            if full_path.is_file():
-                with open(full_path, "r") as file:
-                    embedded_text = file.read()
-                break
+        if embedded_file not in self._symbol_texts:
+            # EDM resolves symbol files beside the calling display first, then along
+            # EDMDATAFILES (explicit search_paths go before it). Split on ":" only when
+            # it is not a Windows drive colon (":" followed by a path separator), and
+            # accept ";" separators too.
+            edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
+            datafiles = os.environ.get("EDMDATAFILES", ".")
+            for chunk in datafiles.split(";"):
+                edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
+            found_text = None
+            for path in edm_paths:
+                full_path = Path(path) / embedded_file
+                if full_path.is_file():
+                    found_text = _read_edm_text(full_path)
+                    break
+            if found_text is None:
+                logger.warning(
+                    f"Symbol file {embedded_file!r} not found beside the display, on the search paths "
+                    "or on EDMDATAFILES"
+                )
+            self._symbol_texts[embedded_file] = found_text
+        embedded_text = self._symbol_texts[embedded_file]
         if embedded_text is None:
-            logger.warning(f"Symbol file {embedded_file!r} not found beside the display or on EDMDATAFILES")
-            return EDMGroup()
+            # Keep the symbol's rect and name the missing file so the IR adapter can
+            # attach a node warning (nothing may disappear silently).
+            return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
 
         temp_group = EDMGroup()
         match = self.screen_prop_pattern.search(embedded_text)
-        if match:
-            screen_properties_end = match.end()
+        screen_properties_end = match.end() if match else 0
 
-        num_pvs = properties["numPvs"]
+        num_pvs = properties.get("numPvs", 0)
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
         self.resize_symbol_groups(temp_group, size_properties)
         self.add_symbol_properties(temp_group, properties)
@@ -314,11 +342,12 @@ class EDMFileParser:
             ranges = None
         else:
             ranges = self.generate_pv_ranges(properties)
-        self.remove_extra_groups(temp_group, ranges)
-        if num_pvs == 0 or num_pvs == "0":
-            self.remove_symbol_groups(temp_group, ranges)
-        elif ranges is not None:
-            self.populate_symbol_pvs(temp_group, properties, ranges)
+        self.remove_extra_groups(temp_group, ranges)  # with no ranges, keeps only the first state
+        if ranges is not None:
+            if num_pvs == 0 or num_pvs == "0":
+                self.remove_symbol_groups(temp_group, ranges)
+            else:
+                self.populate_symbol_pvs(temp_group, properties, ranges)
         return temp_group
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:

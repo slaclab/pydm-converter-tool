@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,153 @@ def test_convert_folder(tmp_path):
     assert failed == []
     assert (tmp_path / "out" / "a.screen.json").is_file()
     assert (tmp_path / "out" / "nested" / "b.screen.json").is_file()
+
+
+# --- convert_bytes keeps the upload's identity (filename / search_paths) -------
+
+EDM_FIXTURES = Path(__file__).parent / "edm" / "fixtures"
+
+
+def test_convert_bytes_without_filename_keeps_screen_id():
+    """Backward compatible: no filename -> the fixed "screen" id/title."""
+    ir = react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl")
+    assert (ir.id, ir.metadata.title) == ("screen", "screen")
+
+
+def test_convert_bytes_filename_sets_id_and_title():
+    edm = react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl", filename="vac_gunb_main.edl")
+    assert (edm.id, edm.metadata.title) == ("vac_gunb_main", "vac_gunb_main")
+    ui = react.convert_bytes(UI_FIXTURE.read_bytes(), kind="ui", filename="mc_overview.ui")
+    assert ui.id == "mc_overview"
+
+
+def test_convert_bytes_filename_is_reduced_to_a_safe_basename():
+    data = EDM_FIXTURE.read_bytes()
+    assert react.convert_bytes(data, kind="edl", filename="../../etc/sub/vac.edl").id == "vac"
+    assert react.convert_bytes(data, kind="edl", filename="C:\\screens\\vac.EDL").id == "vac"
+    assert react.convert_bytes(data, kind="edl", filename="vac").id == "vac"  # suffix appended for dispatch
+    assert react.convert_bytes(data, kind="edl", filename="..").id == "screen"
+
+
+def test_convert_bytes_unwritable_filename_falls_back_to_screen():
+    """A name the filesystem cannot hold (here: too long) stages as "screen" instead of failing."""
+    assert react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl", filename="x" * 300 + ".edl").id == "screen"
+
+
+SYMBOL_DISPLAY = EDM_FIXTURES / "symbol_two_state.edl"
+SYMBOL_FILE = EDM_FIXTURES / "symbol_states.edl"
+
+
+def _isolate_symbol_lookup(monkeypatch, tmp_path):
+    """Keep symbol lookup off the host's EDMDATAFILES and its "." default (the CWD)."""
+    monkeypatch.delenv("EDMDATAFILES", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+
+def _convert_symbol_display(data=None, **kwargs):
+    """Convert symbol_two_state.edl (or ``data`` in its place) and return its symbol node."""
+    data = SYMBOL_DISPLAY.read_bytes() if data is None else data
+    return react.convert_bytes(data, kind="edl", filename="symbol_two_state.edl", **kwargs).root.children[0]
+
+
+def _write_symbol_file(tmp_path, data):
+    """Write ``data`` as symbol_states.edl in its own dir (not the CWD) and return that dir."""
+    symbols = tmp_path / "symbols"
+    symbols.mkdir()
+    (symbols / "symbol_states.edl").write_bytes(data)
+    return symbols
+
+
+def test_convert_bytes_symbol_needs_search_paths(monkeypatch, tmp_path):
+    """The staged copy lives in a private temp dir, so the symbol file beside the
+    original display is only found via search_paths; without it the symbol is an
+    empty group whose warning names the missing file (it used to vanish)."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    data = (EDM_FIXTURES / "symbol_two_state.edl").read_bytes()
+
+    missing = react.convert_bytes(data, kind="edl", filename="symbol_two_state.edl").root.children[0]
+    assert missing.type == "group"
+    assert missing.children == []
+    assert (missing.geometry.x, missing.geometry.y, missing.geometry.width, missing.geometry.height) == (50, 60, 24, 24)
+    assert any("symbol file 'symbol_states.edl' not found" in w for w in missing.warnings)
+
+    found = react.convert_bytes(
+        data, kind="edl", filename="symbol_two_state.edl", search_paths=[str(EDM_FIXTURES)]
+    ).root.children[0]
+    assert len([child for child in found.children if child.type == "group"]) == 2
+    assert not any("not found" in w for w in found.warnings)
+
+
+def test_convert_bytes_accepts_a_single_search_path(monkeypatch, tmp_path):
+    """search_paths may be one directory (str or Path), not only a sequence of them."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    for search_paths in (str(EDM_FIXTURES), EDM_FIXTURES):
+        found = _convert_symbol_display(search_paths=search_paths)
+        assert len([child for child in found.children if child.type == "group"]) == 2
+        assert not any("not found" in w for w in found.warnings)
+
+
+def test_convert_bytes_latin1_symbol_file(monkeypatch, tmp_path):
+    """A symbol file that is not valid UTF-8 (a Latin-1 degree sign) is still parsed."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    text = SYMBOL_FILE.read_text(encoding="utf-8")
+    assert "endScreenProperties\n" in text
+    text = text.replace("endScreenProperties\n", "endScreenProperties\n# 20 \xb0C\n", 1)
+    symbols = _write_symbol_file(tmp_path, text.encode("latin-1"))
+
+    found = _convert_symbol_display(search_paths=[symbols])
+    assert len([child for child in found.children if child.type == "group"]) == 2
+
+
+def test_convert_bytes_symbol_file_without_screen_header(monkeypatch, tmp_path):
+    """A symbol file lacking the beginScreenProperties block is loaded rather than raising."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    text = SYMBOL_FILE.read_text(encoding="utf-8")
+    headerless = re.sub(r"beginScreenProperties.*?endScreenProperties\n", "", text, flags=re.S)
+    assert headerless != text
+    symbols = _write_symbol_file(tmp_path, headerless.encode("utf-8"))
+
+    found = _convert_symbol_display(search_paths=[symbols])
+    assert found.type == "group"
+    assert not any("not found" in w for w in found.warnings)
+
+
+def test_convert_bytes_symbol_without_file_property_warns(monkeypatch, tmp_path):
+    """An activeSymbolClass with no file is an empty group at its rect that says why."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    text = SYMBOL_DISPLAY.read_text(encoding="utf-8")
+    assert 'file "symbol_states"\n' in text
+    data = text.replace('file "symbol_states"\n', "", 1).encode("utf-8")
+
+    symbol = _convert_symbol_display(data)
+    assert symbol.type == "group"
+    assert symbol.children == []
+    assert (symbol.geometry.x, symbol.geometry.y, symbol.geometry.width, symbol.geometry.height) == (50, 60, 24, 24)
+    assert "EDM symbol has no file property; symbol not rendered" in symbol.warnings
+
+
+def test_convert_bytes_symbol_without_pvs_or_ranges_keeps_first_state(monkeypatch, tmp_path):
+    """numPvs 0 with no minValues/maxValues shows the first state instead of raising."""
+    _isolate_symbol_lookup(monkeypatch, tmp_path)
+    text = SYMBOL_DISPLAY.read_text(encoding="utf-8")
+    stripped = re.sub(
+        r"minValues \{.*?\}\nmaxValues \{.*?\}\ncontrolPvs \{.*?\}\nnumPvs 1\n", "numPvs 0\n", text, flags=re.S
+    )
+    assert stripped != text
+
+    found = _convert_symbol_display(stripped.encode("utf-8"), search_paths=[EDM_FIXTURES])
+    assert len([child for child in found.children if child.type == "group"]) == 1
+
+
+def test_convert_bytes_calc_list_found_via_search_paths(monkeypatch):
+    """A named CALC\\sum resolves from a calc.list in a search path directory."""
+    monkeypatch.delenv("EDMFILES", raising=False)
+    monkeypatch.delenv("EDMCOLORFILE", raising=False)
+    data = (EDM_FIXTURES / "calc_rules.edl").read_bytes()
+
+    def sum_formulas(ir):
+        return [f for f in ir.formulas if f.expression in ("{A}+{B}", "A+B")]
+
+    assert sum_formulas(react.convert_bytes(data, kind="edl", filename="calc_rules.edl")) == []
+    ir = react.convert_bytes(data, kind="edl", filename="calc_rules.edl", search_paths=[EDM_FIXTURES])
+    assert len(sum_formulas(ir)) == 1
