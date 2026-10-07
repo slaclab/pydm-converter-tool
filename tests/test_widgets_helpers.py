@@ -36,7 +36,7 @@ from pydmconverter.widgets_helpers import (
     escape_qt_mnemonic,
     unescape_qt_mnemonic,
 )
-from pydmconverter.custom_types import RuleArguments
+from pydmconverter.custom_types import RGBA, RuleArguments
 
 
 def test_XMLConvertible():
@@ -513,6 +513,68 @@ def testStyleSheet():
         }
     )
     assert target == styleSheet.to_string()
+
+
+def testStyleSheetScopedWrapsUnscopedUnderStar():
+    target = "\n".join(
+        [
+            '<property name="styleSheet">',
+            "  <string>* { color: rgba(0, 0, 255, 255);background-color: none; } "
+            "PyDMEmbeddedDisplay#pip1 { border: 1px solid black; }</string>",
+            "</property>",
+        ]
+    )
+    styleSheet = StyleSheet({"color": RGBA(0, 0, 255)}, {"PyDMEmbeddedDisplay#pip1": {"border": "1px solid black"}})
+    assert target == styleSheet.to_string()
+
+
+def testStyleSheetScopedRulesFormatRGBAAndKeepOrder():
+    target = "\n".join(
+        [
+            '<property name="styleSheet">',
+            "  <string>* { background-color: none; } "
+            "PyDMEmbeddedDisplay#zeta { background-color: rgba(200, 200, 200, 128); border: 2px solid red; } "
+            "PyDMEmbeddedDisplay#alpha { border: 1px solid black; }</string>",
+            "</property>",
+        ]
+    )
+    styleSheet = StyleSheet(
+        {},
+        {
+            "PyDMEmbeddedDisplay#zeta": {"background-color": RGBA(200, 200, 200, 128), "border": "2px solid red"},
+            "PyDMEmbeddedDisplay#alpha": {"border": "1px solid black"},
+        },
+    )
+    assert target == styleSheet.to_string()
+
+
+def testStyleSheetScopedWithExplicitBackground():
+    target = "\n".join(
+        [
+            '<property name="styleSheet">',
+            "  <string>* { color: red; background-color: rgba(200, 200, 200, 255); } "
+            "PyDMEmbeddedDisplay#pip1 { border: 1px solid black; }</string>",
+            "</property>",
+        ]
+    )
+    styleSheet = StyleSheet(
+        {"color": "red", "background-color": RGBA(200, 200, 200)},
+        {"PyDMEmbeddedDisplay#pip1": {"border": "1px solid black"}},
+    )
+    assert target == styleSheet.to_string()
+
+
+def testStyleSheetEmptyScopedMatchesUnscoped():
+    target = "\n".join(
+        [
+            '<property name="styleSheet">',
+            "  <string>color: rgba(0, 0, 255, 255); border: 1px solid black;background-color: none;</string>",
+            "</property>",
+        ]
+    )
+    styles = {"color": RGBA(0, 0, 255), "border": "1px solid black"}
+    assert target == StyleSheet(styles).to_string()
+    assert target == StyleSheet(styles, {}).to_string()
 
 
 def testText():

@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import ClassVar, List, Optional, Dict
+from typing import Any, ClassVar, List, Optional, Dict
 from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
@@ -1222,19 +1222,19 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
         if self.noscroll is not None:
             scroll: Bool = not self.noscroll
             properties.append(Bool("scrollable", scroll).to_xml())
-        if (
-            self.foreground_color is not None
-            or self.background_color is not None
-            or (isinstance(self.name, str) and self.name.startswith("activePipClass"))
-        ):
-            styles: Dict[str, any] = {}
-            if self.name.startswith("activePipClass"):
-                styles["border"] = "1px solid black"
+        is_pip = isinstance(self.name, str) and self.name.startswith("activePipClass")
+        if self.foreground_color is not None or self.background_color is not None or is_pip:
+            styles: Dict[str, Any] = {}
+            scoped: Dict[str, Dict[str, Any]] = {}
+            if is_pip:
+                # Scoped to this widget: an unscoped border would also frame the
+                # embedded screen's centralwidget and every widget on it.
+                scoped[f"PyDMEmbeddedDisplay#{self.name}"] = {"border": "1px solid black"}
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
             elif self.background_color is not None:
                 styles["background-color"] = self.background_color
-            properties.append(StyleSheet(styles).to_xml())
+            properties.append(StyleSheet(styles, scoped).to_xml())
         return properties
 
     def convert_filetype(self, file_string: str) -> str:
