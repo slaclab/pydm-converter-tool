@@ -67,7 +67,7 @@ value {
 }
 endObjectProperties
 
-# (Text Control with rgb colour and a dynamic colour flag)
+# (Editable Text Control with rgb colour and a dynamic colour flag)
 object activeXTextDspClass
 beginObjectProperties
 major 4
@@ -80,4 +80,5 @@ h 18
 controlPv "$(P):X"
 fgColor rgb 65535 0 0
 colorPv "$(P):COLOR"
+editable
 endObjectProperties

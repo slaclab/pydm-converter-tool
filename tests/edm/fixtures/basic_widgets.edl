@@ -43,6 +43,7 @@ h 18
 controlPv "$(PREFIX):SETPOINT"
 precision 3
 showUnits
+editable
 endObjectProperties
 
 # (Message Button)

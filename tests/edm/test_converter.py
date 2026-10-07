@@ -613,6 +613,69 @@ def test_convert_escapes_ampersand_for_qt_mnemonics(tmp_path):
     assert label_text_string.text == "Foo & Bar"
 
 
+def _related_display_macros_and_filenames(tmp_path, blocks):
+    """Convert one relatedDisplayClass carrying ``blocks``; return its (macros, filenames)."""
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        major 4
+        minor 0
+        release 1
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        object relatedDisplayClass
+        beginObjectProperties
+        major 4
+        minor 4
+        release 0
+        x 100
+        y 100
+        w 150
+        h 50
+        fgColor index 14
+        bgColor index 0
+        buttonLabel "Open"
+        numDsps 2
+        {blocks}
+        endObjectProperties
+    """).replace("{blocks}", blocks)
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file))
+
+    (button,) = [
+        w for w in ET.parse(output_file).getroot().iter("widget") if w.get("class") == "PyDMRelatedDisplayButton"
+    ]
+    macros = button.find("property[@name='macros']/string")
+    filenames = [s.text for s in button.findall("property[@name='filenames']/stringlist/string")]
+    return (macros.text if macros is not None else None), filenames
+
+
+def test_convert_related_display_pairs_symbols_with_filenames_by_index(tmp_path):
+    """symbols { 1 "P=X" } belongs to displayFileName 1, not to display 0."""
+    macros, filenames = _related_display_macros_and_filenames(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nsymbols {\n  1 "P=X"\n}',
+    )
+    assert filenames == ["a.ui", "b.ui"]
+    assert macros == '{}\n{"P": "X"}'
+
+
+def test_convert_related_display_dense_symbols_unchanged(tmp_path):
+    macros, filenames = _related_display_macros_and_filenames(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nsymbols {\n  0 "P=A"\n  1 "P=B"\n}',
+    )
+    assert filenames == ["a.ui", "b.ui"]
+    assert macros == '{"P": "A"}\n{"P": "B"}'
+
+
 def test_convert_shell_command_to_commands_property(tmp_path):
     """Test that EDM shellCmdClass command property maps to PyDM commands property."""
     edm_content = textwrap.dedent("""

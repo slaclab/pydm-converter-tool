@@ -63,6 +63,9 @@ class SourceNode:
         Original source props, surfaced verbatim on ``unknown-widget`` nodes.
     warnings:
         Convert-time notes to attach to the resulting node (D11).
+    placeholder_reason:
+        When set, the builder emits an ``unknown-widget`` placeholder with this
+        warning instead of resolving the node (a front-end failed to convert it).
     """
 
     qt_class: str | None
@@ -74,7 +77,19 @@ class SourceNode:
     raw_class: str | None = None
     raw_props: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    placeholder_reason: str | None = None
 
     @property
     def original_class(self) -> str | None:
         return self.raw_class or self.qt_class
+
+
+def exception_detail(exc: BaseException) -> str:
+    """The first line of ``exc``'s message, capped at 200 characters ("" when it has none)."""
+    message = str(exc).strip()
+    return message.splitlines()[0][:200] if message else ""
+
+
+def conversion_failure(source_class: str | None, exc: BaseException) -> str:
+    """The placeholder warning for a widget whose conversion raised ``exc``."""
+    return f"Conversion of {source_class} failed ({type(exc).__name__}: {exception_detail(exc)}); rendering placeholder"
