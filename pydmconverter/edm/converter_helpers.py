@@ -1380,8 +1380,9 @@ def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name
                     "visPv": f"loc://{name}",
                     "visMin": str(index),
                     "visMax": str(index + 1),
-                    # Qt sizes the screen to what is visible when it first shows,
-                    # so the starting display must not begin hidden.
+                    # The starting display's rule begins true so it shows as soon as
+                    # the screen opens, rather than staying blank until the loc://
+                    # channel delivers its first value.
                     STARTS_VISIBLE: index == start,
                 },
             )

@@ -252,3 +252,17 @@ def test_screen_size_expands_to_encompass_children():
     small = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 20))
     ir2 = b.build_screen(screen_id="t2", title="t", source_type="ui-converter", size=(710, 500), top_level=[small])
     assert (ir2.metadata.size.width, ir2.metadata.size.height) == (710, 500)
+
+
+def test_page_wrapper_does_not_grow_screen():
+    """A top-level wrapper exactly covering the declared screen (a .ui centralwidget)
+    is not content: only its children decide whether the canvas grows."""
+    small = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(10, 10, 100, 20))
+    wrapper = SourceNode(qt_class="QWidget", geometry=(0, 0, 800, 600), children=[small])
+    screen = _screen([wrapper])
+    assert (screen.metadata.size.width, screen.metadata.size.height) == (800, 600)
+    # a child past the edge still grows it, by the usual margin
+    wide = SourceNode(qt_class="QLabel", qt_props={"text": "x"}, geometry=(700, 600, 150, 40))
+    wrapper = SourceNode(qt_class="QWidget", geometry=(0, 0, 800, 600), children=[wide])
+    screen = _screen([wrapper])
+    assert (screen.metadata.size.width, screen.metadata.size.height) == (858, 648)

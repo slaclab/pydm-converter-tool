@@ -1932,7 +1932,31 @@ class Drawable(Tangible):
 
 
 class PageHeader:
-    def create_page_header(self, edm_parser, scrollable=False):
+    def create_page_header(self, edm_parser, scrollable=False, content_size=None):
+        """
+        Build the .ui skeleton (Form, optional scroll area, centralwidget) for a screen.
+
+        Parameters
+        ----------
+        edm_parser : EDMFileParser
+            Parser whose ui holds the screen's declared size and properties.
+        scrollable : bool, optional
+            Wrap centralwidget in a QScrollArea, by default False.
+        content_size : tuple[int, int], optional
+            (width, height) needed to cover the screen's widgets. centralwidget, and in
+            scrollable mode scrollAreaWidgetContents, are given this size so content placed past
+            the declared screen size stays reachable; Form and the scroll area keep the declared
+            size. Defaults to the declared screen size.
+
+        Returns
+        -------
+        tuple[ET.Element, ET.Element]
+            The <ui> root element and the centralwidget element to add widgets to.
+        """
+        if content_size is None:
+            content_size = (edm_parser.ui.width, edm_parser.ui.height)
+        content_width, content_height = content_size
+
         ui_element = ET.Element("ui", attrib={"version": "4.0"})
 
         class_element = ET.SubElement(ui_element, "class")
@@ -1995,8 +2019,8 @@ class PageHeader:
             sc_rect = ET.SubElement(sc_geometry, "rect")
             ET.SubElement(sc_rect, "x").text = "0"
             ET.SubElement(sc_rect, "y").text = "0"
-            ET.SubElement(sc_rect, "width").text = str(edm_parser.ui.width)
-            ET.SubElement(sc_rect, "height").text = str(edm_parser.ui.height)
+            ET.SubElement(sc_rect, "width").text = str(content_width)
+            ET.SubElement(sc_rect, "height").text = str(content_height)
 
             central_widget = ET.SubElement(
                 scroll_contents,
@@ -2015,6 +2039,15 @@ class PageHeader:
                     "name": "centralwidget",
                 },
             )
+
+        # centralwidget has no layout; without an explicit geometry Qt adjustSize()s it to the
+        # children visible at first show, clipping rule-hidden widgets that appear later.
+        cw_geometry = ET.SubElement(central_widget, "property", attrib={"name": "geometry"})
+        cw_rect = ET.SubElement(cw_geometry, "rect")
+        ET.SubElement(cw_rect, "x").text = "0"
+        ET.SubElement(cw_rect, "y").text = "0"
+        ET.SubElement(cw_rect, "width").text = str(content_width)
+        ET.SubElement(cw_rect, "height").text = str(content_height)
 
         return ui_element, central_widget
 

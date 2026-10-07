@@ -75,7 +75,7 @@ class IRBuilder:
         # PyDM windows auto-grow/scroll, so children can extend past the root
         # rect; expand the canvas to encompass them rather than clip.
         MARGIN = 8
-        max_x, max_y = self._content_extent(children)
+        max_x, max_y = self._content_extent(children, (width, height))
         if max_x + MARGIN > width:
             width = max_x + MARGIN
         if max_y + MARGIN > height:
@@ -197,21 +197,26 @@ class IRBuilder:
         return name
 
     @staticmethod
-    def _content_extent(nodes: list[WidgetNode]) -> tuple[Number, Number]:
-        """Max (x+width, y+height) over a node tree, ignoring zero-size nodes."""
+    def _content_extent(nodes: list[WidgetNode], page: tuple[Number, Number]) -> tuple[Number, Number]:
+        """Max (x+width, y+height) over a node tree, ignoring zero-size nodes.
+
+        A top-level node whose rect is exactly the page ``(0, 0, *page)`` is a page
+        wrapper (e.g. a .ui ``centralwidget``), not content: only its children count.
+        """
         max_x = max_y = 0
 
-        def visit(node: WidgetNode) -> None:
+        def visit(node: WidgetNode, top: bool = False) -> None:
             nonlocal max_x, max_y
             g = node.geometry
-            if g.width and g.height:
+            wrapper = top and (g.x, g.y, g.width, g.height) == (0, 0, *page)
+            if g.width and g.height and not wrapper:
                 max_x = max(max_x, g.x + g.width)
                 max_y = max(max_y, g.y + g.height)
             for child in node.children:
                 visit(child)
 
         for n in nodes:
-            visit(n)
+            visit(n, top=True)
         return max_x, max_y
 
     @staticmethod

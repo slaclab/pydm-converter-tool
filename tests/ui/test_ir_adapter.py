@@ -389,3 +389,41 @@ def test_font_without_size_emits_nothing(tmp_path):
     )
     ir = ui_file_to_ir(ui)
     assert "fontSize" not in ir.root.children[0].props
+
+
+def _centralwidget_ui(tmp_path, central: tuple[int, int], label: tuple[int, int, int, int]):
+    """A legacy-converter-shaped .ui: a 400x300 Form wrapping a layout-less
+    centralwidget with an explicit geometry and one label."""
+    x, y, w, h = label
+    ui = tmp_path / "central.ui"
+    ui.write_text(
+        f"""<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="Form">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>400</width><height>300</height></rect></property>
+ <widget class="QWidget" name="centralwidget">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>{central[0]}</width><height>{central[1]}</height></rect></property>
+  <widget class="QLabel" name="lbl">
+   <property name="geometry"><rect><x>{x}</x><y>{y}</y><width>{w}</width><height>{h}</height></rect></property>
+   <property name="text"><string>hi</string></property>
+  </widget>
+ </widget>
+</widget></ui>"""
+    )
+    return ui_file_to_ir(ui)
+
+
+def test_centralwidget_geometry_keeps_screen_size(tmp_path):
+    """A centralwidget sized to the screen is a page wrapper, not content: it must
+    not push the canvas out by the overflow margin (400x300 stays 400x300)."""
+    ir = _centralwidget_ui(tmp_path, (400, 300), (20, 20, 100, 20))
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (400, 300)
+    assert (ir.root.geometry.width, ir.root.geometry.height) == (400, 300)
+
+
+def test_centralwidget_overflow_still_grows_screen(tmp_path):
+    """Children past the declared size (centralwidget enlarged to cover them) still
+    grow the canvas to their extent plus the margin."""
+    ir = _centralwidget_ui(tmp_path, (450, 340), (300, 300, 150, 40))
+    assert (ir.metadata.size.width, ir.metadata.size.height) == (458, 348)
+    assert (ir.root.geometry.width, ir.root.geometry.height) == (458, 348)

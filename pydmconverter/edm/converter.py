@@ -66,8 +66,13 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
     pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser, site=site, color_list_file=color_list_file)
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
+    # Serialize each widget once and measure those same elements: to_xml() is not idempotent
+    # (e.g. PyDMPushButton appends rules and may look up a PV while generating properties).
+    widget_elements = [widget.to_xml() for widget in pydm_widgets]
+    content_size = content_extent(widget_elements, edm_parser.ui.width, edm_parser.ui.height)
+
     page_header = PageHeader()
-    ui_element, central_widget = page_header.create_page_header(edm_parser, scrollable)
+    ui_element, central_widget = page_header.create_page_header(edm_parser, scrollable, content_size=content_size)
 
     if isinstance(edm_parser.ui, EDMObject) and "bgColor" in edm_parser.ui.properties:
         bg_color = edm_parser.ui.properties["bgColor"]
@@ -75,7 +80,7 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
         style_sheet_elem = ET.SubElement(bg_color_prop, "string")
         style_sheet_elem.text = f"background-color: {bg_color};"
 
-    add_widgets_to_parent(pydm_widgets, central_widget)
+    central_widget.extend(widget_elements)
 
     customwidgets_el = build_customwidgets_element(used_classes)
     ui_element.append(customwidgets_el)
@@ -126,3 +131,41 @@ def add_widgets_to_parent(widgets, parent_element):
     for widget in widgets:
         widget_element = widget.to_xml()
         parent_element.append(widget_element)
+
+
+def content_extent(elements, min_width, min_height):
+    """Return the (width, height) a layout-less container needs to cover its child widgets.
+
+    Without an explicit geometry, Qt calls adjustSize() on such a container when it is first
+    shown and sizes it to the children visible at that moment, so a widget hidden at startup by
+    a Visible rule (EDM visPv) is clipped when it later appears. The extent is at least
+    min_width x min_height and reaches the furthest child's right/bottom edge, so widgets placed
+    past the screen's declared size stay reachable.
+
+    Parameters
+    ----------
+    elements : Iterable[ET.Element]
+        Serialized child <widget> elements.
+    min_width : int
+        The smallest width to return, normally the screen's declared width.
+    min_height : int
+        The smallest height to return, normally the screen's declared height.
+
+    Returns
+    -------
+    tuple[int, int]
+        The (width, height) covering the minimum size and every child's geometry. A child
+        whose geometry rect is missing, incomplete or non-numeric is ignored.
+    """
+    width, height = min_width, min_height
+    for element in elements:
+        rect = element.find("property[@name='geometry']/rect")
+        if rect is None:
+            continue
+        try:
+            x, y, w, h = (int(float(rect.findtext(part))) for part in ("x", "y", "width", "height"))
+        except (TypeError, ValueError, OverflowError):
+            continue
+        width = max(width, x + w)
+        height = max(height, y + h)
+    return width, height
