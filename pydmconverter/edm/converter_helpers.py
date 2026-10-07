@@ -528,13 +528,14 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
             elif isinstance(widget, PyDMRelatedDisplayButton) and obj.properties.get("displayFileName"):
                 # EDM (related_display.cc) pairs symbols[i] with displayFileName[i] by array
                 # index, and a file may skip indices: one macros entry per filename, in
-                # filename order, "{}" for a display with no symbols entry.
+                # filename order, "{}" for a display with no symbols entry. PyDM's macros
+                # is a QStringList paired with filenames by position, so keep it a list.
                 symbols = dict(block_items(value))
                 parsed_macros = [
                     json.dumps(parse_edm_macros(symbols.get(index, "")))
                     for index, _ in block_items(obj.properties["displayFileName"])
                 ]
-                value = "\n".join(parsed_macros) if parsed_macros else None
+                value = parsed_macros if parsed_macros else None
                 logger.info(f"Converted related display macros to: {value}")
             else:
                 parsed_macros = []
