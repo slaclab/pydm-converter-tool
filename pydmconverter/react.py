@@ -37,6 +37,7 @@ def convert_to_ir(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     search_paths: SearchPaths = None,
+    confine_file_refs: bool = False,
 ) -> ScreenIR:
     """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
 
@@ -46,6 +47,11 @@ def convert_to_ir(
 
     ``search_paths`` (``.edl`` inputs only) are extra directories (a single directory
     or a sequence) searched, like ``EDMDATAFILES``, for symbol files and ``calc.list``.
+    ``confine_file_refs`` is for untrusted input: file names taken from it (``.edl``
+    symbol files, a ``.ui`` PyDMTemplateRepeater's ``dataSource``/``templateFilename``)
+    are read only from inside the file's own directory or, for ``.edl``,
+    ``search_paths``, never ``EDMDATAFILES`` (see :func:`convert_bytes`,
+    :func:`edm_file_to_ir` and :func:`ui_file_to_ir`).
     """
     suffix = Path(input_path).suffix.lower()
     adapter = _ADAPTERS.get(suffix)
@@ -59,8 +65,9 @@ def convert_to_ir(
             calc_list_path=calc_list_path,
             site=site,
             search_paths=search_paths,
+            confine_file_refs=confine_file_refs,
         )
-    return ui_file_to_ir(input_path, registry=registry)
+    return ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
 
 
 def convert_bytes(
@@ -73,6 +80,7 @@ def convert_bytes(
     site: str | None = None,
     filename: str | None = None,
     search_paths: SearchPaths = None,
+    confine_file_refs: bool = False,
 ) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
@@ -91,6 +99,24 @@ def convert_bytes(
     and ``calc.list``: the staged file's own directory is a private temp dir, so
     siblings of the original file are only found through here (e.g. the directory of
     an extracted archive).
+
+    ``confine_file_refs`` should be set when ``data`` is untrusted, e.g. a user upload.
+    File names inside the input come verbatim from the bytes, so by default an absolute
+    name or ``..`` can read any file the process can reach and inline it into the
+    returned IR. With the flag on:
+
+    - ``kind="edl"``: an activeSymbolClass ``file`` is read only if it resolves inside
+      the private staging dir or one of ``search_paths`` (any of them: a
+      ``../sibling/x`` name between two search paths is fine). Absolute names, and
+      anything resolving outside all of them (``..``, a symlink pointing elsewhere),
+      are rejected before any existence check and never read. The symbol is left as
+      an empty group, warned as "outside the search paths" when no directory could
+      hold the name and as not found otherwise. ``EDMDATAFILES`` and its ``.`` (CWD)
+      default are not searched, and empty ``search_paths`` entries are ignored: pass
+      every allowed root explicitly.
+    - ``kind="ui"``: a PyDMTemplateRepeater's ``dataSource`` and ``templateFilename``
+      must resolve inside the staged file's directory, which holds only the upload,
+      so in practice the repeater becomes a placeholder with a warning.
 
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
@@ -120,6 +146,7 @@ def convert_bytes(
             calc_list_path=calc_list_path,
             site=site,
             search_paths=search_paths,
+            confine_file_refs=confine_file_refs,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

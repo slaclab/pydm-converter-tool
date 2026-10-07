@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union, Any
 from pydmconverter.custom_types import RGBA
 
@@ -14,7 +15,9 @@ def normalize_search_paths(search_paths: SearchPaths) -> List[str]:
     Normalize extra search directories into a list of path strings.
 
     A lone path (str or os.PathLike) is accepted as well as a sequence of paths,
-    so a plain string is not split into its characters.
+    so a plain string is not split into its characters. Empty entries are dropped,
+    as in an EDMDATAFILES split, so ``""`` never stands for the current directory;
+    a caller who wants the CWD searched passes ``"."``.
 
     Parameters
     ----------
@@ -24,13 +27,49 @@ def normalize_search_paths(search_paths: SearchPaths) -> List[str]:
     Returns
     -------
     List[str]
-        The directories as strings, in order; empty when search_paths is None.
+        The non-empty directories as strings, in order; empty when search_paths is
+        None.
     """
     if search_paths is None:
         return []
     if isinstance(search_paths, (str, os.PathLike)):
-        return [os.fspath(search_paths)]
-    return [os.fspath(path) for path in search_paths]
+        search_paths = [search_paths]
+    return [path for path in map(os.fspath, search_paths) if path]
+
+
+def resolve_inside(base: Union[str, "os.PathLike[str]"], name: str, allowed_roots: Sequence[Path]) -> Optional[Path]:
+    """
+    Resolve a file name taken from an untrusted input, confined to allowed roots.
+
+    The check looks only at the path, never at whether the file exists, so a
+    rejection says nothing about the filesystem outside the roots.
+
+    Parameters
+    ----------
+    base : str | os.PathLike
+        Directory the name is relative to.
+    name : str
+        The file name as written in the input.
+    allowed_roots : Sequence[Path]
+        Already-resolved directories the result must lie inside (any one of them).
+
+    Returns
+    -------
+    Path | None
+        ``(base / name).resolve()``, or None when ``name`` is absolute (any anchor,
+        which also covers Windows drive and root forms), cannot be resolved (e.g. a
+        NUL byte or a symlink loop), or resolves outside every allowed root (``..``,
+        or a symlink pointing elsewhere).
+    """
+    if Path(name).anchor:
+        return None
+    try:
+        candidate = (Path(base) / name).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if any(candidate.is_relative_to(root) for root in allowed_roots):
+        return candidate
+    return None
 
 
 def search_calc_list(
