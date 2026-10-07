@@ -124,6 +124,78 @@ SPARSE_SCREEN = menu_mux_screen(
 )
 
 
+GROUP = """\
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x {x}
+y {y}
+w {w}
+h {h}
+
+beginGroup
+
+{objects}
+endGroup
+
+endObjectProperties
+"""
+
+
+def in_groups(screen, *boxes):
+    """screen with its first menu mux inside groups at these (x, y, w, h)
+    boxes, outermost first. EDM keeps a group's objects in screen coordinates."""
+    start = screen.index("# (Menu Mux)")
+    end = screen.index("endObjectProperties\n", start) + len("endObjectProperties\n")
+    block = screen[start:end]
+    for x, y, w, h in reversed(boxes):
+        block = GROUP.format(x=x, y=y, w=w, h=h, objects=block)
+    return screen[:start] + block + screen[end:]
+
+
+# Only menu mux inside a group, as in lcls/lasr_in20_main_heater.edl (#164).
+GROUPED_SCREEN = in_groups(SCREEN, (5, 5, 110, 35))
+NESTED_SCREEN = in_groups(SCREEN, (2, 2, 200, 100), (5, 5, 110, 35))
+MODE_MENU = """\
+# (Menu Mux)
+object menuMuxClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 150
+y 85
+w 100
+h 25
+numItems 1
+symbolTag {
+  0 "Only"
+}
+symbol0 {
+  0 "MODE"
+}
+value0 {
+  0 "m"
+}
+endObjectProperties
+"""
+# A grouped menu mux ahead of SCREEN's top-level one.
+MIXED_SCREEN = SCREEN.replace("# (Menu Mux)", in_groups(MODE_MENU, (145, 80, 110, 35)) + "\n# (Menu Mux)", 1)
+# A grouped menu labelled by its values.
+NO_TAG_GROUPED_SCREEN = in_groups(SCREEN.replace('symbolTag {\n  0 "Off"\n  1 "On"\n}\n', "", 1), (5, 5, 110, 35))
+# A grouped menu ahead of SCREEN's top-level one that sets the same macro.
+FLAG_MENU = (
+    MODE_MENU.replace("numItems 1", "numItems 2")
+    .replace('symbolTag {\n  0 "Only"\n}', 'symbolTag {\n  0 "A"\n  1 "B"\n}')
+    .replace('symbol0 {\n  0 "MODE"\n}', 'symbol0 {\n  0 "FLAG"\n  1 "FLAG"\n}')
+    .replace('value0 {\n  0 "m"\n}', 'value0 {\n  0 "a"\n  1 "b"\n}')
+)
+SHADOWED_SCREEN = SCREEN.replace("# (Menu Mux)", in_groups(FLAG_MENU, (145, 80, 110, 35)) + "\n# (Menu Mux)", 1)
+
+
 def generated_menus(py_file):
     """The menus literal of a generated screen."""
     module = ast.parse(py_file.read_text())
@@ -768,3 +840,71 @@ def test_reload_keeps_the_window_on_the_menu_item(
     assert screen.embedded.parsed_macros()["ID"] == "250"
     qtbot.waitUntil(lambda: shown() == expected, timeout=3000)
     assert variable_value(name) == chosen
+
+
+@pytest.mark.parametrize(
+    "menumux_screen", [GROUPED_SCREEN, NESTED_SCREEN], ids=["group", "nested_groups"], indirect=True
+)
+def test_menu_inside_groups_gets_a_screen(menumux_screen):
+    # The screen's only menu mux is inside a group, so before #164 no .py was written.
+    compile(menumux_screen.read_text(), str(menumux_screen), "exec")
+    (menu,) = generated_menus(menumux_screen)
+    # A group's objects keep their screen coordinates, as in the .ui.
+    assert (menu["x"], menu["y"], menu["width"], menu["height"]) == (10, 10, 100, 25)
+    assert menu["items"] == ["Off", "On"]
+    # A grouped menu sets no macros in EDM.
+    assert not any(menu["macros"])
+
+
+@pytest.mark.parametrize("menumux_screen", [NO_TAG_GROUPED_SCREEN], ids=["no_tags"], indirect=True)
+def test_grouped_menu_without_tags_keeps_its_value_labels(menumux_screen):
+    assert "symbolTag" not in NO_TAG_GROUPED_SCREEN
+    (menu,) = generated_menus(menumux_screen)
+    assert menu["items"] == ["0", "1"]
+    assert not any(menu["macros"])
+
+
+@pytest.mark.parametrize("menumux_screen", [MIXED_SCREEN], ids=["mixed"], indirect=True)
+def test_grouped_and_top_level_menus_keep_the_screen_order(menumux_screen):
+    menus = generated_menus(menumux_screen)
+    assert [(menu["x"], menu["y"], menu["items"][0]) for menu in menus] == [(150, 85, "Only"), (10, 10, "Off")]
+
+
+@pytest.mark.parametrize("menumux_screen", [SHADOWED_SCREEN], ids=["shadowed"], indirect=True)
+def test_grouped_menu_leaves_the_macros_to_top_level_menus(menumux_screen, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+
+    def macros():
+        return json.loads(screen.embedded.macros)
+
+    screen = load_file(str(menumux_screen), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+    grouped, top_level = screen.muxes
+    assert [grouped.itemText(0), top_level.itemText(0)] == ["A", "Off"]
+    # EDM takes macros only from top-level menus, so FLAG follows the top-level one.
+    assert macros() == {"FLAG": "0"}
+    grouped.setCurrentIndex(1)
+    assert macros() == {"FLAG": "0"}
+    top_level.setCurrentIndex(1)
+    assert macros() == {"FLAG": "1"}
+
+
+@pytest.mark.parametrize("menumux_screen", [NESTED_SCREEN], ids=["nested_groups"], indirect=True)
+def test_grouped_menu_sits_where_edm_draws_it(menumux_screen, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from qtpy.QtCore import QPoint
+    from qtpy.QtWidgets import QComboBox
+
+    screen = load_file(str(menumux_screen), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+    (menu,) = screen.findChildren(QComboBox)
+    # The menu is the .ui's sibling, not its child, so compare both in the screen's frame.
+    origin = QPoint(0, 0)
+    position = menu.mapTo(screen, origin) - screen.embedded.embedded_widget.mapTo(screen, origin)
+    assert (position.x(), position.y()) == (10, 10)
