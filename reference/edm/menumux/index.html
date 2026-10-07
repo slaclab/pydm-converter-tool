@@ -705,6 +705,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#edm.menumux.edm_array" class="md-nav__link">
+    <span class="md-ellipsis">
+      edm_array
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_item_count" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_item_count
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_items" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_items
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_macros" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_macros
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.padded" class="md-nav__link">
+    <span class="md-ellipsis">
+      padded
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -879,6 +924,51 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#edm.menumux.edm_array" class="md-nav__link">
+    <span class="md-ellipsis">
+      edm_array
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_item_count" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_item_count
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_items" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_items
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.menu_macros" class="md-nav__link">
+    <span class="md-ellipsis">
+      menu_macros
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.menumux.padded" class="md-nav__link">
+    <span class="md-ellipsis">
+      padded
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -925,6 +1015,213 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.menumux.edm_array" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">edm_array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>An EDM array property as a list: the parser gives a list for a
+{ ... } block and a str for a single value.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/menumux.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edm_array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An EDM array property as a list: the parser gives a list for a</span>
+<span class="sd">    { ... } block and a str for a single value.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.menumux.menu_item_count" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">menu_item_count</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>A menu mux's number of items: numItems, or failing that the length of
+symbolTag, or of its longest value array.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/menumux.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">menu_item_count</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A menu mux&#39;s number of items: numItems, or failing that the length of</span>
+<span class="sd">    symbolTag, or of its longest value array.&quot;&quot;&quot;</span>
+    <span class="n">num_items</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numItems&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">num_items</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">num_items</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdecimal</span><span class="p">():</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_items</span><span class="p">)</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="n">edm_array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symbolTag&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">tags</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span>
+        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">edm_array</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="s2">&quot;value[0-9]+&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)),</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.menumux.menu_items" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">menu_items</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">macros</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>A menu mux's item labels. Without symbolTag EDM shows blank items, so
+label each item by its first macro's value instead.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/menumux.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">menu_items</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">macros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A menu mux&#39;s item labels. Without symbolTag EDM shows blank items, so</span>
+<span class="sd">    label each item by its first macro&#39;s value instead.&quot;&quot;&quot;</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="n">edm_array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symbolTag&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">tags</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">padded</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">macros</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">macros</span> <span class="k">else</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">count</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.menumux.menu_macros" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">menu_macros</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>A menu mux's (macro, value per item) pairs, one per symbol{i}. EDM
+leaves trailing empty strings out of value{i}, and leaves value{i} out
+altogether when all of its values are empty, so pad each to count.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/menumux.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">menu_macros</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A menu mux&#39;s (macro, value per item) pairs, one per symbol{i}. EDM</span>
+<span class="sd">    leaves trailing empty strings out of value{i}, and leaves value{i} out</span>
+<span class="sd">    altogether when all of its values are empty, so pad each to count.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># An empty menu has no item selected (index -1) to take values from.</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">symbols</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">properties</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="s2">&quot;symbol[0-9]+&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)),</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;symbol&quot;</span><span class="p">)),</span>
+    <span class="p">)</span>
+    <span class="n">macros</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="n">edm_array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">names</span> <span class="ow">and</span> <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">edm_array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;symbol&quot;</span><span class="p">)))</span>
+            <span class="n">macros</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">padded</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">count</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">macros</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.menumux.padded" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">padded</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>values cut to count entries, or padded to it with the trailing empty
+strings EDM leaves out.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/menumux.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">padded</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;values cut to count entries, or padded to it with the trailing empty</span>
+<span class="sd">    strings EDM leaves out.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">values</span><span class="p">[:</span><span class="n">count</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">count</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
