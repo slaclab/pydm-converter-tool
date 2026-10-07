@@ -115,9 +115,9 @@ def test_unknown_transform_raises():
 
 
 def test_transforms_cover_registry():
-    """Every transform the vendored registry references must be implemented.
+    """Every transform the registry references must be implemented.
 
-    Guards converter/Beaver lock-step: a referenced-but-missing transform would
+    Guards registry/transform lock-step: a referenced-but-missing transform would
     silently drop a prop in the IR builder.
     """
     referenced = set()
