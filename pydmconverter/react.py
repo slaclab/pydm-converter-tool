@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
+from pydmconverter.edm.parser_helpers import SearchPaths
 from pydmconverter.ir.emit import write_screen_json
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient
@@ -35,12 +36,16 @@ def convert_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    search_paths: SearchPaths = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it is located via (in order)
     the ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+
+    ``search_paths`` (``.edl`` inputs only) are extra directories (a single directory
+    or a sequence) searched, like ``EDMDATAFILES``, for symbol files and ``calc.list``.
     """
     suffix = Path(input_path).suffix.lower()
     adapter = _ADAPTERS.get(suffix)
@@ -53,6 +58,7 @@ def convert_to_ir(
             color_list_path=color_list_path,
             calc_list_path=calc_list_path,
             site=site,
+            search_paths=search_paths,
         )
     return ui_file_to_ir(input_path, registry=registry)
 
@@ -65,6 +71,8 @@ def convert_bytes(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    filename: str | None = None,
+    search_paths: SearchPaths = None,
 ) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
@@ -73,23 +81,60 @@ def convert_bytes(
     EDM parser reads from a path, so the bytes are staged in a temp file scoped to
     this call rather than in every caller.
 
+    ``filename`` is the upload's original file name. Its basename (directories are
+    stripped; a missing ``.{kind}`` suffix is appended) names the staged file, so the
+    screen id and EDM title come from it. Without it, or when the filesystem cannot
+    hold that name, they are ``"screen"``.
+
+    ``search_paths`` (``kind="edl"`` only) are extra directories (a single directory or
+    a sequence) searched, like ``EDMDATAFILES``, for symbol files (activeSymbolClass)
+    and ``calc.list``: the staged file's own directory is a private temp dir, so
+    siblings of the original file are only found through here (e.g. the directory of
+    an extracted archive).
+
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     """
     if kind not in ("edl", "ui"):
         raise ValueError(f"convert_bytes kind must be 'edl' or 'ui', not {kind!r}")
-    # Fixed basename in a private temp dir -> a deterministic screen id (not a random
-    # temp stem), and conversion of identical bytes is byte-stable.
+    # A fixed basename in a private temp dir -> a deterministic screen id (not a
+    # random temp stem), and conversion of identical bytes is byte-stable.
     tmp_dir = Path(tempfile.mkdtemp(prefix="pydmconv-"))
     try:
-        staged = tmp_dir / f"screen.{kind}"
-        staged.write_bytes(data)
+        staged = tmp_dir / _staged_name(filename, kind)
+        try:
+            staged.write_bytes(data)
+        except OSError as exc:
+            # The upload's name can be too long or hold characters this filesystem
+            # reserves; fall back to the fixed name rather than failing the conversion.
+            if staged.name == f"screen.{kind}":
+                raise
+            logger.warning("Cannot stage upload as %r (%s); using screen.%s", filename, exc, kind)
+            staged = tmp_dir / f"screen.{kind}"
+            staged.write_bytes(data)
         return convert_to_ir(
-            staged, registry=registry, color_list_path=color_list_path, calc_list_path=calc_list_path, site=site
+            staged,
+            registry=registry,
+            color_list_path=color_list_path,
+            calc_list_path=calc_list_path,
+            site=site,
+            search_paths=search_paths,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _staged_name(filename: str | None, kind: str) -> str:
+    """Basename for a staged upload: ``filename`` without its directories (it must
+    not escape the temp dir), with the ``.{kind}`` suffix the dispatcher keys on;
+    ``screen.{kind}`` when no usable name is given."""
+    name = Path(filename.replace("\\", "/")).name if filename else ""
+    if name in ("", ".", "..") or "\x00" in name:
+        return f"screen.{kind}"
+    if Path(name).suffix.lower() != f".{kind}":
+        name = f"{name}.{kind}"
+    return name
 
 
 def _screen_json_path(input_path: Path, output_path: Path) -> Path:

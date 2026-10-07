@@ -35,6 +35,7 @@ from pydmconverter.edm.edm_qt import (
 )
 from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject
 from pydmconverter.edm.parser_helpers import (
+    SearchPaths,
     get_color_by_index,
     get_color_by_rgb,
     parse_colors_list,
@@ -843,6 +844,14 @@ def edm_group_to_source_nodes(
                 raw_props=dict(obj.properties),
                 children=edm_group_to_source_nodes(obj, colors=colors, skip_classes=skip_classes),
             )
+            if "symbolFileNotFound" in obj.properties:
+                missing_symbol = obj.properties["symbolFileNotFound"]
+                group_node.warnings.append(
+                    f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
+                    "on EDMDATAFILES; symbol not rendered"
+                    if missing_symbol
+                    else "EDM symbol has no file property; symbol not rendered"
+                )
             vis_tuples: list[VisTuple] = []
             symbol_vis = _symbol_state_vis(obj)
             if symbol_vis is not None:
@@ -872,6 +881,7 @@ def edm_file_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    search_paths: SearchPaths = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` file and build its Screen IR.
 
@@ -888,6 +898,11 @@ def edm_file_to_ir(
     ``$EDMFILES/calc.list``, then beside ``$EDMCOLORFILE``. Unresolvable named
     calcs stay as warnings. ``site`` applies site skip rules (same vocabulary as
     the PyDM target, e.g. ``"slac"`` drops exit buttons).
+
+    ``search_paths`` are extra directories, searched after the file's own directory
+    and before ``EDMDATAFILES``, for activeSymbolClass symbol files and (after the
+    file's own directory) for ``calc.list``. A symbol file that cannot be found
+    leaves an empty group with a node warning.
     """
     from pydmconverter.sites import get_skip_widgets
 
@@ -898,6 +913,7 @@ def edm_file_to_ir(
         calc_list_file=str(calc_list_path) if calc_list_path else None,
         calc_reuse_short=False,
         color_list_file=str(color_list_path) if color_list_path else None,
+        search_paths=search_paths,
     )
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
