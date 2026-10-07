@@ -10,12 +10,59 @@ from pydmconverter.edm.parser_helpers import (
     search_color_list,
     replace_calc_and_loc_in_edm_content,
 )
+from pydmconverter.ir.source import exception_detail
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
+# One line of an EDM array tag: an unquoted index, then the value.
+_INDEXED_LINE_RE = re.compile(r"^\s*(\d+)(?:\s+(.*?))?\s*$")
+
+
+def _clean_block_value(value: str) -> str:
+    return value.strip(' "').replace('\\"', '"')
+
+
+class IndexedBlock(list):
+    """A brace-block value parsed from EDM ``<index> <value>`` lines.
+
+    Behaves as the compact list of values (what positional consumers always
+    saw); ``indices[i]`` is the EDM array index of item ``i``.
+    """
+
+    def __init__(self, values=(), indices=()):
+        super().__init__(values)
+        self.indices = list(indices)
+
+
+def block_items(value) -> list[tuple[int, str]]:
+    """A brace-block prop value -> ``[(EDM array index, value)]``.
+
+    An :class:`IndexedBlock` keeps the indices the file wrote (``symbols { 2
+    "P=X" }`` is entry 2, not 0); another list is numbered by position and a bare
+    string is entry 0.
+    """
+    if isinstance(value, str):
+        return [(0, value)]
+    if not isinstance(value, list):
+        return []
+    items = [str(item) for item in value]
+    indices = getattr(value, "indices", None)
+    if indices is not None and len(indices) == len(items):
+        return list(zip(indices, items))
+    return list(enumerate(items))
+
+
+def edm_int(value) -> int:
+    """EDM's integer read of a tag value (strtol semantics): the leading integer, else 0."""
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    match = re.match(r"\s*([+-]?\d+)", str(value))
+    return int(match.group(1)) if match else 0
 
 
 def _read_edm_text(path) -> str:
@@ -121,9 +168,13 @@ class EDMFileParser:
 
         self.screen_properties_end = 0
         self.ui = EDMGroup()
+        # Screen dimensions ("width"/"height") the file does not declare as integers;
+        # sized from the content (see parse_screen_properties and size_missing_from_content).
+        self.missing_screen_size: list[str] = []
 
         self.parse_screen_properties()
         self.parse_objects_and_groups(self.text[self.screen_properties_end :], self.ui)
+        self.size_missing_from_content()
 
     def modify_text(self, file_path) -> str:  # unnecessary return
         # Replace $(!W) with a marker
@@ -145,13 +196,25 @@ class EDMFileParser:
 
     def parse_screen_properties(self) -> None:
         """Get the screen properties from the .edl file and set the UI
-        height and width
+        height and width.
+
+        A ``w``/``h`` that is missing or not an integer (template fragments write
+        ``h $(DISP_HEIGHT)``), or a file with no ``beginScreenProperties`` block at
+        all, does not abort the parse: the dimension is recorded in
+        ``missing_screen_size`` and sized from the content once the objects are
+        parsed (:meth:`size_missing_from_content`).
         """
         match = self.screen_prop_pattern.search(self.text)
         if match:
             screen_prop_text = match.group(1)
             self.screen_properties_end = match.end()
-            size_properties = self.get_size_properties(screen_prop_text, strict=True)
+            for prop in ("width", "height"):
+                value = self._find_size(screen_prop_text, prop[0])
+                if value is None:
+                    logger.warning(f"Screen property '{prop[0]}' is missing or not an integer")
+                    self.missing_screen_size.append(prop)
+                else:
+                    setattr(self.ui, prop, value)
             other_properties = self.get_object_properties(screen_prop_text)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list(self.color_list_file)
@@ -160,9 +223,24 @@ class EDMFileParser:
                 edmColor = other_properties["bgColor"]
                 other_properties["bgColor"] = convert_color_property_to_qcolor(edmColor, color_data=color_list_dict)
             self.ui.properties = other_properties
+        else:
+            self.missing_screen_size = ["width", "height"]
 
-            self.ui.height = size_properties["height"]
-            self.ui.width = size_properties["width"]
+    def size_missing_from_content(self) -> None:
+        """Size each dimension in ``missing_screen_size`` from the content.
+
+        The dimension becomes the top-level content extent (max ``x + width`` /
+        ``y + height`` over the screen's objects and groups, ignoring zero-size
+        ones) plus the IR builder's 8 px margin, so the .ui window is not 0-sized.
+        ``missing_screen_size`` is kept: the IR adapter still passes None for these
+        dimensions and lets the builder size them the same way.
+        """
+        sized = [obj for obj in self.ui.objects if obj.width and obj.height]
+        margin = 8  # IRBuilder.build_screen's MARGIN
+        if "width" in self.missing_screen_size:
+            self.ui.width = max((obj.x + obj.width for obj in sized), default=0) + margin
+        if "height" in self.missing_screen_size:
+            self.ui.height = max((obj.y + obj.height for obj in sized), default=0) + margin
 
     def parse_objects_and_groups(self, text: str, parent_group: EDMGroup) -> None:
         """Recursively parse the given text into a tree of EDMObjects and
@@ -328,26 +406,75 @@ class EDMFileParser:
             # attach a node warning (nothing may disappear silently).
             return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
 
+        # Symbol expansion runs at parse time, outside the adapter's per-object
+        # isolation: whatever a malformed symbol file or object does, the screen
+        # keeps the symbol's rect with a warning instead of failing.
+        try:
+            return self._expand_symbol(embedded_file, embedded_text, properties, size_properties)
+        except Exception as exc:  # noqa: BLE001 - one bad symbol must not abort the screen
+            logger.warning(f"Symbol file {embedded_file!r} could not be expanded", exc_info=True)
+            return EDMGroup(
+                **size_properties,
+                properties={
+                    "symbolWarnings": [
+                        f"EDM symbol file '{embedded_file}' could not be expanded "
+                        f"({type(exc).__name__}: {exception_detail(exc)}); symbol not rendered"
+                    ]
+                },
+            )
+
+    def _expand_symbol(
+        self,
+        embedded_file: str,
+        embedded_text: str,
+        properties: dict[str, bool | str | list[str]],
+        size_properties: dict[str, int],
+    ) -> EDMGroup:
+        """Explode a symbol file into one child group per state (EDM symbol.cc readSymbolFile).
+
+        EDM reads the file's top-level objects in order as the states and stops at
+        the first one that is not a group (states read so far are kept). A symbol
+        with no control PV (``numPvs`` 0 or absent, EDM's default, or a blank
+        ``controlPvs`` entry) draws state 1 only.
+        """
         temp_group = EDMGroup()
+        warnings: list[str] = []
         match = self.screen_prop_pattern.search(embedded_text)
         screen_properties_end = match.end() if match else 0
-
-        num_pvs = properties.get("numPvs", 0)
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
+        states: list[EDMGroup] = []
+        for obj in temp_group.objects:
+            if not isinstance(obj, EDMGroup):
+                warnings.append(
+                    f"EDM symbol file '{embedded_file}' has a {getattr(obj, 'name', 'non-group')} object where "
+                    f"state {len(states)} should be a group; EDM stops reading states there"
+                )
+                break
+            states.append(obj)
+        temp_group.objects = states
+
+        num_pvs = edm_int(properties.get("numPvs", 0))
+        control_pvs = [pv for _, pv in block_items(properties.get("controlPvs"))]
+        has_control = 0 < num_pvs <= len(control_pvs) and all(pv.strip() for pv in control_pvs[:num_pvs])
         self.resize_symbol_groups(temp_group, size_properties)
         self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
             self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
-        if "minValues" not in properties or "maxValues" not in properties:
-            ranges = None
+        if not has_control:
+            # symbol.cc: controlExists = 0 -> index = 1; drawActive draws state 1 only.
+            # Pick it from the full state list: remove_extra_groups keeps only
+            # state 0 when the file has no minValues/maxValues.
+            temp_group.objects = temp_group.objects[1:2]
         else:
-            ranges = self.generate_pv_ranges(properties)
-        self.remove_extra_groups(temp_group, ranges)  # with no ranges, keeps only the first state
-        if ranges is not None:
-            if num_pvs == 0 or num_pvs == "0":
-                self.remove_symbol_groups(temp_group, ranges)
+            if "minValues" not in properties and "maxValues" not in properties:
+                ranges = None
             else:
+                ranges = self.generate_pv_ranges(properties)
+            self.remove_extra_groups(temp_group, ranges)
+            if ranges is not None:
                 self.populate_symbol_pvs(temp_group, properties, ranges)
+        if warnings:
+            temp_group.properties["symbolWarnings"] = warnings
         return temp_group
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
@@ -516,32 +643,16 @@ class EDMFileParser:
         while len(temp_group.objects) > len(ranges):
             logger.debug(f"Removed symbol group: {temp_group.objects.pop()}")
 
-    def remove_symbol_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
-        """
-        Given a group of symbol groups, remove all groups whose ranges do not include 1.
-        (This is done when no pvs are given and only the "1" group should be displayed)
-
-        Parameters
-        ----------
-        temp_group: EDMGroup
-            The EDMGroup making up each symbol group whose objects will be modified
-        ranges: list[list[str]]
-            A list encompassing the ranges (mainly the len(ranges) is important)
-        """
-        for i in range(
-            len(ranges) - 1, -1, -1
-        ):  # going backwards so I do not need to change indices when deleting objects
-            min_range = ranges[i][0] or float("-inf")
-            max_range = ranges[i][1] or float("inf")
-            if float(min_range) > 1 or float(max_range) <= 1:
-                temp_group.objects.pop(i)
-
     def generate_pv_ranges(
         self, properties: dict[str, bool | str | list[str]]
-    ) -> list[list[int, int]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
+    ) -> list[list[str]]:  # Should pass in minValues, maxValues, num_states in directly instead of properties
         """
         Given minValues and maxValues (through properties), generate the ranges
         that the min/maxValues represent.
+
+        EDM (symbol.cc) reads both as arrays indexed by state number, so an entry
+        lands on the state its index names (``minValues { 1 "1" }`` is state 1)
+        and a state the file leaves out keeps EDM's default 0.
 
         Parameters
         ----------
@@ -550,29 +661,15 @@ class EDMFileParser:
 
         Returns
         ----------
-        list[list[int, int]]
-            The list of pv ranges
+        list[list[str]]
+            ``[min, max]`` per state
         """
-        min_values = properties["minValues"]
-        max_values = properties["maxValues"]
-        num_states = int(properties["numStates"])
-        ranges = [[None, None] for _ in range(num_states)]
-        for i in range(len(min_values)):
-            separated_value = min_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][0] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][0] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed minValue attribute: {min_values}")
-        for i in range(len(max_values)):
-            separated_value = max_values[i].split(" ")
-            if len(separated_value) == 1:
-                ranges[i][1] = separated_value[0]
-            elif len(separated_value) == 2:
-                ranges[int(separated_value[0])][1] = separated_value[1]
-            else:
-                raise ValueError(f"Malformed maxValue attribute: {max_values}")
+        num_states = edm_int(properties.get("numStates"))
+        ranges = [["0", "0"] for _ in range(num_states)]
+        for column, key in ((0, "minValues"), (1, "maxValues")):
+            for index, value in block_items(properties.get(key)):
+                if 0 <= index < num_states:
+                    ranges[index][column] = value
         return ranges
 
     def populate_symbol_pvs(
@@ -592,8 +689,8 @@ class EDMFileParser:
         ranges: list[list[str]]
             The ranges taht determine the visPv ranges
         """
-        num_states = int(properties["numStates"])
-        if len(properties["controlPvs"]) > 1:
+        num_states = edm_int(properties.get("numStates"))
+        if len(block_items(properties.get("controlPvs"))) > 1:
             logger.warning(f"This symbol object has more than one pV: {properties}")
         for i in range(
             min(len(temp_group.objects), num_states)
@@ -613,10 +710,8 @@ class EDMFileParser:
         properties: dict[str, bool | str | list[str]]
             Object properties from the activesymbolclass
         """
-        if "controlPvs" in properties:
-            symbol_channel = properties["controlPvs"][0]
-        else:
-            symbol_channel = None
+        control_pvs = [pv for _, pv in sorted(block_items(properties.get("controlPvs")))]
+        symbol_channel = control_pvs[0] if control_pvs else None
 
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
@@ -663,11 +758,11 @@ class EDMFileParser:
         """
         size_properties = {}
         for prop in ["x", "y", "width", "height"]:
-            match = re.search(rf"^{prop[0]}\s+(-?\d+)", text, re.M)
-            if not match and strict:
+            value = EDMFileParser._find_size(text, prop[0])
+            if value is None and strict:
                 raise ValueError(f"Missing required property '{prop}' in widget.")
 
-            if not match:
+            if value is None:
                 """match_macro = re.search(rf"^{prop[0]}\\s+(\\$\\{{[A-Za-z_][A-Za-z0-9_]*\\}})", text, re.M)
                 if not match_macro:
                     raise ValueError(f"Missing required property '{prop}' in widget.")
@@ -678,9 +773,17 @@ class EDMFileParser:
                 size_properties[prop] = 1
                 # raise ValueError(f"Missing required property '{prop}' in widget.")
             else:
-                size_properties[prop] = int(match.group(1))
+                size_properties[prop] = value
 
         return size_properties
+
+    @staticmethod
+    def _find_size(text: str, key: str) -> int | None:
+        """Integer value of the ``x``/``y``/``w``/``h`` line in ``text``, or None when
+        absent or not an integer. EDM's tag reader skips leading whitespace, so an
+        indented ``  w 236`` counts."""
+        match = re.search(rf"^[ \t]*{key}\s+(-?\d+)", text, re.M)
+        return int(match.group(1)) if match else None
 
     @classmethod
     def get_object_properties(cls, text: str) -> dict[str, bool | str | list[str]]:
@@ -714,7 +817,7 @@ class EDMFileParser:
                     properties[multi_line_key] = cleaned_prop
                     multi_line_prop = []
                 else:
-                    multi_line_prop.append(line.strip(' "').replace('\\"', '"'))
+                    multi_line_prop.append(line)
                 continue
 
             try:
@@ -733,33 +836,38 @@ class EDMFileParser:
 
     @staticmethod
     def remove_prepended_index(lines: list[str]) -> list[str]:
-        """Removes the prepended indices from the given multi-line property value
+        """Clean the raw lines of a multi-line (brace-block) property value.
+
+        EDM writes array tags (``displayFileName``, ``symbols``, ``minValues``,
+        ``xPoints``, ...) as ``<index> <value>`` lines, and may skip indices
+        (``symbols { 2 "P=X" }``) or start at 1. When every line carries an
+        unquoted leading index and at least one line also carries a value, the
+        values are returned as an :class:`IndexedBlock` whose ``indices`` keep
+        each value's EDM index, so consumers can align parallel arrays (a related
+        display's ``symbols[i]`` belongs to its ``displayFileName[i]``). Otherwise
+        (quoted text such as ``value { "1 GeV" }``, or bare numbers such as
+        ``value { 5 }``) every line is kept as text. Values lose their
+        surrounding quotes and ``\\"`` escapes either way.
 
         Parameters
         ----------
         lines : list[str]
-            List of lines in a multi-line property value to remove the prepended indices from
+            The raw lines between ``{`` and ``}``
 
         Returns
         -------
         list[str]
-            Lines of the multi-line property value with the prepended indices removed
+            The cleaned values (an :class:`IndexedBlock` for an indexed block)
         """
-        indices = []
-        values = []
-
-        def check_sequential(indices):
-            """Check if the list of indices is sequential (starting from 0 or 1)"""
-            return indices == list(range(len(indices))) or indices == list(range(1, len(indices) + 1))
-
-        for line in lines:
-            try:
-                k, v = line.split(maxsplit=1)
-                indices.append(int(k))
-                values.append(v.strip(' "').replace('\\"', '"'))
-            except ValueError:
-                return lines
-
-        if not check_sequential(indices):
-            return lines
-        return values
+        lines = [line for line in lines if line.strip()]
+        # Match stripped lines so a trailing space after a bare number ("5 ") does
+        # not read as an index with an empty value.
+        matches = [_INDEXED_LINE_RE.match(line.strip()) for line in lines]
+        # A block of bare numbers (``value { 5 }``) is text, not indices with no
+        # values; ``symbols { 0 "" }`` is still indexed (its value is empty).
+        if lines and all(matches) and any(match.group(2) is not None for match in matches):
+            return IndexedBlock(
+                [_clean_block_value(match.group(2) or "") for match in matches],
+                [int(match.group(1)) for match in matches],
+            )
+        return [_clean_block_value(line) for line in lines]

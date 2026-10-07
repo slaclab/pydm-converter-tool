@@ -192,10 +192,10 @@ def test_group_children_keep_absolute_geometry_with_no_inherited_rules():
 
 def test_top_level_widget_after_group_has_its_own_range_rule():
     root = _convert("graphics_group.edl").root
-    text_input = root.children[1]
-    assert text_input.type == "pv-text-input"
-    assert len(text_input.rules) == 1
-    rule = text_input.rules[0]
+    text_display = root.children[1]
+    assert text_display.type == "pv-label"  # activeXTextDspClass without editable is read-only
+    assert len(text_display.rules) == 1
+    rule = text_display.rules[0]
     assert [pv.name for pv in rule.pvs] == ["${P}:MODE"]
     assert rule.conditions[0].expression == "({0} >= 1.0) and ({0} < 3.0)"
 

@@ -196,8 +196,9 @@ def test_convert_bytes_symbol_without_file_property_warns(monkeypatch, tmp_path)
     assert "EDM symbol has no file property; symbol not rendered" in symbol.warnings
 
 
-def test_convert_bytes_symbol_without_pvs_or_ranges_keeps_first_state(monkeypatch, tmp_path):
-    """numPvs 0 with no minValues/maxValues shows the first state instead of raising."""
+def test_convert_bytes_symbol_without_pvs_or_ranges_shows_state_one(monkeypatch, tmp_path):
+    """numPvs 0 with no minValues/maxValues shows state 1 (symbol.cc: no control
+    PV -> index = 1), not state 0 and not nothing."""
     _isolate_symbol_lookup(monkeypatch, tmp_path)
     text = SYMBOL_DISPLAY.read_text(encoding="utf-8")
     stripped = re.sub(
@@ -206,7 +207,9 @@ def test_convert_bytes_symbol_without_pvs_or_ranges_keeps_first_state(monkeypatc
     assert stripped != text
 
     found = _convert_symbol_display(stripped.encode("utf-8"), search_paths=[EDM_FIXTURES])
-    assert len([child for child in found.children if child.type == "group"]) == 1
+    (state,) = [child for child in found.children if child.type == "group"]
+    # symbol_states.edl: state 0 is a rectangle, state 1 a circle.
+    assert [child.type for child in state.children] == ["ellipse"]
 
 
 def test_convert_bytes_calc_list_found_via_search_paths(monkeypatch):

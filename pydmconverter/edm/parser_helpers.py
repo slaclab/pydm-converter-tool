@@ -762,6 +762,124 @@ def search_color_list(cli_color_file=None) -> str | None:
     return None
 
 
+# EDM colors.list tokenizer (color_pkg.cc getToken): a quoted string, a run of
+# the special characters < > = | & !, or a word ended by whitespace, a comma, a
+# quote, a special character or "#". ":" is not special, so "30 :" and ':"red"'
+# yield a standalone ":" token.
+_RULE_TOKEN_RE = re.compile(r'"([^"]*)"|([<>=|&!]+)|([^\s,"<>=|&!#]+)')
+# EDM rule operators -> the comparison they apply to the PV value (the value is
+# the left operand: "< 4" means value < 4, color_pkg.cc lessThan(variable, arg)).
+RULE_OPERATORS = {"=": "==", "!=": "!=", ">": ">", ">=": ">=", "<": "<", "<=": "<="}
+RULE_CONNECTORS = ("&&", "||")
+
+
+def _strip_color_comment(line: str) -> str:
+    """Drop a trailing ``# comment`` (a ``#`` outside double quotes)."""
+    in_quote = False
+    for pos, char in enumerate(line):
+        if char == '"':
+            in_quote = not in_quote
+        elif char == "#" and not in_quote:
+            return line[:pos]
+    return line
+
+
+def _rule_tokens(text: str) -> List[str]:
+    tokens: List[str] = []
+    for match in _RULE_TOKEN_RE.finditer(text):
+        quoted, special, word = match.groups()
+        if quoted is not None:
+            tokens.append(quoted)
+        elif special:
+            tokens.append(special)
+        elif word.endswith(":") and word != ":":
+            # "30:" is one token to EDM (and an illegal float); be lenient.
+            tokens.extend([word[:-1], ":"])
+        else:
+            tokens.append(word)
+    return tokens
+
+
+def _rule_number(token: str) -> Optional[float]:
+    try:
+        return float(token)
+    except ValueError:
+        try:
+            return float(int(token, 0))
+        except ValueError:
+            return None
+
+
+def parse_color_rule_condition(text: str) -> Optional[Dict[str, Any]]:
+    """Parse one colors.list rule condition line, EDM grammar (color_pkg.cc ver4InitFromFile).
+
+    ``[op] number [(&& | ||) [op] number] : result`` or ``default : result``; a
+    bare number implies ``=``. ``result`` is a static colour name, or ``&&``/``||``
+    to join this condition with the next one (no colour of its own).
+
+    Returns a dict with ``condition`` (the text before the colon), ``color`` (the
+    result colour name, ``None`` for a join), ``default`` (always true), ``terms``
+    (``[(python_op, value)]``, one or two), ``connector`` (``"&&"``/``"||"`` between
+    the two terms, or ``None``) and ``join`` (``"&&"``/``"||"``/``None``), or
+    ``None`` when the line does not follow the grammar.
+    """
+    condition_text, sep, _ = text.partition(":")
+    tokens = _rule_tokens(text)
+    if not sep or not tokens:
+        return None
+    parsed: Dict[str, Any] = {
+        "condition": condition_text.strip(),
+        "color": None,
+        "default": False,
+        "terms": [],
+        "connector": None,
+        "join": None,
+    }
+    pos = 0
+
+    def term() -> bool:
+        nonlocal pos
+        if pos >= len(tokens):
+            return False
+        token = tokens[pos]
+        op = "="
+        if token in RULE_OPERATORS:
+            op = token
+            pos += 1
+            if pos >= len(tokens):
+                return False
+            token = tokens[pos]
+        value = _rule_number(token)
+        if value is None:
+            return False
+        parsed["terms"].append((RULE_OPERATORS[op], value))
+        pos += 1
+        return True
+
+    if tokens[0] == "default":
+        parsed["default"] = True
+        pos = 1
+    else:
+        if not term():
+            return None
+        if pos < len(tokens) and tokens[pos] in RULE_CONNECTORS:
+            parsed["connector"] = tokens[pos]
+            pos += 1
+            if not term():
+                return None
+    if pos >= len(tokens) or tokens[pos] != ":":
+        return None
+    pos += 1
+    if pos >= len(tokens):
+        return None
+    result = tokens[pos]
+    if result in RULE_CONNECTORS:
+        parsed["join"] = result
+    else:
+        parsed["color"] = result
+    return parsed
+
+
 def parse_colors_list(filepath: str) -> Dict[str, Any]:
     """
     Parse an EDM `colors.list` file into a structured Python dictionary.
@@ -940,25 +1058,20 @@ def parse_colors_list(filepath: str) -> Dict[str, Any]:
                 idx = skip_blanks_and_comments(idx)
 
             while idx < len(lines):
-                inner_line = lines[idx].strip()
+                inner_line = _strip_color_comment(lines[idx]).strip()
                 idx += 1
                 if not inner_line or re_comment.match(inner_line):
                     continue
                 if inner_line.startswith("}"):
                     break
 
-                parts = inner_line.split(":")
-                if len(parts) == 2:
-                    condition_str = parts[0].strip()
-                    color_str = parts[1].strip().strip('"')
-                    conditions.append(
-                        {
-                            "condition": condition_str,
-                            "color": color_str,
-                        }
-                    )
+                condition = parse_color_rule_condition(inner_line)
+                if condition is None:
+                    logger.warning(f"Unparseable condition in colors.list rule {rule_index}: '{inner_line}'")
+                    continue
+                conditions.append(condition)
 
-            parsed_data["rules"][rule_index] = {"name": rule_name_part, "conditions": conditions}
+            parsed_data["rules"][rule_index] = {"name": rule_name_part.strip('"'), "conditions": conditions}
             continue
 
         if line.startswith("menumap"):
@@ -983,11 +1096,11 @@ def parse_colors_list(filepath: str) -> Dict[str, Any]:
                     break
                 if not inner_line or re_comment.match(inner_line):
                     continue
-                alarm_parts = inner_line.split(":")
-                if len(alarm_parts) == 2:
-                    alarm_state = alarm_parts[0].strip()
-                    color_name = alarm_parts[1].strip().strip('"')
-                    parsed_data["alarm"][alarm_state] = color_name
+                # Split on the FIRST colon only: colour names carry colons of
+                # their own ("Monitor: MINOR").
+                alarm_state, sep, color_name = inner_line.partition(":")
+                if sep:
+                    parsed_data["alarm"][alarm_state.strip()] = color_name.strip().strip('"')
             continue
 
         logging.warning(f"Unrecognized line in colors.list: '{line}'")
@@ -1018,9 +1131,43 @@ def get_color_by_index(color_data: Dict[str, Any], index: str) -> Optional[Dict[
         idx = int(match.group(1))
         color = color_data.get("static", {}).get(idx)
         if not color:
+            color = rule_static_color(color_data, idx)
+        if not color:
             logger.warning(f"Color index {idx} not found in colors.list.")
         return color
     logger.warning(f"Invalid color index format: '{index}'.")
+    return None
+
+
+def static_color_by_name(color_data: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
+    """The static colour called ``name`` (EDM resolves rule results by name, statics only)."""
+    for color in (color_data or {}).get("static", {}).values():
+        if color.get("name") == name:
+            return color
+    return None
+
+
+def rule_static_color(color_data: Dict[str, Any], idx: int) -> Optional[Dict[str, Any]]:
+    """The colour a rule index shows when no condition applies, or ``None``.
+
+    EDM gives a rule colour the pixel of its FIRST condition that names a result
+    colour (color_pkg.cc, "use first rule condition as static color for rule"),
+    and ``evalRule`` returns the rule index itself when nothing matches — so that
+    colour is both the static rendering and the no-match fallback. The returned
+    dict is the static entry's (``rgb`` may carry six components for a blinking
+    colour) plus ``rule``: the rule index.
+    """
+    rule = (color_data or {}).get("rules", {}).get(idx)
+    if not rule:
+        return None
+    for condition in rule.get("conditions", ()):
+        name = condition.get("color")
+        if name:
+            static = static_color_by_name(color_data, name)
+            if static is None:
+                logger.warning(f"colors.list rule {idx} names unknown colour '{name}'.")
+                return None
+            return {**static, "rule": idx}
     return None
 
 
