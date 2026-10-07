@@ -488,6 +488,9 @@ def loc_conversion(edm_string: str) -> str:
 
     Enum ('e') is mapped to int for simplicity in this conversion.
 
+    A value with no recognized type prefix (e.g. "CMOS:LI20:3490") becomes a
+    str PV holding the whole text, whereas EDM drops its first two characters.
+
     Parameters
     ----------
     edm_string : str
@@ -597,9 +600,16 @@ def loc_conversion(edm_string: str) -> str:
         # logger.warning(f"Unsupported type character: {type_char}")
         # return f"No loc here"
         if edm_type and len(edm_type) > 1:
+            # No type prefix, e.g. LOC\DISP=CMOS:LI20:3490. EDM's default case
+            # makes a string PV but still drops a type char and separator, so
+            # it stores "OS:LI20:3490". Keep the whole text instead: it is the
+            # author's value, and int readers like menuMux see 0 either way.
             edm_type = "s"
+            pydm_type = type_mapping[edm_type]
             value = type_and_value
-            logger.warning(f"Unexpected type_and_value: {type_and_value}")
+            logger.warning(
+                f"Local PV '{name}' has no recognized type in '{type_and_value}', using it as a string value"
+            )
         else:
             raise ValueError(f"Unsupported type character: {type_char}")
 
