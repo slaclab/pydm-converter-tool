@@ -22,8 +22,8 @@ def generate_menumux_file(
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # The screen gets its menus as plain literals, so it runs with only qtpy and
-    # pydm installed: position, item labels, (macro, value per item) pairs, the
-    # EDM initialState and the controlPv address.
+    # pydm installed: position, item labels, each item's (macro, value) pairs,
+    # the EDM initialState and the controlPv address.
     menus = []
     for obj in menumux_buttons:
         count = menu_item_count(obj)
@@ -74,8 +74,7 @@ class MenuMuxScreen(Display):
 
         self.muxes = []
         self.menus = {menus_literal}
-        self.macro_mappings = []  # Each entry: [(macro_name, [value0, value1, ...]), ...]
-        self.current_macros = dict()  # Dict of current macros to apply
+        self.current_macros = dict()  # The menu macros passed to the embedded display
         self.control_addresses = []  # Each entry: the menu's controlPv address, or None without one
         self.control_writers = []  # Each entry: the menu's ControlPvWriter, or None without a controlPv
         self.control_channels = []
@@ -113,7 +112,6 @@ class MenuMuxScreen(Display):
             )
 
             self.muxes.append(combo)
-            self.macro_mappings.append(menu["macros"])
             self.control_addresses.append(address)
             self.control_writers.append(None if address is None else ControlPvWriter())
             self.control_connections.append(False)
@@ -124,9 +122,7 @@ class MenuMuxScreen(Display):
         layout.addWidget(self.container)
 
         # Start every menu at its initial item, then load once
-        for j, combo in enumerate(self.muxes):
-            self.set_menu_macros(j, combo.currentIndex())
-        self.load()
+        self.update_display()
 
     def expand(self, text):
         # The screen's macros, which the converter writes as ${{name}}; unknown ones stay.
@@ -204,7 +200,7 @@ class MenuMuxScreen(Display):
     def menu_selected(self, combo_index, selected_index):
         writer = self.control_writers[combo_index]
         if writer is None:
-            self.update_display(combo_index, selected_index)
+            self.update_display()
         elif not self.showing_control_value:
             # As in EDM, choosing an item only writes its index to the
             # controlPv; the menu and its macros follow the value it reports.
@@ -221,14 +217,30 @@ class MenuMuxScreen(Display):
             combo.setCurrentIndex(index)
         finally:
             self.showing_control_value = False
-        self.update_display(combo_index, index)
+        self.update_display()
 
-    def set_menu_macros(self, combo_index, selected_index):
-        for macro_name, value_list in self.macro_mappings[combo_index]:
-            self.current_macros[macro_name] = value_list[selected_index]
+    def menu_macros(self):
+        # As in EDM: an item sets each of its (macro, value) pairs whose name
+        # and value are both non-empty. EDM expands a widget afresh on every
+        # change, from the screen's macros and then each menu's current item
+        # in turn, so the first menu to set a macro wins and a macro that no
+        # current item sets stays unexpanded, as ${{name}} here. (In EDM the
+        # screen's own macros win over the menus'; PyDM's embedded display
+        # lets the menus' win.)
+        macros = dict()
+        for menu, combo in zip(self.menus, self.muxes):
+            index = combo.currentIndex()
+            for name, value in menu["macros"][index] if index >= 0 else []:
+                if name and value:
+                    macros.setdefault(name, value)
+        return macros
 
-    def update_display(self, combo_index, selected_index):
-        self.set_menu_macros(combo_index, selected_index)
+    def update_display(self):
+        macros = self.menu_macros()
+        # When no menu sets anything EDM leaves every widget as it was
+        # expanded before, so keep the previous macros.
+        if macros:
+            self.current_macros = macros
         self.load()
 
     def load(self):
@@ -280,33 +292,32 @@ def menu_item_count(obj: EDMObject) -> int:
     )
 
 
-def menu_macros(obj: EDMObject, count: int) -> list[tuple[str, list[str]]]:
-    """A menu mux's (macro, value per item) pairs, one per symbol{i}. EDM
-    leaves trailing empty strings out of value{i}, and leaves value{i} out
-    altogether when all of its values are empty, so pad each to count."""
-    if count == 0:
-        # An empty menu has no item selected (index -1) to take values from.
-        return []
+def menu_macros(obj: EDMObject, count: int) -> list[list[tuple[str, str]]]:
+    """A menu mux's (macro, value) pairs for each item, one per symbol{i}:
+    choosing item n sets symbol{i}[n] to value{i}[n], and an item can name
+    a different macro than the others. EDM leaves trailing empty strings out
+    of symbol{i} and value{i}, and leaves value{i} out altogether when all
+    of its values are empty, so pad each to count."""
     symbols = sorted(
         (key for key in obj.properties if re.fullmatch("symbol[0-9]+", key)),
         key=lambda key: int(key.removeprefix("symbol")),
     )
-    macros = []
+    columns = []
     for key in symbols:
-        names = edm_array(obj.properties[key])
-        if names and names[0]:
+        names = padded(edm_array(obj.properties[key]), count)
+        if any(names):
             values = edm_array(obj.properties.get("value" + key.removeprefix("symbol")))
-            macros.append((names[0], padded(values, count)))
-    return macros
+            columns.append(list(zip(names, padded(values, count))))
+    return [[column[n] for column in columns] for n in range(count)]
 
 
-def menu_items(obj: EDMObject, count: int, macros: list[tuple[str, list[str]]]) -> list[str]:
+def menu_items(obj: EDMObject, count: int, macros: list[list[tuple[str, str]]]) -> list[str]:
     """A menu mux's item labels. Without symbolTag EDM shows blank items, so
     label each item by its first macro's value instead."""
     tags = edm_array(obj.properties.get("symbolTag"))
     if tags:
         return padded(tags, count)
-    return list(macros[0][1]) if macros else [""] * count
+    return [pairs[0][1] if pairs else "" for pairs in macros]
 
 
 def initial_state(obj: EDMObject) -> int | None:

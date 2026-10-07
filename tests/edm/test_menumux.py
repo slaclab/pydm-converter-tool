@@ -196,6 +196,104 @@ FLAG_MENU = (
 SHADOWED_SCREEN = SCREEN.replace("# (Menu Mux)", in_groups(FLAG_MENU, (145, 80, 110, 35)) + "\n# (Menu Mux)", 1)
 
 
+# A label showing the macros of PER_ITEM_SCREEN's menu.
+LABEL = textwrap.dedent(
+    """
+    # (Static Text)
+    object activeXTextClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 0
+    x 10
+    y 50
+    w 280
+    h 20
+    value {
+      "$(sector) $(visibleLI20) $(visibleLI24)"
+    }
+    endObjectProperties
+    """
+)
+
+# A menu mux like misc/thyratronRange.edl, whose items name different macros:
+# "LI24" sets visibleLI24 through symbol1 and visibleLI20 through symbol2,
+# "LI21" leaves visibleLI24's value out, and "?" sets nothing.
+PER_ITEM_SCREEN = (
+    menu_mux_screen(
+        """
+        initialState "0"
+        numItems 4
+        symbolTag {
+          0 "LI20"
+          1 "LI24"
+          2 "LI21"
+          3 "?"
+        }
+        symbol0 {
+          0 "sector"
+          1 "sector"
+          2 "sector"
+        }
+        value0 {
+          0 "LI20"
+          1 "LI24"
+          2 "LI21"
+        }
+        symbol1 {
+          0 "visibleLI20"
+          1 "visibleLI24"
+          2 "visibleLI20"
+        }
+        value1 {
+          0 "0"
+          1 "0"
+          2 "1"
+        }
+        symbol2 {
+          0 "visibleLI24"
+          1 "visibleLI20"
+          2 "visibleLI24"
+        }
+        value2 {
+          0 "1"
+          1 "1"
+        }
+        """
+    )
+    + LABEL
+)
+
+# PER_ITEM_SCREEN with a second menu that also sets sector, except on "none".
+TWO_MENU_SCREEN = PER_ITEM_SCREEN + textwrap.dedent(
+    """
+    # (Menu Mux)
+    object menuMuxClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 0
+    x 150
+    y 10
+    w 100
+    h 25
+    numItems 2
+    symbolTag {
+      0 "LI30"
+      1 "none"
+    }
+    symbol0 {
+      0 "sector"
+      1 "sector"
+    }
+    value0 {
+      0 "LI30"
+    }
+    endObjectProperties
+    """
+)
+
+
 def generated_menus(py_file):
     """The menus literal of a generated screen."""
     module = ast.parse(py_file.read_text())
@@ -302,9 +400,9 @@ def test_values_left_out_by_edm_are_empty(menumux_screen):
     assert menu["items"] == ["A", "B", "C"]
     # symbol2 still counts after symbol1, whose value1 is left out.
     assert menu["macros"] == [
-        ("S0", ["a", "b", ""]),
-        ("S1", ["", "", ""]),
-        ("S2", ["x", "y", "z"]),
+        [("S0", "a"), ("S1", ""), ("S2", "x")],
+        [("S0", "b"), ("S1", ""), ("S2", "y")],
+        [("S0", ""), ("S1", ""), ("S2", "z")],
     ]
 
 
@@ -315,9 +413,11 @@ def test_items_past_the_tags_are_blank(menumux_screen):
     (menu,) = generated_menus(menumux_screen)
     assert menu["items"] == ["A", "B", "C", ""]
     assert menu["macros"] == [
-        ("S0", ["a", "b", "", ""]),
-        ("S1", ["", "", "", ""]),
-        ("S2", ["x", "y", "z", ""]),
+        [("S0", "a"), ("S1", ""), ("S2", "x")],
+        [("S0", "b"), ("S1", ""), ("S2", "y")],
+        [("S0", ""), ("S1", ""), ("S2", "z")],
+        # symbol{i} names no macro for the fourth item either.
+        [("", ""), ("", ""), ("", "")],
     ]
 
 
@@ -342,21 +442,105 @@ def test_menu_opens_on_an_item_whose_values_edm_left_out(menumux_screen, qtbot):
 
     def macros():
         parsed = screen.embedded.parsed_macros()
-        return [parsed[name] for name in ("S0", "S1", "S2")]
+        return {name: parsed[name] for name in ("S0", "S1", "S2") if name in parsed}
 
-    # initialState "2" opens the menu on "C", whose S0 and S1 values EDM left out.
+    # initialState "2" opens the menu on "C", whose S0 and S1 values EDM left
+    # out. As in EDM, an empty value sets nothing, so ${S0} and ${S1} stay
+    # unexpanded.
     screen = load_file(str(menumux_screen), target=None)
     qtbot.addWidget(screen)
     screen.show()
     (menu,) = screen.findChildren(QComboBox)
     assert menu.currentIndex() == 2
     qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
-    assert macros() == ["", "", "z"]
+    assert macros() == {"S2": "z"}
 
     menu.setCurrentIndex(0)
-    assert macros() == ["a", "", "x"]
+    assert macros() == {"S0": "a", "S2": "x"}
+    # S0 from "A" is not carried over to "C".
     menu.setCurrentIndex(2)
-    assert macros() == ["", "", "z"]
+    assert macros() == {"S2": "z"}
+
+
+@pytest.mark.parametrize("menumux_screen", [PER_ITEM_SCREEN], ids=["per_item"], indirect=True)
+def test_items_name_their_own_macros(menumux_screen):
+    (menu,) = generated_menus(menumux_screen)
+    assert menu["items"] == ["LI20", "LI24", "LI21", "?"]
+    # Each item takes its macro names from its own entry of symbol{i}, not
+    # from the first item's.
+    assert menu["macros"] == [
+        [("sector", "LI20"), ("visibleLI20", "0"), ("visibleLI24", "1")],
+        [("sector", "LI24"), ("visibleLI24", "0"), ("visibleLI20", "1")],
+        [("sector", "LI21"), ("visibleLI20", "1"), ("visibleLI24", "")],
+        [("", ""), ("", ""), ("", "")],
+    ]
+
+
+def macros_and_label(screen):
+    """The menu macros passed to screen's embedded display, and the text of
+    the label showing them there."""
+    from qtpy.QtWidgets import QLabel
+
+    parsed = screen.embedded.parsed_macros()
+    macros = {name: parsed[name] for name in ("sector", "visibleLI20", "visibleLI24") if name in parsed}
+    (label,) = screen.embedded.embedded_widget.findChildren(QLabel)
+    return macros, label.text()
+
+
+@pytest.mark.parametrize("menumux_screen", [PER_ITEM_SCREEN], ids=["per_item"], indirect=True)
+def test_menu_sets_only_the_selected_items_macros(menumux_screen, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from qtpy.QtWidgets import QComboBox
+
+    screen = load_file(str(menumux_screen), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    (menu,) = screen.findChildren(QComboBox)
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+    assert macros_and_label(screen) == ({"sector": "LI20", "visibleLI20": "0", "visibleLI24": "1"}, "LI20 0 1")
+
+    menu.setCurrentIndex(1)
+    assert macros_and_label(screen) == ({"sector": "LI24", "visibleLI20": "1", "visibleLI24": "0"}, "LI24 1 0")
+
+    # "LI21" does not set visibleLI24, so EDM leaves $(visibleLI24) unexpanded
+    # rather than keeping the value "LI24" set.
+    menu.setCurrentIndex(2)
+    assert macros_and_label(screen) == ({"sector": "LI21", "visibleLI20": "1"}, "LI21 1 ${visibleLI24}")
+
+    # "?" sets nothing, and EDM then keeps every widget as it was.
+    menu.setCurrentIndex(3)
+    assert macros_and_label(screen) == ({"sector": "LI21", "visibleLI20": "1"}, "LI21 1 ${visibleLI24}")
+
+    menu.setCurrentIndex(0)
+    assert macros_and_label(screen) == ({"sector": "LI20", "visibleLI20": "0", "visibleLI24": "1"}, "LI20 0 1")
+
+
+@pytest.mark.parametrize("menumux_screen", [TWO_MENU_SCREEN], ids=["two_menus"], indirect=True)
+def test_first_menu_to_set_a_macro_wins(menumux_screen, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from qtpy.QtWidgets import QComboBox
+
+    screen = load_file(str(menumux_screen), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    first, second = screen.findChildren(QComboBox)
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+
+    # Both menus set sector; as in EDM the first one in the file wins.
+    assert macros_and_label(screen)[0]["sector"] == "LI20"
+    second.setCurrentIndex(1)
+    second.setCurrentIndex(0)
+    assert macros_and_label(screen)[0]["sector"] == "LI20"
+
+    # The second menu's sector applies while the first sets none.
+    first.setCurrentIndex(3)
+    assert macros_and_label(screen) == ({"sector": "LI30"}, "LI30 ${visibleLI20} ${visibleLI24}")
+
+    # With neither menu setting anything, the macros stay as they were.
+    second.setCurrentIndex(1)
+    assert macros_and_label(screen) == ({"sector": "LI30"}, "LI30 ${visibleLI20} ${visibleLI24}")
 
 
 CONTROL_SCREEN = textwrap.dedent(
