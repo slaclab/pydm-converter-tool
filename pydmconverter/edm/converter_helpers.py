@@ -34,7 +34,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_colors_list,
     parse_edm_macros,
 )
-from pydmconverter.edm.menumux import generate_menumux_file
+from pydmconverter.edm.menumux import generate_menumux_file, initial_state
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -1247,7 +1247,7 @@ def _fits_tab_bar(pip: EDMObject, pip_parent: EDMGroup, hidden: bool, choice: ED
 
 def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) -> None:
     """
-    Convert each menu embedded window that a choice button drives.
+    Convert each menu embedded window that a choice button or a menu mux drives.
 
     In EDM the two are separate widgets sharing a LOC\\ variable: the choice
     button writes it (its states are the variable's enum strings) and the
@@ -1257,6 +1257,11 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
     the button stays a PyDMEnumButton and the window becomes one embedded
     display per file, shown only at its index, so EDM's layout and every other
     user of the variable keep working.
+
+    A menu mux whose controlPv names the variable writes it too: the generated
+    menu mux screen writes the chosen item's index there. The menu becomes part
+    of that separate .py rather than a widget in the .ui, so it is never a tab
+    bar, and its window always becomes the switched displays.
 
     skip_widgets is the site's set of EDM classes to drop; pairing rewrites both
     widgets together, so a site dropping either one leaves the tree untouched.
@@ -1271,6 +1276,8 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
     # name into visPv/controlPv strings, so resolve the marker here, once per
     # screen, to the same name for every widget sharing the variable.
     token = str(id(root))[-6:]
+    # A site dropping menu muxes leaves their variables unwritten.
+    writes_menus = not skip_widgets or "menumuxclass" not in skip_widgets
 
     objects = list(_walk_objects(root))
     # objects holds a reference to every walked object, so keying by id is safe.
@@ -1292,7 +1299,8 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             for obj, group in users
             if isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         ]
-        if not choices:
+        menus = [obj for obj, _ in users if _menu_writes(obj, marked_name)] if writes_menus else []
+        if not choices and not menus:
             continue
 
         # The richest reference defines the variable: most enum strings, then any config at all.
@@ -1308,12 +1316,33 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         if name != marked_name:
             definition = definition.replace("__UNIQUE__", token)
 
-        if len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
+        if "?" not in definition and menus:
+            # Nothing configures the variable, so the first menu declares it when
+            # the screen runs: an int starting at the menu's initialState
+            # (MenuMuxScreen.control_address). Declare it so here, so the
+            # displays start where the variable does.
+            start = initial_state(menus[0])
+            if start is None:
+                logger.info(f"loc://{name} starts at a macro's value; its first display starts visible")
+            else:
+                definition = f"loc://{name}?type=int&init={start}"
+
+        if choices and len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
             # Tabs switch on their own and never emit the variable, so the
             # marked name never reaches the output.
             _absorb_pip_into_tabs(pip, parent, choices[0][0], files, definition, color_list_dict)
         else:
             _stack_pip_displays(pip, parent, name, files, definition, users, marked_name)
+
+
+def _menu_writes(obj, name: str) -> bool:
+    """A menu mux whose controlPv is the variable: the generated menu mux screen
+    writes the chosen item's index to it (menumux.control_pv)."""
+    if not isinstance(obj, EDMObject) or obj.name.lower() != "menumuxclass":
+        return False
+    control = obj.properties.get("controlPv")
+    match = LOC_NAME_PATTERN.match(control.strip()) if isinstance(control, str) else None
+    return match is not None and match.group(1) == name
 
 
 def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dict) -> None:
@@ -1410,13 +1439,16 @@ def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name
     # PyDM's local plugin takes a variable's type, initial value and enum
     # strings from the first channel that connects and ignores later ones. The
     # window carried the full definition; hand it to the choice buttons (which
-    # need the enum strings for their states) and to every other configured use.
+    # need the enum strings for their states), to the menu muxes (whose screen
+    # declares the variable from controlPv when the .ui does not) and to every
+    # other configured use.
     for obj, _ in users:
         is_choice = isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
+        is_writer = is_choice or _menu_writes(obj, marked_name)
         for key, value in obj.properties.items():
             if not isinstance(value, str):
                 continue
-            if value.startswith(f"loc://{marked_name}?") or (is_choice and value == f"loc://{marked_name}"):
+            if value.startswith(f"loc://{marked_name}?") or (is_writer and value == f"loc://{marked_name}"):
                 obj.properties[key] = definition
             elif marked_name != name:
                 # A plain reference carrying no configuration (a label's visPv,

@@ -573,3 +573,198 @@ def test_a_value_arriving_during_a_reload_sets_the_macros(tmp_path, monkeypatch,
     # The reload the first write starts loads the macros the second one set,
     # not the first one's stale ones.
     assert "0" not in loaded, loaded
+
+
+WINDOW_SCREEN = textwrap.dedent(
+    r"""
+    4 0 1
+    beginScreenProperties
+    major 4
+    minor 0
+    release 1
+    x 0
+    y 0
+    w 300
+    h 160
+    endScreenProperties
+
+    # (Menu Mux) switching the embedded window below, as in b34/profile_b34.edl
+    object menuMuxClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 0
+    x 10
+    y 10
+    w 100
+    h 25
+    controlPv "LOC\\$(!W)menumuxWindow"
+    initialState "1"
+    numItems 2
+    symbolTag {
+      0 "OFF"
+      1 "ON"
+    }
+    endObjectProperties
+
+    # (Embedded Window) showing the file at the variable's index
+    object activePipClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 0
+    x 10
+    y 50
+    w 200
+    h 100
+    displaySource "menu"
+    filePv "LOC\\$(!W)menumuxWindow"
+    numDsps 2
+    displayFileName {
+      0 "panelOff.edl"
+      1 "panelOn.edl"
+    }
+    endObjectProperties
+    """
+)
+PANEL = textwrap.dedent(
+    """
+    4 0 1
+    beginScreenProperties
+    major 4
+    minor 0
+    release 1
+    x 0
+    y 0
+    w 200
+    h 100
+    endScreenProperties
+    """
+)
+
+
+def test_menu_switches_the_embedded_window_it_writes(tmp_path, monkeypatch, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from pydm.widgets import PyDMEmbeddedDisplay
+    from qtpy.QtWidgets import QComboBox
+
+    path = convert_elsewhere(tmp_path, monkeypatch, WINDOW_SCREEN)
+    for panel in ("panelOff", "panelOn"):
+        (tmp_path / f"{panel}.edl").write_text(PANEL)
+        convert(str(tmp_path / f"{panel}.edl"), str(path.parent / f"{panel}.ui"))
+    # The .ui and the menu name one variable, which the menu declares from
+    # initialState as the screen would.
+    (menu,) = generated_menus(path)
+    name, _, configuration = menu["controlPv"].removeprefix("loc://").partition("?")
+    assert configuration == "type=int&init=1"
+    assert f'"loc://{name}"' in (path.parent / "screen.ui").read_text()
+
+    screen = load_file(str(path), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    (combo,) = screen.findChildren(QComboBox)
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+    windows = screen.embedded.embedded_widget.findChildren(PyDMEmbeddedDisplay)
+    assert sorted(window.filename for window in windows) == ["panelOff.ui", "panelOn.ui"]
+
+    def shown():
+        return [window.filename for window in windows if window.isVisible()]
+
+    assert combo.currentIndex() == 1
+    qtbot.waitUntil(lambda: variable_value(name) == 1 and shown() == ["panelOn.ui"], timeout=3000)
+
+    # Choosing an item writes its index, and the window follows the variable.
+    combo.setCurrentIndex(0)
+    qtbot.waitUntil(lambda: variable_value(name) == 0 and shown() == ["panelOff.ui"], timeout=3000)
+
+    # So does a write from elsewhere, which moves the menu too.
+    loc_connection(name).put_value(1)
+    qtbot.waitUntil(lambda: combo.currentIndex() == 1 and shown() == ["panelOn.ui"], timeout=3000)
+
+
+# (Menu Mux) a camera menu setting the embedded .ui's macros, as in b34/profile_b34.edl
+CAMERA_MENU = textwrap.dedent(
+    r"""
+    object menuMuxClass
+    beginObjectProperties
+    major 4
+    minor 1
+    release 0
+    x 120
+    y 10
+    w 100
+    h 25
+    numItems 2
+    symbolTag {
+      0 "CAM1"
+      1 "CAM2"
+    }
+    symbol0 {
+      0 "ID"
+      1 "ID"
+    }
+    value0 {
+      0 "150"
+      1 "250"
+    }
+    endObjectProperties
+    """
+)
+
+
+@pytest.mark.parametrize(
+    "variable, start, chosen, expected, camera_pv",
+    [
+        # The start display stays visible unless its rule hears the variable.
+        ("menumuxReloadOff", "1", 0, ["panelOff.ui"], None),
+        # The chosen display stays hidden unless its rule hears the variable.
+        ("menumuxReloadOn", "0", 1, ["panelOn.ui"], None),
+        # The camera menu reloads from its own controlPv's value.
+        ("menumuxReloadCamera", "1", 0, ["panelOff.ui"], r"LOC\\$(!W)menumuxCamera"),
+    ],
+    ids=["start-display-hides", "chosen-display-shows", "camera-control-pv"],
+)
+def test_reload_keeps_the_window_on_the_menu_item(
+    tmp_path, monkeypatch, qtbot, variable, start, chosen, expected, camera_pv
+):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from pydm.widgets import PyDMEmbeddedDisplay
+    from qtpy.QtWidgets import QComboBox
+
+    camera = CAMERA_MENU if camera_pv is None else CAMERA_MENU.replace("numItems", f'controlPv "{camera_pv}"\nnumItems')
+    text = WINDOW_SCREEN.replace("menumuxWindow", variable).replace('initialState "1"', f'initialState "{start}"')
+    path = convert_elsewhere(tmp_path, monkeypatch, text + camera)
+    for panel in ("panelOff", "panelOn"):
+        (tmp_path / f"{panel}.edl").write_text(PANEL)
+        convert(str(tmp_path / f"{panel}.edl"), str(path.parent / f"{panel}.ui"))
+    menu, _ = generated_menus(path)
+    name = menu["controlPv"].removeprefix("loc://").partition("?")[0]
+
+    screen = load_file(str(path), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    window_menu, camera_menu = screen.findChildren(QComboBox)
+
+    def shown():
+        # A reload replaces the embedded .ui and its displays.
+        embedded = screen.embedded.embedded_widget
+        windows = [] if embedded is None else embedded.findChildren(PyDMEmbeddedDisplay)
+        return [window.filename for window in windows if window.isVisible()]
+
+    qtbot.waitUntil(lambda: shown() == [["panelOff.ui", "panelOn.ui"][int(start)]], timeout=3000)
+    window_menu.setCurrentIndex(chosen)
+    qtbot.waitUntil(lambda: variable_value(name) == chosen and shown() == expected, timeout=3000)
+
+    # The camera's macros reload the .ui, whose rules join the variable the
+    # window menu already holds. The window stays on the chosen item.
+    old = screen.embedded.embedded_widget
+    camera_menu.setCurrentIndex(1)
+    qtbot.waitUntil(
+        lambda: screen.embedded.embedded_widget is not old and screen.embedded.embedded_widget is not None,
+        timeout=3000,
+    )
+    assert screen.embedded.parsed_macros()["ID"] == "250"
+    qtbot.waitUntil(lambda: shown() == expected, timeout=3000)
+    assert variable_value(name) == chosen
