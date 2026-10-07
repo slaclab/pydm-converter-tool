@@ -1,7 +1,9 @@
 import re
 import os
+from functools import partial
 from pathlib import Path
 from dataclasses import dataclass, field
+from typing import Callable
 from pydmconverter.edm.parser_helpers import (
     SearchPaths,
     convert_color_property_to_qcolor,
@@ -92,6 +94,8 @@ class EDMGroup(EDMObjectBase):
 
     objects: list[EDMObjectBase] = field(default_factory=list)
     properties: dict = field(default_factory=dict)
+    # True for the group an activeSymbolClass/anaSymbolClass becomes (expanded or a placeholder).
+    is_symbol: bool = False
 
     def add_object(self, obj):
         self.objects.append(obj)
@@ -103,6 +107,88 @@ class EDMObject(EDMObjectBase):
 
     name: str = ""
     properties: dict = field(default_factory=dict)
+
+
+# activeSymbolClass orientation values (symbol.cc orienEnumStr); "original" and anything else leave it as is.
+SYMBOL_ORIENTATIONS = ("rotateCW", "rotateCCW", "FlipV", "FlipH")
+
+
+def _map_line_points(obj: EDMObject, transform: Callable[[int, int], tuple[int, int]]) -> None:
+    """Apply ``transform`` to an activeLineClass's points (left alone when malformed)."""
+    if obj.name.lower() != "activelineclass":
+        return
+    x_points, y_points = obj.properties.get("xPoints"), obj.properties.get("yPoints")
+    if not isinstance(x_points, list) or not isinstance(y_points, list) or len(x_points) != len(y_points):
+        return
+    try:
+        points = [transform(int(x), int(y)) for x, y in zip(x_points, y_points)]
+    except (TypeError, ValueError):
+        return
+    # In place, so an IndexedBlock keeps its EDM indices.
+    x_points[:] = [str(x) for x, _ in points]
+    y_points[:] = [str(y) for _, y in points]
+
+
+def _move_edm_object(obj: EDMObjectBase, dx: int, dy: int) -> None:
+    """EDM's move(): shift the rect, a line's points (activeLineClass::updateDimensions)
+    and every child of a group or nested symbol (activeGroupClass/activeSymbolClass::move)."""
+    obj.x += dx
+    obj.y += dy
+    if isinstance(obj, EDMGroup):
+        for child in obj.objects:
+            _move_edm_object(child, dx, dy)
+    elif isinstance(obj, EDMObject):
+        _map_line_points(obj, lambda px, py: (px + dx, py + dy))
+
+
+def _reorient_point(orientation: str, ox: int, oy: int, px: int, py: int) -> tuple[int, int]:
+    """A point rotated or flipped about (ox, oy) (act_grf.cc rotate/flip, in integers)."""
+    if orientation == "rotateCW":
+        return ox + oy - py, oy - ox + px
+    if orientation == "rotateCCW":
+        return ox - oy + py, ox + oy - px
+    if orientation == "FlipH":
+        return 2 * ox - px, py
+    return px, 2 * oy - py  # FlipV
+
+
+def _reorient_edm_object(obj: EDMObjectBase, orientation: str, ox: int, oy: int) -> None:
+    """Rotate or flip ``obj`` about (ox, oy) as EDM's rotate()/flip() do.
+
+    The rect is transformed as activeGraphicClass does (a rotation swaps width and
+    height). A group then transforms each child about the same origin
+    (activeGroupClass), a line its points (activeLineClass) and an arc its start
+    angle (activeArcClass); an arc's flip never calls the base flip, so its rect
+    stays put. A nested symbol is left alone: activeSymbolClass/aniSymbolClass
+    rotate() and flip() only post "Symbol rotate --> No-op".
+    """
+    if isinstance(obj, EDMGroup) and obj.is_symbol:
+        warnings = obj.properties.setdefault("symbolWarnings", [])
+        warnings.append(
+            f"EDM ignores orientation {orientation} for a symbol inside a symbol (symbol rotate/flip is a no-op); "
+            "left as drawn"
+        )
+        return
+    is_arc = isinstance(obj, EDMObject) and obj.name.lower() == "activearcclass"
+    if not (is_arc and orientation in ("FlipH", "FlipV")):
+        x0, y0 = _reorient_point(orientation, ox, oy, obj.x, obj.y)
+        x1, y1 = _reorient_point(orientation, ox, oy, obj.x + obj.width, obj.y + obj.height)
+        obj.x, obj.y, obj.width, obj.height = min(x0, x1), min(y0, y1), abs(x1 - x0), abs(y1 - y0)
+    if isinstance(obj, EDMGroup):
+        for child in obj.objects:
+            _reorient_edm_object(child, orientation, ox, oy)
+    elif is_arc:
+        start = edm_int(obj.properties.get("startAngle", 0))
+        total = edm_int(obj.properties.get("totalAngle", 0))
+        start = {
+            "rotateCW": start - 90,
+            "rotateCCW": start + 90,
+            "FlipH": 180 - start - total,
+            "FlipV": -start - total,
+        }[orientation]
+        obj.properties["startAngle"] = str(start % 360)
+    elif isinstance(obj, EDMObject):
+        _map_line_points(obj, partial(_reorient_point, orientation, ox, oy))
 
 
 class EDMFileParser:
@@ -296,6 +382,7 @@ class EDMFileParser:
 
                 if name.lower() == "activesymbolclass" or name.lower() == "anasymbolclass":
                     obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
+                    obj.is_symbol = True
                 else:
                     obj = EDMObject(name=name, properties=properties, **size_properties)
                 parent_group.add_object(obj)
@@ -459,7 +546,9 @@ class EDMFileParser:
         self.resize_symbol_groups(temp_group, size_properties)
         self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
-            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties)
+            # symbol.cc createFromFile: if ( numStates < 1 ) numStates = 1;
+            num_states = max(1, edm_int(properties.get("numStates")))
+            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties, num_states)
         if not has_control:
             # symbol.cc: controlExists = 0 -> index = 1; drawActive draws state 1 only.
             # Pick it from the full state list: remove_extra_groups keeps only
@@ -491,19 +580,24 @@ class EDMFileParser:
             The coordinate and size_properties of the activesymbolclass
         """
         for sub_group in temp_group.objects:
+            # symbol.cc readSymbolFile: each state child is move()d by the symbol's
+            # offset from its state group, nested groups and line points included.
+            dx = size_properties["x"] - sub_group.x
+            dy = size_properties["y"] - sub_group.y
             for sub_object in sub_group.objects:
-                sub_object.x = sub_object.x - sub_group.x + size_properties["x"]
-                sub_object.y = sub_object.y - sub_group.y + size_properties["y"]
+                _move_edm_object(sub_object, dx, dy)
             sub_group.x = size_properties["x"]
-            sub_group.y = size_properties[
-                "y"
-            ]  # The group resizing is needed to reorient symbol groups for rotations later
+            sub_group.y = size_properties["y"]
 
-    def reorient_symbol_groups(self, temp_group: EDMGroup, orientation: str, size_properties: dict[str, int]) -> None:
+    def reorient_symbol_groups(
+        self, temp_group: EDMGroup, orientation: str, size_properties: dict[str, int], num_states: int = 1
+    ) -> None:
         """
-        Given a group of symbol groups, change the orientation of each object
-        within the symbol groups (rotateCW, rotateCCW, FlipV, FlipH) either
-        flipping or rotating these objects about their respective symbol group.
+        Given a group of symbol groups, rotate (rotateCW, rotateCCW) or flip
+        (FlipV, FlipH) every state group and everything in it, nested groups
+        included, about the symbol's midpoint (symbol.cc createFromFile calls
+        rotateInternal/flipInternal at getXMid(), getYMid()). The symbol's rect
+        comes from the first ``num_states`` groups only, the ones EDM reads.
 
         Parameters
         ----------
@@ -513,115 +607,19 @@ class EDMFileParser:
             The orientation instruction to flip or rotate
         size_properties : dict[str, int]
             The coordinate and size_properties of the activesymbolclass
-
-        Returns
-        ----------
-        EDMGroup
-            A group representing a collection of ActiveSymbolclass groups
+        num_states : int
+            The symbol's numStates (at least 1); groups past it don't size the symbol
         """
-        if orientation == "FlipV":
-            for sub_group in temp_group.objects:
-                for sub_object in sub_group.objects:
-                    if sub_object.name.lower() == "activearcclass":
-                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
-                        sub_object.properties["totalAngle"] = str(-int(sub_object.properties["totalAngle"]))
-                    if sub_object.name.lower() == "activelineclass":
-                        for i in range(len(sub_object.properties["yPoints"])):
-                            sub_object.properties["yPoints"][i] = str(
-                                int(sub_object.height) - int(sub_object.properties["yPoints"][i]) + int(sub_object.y)
-                            )
-                    sub_object.y = int(sub_object.height) + int(sub_object.y) - int(sub_group.height)
-
-        if orientation == "FlipH":
-            for sub_group in temp_group.objects:
-                for sub_object in sub_group.objects:
-                    if sub_object.name.lower() == "activearcclass":
-                        sub_object.properties["startAngle"] = str(-int(sub_object.properties["startAngle"]))
-                    if sub_object.name.lower() == "activelineclass":
-                        for i in range(len(sub_object.properties["xPoints"])):
-                            sub_object.properties["xPoints"][i] = str(
-                                int(sub_object.width) - int(sub_object.properties["xPoints"][i]) + int(sub_object.x)
-                            )
-                    sub_object.x = int(size_properties["x"]) - int(sub_object.x)
-        if orientation == "rotateCW":
-            for sub_group in temp_group.objects:
-                group_cx = sub_group.x + sub_group.width / 2
-                group_cy = sub_group.y + sub_group.height / 2
-
-                for sub_object in sub_group.objects:
-                    if sub_object.name.lower() == "activearcclass":
-                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) - 90) % 360)
-
-                    obj_cx = sub_object.x + sub_object.width / 2
-                    obj_cy = sub_object.y + sub_object.height / 2
-
-                    rel_x = obj_cx - group_cx
-                    rel_y = obj_cy - group_cy
-
-                    new_rel_x = -rel_y
-                    new_rel_y = rel_x
-
-                    new_cx = group_cx + new_rel_x
-                    new_cy = group_cy + new_rel_y
-
-                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
-                    sub_object.y = int(new_cy - sub_object.width // 2)
-
-                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
-
-                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
-                        for i in range(len(sub_object.properties["xPoints"])):
-                            px = int(sub_object.properties["xPoints"][i])
-                            py = int(sub_object.properties["yPoints"][i])
-
-                            rel_px = px - group_cx
-                            rel_py = py - group_cy
-
-                            new_rel_px = rel_py
-                            new_rel_py = -rel_px
-
-                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
-                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
-
-        if orientation == "rotateCCW":
-            for sub_group in temp_group.objects:
-                group_cx = sub_group.x + sub_group.width / 2
-                group_cy = sub_group.y + sub_group.height / 2
-
-                for sub_object in sub_group.objects:
-                    if sub_object.name.lower() == "activearcclass":
-                        sub_object.properties["startAngle"] = str((int(sub_object.properties["startAngle"]) + 90) % 360)
-
-                    obj_cx = sub_object.x + sub_object.width / 2
-                    obj_cy = sub_object.y + sub_object.height / 2
-
-                    rel_x = obj_cx - group_cx
-                    rel_y = obj_cy - group_cy
-
-                    new_rel_x = rel_y
-                    new_rel_y = -rel_x
-
-                    new_cx = group_cx + new_rel_x
-                    new_cy = group_cy + new_rel_y
-
-                    sub_object.x = int(new_cx - sub_object.height // 2)  # width/height swap
-                    sub_object.y = int(new_cy - sub_object.width // 2)
-
-                    sub_object.width, sub_object.height = sub_object.height, sub_object.width
-
-                    if "xPoints" in sub_object.properties and "yPoints" in sub_object.properties:
-                        for i in range(len(sub_object.properties["xPoints"])):
-                            px = int(sub_object.properties["xPoints"][i])
-                            py = int(sub_object.properties["yPoints"][i])
-
-                            rel_px = px - group_cx
-                            rel_py = py - group_cy
-
-                            new_rel_px = rel_py
-                            new_rel_py = -rel_px
-
-                            sub_object.properties["xPoints"][i] = str(group_cx + new_rel_px)
-                            sub_object.properties["yPoints"][i] = str(group_cy + new_rel_py)
+        if orientation not in SYMBOL_ORIENTATIONS or not temp_group.objects:
+            return
+        # readSymbolFile reads only the first numStates groups and leaves the symbol
+        # as wide and tall as the largest of those (w = maxW; h = maxH); the converter
+        # never scales a symbol to its saved size, so that is its rect.
+        read = temp_group.objects[:num_states]
+        ox = size_properties["x"] + max(state.width for state in read) // 2
+        oy = size_properties["y"] + max(state.height for state in read) // 2
+        for state in temp_group.objects:
+            _reorient_edm_object(state, orientation, ox, oy)
 
     def remove_extra_groups(self, temp_group: EDMGroup, ranges: list[list[str]]) -> None:
         """
