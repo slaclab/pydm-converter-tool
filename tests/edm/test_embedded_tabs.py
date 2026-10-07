@@ -5,12 +5,14 @@ A menu mux writing the variable always switches one display per file."""
 
 import ast
 import json
+import re
 import textwrap
 import xml.etree.ElementTree as ET
 
 import pytest
 
 from pydmconverter.edm.converter import convert
+from pydmconverter.edm.parser import EDMFileParser
 from pydmconverter.widgets import edm_to_ui_filename
 
 HEADER = """\
@@ -28,16 +30,21 @@ endScreenProperties
 
 
 def pip(file_pv, files, x=4, y=24, w=1148, h=508, labels=(), symbols=()):
+    """files, labels and symbols are lists (indexed 0, 1, ...) or {EDM index: value}
+    dicts, for blocks that skip indices or start at 1."""
+
     def block(name, values):
         if not values:
             return ""
-        lines = "\n".join(f'  {i} "{v}"' for i, v in enumerate(values))
+        items = values.items() if isinstance(values, dict) else enumerate(values)
+        lines = "\n".join(f'  {i} "{v}"' for i, v in items)
         return f"{name} {{\n{lines}\n}}\n"
 
+    num_dsps = max(files) + 1 if isinstance(files, dict) else len(files)
     return (
         "object activePipClass\nbeginObjectProperties\nmajor 4\nminor 1\nrelease 0\n"
         f"x {x}\ny {y}\nw {w}\nh {h}\n"
-        f'displaySource "menu"\nfilePv "{file_pv}"\nnumDsps {len(files)}\n'
+        f'displaySource "menu"\nfilePv "{file_pv}"\nnumDsps {num_dsps}\n'
         + block("displayFileName", files)
         + block("menuLabel", labels)
         + block("symbols", symbols)
@@ -476,3 +483,151 @@ def test_site_skipping_menu_muxes_leaves_their_window_alone(tmp_path):
 
     assert [obj.name.lower() for obj in parser.ui.objects] == ["activepipclass", "menumuxclass"]
     assert parser.ui.objects[1].properties["controlPv"] == "loc://Display"
+
+
+# EDM selects displayFileName[v] for the variable's value v, and symbols[i] and
+# menuLabel[i] belong to displayFileName[i]: blocks pair by EDM array index, and
+# a file may skip indices or start at 1.
+LASER_CHOICE = r"LOC\\laserDispPV=e:0"
+LASER_LABELS = ["Driver Laser", "Laser Heater", "Misc"]
+LASER_SYMBOLS = ["P=DRV", "P=HTR", "P=MISC"]
+DENSE_ARRANGEMENTS = {
+    "tabs": lambda: [pip(LASER, LASER_FILES, labels=LASER_LABELS, symbols=LASER_SYMBOLS), choice(LASER_CHOICE)],
+    "stacked": lambda: [
+        pip(LASER, LASER_FILES, labels=LASER_LABELS, symbols=LASER_SYMBOLS),
+        choice(LASER_CHOICE),
+        message_button(LASER_CHOICE, "1"),
+    ],
+    "shown": lambda: [pip(r"LOC\\laserDispPV=e:2", LASER_FILES, labels=LASER_LABELS, symbols=LASER_SYMBOLS)],
+}
+
+
+def normalised_ui(path):
+    # Widget names carry id(obj) (repeated in their own styleSheet selectors) or
+    # a running count; nothing else differs between two conversions.
+    text = re.sub(r"(?<=[A-Za-z])\d{6,}", "#", path.read_text())
+    return re.sub(r'name="[^"]*"', lambda name: re.sub(r"\d+", "#", name.group()), text)
+
+
+@pytest.mark.parametrize("arrangement", DENSE_ARRANGEMENTS)
+def test_dense_blocks_convert_as_positional_lists(tmp_path, monkeypatch, arrangement):
+    # A dense 0-based block's EDM indices are its positions, so the output matches
+    # the parse that drops them (block_items then numbers entries by position).
+    objects = DENSE_ARRANGEMENTS[arrangement]()
+    (tmp_path / "indexed").mkdir()
+    (tmp_path / "positional").mkdir()
+    convert_objects(tmp_path / "indexed", *objects)
+
+    remove_prepended_index = EDMFileParser.remove_prepended_index
+    monkeypatch.setattr(
+        EDMFileParser, "remove_prepended_index", staticmethod(lambda lines: list(remove_prepended_index(lines)))
+    )
+    convert_objects(tmp_path / "positional", *objects)
+
+    indexed = normalised_ui(tmp_path / "indexed" / "screen.ui")
+    assert indexed == normalised_ui(tmp_path / "positional" / "screen.ui")
+    # Each arrangement shows entry 2 somewhere, with its own macros.
+    assert "MISC" in indexed
+
+
+SPARSE = {0: "a.edl", 2: "c.edl"}
+SPARSE_SYMBOLS = {2: "P=X"}
+
+
+def test_sparse_block_tabs_pair_titles_macros_and_start_by_index(tmp_path):
+    root = convert_objects(
+        tmp_path,
+        pip(r"LOC\\v=e:2,A,B,C", SPARSE, symbols=SPARSE_SYMBOLS),
+        choice(r"LOC\\v=e:2"),
+    )
+    (tabs,) = top_level(root)
+    pages = tabs.findall("widget")
+    # Entry 2's title is the variable's state 2 ("C"), not state 1.
+    assert [p.find("attribute[@name='title']/string").text for p in pages] == ["A", "C"]
+    displays = [p.find("widget") for p in pages]
+    assert [prop(d, "filename") for d in displays] == ["a.ui", "c.ui"]
+    assert prop(displays[0], "macros") is None
+    assert json.loads(prop(displays[1], "macros")) == {"P": "X"}
+    # The variable starts at 2, which is the second page.
+    assert prop(tabs, "currentIndex") == "1"
+
+
+def test_sparse_block_stacked_displays_switch_on_their_edm_index(tmp_path):
+    root = convert_objects(
+        tmp_path,
+        pip(r"LOC\\v=e:2,A,B,C", SPARSE, symbols=SPARSE_SYMBOLS),
+        choice(r"LOC\\v=e:2"),
+        message_button(r"LOC\\v", "1"),
+    )
+    displays = [w for w in top_level(root) if w.get("class") == "PyDMEmbeddedDisplay"]
+    assert [prop(d, "filename") for d in displays] == ["a.ui", "c.ui"]
+    assert prop(displays[0], "macros") is None
+    assert json.loads(prop(displays[1], "macros")) == {"P": "X"}
+    rules = [json.loads(prop(d, "rules"))[0] for d in displays]
+    assert [r["expression"] for r in rules] == [
+        "(float(ch[0]) >= 0.0 and float(ch[0]) < 1.0)",
+        "(float(ch[0]) >= 2.0 and float(ch[0]) < 3.0)",
+    ]
+    assert [r["initial_value"] for r in rules] == ["false", "true"]
+
+
+@pytest.mark.parametrize(
+    "init, filename, macros",
+    [
+        # symbols { 2 "P=X" } is display 2's alone, even as the only entry.
+        (0, "a.ui", None),
+        (2, "c.ui", {"P": "X"}),
+    ],
+)
+def test_sparse_block_shown_display_takes_its_own_macros(tmp_path, init, filename, macros):
+    root = convert_objects(tmp_path, pip(rf"LOC\\v=e:{init}", SPARSE, symbols=SPARSE_SYMBOLS))
+    (display,) = top_level(root)
+    assert prop(display, "filename") == filename
+    assert (json.loads(prop(display, "macros")) if macros else prop(display, "macros")) == macros
+
+
+ONE_BASED = {1: "a.edl", 2: "b.edl"}
+ONE_BASED_BLOCKS = {"labels": {1: "First", 2: "Second"}, "symbols": {1: "P=A", 2: "P=B"}}
+
+
+def test_one_based_block_tabs(tmp_path):
+    root = convert_objects(tmp_path, pip(r"LOC\\v=i:2", ONE_BASED, **ONE_BASED_BLOCKS), choice(r"LOC\\v"))
+    (tabs,) = top_level(root)
+    pages = tabs.findall("widget")
+    # With no enum strings, titles fall back to each entry's own menuLabel.
+    assert [p.find("attribute[@name='title']/string").text for p in pages] == ["First", "Second"]
+    displays = [p.find("widget") for p in pages]
+    assert [prop(d, "filename") for d in displays] == ["a.ui", "b.ui"]
+    assert [json.loads(prop(d, "macros")) for d in displays] == [{"P": "A"}, {"P": "B"}]
+    assert prop(tabs, "currentIndex") == "1"
+
+
+def test_one_based_block_stacked_displays(tmp_path):
+    root = convert_objects(
+        tmp_path,
+        pip(r"LOC\\v=i:1", ONE_BASED, **ONE_BASED_BLOCKS),
+        choice(r"LOC\\v"),
+        message_button(r"LOC\\v", "2"),
+    )
+    displays = [w for w in top_level(root) if w.get("class") == "PyDMEmbeddedDisplay"]
+    assert [json.loads(prop(d, "macros")) for d in displays] == [{"P": "A"}, {"P": "B"}]
+    rules = [json.loads(prop(d, "rules"))[0] for d in displays]
+    assert [r["expression"] for r in rules] == [
+        "(float(ch[0]) >= 1.0 and float(ch[0]) < 2.0)",
+        "(float(ch[0]) >= 2.0 and float(ch[0]) < 3.0)",
+    ]
+    assert [r["initial_value"] for r in rules] == ["true", "false"]
+
+
+@pytest.mark.parametrize(
+    "init, filename, macros",
+    [
+        (2, "b.ui", {"P": "B"}),
+        # No entry 0: the window starts on its lowest-numbered entry.
+        (0, "a.ui", {"P": "A"}),
+    ],
+)
+def test_one_based_block_shown_display(tmp_path, init, filename, macros):
+    (display,) = top_level(convert_objects(tmp_path, pip(rf"LOC\\v=i:{init}", ONE_BASED, **ONE_BASED_BLOCKS)))
+    assert prop(display, "filename") == filename
+    assert json.loads(prop(display, "macros")) == macros
