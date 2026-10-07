@@ -1734,8 +1734,9 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         Build JSON-like strings representing individual curve configurations.
 
         One curve is built per entry of the longest of x_channel, y_channel and
-        plotColor. A curve missing a channel leaves it empty, and a curve
-        without a plotColor entry uses the plot's default colour.
+        plotColor, except that an entry without a y channel plots nothing. A
+        curve missing its x channel leaves it empty, and a curve without a
+        plotColor entry uses the plot's default colour.
 
         Returns
         -------
@@ -1751,6 +1752,9 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         for i in range(max_len):
             x_channel = self.x_channel[i] if i < len(self.x_channel) else ""
             y_channel = self.y_channel[i] if i < len(self.y_channel) else ""
+            if not y_channel:
+                # A trace without a yPv (an index the EDM file leaves out) plots nothing.
+                continue
             color = self.plotColor[i] if i < len(self.plotColor) and self.plotColor[i] else default_color
             curve_string = (
                 "{"

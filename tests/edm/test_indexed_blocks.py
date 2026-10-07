@@ -5,8 +5,13 @@ as ``<index> <value>`` lines into fixed slots, so parallel arrays line up by
 index, not by position, and a file may skip indices or start at 1.
 """
 
+import json
+
 from pydmconverter.edm.ir_adapter import _fixup_shell_cmd, _object_to_source, _pip_rules, edm_file_to_ir
-from pydmconverter.edm.parser import EDMFileParser, EDMObject, IndexedBlock
+from pydmconverter.edm.converter_helpers import convert_attribute_value
+from pydmconverter.edm.menumux import menu_items, menu_macros
+from pydmconverter.edm.parser import EDMFileParser, EDMObject, IndexedBlock, block_list
+from pydmconverter.widgets import PyDMWaveformPlot
 from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 
@@ -50,6 +55,27 @@ def test_bare_number_lines_are_text_not_indices():
         value = _props(text)["value"]
         assert not isinstance(value, IndexedBlock)
         assert value == ["5"]
+
+
+def test_value_continued_onto_the_next_line_joins_its_entry():
+    """und/asynOctet.edl: each label's closing quote sits on the next line."""
+    labels = _props('menuLabel {\n  0 "Record parameters\n"\n  1 "Serial port\n"\n}')["menuLabel"]
+    assert list(labels) == ["Record parameters", "Serial port"]  # was the raw lines and ""s
+    assert labels.indices == [0, 1]
+
+
+def test_repeated_index_replaces_the_earlier_entry():
+    """laser/pid_plot_terms.edl writes index 1 twice; EDM's array read keeps the last."""
+    labels = _props('menuLabel {\n  0 "LAST_N"\n  1 "1MIN"\n  1 "10MIN"\n  2 "30MIN"\n}')["menuLabel"]
+    assert list(labels) == ["LAST_N", "10MIN", "30MIN"]
+    assert labels.indices == [0, 1, 2]
+
+
+def test_block_list_puts_each_value_at_its_index():
+    assert block_list(_props('xPv {\n  1 "X1"\n  3 "X3"\n}')["xPv"]) == ["", "X1", "", "X3"]
+    assert block_list(["a", "b"]) == ["a", "b"]
+    assert block_list("a") == ["a"]
+    assert block_list(None) == []
 
 
 def test_index_with_an_empty_quoted_value_is_indexed():
@@ -162,3 +188,37 @@ def test_symbol_state_ranges_follow_state_indices(tmp_path):
     props = _props('numStates 2\nminValues {\n  1 "1"\n}\nmaxValues {\n  0 "1"\n  1 "2"\n}')
     # State 0's min is not written: EDM's default 0 (was: state 0 = [1, 1)).
     assert parser.generate_pv_ranges(props) == [["0", "1"], ["1", "2"]]
+
+
+def test_plot_traces_pair_by_index_in_the_ui_output():
+    """mps/mps_byk.edl: trace 0 has no xPv, so xPv starts at 1 (it was paired with trace 0)."""
+    props = _props(
+        'yPv {\n  0 "Y0"\n  1 "Y1"\n  3 "Y3"\n}\nxPv {\n  1 "X1"\n}\nplotColor {\n  0 index 0\n  1 index 1\n}'
+    )
+    obj = _obj("xyGraphClass", props)
+    plot = PyDMWaveformPlot(name="plot")
+    plot.foreground_color = (0, 255, 0, 255)
+    plot.y_channel = convert_attribute_value("yPv", props["yPv"], plot, obj, {})
+    plot.x_channel = convert_attribute_value("xPv", props["xPv"], plot, obj, {})
+    plot.plotColor = [(0, 0, 0, 255), (255, 255, 255, 255)]
+    assert plot.y_channel == ["Y0", "Y1", "", "Y3"]
+    assert plot.x_channel == ["", "X1"]
+    curves = [json.loads(curve) for curve in plot.get_curve_strings()]
+    # Index 2 has no yPv and plots nothing; trace 3 has no plotColor and takes the foreground.
+    assert [(c["x_channel"], c["y_channel"], c["color"]) for c in curves] == [
+        ("", "Y0", "#000000"),
+        ("X1", "Y1", "#ffffff"),
+        ("", "Y3", "#00ff00"),
+    ]
+
+
+def test_menu_mux_items_keep_their_indices():
+    """An item whose tag and value are empty is left out of symbolTag and value0."""
+    props = _props(
+        'numItems 3\nsymbolTag {\n  1 "B"\n  2 "C"\n}\nsymbol0 {\n  1 "SECT"\n  2 "SECT"\n}\n'
+        'value0 {\n  1 "LI21"\n  2 "LI22"\n}'
+    )
+    obj = _obj("menuMuxClass", props)
+    macros = menu_macros(obj, 3)
+    assert macros == [[("", "")], [("SECT", "LI21")], [("SECT", "LI22")]]
+    assert menu_items(obj, 3, macros) == ["", "B", "C"]
