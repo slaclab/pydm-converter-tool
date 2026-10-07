@@ -1723,33 +1723,31 @@ class PyDMWaveformPlot(Alarmable, StyleSheetObject):
         """
         Build JSON-like strings representing individual curve configurations.
 
-        Ensures that the x_channel, y_channel, and plotColor lists are padded
-        to equal length before constructing curve entries.
+        One curve is built per entry of the longest of x_channel, y_channel and
+        plotColor. A curve missing a channel leaves it empty, and a curve
+        without a plotColor entry uses the plot's default colour.
 
         Returns
         -------
         List[str]
             A list of JSON-style strings, one for each curve in the plot.
         """
-
-        lists = [self.x_channel, self.y_channel, self.plotColor]
-        max_len = max(len(lst) for lst in lists)
-        for i in range(max_len):
-            if len(self.x_channel) <= i:
-                self.x_channel.append("")
-            if len(self.y_channel) <= i:
-                self.y_channel.append("")
-            if len(self.plotColor) <= i:
-                self.plotColor.append("")
+        # EDM's xyGraph draws a trace with no plotColor entry in palette index 0
+        # (white at SLAC). The palette isn't known here, so use the foreground.
+        default_color = self.color or self.foreground_color or (175, 175, 175, 255)
+        max_len = max(len(self.x_channel), len(self.y_channel), len(self.plotColor))
 
         curve_string_list = []
         for i in range(max_len):
+            x_channel = self.x_channel[i] if i < len(self.x_channel) else ""
+            y_channel = self.y_channel[i] if i < len(self.y_channel) else ""
+            color = self.plotColor[i] if i < len(self.plotColor) and self.plotColor[i] else default_color
             curve_string = (
                 "{"
                 f'"name": "", '
-                f'"x_channel": "{self.x_channel[i]}", '
-                f'"y_channel": "{self.y_channel[i]}", '
-                f'"color": "{self.rgba_to_hex(*self.plotColor[i])}", '
+                f'"x_channel": "{x_channel}", '
+                f'"y_channel": "{y_channel}", '
+                f'"color": "{self.rgba_to_hex(*color)}", '
                 f'"yAxisName": "Axis 1"'
                 "}"
             )
