@@ -6,6 +6,8 @@ import json
 import textwrap
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from pydmconverter.edm.converter import convert
 from pydmconverter.widgets import edm_to_ui_filename
 
@@ -217,13 +219,66 @@ def test_menu_window_without_choice_button_shows_its_starting_entry(tmp_path):
     assert json.loads(prop(display, "macros")) == {"P": "PROF:", "ID": "1800"}
 
 
-def test_file_window_keeps_multi_entry_symbols_unpicked(tmp_path):
-    # symbols belong to a window's menu entries; a file window does not apply them.
-    source = pip(r"$(sector)", ["sector_li20", "sector_li21"], symbols=["sector=LI20", "sector=LI21"])
-    root = convert_objects(tmp_path, source.replace('displaySource "menu"', 'displaySource "file"'))
+def test_menu_window_shows_its_entry_over_its_file(tmp_path):
+    source = pip(r"LOC\\myLocalPV=e:1", ["GigE_controls", "GigE_other.edl"])
+    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', 'displaySource "menu"\nfile "unused"\n'))
     (display,) = top_level(root)
-    assert prop(display, "filename") == "sector_li20.ui"
+    assert prop(display, "filename") == "GigE_other.ui"
+
+
+@pytest.mark.parametrize("file_pv_line", [r'filePv "LOC\\sel=i:0"' "\n", ""])
+def test_menu_window_without_entries_ignores_its_file(tmp_path, file_pv_line):
+    # EDM (pip.cc) opens a menu window's displayFileName entries only, when it has
+    # a filePv and numDsps > 0; it never opens its file attribute.
+    source = pip("unused", []).replace('filePv "unused"\n', file_pv_line)
+    root = convert_objects(
+        tmp_path, source.replace('displaySource "menu"\n', 'displaySource "menu"\nfile "fallback"\n')
+    )
+    (display,) = top_level(root)
+    assert display.get("class") == "PyDMEmbeddedDisplay"
+    assert prop(display, "filename") is None
+
+
+def test_file_window_opens_its_file_not_a_menu_entry(tmp_path):
+    # EDM (pip.cc) opens a file window's file attribute (macros expanded from the
+    # parent); displayFileName and symbols belong to menu entries, which a window
+    # switched from "menu" to "file" keeps but ignores (misc/opsKlys_disp_li24.edl).
+    source = pip(
+        r"$(sector)", ["opsKlys_sector_li20", "opsKlys_sector_noepics"], symbols=["sector=LI20", "sector=LI21"]
+    )
+    root = convert_objects(
+        tmp_path, source.replace('displaySource "menu"\n', 'displaySource "file"\nfile "opsKlys_sector_$(sector)"\n')
+    )
+    (display,) = top_level(root)
+    assert prop(display, "filename") == "opsKlys_sector_${sector}.ui"
     assert not isinstance(json.loads(prop(display, "macros")), dict)
+
+
+@pytest.mark.parametrize("file_line", ["", 'file ""\n'])
+def test_file_window_without_a_file_shows_nothing(tmp_path, file_line):
+    # EDM opens nothing when a file window's file is blank (fileExists = 0).
+    source = pip(r"$(sector)", ["RESwaveforms", "RESwaveforms"])
+    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', f'displaySource "file"\n{file_line}'))
+    (display,) = top_level(root)
+    assert display.get("class") == "PyDMEmbeddedDisplay"
+    assert prop(display, "filename") is None
+
+
+def test_string_pv_window_opens_its_local_variable_value(tmp_path):
+    # No displaySource line means "stringPV": the window opens the file its filePv
+    # names, which for a LOC string is its initial value (misc/tdsEmbd.edl).
+    source = pip(r"LOC\\showMe=s:tdsVert", [], symbols=[])
+    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', 'file "unused"\n'))
+    (display,) = top_level(root)
+    assert prop(display, "filename") == "tdsVert.ui"
+
+
+def test_string_pv_window_on_a_channel_shows_nothing(tmp_path):
+    # The file name is the PV's value at runtime, which a .ui file cannot follow.
+    source = pip("CUDBMPR:MCC0:VIDEO1", ["GigE_controls"])
+    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', ""))
+    (display,) = top_level(root)
+    assert prop(display, "filename") is None
 
 
 def test_edm_to_ui_filename():

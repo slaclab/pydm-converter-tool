@@ -39,6 +39,64 @@ def test_file_pip_keeps_macro_template():
     assert not [r for r in pip.rules if r.target_property == "file"]
 
 
+def _convert_pip(tmp_path, lines):
+    """One activePipClass carrying the given property lines -> its IR node."""
+    edl = tmp_path / "pip.edl"
+    edl.write_text(
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 400\nh 300\n"
+        "endScreenProperties\n\nobject activePipClass\nbeginObjectProperties\nmajor 4\nminor 1\n"
+        "release 0\nx 20\ny 20\nw 233\nh 137\n" + lines + "noScroll\nendObjectProperties\n",
+        encoding="utf-8",
+    )
+    (pip,) = edm_file_to_ir(edl).root.children
+    assert pip.type == "embedded-display"
+    return pip
+
+
+LEFTOVER_MENU = (
+    'numDsps 2\ndisplayFileName {\n  0 "menu_a"\n  1 "menu_b"\n}\nsymbols {\n  0 "sector=LI20"\n  1 "sector=LI21"\n}\n'
+)
+
+
+def test_file_pip_ignores_leftover_menu_entries_and_symbols(tmp_path):
+    # misc/opsKlys_disp_li24.edl: a window switched to "file" keeps its menu
+    # entries; EDM (pip.cc) opens the file with the parent's macros only.
+    pip = _convert_pip(tmp_path, 'displaySource "file"\nfilePv "$(sector)"\nfile "sector_$(sector)"\n' + LEFTOVER_MENU)
+    assert pip.props["file"] == "sector_${sector}"
+    assert "macros" not in pip.props
+
+
+def test_file_pip_without_a_file_opens_nothing(tmp_path):
+    pip = _convert_pip(tmp_path, 'displaySource "file"\nfile ""\n' + LEFTOVER_MENU)
+    assert "file" not in pip.props
+
+
+def test_string_pv_pip_opens_its_local_variable_value(tmp_path):
+    # No displaySource line is "stringPV" (the enum default EDM leaves out): the
+    # file is the filePv's value, here a LOC string's initial one (misc/tdsEmbd.edl).
+    pip = _convert_pip(tmp_path, 'filePv "LOC\\\\showMe=s:tdsVert"\nfile "unused"\nnumDsps 0\n')
+    assert pip.props["file"] == "tdsVert.screen.json"
+    assert not pip.rules
+
+
+def test_string_pv_pip_on_a_channel_opens_nothing(tmp_path):
+    pip = _convert_pip(tmp_path, 'filePv "CUDBMPR:MCC0:VIDEO1"\nfile "unused"\nnumDsps 0\n')
+    assert "file" not in pip.props
+    assert any("stringPV" in w and "CUDBMPR:MCC0:VIDEO1" in w for w in pip.warnings)
+
+
+def test_pip_without_display_source_ignores_its_file(tmp_path):
+    pip = _convert_pip(tmp_path, 'file "mgnt_unit_$(DISP)"\nnumDsps 0\n')
+    assert "file" not in pip.props
+
+
+def test_menu_pip_without_file_pv_opens_nothing(tmp_path):
+    # EDM opens a menu window's entries only when its filePv's value arrives.
+    pip = _convert_pip(tmp_path, 'displaySource "menu"\nfile "unused"\n' + LEFTOVER_MENU)
+    assert "file" not in pip.props
+    assert not pip.rules
+
+
 def test_macros_declared_from_rule_pvs_and_action_commands():
     screen = _convert("pip_menu.edl")
     declared = {m.name for m in screen.macros}

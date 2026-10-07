@@ -33,6 +33,7 @@ from pydmconverter.edm.parser_helpers import (
     search_color_list,
     parse_colors_list,
     parse_edm_macros,
+    loc_str_init,
 )
 from pydmconverter.edm.menumux import generate_menumux_file
 from pydmconverter.exceptions import AttributeConversionError
@@ -660,7 +661,11 @@ def apply_widget_post_processing(
 
     # Embedded display filename handling
     if isinstance(widget, PyDMEmbeddedDisplay) and obj.name.lower() == "activepipclass":
-        if "displayFileName" in obj.properties and obj.properties["displayFileName"]:
+        if not is_menu_pip(obj):
+            # EDM (pip.cc) opens a displayFileName entry only from a menu window.
+            widget.filename = pip_source_file(obj)
+            logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
+        elif "displayFileName" in obj.properties and obj.properties["displayFileName"]:
             display_filenames = obj.properties["displayFileName"]
             filename_to_set = None
             if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
@@ -674,6 +679,9 @@ def apply_widget_post_processing(
                 # PyDMEmbeddedDisplay maps the EDM name to its .ui name when serialized.
                 widget.filename = filename_to_set
                 logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
+        else:
+            # A menu window opens only its displayFileName entries (pip.cc), never its file.
+            widget.filename = None
 
         # Make LOC variables unique if they had $(!W) marker
         if hasattr(widget, "channel") and widget.channel and "__UNIQUE__" in widget.channel:
@@ -1203,6 +1211,31 @@ def shown_display_index(obj: EDMObject) -> int:
     index = _loc_init(file_pv) if isinstance(file_pv, str) and file_pv.startswith("loc://") else 0
     count = len(_as_list(obj.properties.get("displayFileName")))
     return index if 0 <= index < count else 0
+
+
+def pip_source_file(obj: EDMObject) -> Optional[str]:
+    """The file a non-menu embedded window opens (EDM pip.cc), or None for none.
+
+    A "file" window opens its file attribute and shows nothing when that is
+    blank. A "stringPV" window (the default displaySource) opens the file its
+    filePv's value names: known here only as a loc:// string variable's initial
+    value, which is what the window shows when the screen opens.
+    """
+    if str(obj.properties.get("displaySource", "")).lower() == "file":
+        file = obj.properties.get("file")
+        if isinstance(file, str) and file.strip():
+            return file
+        logger.info(f"{obj.name} has displaySource file but no file; it shows nothing, as in EDM")
+        return None
+    file_pv = obj.properties.get("filePv")
+    if not isinstance(file_pv, str) or not file_pv.strip():
+        logger.info(f"{obj.name} has displaySource stringPV but no filePv; it shows nothing, as in EDM")
+        return None
+    file = loc_str_init(file_pv)
+    if not file.strip():
+        logger.warning(f"{obj.name} opens the file named by {file_pv} at runtime; no file emitted")
+        return None
+    return file
 
 
 def _walk_objects(group: EDMGroup, hidden: bool = False):
