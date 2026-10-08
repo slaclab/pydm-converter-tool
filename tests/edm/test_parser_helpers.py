@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from pydmconverter.edm.parser_helpers import (
     normalize_search_paths,
+    resolve_inside,
     search_calc_list,
     parse_calc_list,
     parse_calc_pv,
@@ -110,6 +111,61 @@ def test_normalize_search_paths(tmp_path):
     assert normalize_search_paths(tmp_path) == [str(tmp_path)]
     assert normalize_search_paths(["a", tmp_path]) == ["a", str(tmp_path)]
     assert normalize_search_paths(()) == []
+
+
+def test_normalize_search_paths_drops_empty_entries():
+    """An empty entry is dropped (as in an EDMDATAFILES split) rather than standing for the CWD."""
+    assert normalize_search_paths("") == []
+    assert normalize_search_paths(["", "a", ""]) == ["a"]
+    assert normalize_search_paths(["."]) == ["."]
+
+
+@pytest.fixture
+def roots(tmp_path):
+    """Two resolved sibling roots, ``root`` (with a ``sub`` dir) and ``other``, plus ``outside``."""
+    for name in ("root/sub", "other", "outside"):
+        (tmp_path / name).mkdir(parents=True)
+    return tmp_path.resolve()
+
+
+def test_resolve_inside_accepts_names_inside_a_root(roots):
+    root = roots / "root"
+    allowed = [root, roots / "other"]
+    # Decided on the path alone: the file need not exist.
+    assert resolve_inside(root, "sub/sym.edl", allowed) == root / "sub" / "sym.edl"
+    assert resolve_inside(root, "sub/../sym.edl", allowed) == root / "sym.edl"
+    # ".." may leave the base as long as it lands inside another allowed root.
+    assert resolve_inside(root, "../other/sym.edl", allowed) == roots / "other" / "sym.edl"
+
+
+def test_resolve_inside_rejects_names_outside_every_root(roots):
+    root = roots / "root"
+    allowed = [root, roots / "other"]
+    assert resolve_inside(root, "../outside/sym.edl", allowed) is None
+    assert resolve_inside(root, "../other/sym.edl", [root]) is None
+    assert resolve_inside(root, "sub/../../outside/sym.edl", allowed) is None
+
+
+def test_resolve_inside_rejects_absolute_names(roots):
+    """An absolute name is rejected even when it points inside a root."""
+    root = roots / "root"
+    assert resolve_inside(root, (root / "sym.edl").as_posix(), [root]) is None
+    assert resolve_inside(root, (roots / "outside" / "sym.edl").as_posix(), [root]) is None
+
+
+def test_resolve_inside_rejects_unresolvable_names(roots):
+    root = roots / "root"
+    assert resolve_inside(root, "a\0b.edl", [root]) is None
+
+
+def test_resolve_inside_follows_symlinks_before_the_check(roots):
+    root = roots / "root"
+    try:
+        (root / "link").symlink_to(roots / "outside", target_is_directory=True)
+    except OSError:
+        pytest.skip("symlinks not available")
+    assert resolve_inside(root, "link/sym.edl", [root]) is None
+    assert resolve_inside(root, "link/sym.edl", [root, roots / "outside"]) == roots / "outside" / "sym.edl"
 
 
 def test_parse_calc_list(tmp_path):

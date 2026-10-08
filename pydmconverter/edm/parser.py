@@ -7,6 +7,7 @@ from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
     normalize_search_paths,
     parse_colors_list,
+    resolve_inside,
     search_color_list,
     replace_calc_and_loc_in_edm_content,
 )
@@ -76,6 +77,14 @@ def _read_edm_text(path) -> str:
             return file.read()
 
 
+def _resolve_or_none(path: str | Path) -> Path | None:
+    """``path`` resolved, or None when it cannot be (e.g. a NUL byte, a symlink loop)."""
+    try:
+        return Path(path).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
 @dataclass
 class EDMObjectBase:
     """EDM Abstract Object class represents an abstract object in .edl files"""
@@ -130,6 +139,7 @@ class EDMFileParser:
         calc_reuse_short: bool = True,
         color_list_file: str | None = None,
         search_paths: SearchPaths = None,
+        confine_file_refs: bool = False,
     ):
         """Creates an instance of EDMFileParser for the given file_path
 
@@ -151,6 +161,15 @@ class EDMFileParser:
             Extra directories searched for symbol files (activeSymbolClass) and
             calc.list, after the file's own directory and before EDMDATAFILES
             (e.g. the original directory of an upload staged in a temp dir).
+        confine_file_refs : bool, optional
+            For untrusted input: read a symbol file only from inside the file's own
+            directory or one of ``search_paths``. A ``file`` name may use
+            subdirectories or ``..`` as long as it resolves inside one of those
+            directories (not necessarily the one it was joined to). An absolute name,
+            or one that resolves outside all of them (``..``, or a symlink pointing
+            elsewhere), is rejected before any existence check and leaves an empty
+            group. EDMDATAFILES (and its ``.`` default, the CWD) is not searched, so
+            the caller names every directory a symbol may come from.
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -160,8 +179,22 @@ class EDMFileParser:
         self.calc_reuse_short = calc_reuse_short
         self.color_list_file = color_list_file
         self.search_paths = normalize_search_paths(search_paths)
-        # Symbol file text keyed by the normalized symbol file name (None when not found).
-        self._symbol_texts: dict[str, str | None] = {}
+        self.confine_file_refs = confine_file_refs
+        # Directories a confined symbol file must resolve inside (any one of them),
+        # resolved once here; a root that cannot be resolved is left out.
+        self._allowed_roots: list[Path] = []
+        if confine_file_refs:
+            roots = (_resolve_or_none(root) for root in [Path(file_path).parent, *self.search_paths])
+            self._allowed_roots = [root for root in roots if root is not None]
+        # (resolved path, text) of each symbol file keyed by the normalized symbol file
+        # name (None when not found). Only lookups are cached, never a cycle outcome:
+        # whether a symbol includes itself depends on where it is used.
+        self._symbol_files: dict[str, tuple[Path, str] | None] = {}
+        # Symbol file names a confined lookup rejected as outside the search paths.
+        self._symbols_outside: set[str] = set()
+        # Resolved paths of the display and of the symbol files being expanded, to stop
+        # a symbol file that includes itself (directly or through others).
+        self._symbol_stack: list[Path] = [_resolve_or_none(file_path) or Path(file_path)]
 
         self.text = _read_edm_text(file_path)
         self.modify_text(file_path)
@@ -358,7 +391,9 @@ class EDMFileParser:
         """
         Generate an EDMGroup made up of child EDMGroups each representing a symbol.
         These EDMGroups are mapped from the inner groups within the activesymbolclass
-        embedded file.
+        embedded file. A symbol file that is not found, is outside the search paths
+        (``confine_file_refs``) or includes itself (directly or through other symbol
+        files) gives an empty group whose properties say why.
 
         Parameters
         ----------
@@ -379,33 +414,24 @@ class EDMFileParser:
             return EDMGroup(**size_properties, properties={"symbolFileNotFound": ""})
         if not embedded_file.endswith(".edl"):
             embedded_file += ".edl"
-        if embedded_file not in self._symbol_texts:
-            # EDM resolves symbol files beside the calling display first, then along
-            # EDMDATAFILES (explicit search_paths go before it). Split on ":" only when
-            # it is not a Windows drive colon (":" followed by a path separator), and
-            # accept ";" separators too.
-            edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
-            datafiles = os.environ.get("EDMDATAFILES", ".")
-            for chunk in datafiles.split(";"):
-                edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
-            found_text = None
-            for path in edm_paths:
-                full_path = Path(path) / embedded_file
-                if full_path.is_file():
-                    found_text = _read_edm_text(full_path)
-                    break
-            if found_text is None:
-                logger.warning(
-                    f"Symbol file {embedded_file!r} not found beside the display, on the search paths "
-                    "or on EDMDATAFILES"
-                )
-            self._symbol_texts[embedded_file] = found_text
-        embedded_text = self._symbol_texts[embedded_file]
-        if embedded_text is None:
+        if embedded_file not in self._symbol_files:
+            self._symbol_files[embedded_file] = self._find_symbol_file(embedded_file)
+        found = self._symbol_files[embedded_file]
+        if embedded_file in self._symbols_outside:
+            return EDMGroup(**size_properties, properties={"symbolFileOutsideSearchPaths": embedded_file})
+        if found is None:
             # Keep the symbol's rect and name the missing file so the IR adapter can
             # attach a node warning (nothing may disappear silently).
             return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
+        symbol_path, embedded_text = found
+        if symbol_path in self._symbol_stack:
+            # Expanding it again would never end (it used to raise RecursionError).
+            logger.warning(
+                f"Symbol file {embedded_file!r} includes itself (directly or through another symbol); not expanded"
+            )
+            return EDMGroup(**size_properties, properties={"symbolFileRecursive": embedded_file})
 
+        self._symbol_stack.append(symbol_path)
         # Symbol expansion runs at parse time, outside the adapter's per-object
         # isolation: whatever a malformed symbol file or object does, the screen
         # keeps the symbol's rect with a warning instead of failing.
@@ -422,6 +448,8 @@ class EDMFileParser:
                     ]
                 },
             )
+        finally:
+            self._symbol_stack.pop()
 
     def _expand_symbol(
         self,
@@ -476,6 +504,55 @@ class EDMFileParser:
         if warnings:
             temp_group.properties["symbolWarnings"] = warnings
         return temp_group
+
+    def _find_symbol_file(self, embedded_file: str) -> tuple[Path, str] | None:
+        """
+        Look up a symbol file and read it.
+
+        Parameters
+        ----------
+        embedded_file : str
+            The symbol file name as written in the display, with its ``.edl`` suffix.
+
+        Returns
+        -------
+        tuple[Path, str] | None
+            The file's resolved path (the unresolved one when it cannot be resolved)
+            and its text, or None when it is not found. A confined lookup that finds
+            no candidate inside the allowed roots also adds the name to
+            ``_symbols_outside``.
+        """
+        # EDM resolves symbol files beside the calling display first, then along
+        # EDMDATAFILES (explicit search_paths go before it). Split on ":" only when
+        # it is not a Windows drive colon (":" followed by a path separator), and
+        # accept ";" separators too. Confined lookups skip EDMDATAFILES.
+        edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
+        if not self.confine_file_refs:
+            datafiles = os.environ.get("EDMDATAFILES", ".")
+            for chunk in datafiles.split(";"):
+                edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
+        any_in_bounds = False
+        for path in edm_paths:
+            if self.confine_file_refs:
+                # Decided on the path alone, before any existence check, so a rejection
+                # says nothing about whether the file exists.
+                full_path = resolve_inside(path, embedded_file, self._allowed_roots)
+                if full_path is None:
+                    continue
+                any_in_bounds = True
+            else:
+                full_path = Path(path) / embedded_file
+            if full_path.is_file():
+                resolved = full_path if self.confine_file_refs else _resolve_or_none(full_path) or full_path
+                return resolved, _read_edm_text(full_path)
+        if self.confine_file_refs and not any_in_bounds:
+            logger.warning(f"Symbol file {embedded_file!r} is outside the search paths; not read")
+            self._symbols_outside.add(embedded_file)
+        else:
+            logger.warning(
+                f"Symbol file {embedded_file!r} not found beside the display, on the search paths or on EDMDATAFILES"
+            )
+        return None
 
     def resize_symbol_groups(self, temp_group: EDMGroup, size_properties: dict[str, int]) -> None:
         """

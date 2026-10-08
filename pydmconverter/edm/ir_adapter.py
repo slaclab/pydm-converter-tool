@@ -1384,7 +1384,18 @@ def edm_group_to_source_nodes(
                 raw_props=dict(obj.properties),
                 children=edm_group_to_source_nodes(obj, colors=colors, skip_classes=skip_classes, registry=registry),
             )
-            if "symbolFileNotFound" in obj.properties:
+            outside_symbol = obj.properties.get("symbolFileOutsideSearchPaths")
+            if outside_symbol:
+                group_node.warnings.append(
+                    f"EDM symbol file '{outside_symbol}' is outside the search paths; not read, symbol not rendered"
+                )
+            elif "symbolFileRecursive" in obj.properties:
+                recursive_symbol = obj.properties["symbolFileRecursive"]
+                group_node.warnings.append(
+                    f"EDM symbol file '{recursive_symbol}' includes itself (directly or through another symbol); "
+                    "symbol not rendered"
+                )
+            elif "symbolFileNotFound" in obj.properties:
                 missing_symbol = obj.properties["symbolFileNotFound"]
                 group_node.warnings.append(
                     f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
@@ -1437,6 +1448,7 @@ def edm_file_to_ir(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     search_paths: SearchPaths = None,
+    confine_file_refs: bool = False,
 ) -> ScreenIR:
     """Parse an ``.edl`` file and build its Screen IR.
 
@@ -1457,7 +1469,17 @@ def edm_file_to_ir(
     ``search_paths`` are extra directories, searched after the file's own directory
     and before ``EDMDATAFILES``, for activeSymbolClass symbol files and (after the
     file's own directory) for ``calc.list``. A symbol file that cannot be found
-    leaves an empty group with a node warning.
+    leaves an empty group with a node warning, as does one that includes itself
+    (directly or through other symbol files), which is not expanded again.
+
+    ``confine_file_refs`` is for untrusted input: a symbol file is read only from
+    inside the file's own directory or a ``search_paths`` entry. A name may use
+    subdirectories or ``..`` as long as it resolves inside one of those directories
+    (not necessarily the one it was joined to). An absolute name, or one resolving
+    outside all of them (``..``, a symlink), is rejected before any existence check
+    and never read: the empty group is warned as outside the search paths when no
+    directory could hold the name, and as not found otherwise. ``EDMDATAFILES``
+    (default ``.``, the CWD) is not searched at all.
     """
     from pydmconverter.sites import get_skip_widgets
 
@@ -1469,6 +1491,7 @@ def edm_file_to_ir(
         calc_reuse_short=False,
         color_list_file=str(color_list_path) if color_list_path else None,
         search_paths=search_paths,
+        confine_file_refs=confine_file_refs,
     )
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)

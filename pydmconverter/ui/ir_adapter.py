@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from pydmconverter.edm.parser_helpers import resolve_inside
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
@@ -280,6 +281,8 @@ def _expand_template_repeater(
     geometry: tuple[int, int, int, int],
     source_dir: Path | None,
     warnings: list[str],
+    *,
+    confine_file_refs: bool = False,
 ) -> list[SourceNode] | None:
     """Materialize a ``PyDMTemplateRepeater`` into one embedded-display per record.
 
@@ -288,6 +291,11 @@ def _expand_template_repeater(
     ``macros`` and stepped along the repeater's rect by the template size +
     spacing. ``None`` (falls back to unknown-widget) if the dataSource is
     missing/unreadable/not-a-list.
+
+    ``confine_file_refs`` (untrusted input): a ``dataSource``/``templateFilename``
+    resolving outside ``source_dir`` (absolute, ``..``, a symlink out) is rejected
+    before any existence check and never read, so the result does not depend on
+    what exists there.
     """
     template = props.get("templateFilename")
     data_source = props.get("dataSource")
@@ -301,17 +309,32 @@ def _expand_template_repeater(
         warnings.append("PyDMTemplateRepeater: source directory unknown, cannot resolve dataSource; placeholder")
         return None
 
-    def _resolve(ref: str) -> Path:
+    roots = [source_dir.resolve()] if confine_file_refs else []
+
+    def _resolve(ref: str) -> Path | None:
         """Resolve a repeater path against the source dir, falling back to the
-        basename when a deploy-time env prefix (``$PYDM/mc/...``) won't resolve."""
-        p = (source_dir / ref).resolve()
+        basename when a deploy-time env prefix (``$PYDM/mc/...``) won't resolve.
+        Confined: ``None`` for a ref outside the source dir, with no existence check."""
+        if confine_file_refs:
+            p = resolve_inside(source_dir, ref, roots)
+            if p is None:
+                return None
+        else:
+            p = (source_dir / ref).resolve()
         if p.exists():
             return p
         base = ref.replace("\\", "/").rsplit("/", 1)[-1]
-        alt = (source_dir / base).resolve()
-        return alt if alt.exists() else p
+        # The basename stays in source_dir unless it is ".." or a symlink out.
+        alt = resolve_inside(source_dir, base, roots) if confine_file_refs else (source_dir / base).resolve()
+        return alt if alt is not None and alt.exists() else p
 
     data_path = _resolve(data_source)
+    if data_path is None:
+        warnings.append(
+            f"PyDMTemplateRepeater dataSource {data_source!r} is outside the screen's directory; "
+            "not read, rendering placeholder"
+        )
+        return None
     try:
         records = json.loads(data_path.read_text())
     except (OSError, ValueError, TypeError):
@@ -323,12 +346,15 @@ def _expand_template_repeater(
 
     # Fall back to the repeater rect if the template can't be sized.
     tmpl_path = _resolve(template)
-    tmpl_size = _template_root_size(tmpl_path)
-    if tmpl_size is None:
+    tmpl_size = None if tmpl_path is None else _template_root_size(tmpl_path)
+    if tmpl_path is None:
+        warnings.append(
+            f"PyDMTemplateRepeater template {template!r} is outside the screen's directory; "
+            "not read, using repeater rect for instance size"
+        )
+    elif tmpl_size is None:
         warnings.append(f"PyDMTemplateRepeater template {template!r} unreadable; using repeater rect for instance size")
-        tmpl_w, tmpl_h = geometry[2], geometry[3]
-    else:
-        tmpl_w, tmpl_h = tmpl_size
+    tmpl_w, tmpl_h = tmpl_size if tmpl_size is not None else (geometry[2], geometry[3])
 
     layout = str(props.get("layoutType", "")).lower()
     horizontal = "horizontal" in layout  # absent -> Vertical (PyDM default)
@@ -342,9 +368,14 @@ def _expand_template_repeater(
     # resolve the right converted template.
     template_ref = template.strip().replace("\\", "/")
     # If the literal path didn't resolve but its basename did, emit the basename.
-    if not (source_dir / template_ref).exists() and tmpl_path.name == template_ref.rsplit("/", 1)[-1]:
-        if tmpl_path.exists():
-            template_ref = tmpl_path.name
+    # A rejected (confined) template is emitted as written; the normalized ref can
+    # differ from the vetted one, so it is only probed when it too stays inside.
+    if tmpl_path is not None:
+        literal_inside = not confine_file_refs or resolve_inside(source_dir, template_ref, roots) is not None
+        literal_exists = literal_inside and (source_dir / template_ref).exists()
+        if not literal_exists and tmpl_path.name == template_ref.rsplit("/", 1)[-1]:
+            if tmpl_path.exists():
+                template_ref = tmpl_path.name
 
     nodes: list[SourceNode] = []
     for i, record in enumerate(records):
@@ -368,7 +399,9 @@ def _expand_template_repeater(
     return nodes
 
 
-def _widget_to_sources(widget: ET.Element, source_dir: Path | None) -> list[SourceNode]:
+def _widget_to_sources(
+    widget: ET.Element, source_dir: Path | None, *, confine_file_refs: bool = False
+) -> list[SourceNode]:
     """Normalize one ``<widget>`` into one *or more* SourceNodes.
 
     Almost every widget yields a single node; a ``PyDMTemplateRepeater`` fans out
@@ -421,14 +454,14 @@ def _widget_to_sources(widget: ET.Element, source_dir: Path | None) -> list[Sour
         geometry = (0, 0, 0, 0)
 
     if raw_class == "PyDMTemplateRepeater":
-        expanded = _expand_template_repeater(props, geometry, source_dir, warnings)
+        expanded = _expand_template_repeater(props, geometry, source_dir, warnings, confine_file_refs=confine_file_refs)
         if expanded is not None:
             return expanded
         # else fall through to the unknown-widget placeholder below
 
     children: list[SourceNode] = []
     for child in _child_widgets(widget):
-        children.extend(_widget_to_sources(child, source_dir))
+        children.extend(_widget_to_sources(child, source_dir, confine_file_refs=confine_file_refs))
 
     return [
         SourceNode(
@@ -469,14 +502,23 @@ def parse_ui(path: str | Path) -> tuple[ET.Element, str, tuple[int, int]]:
     return root_widget, title, size
 
 
-def ui_file_to_ir(input_path: str | Path, *, registry: RegistryClient | None = None) -> ScreenIR:
-    """Parse a ``.ui`` file and build its Screen IR."""
+def ui_file_to_ir(
+    input_path: str | Path, *, registry: RegistryClient | None = None, confine_file_refs: bool = False
+) -> ScreenIR:
+    """Parse a ``.ui`` file and build its Screen IR.
+
+    ``confine_file_refs`` is for untrusted input: a PyDMTemplateRepeater's ``dataSource``
+    and ``templateFilename`` are read only if they resolve inside the file's own
+    directory. An absolute name, or one resolving outside it (``..``, a symlink), is not
+    read at all: the dataSource falls back to the placeholder, the template to the
+    repeater rect, each with a warning that it is outside the screen's directory.
+    """
     path = Path(input_path)
     root_widget, title, size = parse_ui(path)
     source_dir = path.parent
     top_level: list[SourceNode] = []
     for child in _child_widgets(root_widget):
-        top_level.extend(_widget_to_sources(child, source_dir))
+        top_level.extend(_widget_to_sources(child, source_dir, confine_file_refs=confine_file_refs))
     builder = IRBuilder(registry or VendoredRegistry())
     return builder.build_screen(
         screen_id=path.stem,

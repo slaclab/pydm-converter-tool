@@ -5,11 +5,16 @@ horizontally/vertically. The adapter fans the repeater out into one
 embedded-display IR node per record (reusing the embedded-display path), each
 referencing the converted template screen and carrying the record as its macros.
 Missing/malformed dataSource falls back to the unknown-widget placeholder.
+With ``confine_file_refs`` (untrusted input), refs outside the screen's directory
+are not read at all.
 """
 
 import json
 from pathlib import Path
 
+import pytest
+
+from pydmconverter.react import convert_bytes
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 TEMPLATE_UI = """<?xml version="1.0"?>
@@ -121,3 +126,123 @@ def test_datasource_not_a_list_falls_back(tmp_path):
     children = ui_file_to_ir(ui).root.children
     assert [c.type for c in children] == ["unknown-widget"]
     assert any("not a JSON list" in w for w in children[0].warnings)
+
+
+# --- confine_file_refs: an untrusted .ui's repeater refs stay in its directory ---
+
+SECRET = "s3cret-do-not-inline"
+OUTSIDE = "is outside the screen's directory; not read"
+
+
+def _secret_beside_screen_dir(tmp_path: Path) -> tuple[Path, Path]:
+    """A screen dir, and a JSON list holding SECRET in its parent (outside it)."""
+    screen_dir = tmp_path / "screen"
+    screen_dir.mkdir()
+    secret = tmp_path / "secret.json"
+    secret.write_text(json.dumps([{"Token": SECRET}]))
+    return screen_dir, secret
+
+
+def test_confined_rejects_datasource_outside_screen_dir(tmp_path):
+    screen_dir, secret = _secret_beside_screen_dir(tmp_path)
+    for data in (str(secret), "../secret.json"):
+        ui = _write_screen(screen_dir, template="Widget.ui", data=data)
+        # Unconfined, the repeater inlines the outside JSON as macros.
+        assert SECRET in ui_file_to_ir(ui).model_dump_json()
+
+        ir = ui_file_to_ir(ui, confine_file_refs=True)
+        assert SECRET not in ir.model_dump_json()
+        assert [c.type for c in ir.root.children] == ["unknown-widget"]
+        warnings = ir.root.children[0].warnings
+        assert any(f"dataSource {data!r} {OUTSIDE}, rendering placeholder" in w for w in warnings)
+        assert not any("missing/unreadable" in w for w in warnings)
+
+
+def test_confined_rejection_does_not_depend_on_outside_files(tmp_path):
+    screen_dir, secret = _secret_beside_screen_dir(tmp_path)
+    for data in (str(secret), "../secret.json"):
+        ui = _write_screen(screen_dir, template="Widget.ui", data=data)
+        secret.write_text(json.dumps([{"Token": SECRET}]))
+        present = ui_file_to_ir(ui, confine_file_refs=True)
+        secret.unlink()
+        missing = ui_file_to_ir(ui, confine_file_refs=True)
+        # A missing target gets the same warning (nothing outside is probed)...
+        assert missing.root.children[0].warnings == present.root.children[0].warnings
+        assert missing.model_dump_json() == present.model_dump_json()
+        # ...where unconfined, the probe shows through.
+        assert any("missing/unreadable" in w for w in ui_file_to_ir(ui).root.children[0].warnings)
+
+
+def test_confined_outside_datasource_skips_basename_fallback(tmp_path):
+    # The basename exists in the screen dir: unconfined falls back to it, confined
+    # rejects the absolute ref outright.
+    ui = _write_screen(tmp_path, template="Widget.ui", data="/nonexistent/deploy/data.json")
+    assert [c.type for c in ui_file_to_ir(ui).root.children] == ["embedded-display"] * len(RECORDS)
+    children = ui_file_to_ir(ui, confine_file_refs=True).root.children
+    assert [c.type for c in children] == ["unknown-widget"]
+    assert any(OUTSIDE in w for w in children[0].warnings)
+
+
+@pytest.mark.parametrize(
+    ("template", "data"),
+    [
+        ("Widget.ui", "data.json"),
+        ("./Widget.ui", "sub/../data.json"),
+        ("$PYDM/mc/Widget.ui", "$PYDM/mc/data.json"),  # deploy prefix -> basename fallback
+    ],
+)
+def test_confined_in_dir_refs_expand_as_unconfined(tmp_path, template, data):
+    ui = _write_screen(tmp_path, template=template, data=data)
+    confined = ui_file_to_ir(ui, confine_file_refs=True)
+    assert confined.model_dump_json() == ui_file_to_ir(ui).model_dump_json()
+    embeds = confined.root.children
+    assert [c.type for c in embeds] == ["embedded-display"] * len(RECORDS)
+    assert [c.props["macros"] for c in embeds] == RECORDS
+    assert [c.geometry.x for c in embeds] == [10, 60, 110]
+    assert (embeds[0].geometry.width, embeds[0].geometry.height) == (50, 40)
+
+
+def test_confined_template_outside_uses_repeater_rect(tmp_path):
+    screen_dir = tmp_path / "screen"
+    screen_dir.mkdir()
+    outside = tmp_path / "Widget.ui"
+    for template in (str(outside), "../Widget.ui"):
+        # _write_screen also puts a Widget.ui in the screen dir, which a basename
+        # fallback would find.
+        ui = _write_screen(screen_dir, template=template, data="data.json")
+        outside.write_text(TEMPLATE_UI)
+        ir = ui_file_to_ir(ui, confine_file_refs=True)
+        embeds = ir.root.children
+        assert [c.type for c in embeds] == ["embedded-display"] * len(RECORDS)
+        # Instances take the repeater rect (400x40), stepped by its width.
+        assert [(c.geometry.x, c.geometry.width, c.geometry.height) for c in embeds] == [
+            (10, 400, 40),
+            (410, 400, 40),
+            (810, 400, 40),
+        ]
+        assert any(f"template {template!r} {OUTSIDE}" in w for w in embeds[0].warnings)
+        # Emitted as written (with "/" separators, as every screen ref is), never
+        # rewritten by whether the outside file exists.
+        expected = template.replace("\\", "/")[: -len(".ui")] + ".screen.json"
+        assert all(c.props["file"] == expected for c in embeds)
+        outside.unlink()
+        assert ui_file_to_ir(ui, confine_file_refs=True).model_dump_json() == ir.model_dump_json()
+
+
+def test_unconfined_absolute_datasource_still_read(tmp_path):
+    ui = _write_screen(tmp_path, template="Widget.ui", data=str(tmp_path / "data.json"))
+    embeds = ui_file_to_ir(ui).root.children
+    assert [c.props["macros"] for c in embeds] == RECORDS
+
+
+def test_convert_bytes_ui_confines_repeater_datasource(tmp_path):
+    secret = tmp_path / "secret.json"
+    secret.write_text(json.dumps([{"Token": SECRET}]))
+    ui_bytes = REPEATER_UI.format(template="Widget.ui", data=secret).encode()
+    # Without the flag, an uploaded .ui reads any JSON list the process can reach.
+    assert SECRET in convert_bytes(ui_bytes, kind="ui", filename="u.ui").model_dump_json()
+
+    confined = convert_bytes(ui_bytes, kind="ui", filename="u.ui", confine_file_refs=True)
+    assert SECRET not in confined.model_dump_json()
+    assert [c.type for c in confined.root.children] == ["unknown-widget"]
+    assert any(OUTSIDE in w for w in confined.root.children[0].warnings)
