@@ -665,9 +665,10 @@ def test_convert_escapes_ampersand_for_qt_mnemonics(tmp_path):
     assert label_text_string.text == "Foo & Bar"
 
 
-def _related_display_macros_and_filenames(tmp_path, blocks):
-    """Convert one relatedDisplayClass carrying ``blocks``; return its (macros, filenames)."""
-    edm_content = textwrap.dedent("""
+def _convert_related_display(tmp_path, blocks, num_dsps=2):
+    """Convert one relatedDisplayClass carrying ``blocks``; return the .ui path."""
+    edm_content = (
+        textwrap.dedent("""
         4 0 1
         beginScreenProperties
         major 4
@@ -691,22 +692,31 @@ def _related_display_macros_and_filenames(tmp_path, blocks):
         fgColor index 14
         bgColor index 0
         buttonLabel "Open"
-        numDsps 2
+        numDsps {num_dsps}
         {blocks}
         endObjectProperties
-    """).replace("{blocks}", blocks)
+    """)
+        .replace("{num_dsps}", str(num_dsps))
+        .replace("{blocks}", blocks)
+    )
     input_file = tmp_path / "test.edl"
     output_file = tmp_path / "test.ui"
     input_file.write_text(edm_content)
 
     convert(str(input_file), str(output_file))
+    return output_file
 
+
+def _related_display_macros_and_filenames(tmp_path, blocks, num_dsps=2):
+    """Convert one relatedDisplayClass carrying ``blocks``; return its (macros, filenames)."""
+    output_file = _convert_related_display(tmp_path, blocks, num_dsps)
     (button,) = [
         w for w in ET.parse(output_file).getroot().iter("widget") if w.get("class") == "PyDMRelatedDisplayButton"
     ]
-    macros = button.find("property[@name='macros']/string")
+    macros_prop = button.find("property[@name='macros']")
+    macros = None if macros_prop is None else [s.text for s in macros_prop.findall("stringlist/string")]
     filenames = [s.text for s in button.findall("property[@name='filenames']/stringlist/string")]
-    return (macros.text if macros is not None else None), filenames
+    return macros, filenames
 
 
 def test_convert_related_display_pairs_symbols_with_filenames_by_index(tmp_path):
@@ -716,7 +726,7 @@ def test_convert_related_display_pairs_symbols_with_filenames_by_index(tmp_path)
         'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nsymbols {\n  1 "P=X"\n}',
     )
     assert filenames == ["a.ui", "b.ui"]
-    assert macros == '{}\n{"P": "X"}'
+    assert macros == ["{}", '{"P": "X"}']
 
 
 def test_convert_related_display_dense_symbols_unchanged(tmp_path):
@@ -725,7 +735,88 @@ def test_convert_related_display_dense_symbols_unchanged(tmp_path):
         'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nsymbols {\n  0 "P=A"\n  1 "P=B"\n}',
     )
     assert filenames == ["a.ui", "b.ui"]
-    assert macros == '{"P": "A"}\n{"P": "B"}'
+    assert macros == ['{"P": "A"}', '{"P": "B"}']
+
+
+def test_convert_related_display_macros_stringlist_pads_trailing_entries(tmp_path):
+    """macros is a <stringlist> with one entry per filename, even past the last symbols entry."""
+    macros, filenames = _related_display_macros_and_filenames(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n  2 "c.edl"\n}\nsymbols {\n  0 "P=A"\n}',
+        num_dsps=3,
+    )
+    assert filenames == ["a.ui", "b.ui", "c.ui"]
+    assert macros == ['{"P": "A"}', "{}", "{}"]
+
+
+def test_convert_related_display_single_file_macros_stringlist(tmp_path):
+    macros, filenames = _related_display_macros_and_filenames(
+        tmp_path, 'displayFileName {\n  0 "a.edl"\n}\nsymbols {\n  0 "P=A,R=B"\n}', num_dsps=1
+    )
+    assert filenames == ["a.ui"]
+    assert macros == ['{"P": "A", "R": "B"}']
+
+
+def test_related_display_macros_load_one_per_filename_in_pydm(tmp_path, qtbot):
+    """PyDM pairs macros[i] with filenames[i]; a single <string> would load as one entry."""
+    pytest.importorskip("pydm")
+    from pydm.utilities.macro import parse_macro_string
+    from pydm.widgets.related_display_button import PyDMRelatedDisplayButton
+    from qtpy import uic
+
+    output_file = _convert_related_display(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n  2 "c.edl"\n}\n'
+        'symbols {\n  1 "DEV=QUAD:L1B:0385,PDEV=PSC:L1B:MG04"\n  2 "DEV=XCOR:L1B:0385"\n}',
+        num_dsps=3,
+    )
+    screen = uic.loadUi(str(output_file))
+    qtbot.addWidget(screen)
+    (button,) = screen.findChildren(PyDMRelatedDisplayButton)
+
+    assert button.filenames == ["a.ui", "b.ui", "c.ui"]
+    assert len(button.macros) == len(button.filenames)
+    assert [parse_macro_string(m) for m in button.macros] == [
+        {},
+        {"DEV": "QUAD:L1B:0385", "PDEV": "PSC:L1B:MG04"},
+        {"DEV": "XCOR:L1B:0385"},
+    ]
+
+
+# b.edl has an empty symbols entry and c.edl none (index 2 is skipped).
+FOUR_DISPLAYS = (
+    'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n  2 "c.edl"\n  3 "d.edl"\n}\n'
+    'symbols {\n  0 "DEV=A1"\n  1 ""\n  3 "DEV=D4,N=2"\n}'
+)
+
+
+def test_convert_related_display_macros_keep_empty_and_skipped_entries(tmp_path):
+    macros, filenames = _related_display_macros_and_filenames(tmp_path, FOUR_DISPLAYS, num_dsps=4)
+    assert filenames == ["a.ui", "b.ui", "c.ui", "d.ui"]
+    assert macros == ['{"DEV": "A1"}', "{}", "{}", '{"DEV": "D4", "N": "2"}']
+
+
+def test_related_display_opens_each_file_with_its_own_macros(tmp_path, qtbot):
+    """Opening each entry through PyDM gives that display its own symbols."""
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from pydm.widgets.related_display_button import PyDMRelatedDisplayButton
+
+    output_file = _convert_related_display(tmp_path, FOUR_DISPLAYS, num_dsps=4)
+    for name in "abcd":
+        (tmp_path / f"{name}.ui").write_text(
+            '<ui version="4.0"><class>Form</class><widget class="QWidget" name="Form"/></ui>'
+        )
+    screen = load_file(str(output_file), target=None)
+    qtbot.addWidget(screen)
+    (button,) = screen.findChildren(PyDMRelatedDisplayButton)
+
+    opened = {}
+    for item in button._get_items():
+        display = button.open_display(item["filename"], item["macros"])
+        qtbot.addWidget(display)
+        opened[item["filename"]] = display.macros()
+    assert opened == {"a.ui": {"DEV": "A1"}, "b.ui": {}, "c.ui": {}, "d.ui": {"DEV": "D4", "N": "2"}}
 
 
 def test_convert_shell_command_to_commands_property(tmp_path):

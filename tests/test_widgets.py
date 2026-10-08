@@ -428,6 +428,19 @@ def test_pydmrelateddisplay_button_list_titles():
     assert strings == ["asynOctet Interface I/O", "Register interfaces I/O", "Serial port parameters"]
 
 
+def test_pydmrelateddisplay_button_list_macros():
+    """List-valued macros are a StringList: PyDM pairs macros[i] with filenames[i]."""
+    widget = PyDMRelatedDisplayButton(macros=['{"DEV": "A1"}', "{}", '{"DEV": "C3"}'])
+    widget.displayFileName = ["a.edl", "b.edl", "c.edl"]
+
+    properties: List[ET.Element] = widget.generate_properties()
+
+    macros_prop = next(p for p in properties if p.get("name") == "macros")
+    assert macros_prop.find("string") is None
+    strings = [s.text for s in macros_prop.findall("stringlist/string")]
+    assert strings == ['{"DEV": "A1"}', "{}", '{"DEV": "C3"}']
+
+
 def test_edm_to_ui_filename():
     """EDM display names map to .ui names without eating unrelated dots."""
     # EDM appends ".edl" to a bare name, so both forms converge.

@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, List, Optional, Dict
+from typing import Any, ClassVar, List, Optional, Dict, Union
 from pydmconverter.custom_types import RGBA, RuleArguments
 from pydmconverter.widgets_helpers import (
     Int,
@@ -724,8 +724,8 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         The filenames associated with the display.
     titles : Optional[str]
         The titles for the display.
-    macros : Optional[str]
-        Macros used for the display.
+    macros : Optional[Union[str, List[str]]]
+        Macros used for the display: one JSON string per filename, by position.
     open_in_new_window : Optional[bool]
         If True, opens the display in a new window.
     follow_symlinks : Optional[bool]
@@ -737,7 +737,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
     show_icon: Optional[bool] = None
     filenames: Optional[str] = None
     titles: Optional[str] = None
-    macros: Optional[str] = None
+    macros: Optional[Union[str, List[str]]] = None
     open_in_new_window: Optional[bool] = None
     follow_symlinks: Optional[bool] = None
     displayFileName = None
@@ -764,7 +764,10 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
             else:
                 properties.append(Str("titles", escape_qt_mnemonic(self.titles)).to_xml())
         if self.macros is not None:
-            properties.append(Str("macros", self.macros).to_xml())
+            if isinstance(self.macros, list):
+                properties.append(StringList("macros", self.macros).to_xml())
+            else:
+                properties.append(Str("macros", self.macros).to_xml())
         # if self.open_in_new_window is not None:
         properties.append(Bool("openInNewWindow", True).to_xml())
         if self.follow_symlinks is not None:
