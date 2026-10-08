@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from pydmconverter.edm.parser_helpers import resolve_inside
+from pydmconverter.edm.parser_helpers import parse_edm_macros, resolve_inside
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
@@ -201,6 +201,35 @@ def _scalar_property(prop: ET.Element) -> Any:
     if tag == "stringlist":
         return [c.text or "" for c in el]
     return _SKIP
+
+
+def _first_display_macros(value: Any) -> dict[str, str] | None:
+    """A related display's ``macros`` -> its first display's macros (``None`` if unparseable).
+
+    PyDM's ``macros`` is a QStringList paired with ``filenames`` by position (a lone
+    ``<string>`` is the older single-entry form); each entry is a JSON object or an
+    EPICS-style ``NAME=value,...`` string. The IR button carries only the first
+    filename (``screenRef``), so it takes only that entry, as the object its
+    propSchema declares. A lone ``<string>`` may also be the pre-#181 converter's
+    newline-joined list (one JSON object per filename), whose first line is used.
+    """
+    entries = value if isinstance(value, list) else [value]
+    first = entries[0] if entries and isinstance(entries[0], str) else ""
+    if not first.strip():
+        return {}
+    try:
+        parsed = json.loads(first)
+    except ValueError:
+        lines = first.strip().splitlines()
+        try:
+            parsed = json.loads(lines[0]) if len(lines) > 1 else None
+        except ValueError:
+            parsed = None
+        if parsed is None:
+            parsed = parse_edm_macros(first) if "=" in first else None
+    if not isinstance(parsed, dict):
+        return None
+    return {str(key): str(item) for key, item in parsed.items()}
 
 
 def _font_pixels(prop: ET.Element) -> int | None:
@@ -446,6 +475,12 @@ def _widget_to_sources(
                 props[prop_name] = unescape_qt_mnemonic(value)
 
     warnings: list[str] = []
+    if qt_class == "PyDMRelatedDisplayButton" and "macros" in props:
+        macros = _first_display_macros(props.pop("macros"))
+        if macros:
+            props["macros"] = macros
+        elif macros is None:
+            warnings.append(f"{widget.get('name') or raw_class} has unparseable macros; dropped")
     rules = _parse_rules(rules_text, warnings)
     if geometry is None:
         warnings.append(

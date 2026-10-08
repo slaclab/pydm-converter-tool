@@ -427,3 +427,78 @@ def test_centralwidget_overflow_still_grows_screen(tmp_path):
     ir = _centralwidget_ui(tmp_path, (450, 340), (300, 300, 150, 40))
     assert (ir.metadata.size.width, ir.metadata.size.height) == (458, 348)
     assert (ir.root.geometry.width, ir.root.geometry.height) == (458, 348)
+
+
+def _related_display_ui(tmp_path, macros_xml):
+    ui = tmp_path / "rd.ui"
+    ui.write_text(
+        f"""<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="Form">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMRelatedDisplayButton" name="rd">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>20</height></rect></property>
+  <property name="filenames" stdset="0"><stringlist><string>a.ui</string><string>b.ui</string></stringlist></property>
+  {macros_xml}
+ </widget>
+</widget></ui>"""
+    )
+    (button,) = ui_file_to_ir(ui).root.children
+    return button
+
+
+def test_related_display_macros_stringlist_takes_first_display(tmp_path):
+    """macros is a QStringList paired with filenames: the IR button (first file only) gets entry 0 as an object."""
+    button = _related_display_ui(
+        tmp_path,
+        """<property name="macros" stdset="0"><stringlist>
+  <string>{"P": "A"}</string><string>{"P": "B"}</string></stringlist></property>""",
+    )
+    assert button.props["file"] == "a.screen.json"
+    assert button.props["macros"] == {"P": "A"}
+
+
+def test_related_display_macros_string_and_epics_forms(tmp_path):
+    """A lone <string> (older single-entry form) in PyDM's NAME=value syntax also becomes an object."""
+    button = _related_display_ui(tmp_path, '<property name="macros" stdset="0"><string>P=A, R=B</string></property>')
+    assert button.props["macros"] == {"P": "A", "R": "B"}
+
+
+def test_related_display_empty_first_macros_dropped(tmp_path):
+    button = _related_display_ui(
+        tmp_path,
+        """<property name="macros" stdset="0"><stringlist>
+  <string>{}</string><string>{"P": "B"}</string></stringlist></property>""",
+    )
+    assert "macros" not in button.props
+
+
+def test_related_display_unparseable_macros_dropped_with_warning(tmp_path):
+    button = _related_display_ui(tmp_path, '<property name="macros" stdset="0"><string>not macros</string></property>')
+    assert "macros" not in button.props
+    assert "rd has unparseable macros; dropped" in button.warnings
+
+
+def test_related_display_macros_newline_joined_string_takes_first_line(tmp_path):
+    """A lone <string> may be the pre-#181 converter's newline-joined list (one JSON object per filename)."""
+    button = _related_display_ui(
+        tmp_path, '<property name="macros" stdset="0"><string>{"P": "A"}\n{"P": "B"}</string></property>'
+    )
+    assert button.props["macros"] == {"P": "A"}
+    assert not any("unparseable macros" in warning for warning in button.warnings)
+
+
+def test_related_display_newline_joined_empty_first_entry(tmp_path):
+    button = _related_display_ui(
+        tmp_path, '<property name="macros" stdset="0"><string>{}\n{"P": "B"}</string></property>'
+    )
+    assert "macros" not in button.props
+    assert not any("unparseable macros" in warning for warning in button.warnings)
+
+
+def test_related_display_pretty_printed_macros_string(tmp_path):
+    """A multi-line <string> that is one JSON object parses whole, before any first-line split."""
+    button = _related_display_ui(
+        tmp_path, '<property name="macros" stdset="0"><string>{\n "P": "A"\n}</string></property>'
+    )
+    assert button.props["macros"] == {"P": "A"}
