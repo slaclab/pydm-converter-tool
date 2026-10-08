@@ -516,15 +516,18 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
         value = parse_font_string(value)
     elif edm_attr in ("macro", "symbols"):
         if isinstance(value, list):
-            if isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
+            if isinstance(widget, PyDMEmbeddedDisplay) and is_menu_pip(obj) and value:
+                # A menu window pairs symbols[i] with displayFileName[i] by EDM array
+                # index (a file may skip indices or start at 1): take the shown one's,
+                # even when it is the only entry (symbols { 1 "ID=$(ID)" } is display 1's).
+                symbols = dict(block_items(value))
+                index = shown_display_index(obj)
+                value = parse_edm_macros(symbols[index]) if index in symbols else {}
+                logger.info(f"Converted shown display's macros to dict: {value}")
+            elif isinstance(widget, PyDMEmbeddedDisplay) and len(value) == 1:
                 macro_dict = parse_edm_macros(value[0])
                 value = macro_dict
                 logger.info(f"Converted single macro to dict: {value}")
-            elif isinstance(widget, PyDMEmbeddedDisplay) and is_menu_pip(obj) and value:
-                # A menu window has one symbols entry per displayFileName entry: take the shown one's.
-                index = shown_display_index(obj)
-                value = parse_edm_macros(value[index]) if index < len(value) else {}
-                logger.info(f"Converted shown display's macros to dict: {value}")
             elif isinstance(widget, PyDMRelatedDisplayButton) and obj.properties.get("displayFileName"):
                 # EDM (related_display.cc) pairs symbols[i] with displayFileName[i] by array
                 # index, and a file may skip indices: one macros entry per filename, in
@@ -663,8 +666,9 @@ def apply_widget_post_processing(
         if "displayFileName" in obj.properties and obj.properties["displayFileName"]:
             display_filenames = obj.properties["displayFileName"]
             filename_to_set = None
-            if isinstance(display_filenames, (list, tuple)) and len(display_filenames) > 0:
-                filename_to_set = display_filenames[shown_display_index(obj)]
+            if isinstance(display_filenames, list) and len(display_filenames) > 0:
+                # shown_display_index is an EDM array index, not a list position.
+                filename_to_set = dict(block_items(display_filenames)).get(shown_display_index(obj))
             elif isinstance(display_filenames, dict) and len(display_filenames) > 0:
                 filename_to_set = display_filenames[0]
             elif isinstance(display_filenames, str):
@@ -1203,6 +1207,12 @@ def _as_list(value) -> list:
     return value if isinstance(value, list) else [value]
 
 
+def _starting_index(init: int, indices: List[int]) -> int:
+    """The EDM index of the entry a menu window starts on: its variable's initial
+    value when an entry has that index, else the lowest-numbered entry."""
+    return init if init in indices else min(indices, default=0)
+
+
 def is_menu_pip(obj) -> bool:
     """An embedded window whose filePv picks among its displayFileName entries."""
     if not isinstance(obj, EDMObject):
@@ -1212,14 +1222,14 @@ def is_menu_pip(obj) -> bool:
 
 
 def shown_display_index(obj: EDMObject) -> int:
-    """The displayFileName/symbols entry an embedded window shows when it opens:
-    a menu window starts at its filePv's initial value, any other at entry 0."""
-    if not is_menu_pip(obj):
-        return 0
+    """The EDM index of the displayFileName/symbols entry an embedded window shows
+    when it opens: a menu window starts at its filePv's initial value (EDM shows
+    displayFileName[value]), any other at its lowest-numbered entry."""
     file_pv = obj.properties.get("filePv")
-    index = _loc_init(file_pv) if isinstance(file_pv, str) and file_pv.startswith("loc://") else 0
-    count = len(_as_list(obj.properties.get("displayFileName")))
-    return index if 0 <= index < count else 0
+    index = 0
+    if is_menu_pip(obj) and isinstance(file_pv, str) and file_pv.startswith("loc://"):
+        index = _loc_init(file_pv)
+    return _starting_index(index, [i for i, _ in block_items(obj.properties.get("displayFileName"))])
 
 
 def _walk_objects(group: EDMGroup, hidden: bool = False):
@@ -1298,7 +1308,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             continue
         file_pv = pip.properties.get("filePv")
         match = LOC_NAME_PATTERN.search(file_pv) if isinstance(file_pv, str) else None
-        files = _as_list(pip.properties.get("displayFileName"))
+        # (EDM index, file): the variable's value v shows displayFileName[v], and a
+        # file may skip indices or start at 1.
+        files = block_items(pip.properties.get("displayFileName"))
         if not match or not files:
             continue
         # The name as it appears in the tree, marker included: users and the
@@ -1357,25 +1369,32 @@ def _menu_writes(obj, name: str) -> bool:
 
 
 def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dict) -> None:
-    """Turn the choice button into a tab widget covering both rects, one page per file."""
+    """Turn the choice button into a tab widget covering both rects, one page per file.
+
+    files are the window's (EDM index, file) pairs; menuLabel[i] and symbols[i]
+    belong to displayFileName[i], and the variable's value i shows it.
+    """
     enum_strings = _loc_enum_strings(definition)
-    labels = _as_list(pip.properties.get("menuLabel"))
-    symbols = _as_list(pip.properties.get("symbols"))
+    labels = dict(block_items(pip.properties.get("menuLabel")))
+    symbols = dict(block_items(pip.properties.get("symbols")))
     pages = []
-    for index, file in enumerate(files):
+    for index, file in files:
         # Tab titles are what EDM's choice button shows: the variable's enum strings.
         title = enum_strings[index] if index < len(enum_strings) else ""
-        if not title and index < len(labels) and labels[index] != "\x18":
-            title = labels[index]
+        label = labels.get(index, "")
+        if not title and label != "\x18":
+            title = label
         if not title:
             title = os.path.splitext(os.path.basename(file))[0]
-        symbol = symbols[index] if index < len(symbols) else ""
+        symbol = symbols.get(index, "")
         pages.append({"title": title, "filename": file, "macros": parse_edm_macros(symbol) if symbol else {}})
 
     left = min(choice.x, pip.x)
     right = max(choice.x + choice.width, pip.x + pip.width)
     gap = max(pip.y - (choice.y + choice.height), 0)
-    init = _loc_init(definition)
+    # Tabs number their pages by position, so find the starting entry's page.
+    indices = [index for index, _ in files]
+    start = indices.index(_starting_index(_loc_init(definition), indices))
     colors = {
         key: convert_color_property_to_qcolor(choice.properties[key], color_data=color_list_dict)
         for key in ("selectColor", "botShadowColor")
@@ -1390,7 +1409,7 @@ def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dic
         "page_y": gap,
         "page_width": pip.width,
         "page_height": pip.height,
-        "current_index": init if 0 < init < len(files) else None,
+        "current_index": start or None,
         "select_color": colors.get("selectColor"),
         "border_color": colors.get("botShadowColor"),
     }
@@ -1403,27 +1422,27 @@ def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dic
 
 def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name=None) -> None:
     """Replace the window with one embedded display per file, each visible only
-    while the variable equals its index (a group visPv in [i, i + 1)).
+    while the variable equals its EDM index (a group visPv in [i, i + 1)).
 
-    name is the resolved variable name, marked_name the form still carrying the
-    parser's __UNIQUE__ marker (the same when there is no marker); user
-    properties are matched on the marked form and rewritten to the resolved one.
+    files are the window's (EDM index, file) pairs; symbols[i] belongs to
+    displayFileName[i]. name is the resolved variable name, marked_name the form
+    still carrying the parser's __UNIQUE__ marker (the same when there is no
+    marker); user properties are matched on the marked form and rewritten to
+    the resolved one.
     """
     if marked_name is None:
         marked_name = name
-    symbols = _as_list(pip.properties.get("symbols"))
-    start = _loc_init(definition)
-    if not 0 <= start < len(files):
-        start = 0
+    symbols = dict(block_items(pip.properties.get("symbols")))
+    start = _starting_index(_loc_init(definition), [index for index, _ in files])
     shared = {
         key: value
         for key, value in pip.properties.items()
         if key not in ("filePv", "displayFileName", "symbols", "menuLabel", "numDsps")
     }
     stack = []
-    for index, file in enumerate(files):
+    for index, file in files:
         properties = dict(shared, displayFileName=[file], numDsps="1")
-        if index < len(symbols) and symbols[index]:
+        if symbols.get(index):
             properties["symbols"] = [symbols[index]]
         display = EDMObject(name=pip.name, x=pip.x, y=pip.y, width=pip.width, height=pip.height, properties=properties)
         stack.append(
