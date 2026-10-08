@@ -665,8 +665,8 @@ def test_convert_escapes_ampersand_for_qt_mnemonics(tmp_path):
     assert label_text_string.text == "Foo & Bar"
 
 
-def _convert_related_display(tmp_path, blocks, num_dsps=2):
-    """Convert one relatedDisplayClass carrying ``blocks``; return the .ui path."""
+def _convert_button_ui(tmp_path, edm_class, blocks):
+    """Convert one ``edm_class`` button carrying ``blocks``; return the .ui path."""
     edm_content = (
         textwrap.dedent("""
         4 0 1
@@ -680,7 +680,7 @@ def _convert_related_display(tmp_path, blocks, num_dsps=2):
         h 600
         endScreenProperties
 
-        object relatedDisplayClass
+        object {edm_class}
         beginObjectProperties
         major 4
         minor 4
@@ -692,11 +692,10 @@ def _convert_related_display(tmp_path, blocks, num_dsps=2):
         fgColor index 14
         bgColor index 0
         buttonLabel "Open"
-        numDsps {num_dsps}
         {blocks}
         endObjectProperties
     """)
-        .replace("{num_dsps}", str(num_dsps))
+        .replace("{edm_class}", edm_class)
         .replace("{blocks}", blocks)
     )
     input_file = tmp_path / "test.edl"
@@ -707,16 +706,41 @@ def _convert_related_display(tmp_path, blocks, num_dsps=2):
     return output_file
 
 
+def _convert_button(tmp_path, edm_class, pydm_class, blocks):
+    """Convert one ``edm_class`` button carrying ``blocks``; return its ``pydm_class`` widget element."""
+    output_file = _convert_button_ui(tmp_path, edm_class, blocks)
+    (button,) = [w for w in ET.parse(output_file).getroot().iter("widget") if w.get("class") == pydm_class]
+    return button
+
+
+def _convert_related_display(tmp_path, blocks, num_dsps=2):
+    """Convert one relatedDisplayClass carrying ``blocks``; return the .ui path."""
+    return _convert_button_ui(tmp_path, "relatedDisplayClass", f"numDsps {num_dsps}\n{blocks}")
+
+
+def _stringlist(widget, name):
+    """``widget``'s stringlist property ``name`` ("" for an empty entry), or None without one."""
+    stringlist = widget.find(f"property[@name='{name}']/stringlist")
+    if stringlist is None:
+        return None
+    return [s.text or "" for s in stringlist.findall("string")]
+
+
 def _related_display_macros_and_filenames(tmp_path, blocks, num_dsps=2):
     """Convert one relatedDisplayClass carrying ``blocks``; return its (macros, filenames)."""
-    output_file = _convert_related_display(tmp_path, blocks, num_dsps)
-    (button,) = [
-        w for w in ET.parse(output_file).getroot().iter("widget") if w.get("class") == "PyDMRelatedDisplayButton"
-    ]
+    button = _convert_button(
+        tmp_path, "relatedDisplayClass", "PyDMRelatedDisplayButton", f"numDsps {num_dsps}\n{blocks}"
+    )
     macros_prop = button.find("property[@name='macros']")
     macros = None if macros_prop is None else [s.text for s in macros_prop.findall("stringlist/string")]
     filenames = [s.text for s in button.findall("property[@name='filenames']/stringlist/string")]
     return macros, filenames
+
+
+def _related_display_titles_and_filenames(tmp_path, blocks):
+    """Convert one relatedDisplayClass carrying ``blocks``; return its (titles, filenames)."""
+    button = _convert_button(tmp_path, "relatedDisplayClass", "PyDMRelatedDisplayButton", blocks)
+    return _stringlist(button, "titles"), _stringlist(button, "filenames")
 
 
 def test_convert_related_display_pairs_symbols_with_filenames_by_index(tmp_path):
@@ -817,6 +841,73 @@ def test_related_display_opens_each_file_with_its_own_macros(tmp_path, qtbot):
         qtbot.addWidget(display)
         opened[item["filename"]] = display.macros()
     assert opened == {"a.ui": {"DEV": "A1"}, "b.ui": {}, "c.ui": {}, "d.ui": {"DEV": "D4", "N": "2"}}
+
+
+def test_convert_related_display_pairs_menu_labels_with_filenames_by_index(tmp_path):
+    """menuLabel { 1 .. 3 } labels displayFileName 1..3; display 0 keeps EDM's empty label.
+
+    The shape of lerf/mgnt_l1b_main.edl's "EPSC Hardware..." button: compacting
+    the labels handed display 0 the label of display 1, and so on.
+    """
+    titles, filenames = _related_display_titles_and_filenames(
+        tmp_path,
+        "displayFileName {\n"
+        + "".join(f'  {i} "mgnt_epsc"\n' for i in range(4))
+        + '}\nmenuLabel {\n  1 "QCM03"\n  2 "XCM03"\n  3 "YCM03"\n}',
+    )
+    assert filenames == ["mgnt_epsc.ui"] * 4
+    assert titles == ["", "QCM03", "XCM03", "YCM03"]
+
+
+def test_convert_related_display_dense_menu_labels_unchanged(tmp_path):
+    titles, filenames = _related_display_titles_and_filenames(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nmenuLabel {\n  0 "A"\n  1 "B"\n}',
+    )
+    assert filenames == ["a.ui", "b.ui"]
+    assert titles == ["A", "B"]
+
+
+def test_convert_related_display_menu_labels_follow_filename_order(tmp_path):
+    """Titles follow the filenames' own indices, so a gap in both stays aligned and a
+    trailing display with no label gets an empty title rather than none."""
+    titles, filenames = _related_display_titles_and_filenames(
+        tmp_path,
+        'displayFileName {\n  1 "a.edl"\n  3 "b.edl"\n  4 "c.edl"\n}\nmenuLabel {\n  1 "A"\n  3 "B"\n}',
+    )
+    assert filenames == ["a.ui", "b.ui", "c.ui"]
+    assert titles == ["A", "B", ""]
+
+
+def test_convert_related_display_placeholder_menu_label_keeps_its_slot(tmp_path):
+    """A \\x18 label is no label: it holds its display's slot instead of being dropped."""
+    titles, _ = _related_display_titles_and_filenames(
+        tmp_path,
+        'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\nmenuLabel {\n  0 "\x18"\n  1 "B"\n}',
+    )
+    assert titles == ["", "B"]
+
+
+@pytest.mark.parametrize("labels", ['menuLabel {\n  0 "\x18"\n}', 'menuLabel {\n  1 "\x18"\n}'])
+def test_convert_related_display_without_labels_has_no_titles(tmp_path, labels):
+    """With no real label PyDM's default titles (the filenames) stand."""
+    titles, filenames = _related_display_titles_and_filenames(
+        tmp_path, 'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n}\n' + labels
+    )
+    assert filenames == ["a.ui", "b.ui"]
+    assert titles is None
+
+
+def test_convert_shell_command_pairs_command_labels_with_commands_by_index(tmp_path):
+    """commandLabel { 1 .. } labels command 1 on (shell_cmd.cc pairs them by index)."""
+    button = _convert_button(
+        tmp_path,
+        "shellCmdClass",
+        "PyDMShellCommand",
+        'numCmds 3\ncommand {\n  0 "echo a"\n  1 "echo b"\n  2 "echo c"\n}\ncommandLabel {\n  1 "B"\n  2 "C"\n}',
+    )
+    assert _stringlist(button, "commands") == ["echo a", "echo b", "echo c"]
+    assert _stringlist(button, "titles") == ["", "B", "C"]
 
 
 def test_convert_shell_command_to_commands_property(tmp_path):
