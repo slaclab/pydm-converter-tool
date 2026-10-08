@@ -41,6 +41,7 @@ from pydmconverter.edm.parser_helpers import (
     SearchPaths,
     get_color_by_index,
     get_color_by_rgb,
+    loc_str_init,
     parse_colors_list,
     parse_edm_macros,
     rule_static_color,
@@ -919,20 +920,29 @@ def _pip_menu_refs(obj: EDMObject) -> list[tuple[int, str]]:
     return refs
 
 
-def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
-    """activePipClass fixup by displaySource:
+def _pip_source(obj: EDMObject) -> str:
+    """An activePipClass's lowercased displaySource. EDM (pip.cc) leaves out the
+    enum default when writing, so an absent one is "stringpv", not "file"."""
+    return str(obj.properties.get("displaySource") or "stringPV").strip().lower()
 
-    - "file" (default): the macro-bearing ``file`` template is already mapped
-      (file -> filename -> screenRef keeps ``${VAR}`` refs for view-time
-      resolution) — nothing to do.
+
+def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
+    """activePipClass fixup by displaySource (EDM pip.cc):
+
     - "menu": ``filePv`` selects among ``displayFileName`` entries; emit the
       first entry as the static file and let ``_pip_rules`` switch it live.
-    - "stringPv": the file name is the PV's string value; no rule-conditions
-      analog, surfaced as a warning instead of dropping the node silently.
+    - "file": the macro-bearing ``file`` template is already mapped
+      (file -> filename -> screenRef keeps ``${VAR}`` refs for view-time
+      resolution); a blank one opens nothing (fileExists = 0).
+    - "stringpv" (the default): the file name is the filePv's string value,
+      and ``file`` is ignored. A loc:// string variable's initial value is what
+      opens with the screen, emitted as the static file; any other PV has no
+      rule-conditions analog, surfaced as a warning.
+
+    A file or stringPV window opens with the parent's macros only: symbols
+    belong to menu entries, so a window switched from "menu" ignores them.
     """
-    source = str(obj.properties.get("displaySource", "file") or "file").strip().lower()
-    if source in ("", "file"):
-        return None
+    source = _pip_source(obj)
     if source == "menu":
         names = [name for _, name in sorted(block_items(obj.properties.get("displayFileName"))) if name.strip()]
         if names and obj.properties.get("filePv"):
@@ -941,11 +951,24 @@ def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
             if len(_as_str_list(obj.properties.get("symbols"))) > 1:
                 warnings.append("EDM menu pip per-entry symbols are merged; macros do not switch with the file")
         else:
+            qt_props.pop("filename", None)
             warnings.append("EDM menu pip without filePv/displayFileName; no file emitted")
-    elif source == "stringpv":
-        warnings.append("EDM stringPv-driven embedded file is not translated; no file emitted")
-    else:
+        return None
+    qt_props.pop("macros", None)
+    if source == "file":
+        if not str(qt_props.get("filename") or "").strip():
+            qt_props.pop("filename", None)
+        return None
+    qt_props.pop("filename", None)
+    if source != "stringpv":
         warnings.append(f"EDM pip displaySource '{source}' is not translated; no file emitted")
+        return None
+    file_pv = _to_channel(obj.properties.get("filePv") or "")
+    init = loc_str_init(file_pv)
+    if init.strip():
+        qt_props["filename"] = normalize_macro_syntax(init)
+    elif file_pv.strip():
+        warnings.append(f"EDM stringPV-driven embedded file ({file_pv}) is not translated; no file emitted")
     return None
 
 
@@ -953,7 +976,7 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
     """displaySource=menu pip -> a ``file`` rule keyed on the filePv's value."""
     if obj.name.lower() != "activepipclass":
         return []
-    source = str(obj.properties.get("displaySource", "file") or "file").strip().lower()
+    source = _pip_source(obj)
     file_pv = obj.properties.get("filePv")
     if source != "menu" or not file_pv:
         return []

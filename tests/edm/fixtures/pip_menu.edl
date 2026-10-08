@@ -63,6 +63,7 @@ fgColor index 14
 bgColor index 3
 topShadowColor index 3
 botShadowColor index 3
+displaySource "file"
 file "mgnt_unit_$(DISP)"
 sizeOfs 5
 numDsps 0

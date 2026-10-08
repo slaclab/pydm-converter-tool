@@ -671,6 +671,14 @@ def loc_conversion(edm_string: str) -> str:
     return pydm_string
 
 
+def loc_str_init(url: str) -> str:
+    """Initial value of a str loc:// URL as loc_conversion writes it; "" for any other channel."""
+    if not url.startswith("loc://") or not re.search(r"[?&]type=str(&|$)", url):
+        return ""
+    match = re.search(r"[?&]init=([^&]*)", url)
+    return match.group(1) if match else ""
+
+
 def replace_calc_and_loc_in_edm_content(
     edm_content: str,
     filepath: str,
