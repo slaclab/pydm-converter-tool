@@ -1,3 +1,4 @@
+import dataclasses
 import re
 from typing import Optional, List, Tuple
 from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser, block_items
@@ -34,7 +35,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_colors_list,
     parse_edm_macros,
 )
-from pydmconverter.edm.menumux import generate_menumux_file, initial_state
+from pydmconverter.edm.menumux import generate_menumux_file, initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -751,6 +752,22 @@ def apply_widget_post_processing(
             widget.title = title
 
 
+def _grouped_menu_mux(obj: EDMObject) -> EDMObject:
+    """A copy of a menu mux inside a group, without its symbol{i}/value{i}
+    macros. EDM's window takes macros only from top-level menu muxes: act_win.cc
+    execute/reexecute call getMacros() only on top-level objects whose isMux()
+    is true, and an activeGroupClass is not a mux. So a menu inside a group
+    still shows its items and keeps controlPv/initialState, but sets no macros."""
+    # Label the items before dropping the values, which label a menu without symbolTag.
+    count = menu_item_count(obj)
+    labels = menu_items(obj, count, menu_macros(obj, count))
+    props = {k: v for k, v in obj.properties.items() if not re.fullmatch("(symbol|value)[0-9]+", k)}
+    # The labels also keep the item count when it came from the value arrays.
+    props["symbolTag"] = labels
+    # A copy: the .ui conversion reads the parsed tree.
+    return dataclasses.replace(obj, properties=props)
+
+
 def traverse_group(
     edm_group: EDMGroup,
     color_list_dict,
@@ -813,7 +830,9 @@ def traverse_group(
             else:
                 symbol_vispv = []
 
-            traverse_group(
+            # A group's menu muxes keep their EDM screen coordinates and screen
+            # order, but set no macros, as in EDM (see _grouped_menu_mux).
+            _, group_menu_muxes = traverse_group(
                 obj,
                 color_list_dict,
                 used_classes,
@@ -826,6 +845,7 @@ def traverse_group(
                 central_widget=central_widget,
                 parent_vispvs=(parent_vispvs or []) + curr_vispv + symbol_vispv,
             )
+            menu_mux_buttons.extend(_grouped_menu_mux(menu) for menu in group_menu_muxes)
 
         elif isinstance(obj, EDMObject):
             # Skip widgets based on site rules
