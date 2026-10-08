@@ -1229,8 +1229,15 @@ class PyDMEmbeddedDisplay(Alarmable, Hidable, Drawable):
             if is_pip:
                 # Scoped to this widget: an unscoped border would also frame the
                 # embedded screen's centralwidget and every widget on it.
-                scoped[f"PyDMEmbeddedDisplay#{self.name}"] = {"border": "1px solid black"}
-            if self.foreground_color is not None:
+                rule: Dict[str, Any] = {"border": "1px solid black"}
+                # EDM fills the frame with bgColor whenever a file is named, even one
+                # that fails to load, and never applies fgColor to the embedded screen.
+                if self.background_color is not None and self.filename:
+                    rule["background-color"] = self.background_color
+                scoped[f"PyDMEmbeddedDisplay#{self.name}"] = rule
+                # The "* { background-color: none; }" StyleSheet adds stops PyDM's
+                # load-error label painting the parent screen's background over it.
+            elif self.foreground_color is not None:
                 styles["color"] = self.foreground_color
             elif self.background_color is not None:
                 styles["background-color"] = self.background_color

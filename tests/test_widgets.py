@@ -779,14 +779,20 @@ def last_style_sheet(element: etree.Element) -> str:
     return get_property_value(element.findall("property[@name='styleSheet']")[-1])
 
 
-def test_pydmembeddeddisplay_pip_border_scoped_to_widget():
-    widget = PyDMEmbeddedDisplay(name="activePipClass123", foreground_color=RGBA(0, 0, 255))
+def test_pydmembeddeddisplay_pip_style_scoped_to_widget():
+    widget = PyDMEmbeddedDisplay(
+        name="activePipClass123",
+        filename="child.edl",
+        foreground_color=RGBA(0, 0, 255),
+        background_color=RGBA(200, 200, 200),
+    )
     style = last_style_sheet(widget.to_xml())
 
-    # Unscoped, Qt would also draw the border on the embedded screen's widgets.
+    # Unscoped, Qt would also draw the border and background on the embedded screen's
+    # widgets. EDM never applies fgColor to the embedded screen, so it is dropped.
     assert style == (
-        "* { color: rgba(0, 0, 255, 255);background-color: none; } "
-        "PyDMEmbeddedDisplay#activePipClass123 { border: 1px solid black; }"
+        "* { background-color: none; } "
+        "PyDMEmbeddedDisplay#activePipClass123 { border: 1px solid black; background-color: rgba(200, 200, 200, 255); }"
     )
 
 
@@ -798,14 +804,14 @@ def test_pydmembeddeddisplay_pip_border_selector_uses_object_name():
     assert style == "* { background-color: none; } PyDMEmbeddedDisplay#activePipClass42 { border: 1px solid black; }"
 
 
-def test_pydmembeddeddisplay_pip_background_stays_unscoped():
-    widget = PyDMEmbeddedDisplay(name="activePipClass7", background_color=RGBA(200, 200, 200))
+def test_pydmembeddeddisplay_pip_without_file_has_no_background():
+    widget = PyDMEmbeddedDisplay(
+        name="activePipClass7", foreground_color=RGBA(0, 0, 255), background_color=RGBA(200, 200, 200)
+    )
     style = last_style_sheet(widget.to_xml())
 
-    assert style == (
-        "* { background-color: rgba(200, 200, 200, 255); } "
-        "PyDMEmbeddedDisplay#activePipClass7 { border: 1px solid black; }"
-    )
+    # EDM creates no frame without a file, so nothing is painted.
+    assert style == "* { background-color: none; } PyDMEmbeddedDisplay#activePipClass7 { border: 1px solid black; }"
 
 
 def test_pydmembeddeddisplay_non_pip_has_no_border():
