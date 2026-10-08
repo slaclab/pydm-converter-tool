@@ -1,3 +1,4 @@
+import json
 import xml.etree.ElementTree as ET
 import textwrap
 from pathlib import Path
@@ -358,6 +359,57 @@ def test_convert_explicit_color_list_beats_env(tmp_path, monkeypatch):
     assert "rgba(255, 0, 0, 255)" in style_string.text, (
         f"Expected explicit red palette to beat EDMCOLORFILE yellow, got: {style_string.text}"
     )
+
+
+def test_convert_xy_graph_curves_without_plot_color(tmp_path):
+    """Curves past the end of the plotColor block fall back to the foreground colour
+    instead of failing the conversion."""
+    palette = Path(__file__).parent / "fixtures" / "colors.list"
+    edm_content = textwrap.dedent("""
+        4 0 1
+        beginScreenProperties
+        x 0
+        y 0
+        w 800
+        h 600
+        endScreenProperties
+
+        object xyGraphClass
+        beginObjectProperties
+        major 4
+        minor 8
+        release 0
+        x 10
+        y 10
+        w 400
+        h 300
+        fgColor index 14
+        numTraces 3
+        xPv {
+          0 "X:ZERO"
+          1 "X:ONE"
+        }
+        yPv {
+          0 "Y:ZERO"
+          1 "Y:ONE"
+          2 "Y:TWO"
+        }
+        plotColor {
+          0 index 25
+        }
+        endObjectProperties
+    """)
+
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(edm_content)
+
+    convert(str(input_file), str(output_file), color_list_file=str(palette))
+
+    assert output_file.exists()
+    curves = ET.parse(output_file).getroot().find(".//property[@name='curves']/stringlist")
+    assert curves is not None
+    assert [json.loads(curve.text)["color"] for curve in curves] == ["#0000ff", "#ffff00", "#ffff00"]
 
 
 def test_build_customwidgets_element():
