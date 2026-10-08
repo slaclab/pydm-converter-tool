@@ -1,10 +1,14 @@
 """EDM choice buttons driving a menu embedded window (activePipClass with
 displaySource "menu"): a button sitting on the window becomes a QTabWidget, any
-other arrangement keeps the button and switches one display per file (#144)."""
+other arrangement keeps the button and switches one display per file (#144).
+A menu mux writing the variable always switches one display per file."""
 
+import ast
 import json
 import textwrap
 import xml.etree.ElementTree as ET
+
+import pytest
 
 from pydmconverter.edm.converter import convert
 from pydmconverter.widgets import edm_to_ui_filename
@@ -318,3 +322,157 @@ def test_choice_button_without_channel_stays_an_empty_tab_widget(tmp_path):
     assert tabs.get("class") == "QTabWidget"
     assert tabs.findall("widget") == []
     assert prop(tabs, "styleSheet") is None
+
+
+def menu_mux(control_pv, initial_state=None, x=710, y=4, w=75, h=20):
+    """A menu mux whose screen writes the chosen item's index to control_pv,
+    laid out as in b34/profile_b34.edl."""
+    state = f'initialState "{initial_state}"\n' if initial_state is not None else ""
+    return (
+        "object menuMuxClass\nbeginObjectProperties\nmajor 4\nminor 1\nrelease 0\n"
+        f'x {x}\ny {y}\nw {w}\nh {h}\ncontrolPv "{control_pv}"\n{state}'
+        'numItems 2\nsymbolTag {\n  0 "OFF"\n  1 "ON"\n}\nendObjectProperties\n'
+    )
+
+
+@pytest.fixture
+def convert_with_menus(tmp_path, monkeypatch):
+    """convert_objects, also returning the menus of the generated menu mux screen."""
+    # The converter logs skipped widget classes (menuMuxClass) to a file in the cwd.
+    monkeypatch.chdir(tmp_path)
+
+    def run(*objects):
+        root = convert_objects(tmp_path, *objects)
+        module = ast.parse((tmp_path / "screen.py").read_text())
+        (menus,) = [
+            ast.literal_eval(node.value)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Assign) and getattr(node.targets[0], "attr", None) == "menus"
+        ]
+        return root, menus
+
+    return run
+
+
+def switched_displays(root):
+    """(filename, rule channel, starts visible) for each top-level embedded display."""
+    displays = []
+    for widget in top_level(root):
+        if widget.get("class") == "PyDMEmbeddedDisplay":
+            (rule,) = json.loads(prop(widget, "rules"))
+            (channel,) = rule["channels"]
+            displays.append((prop(widget, "filename"), channel["channel"], rule["initial_value"] == "true"))
+    return displays
+
+
+CAMERA_FILES = ["Rectangle.edl", "CamImage.edl"]
+
+
+def test_menu_mux_switches_displays_starting_at_its_initial_state(convert_with_menus):
+    # b34/profile_b34.edl: nothing configures LOC\Display, so the menu declares
+    # it when its screen runs, starting at initialState.
+    root, (menu,) = convert_with_menus(
+        pip(r"LOC\\Display", CAMERA_FILES, x=620, y=195, w=165, h=125),
+        menu_mux(r"LOC\\Display", initial_state="1"),
+    )
+    assert [w.get("class") for w in top_level(root)] == ["PyDMEmbeddedDisplay", "PyDMEmbeddedDisplay"]
+    # The displays read the bare variable and start on the menu's item...
+    assert switched_displays(root) == [
+        ("Rectangle.ui", "loc://Display", False),
+        ("CamImage.ui", "loc://Display", True),
+    ]
+    # ...which the screen declares the same way.
+    assert menu["controlPv"] == "loc://Display?type=int&init=1"
+
+
+def test_menu_mux_never_becomes_tabs(convert_with_menus):
+    # Where a choice button would read as a tab bar: the menu is not in the .ui.
+    root, (menu,) = convert_with_menus(
+        pip(r"LOC\\Display", CAMERA_FILES),
+        menu_mux(r"LOC\\Display", initial_state="1", x=12, y=4, w=328, h=20),
+    )
+    assert [w.get("class") for w in top_level(root)] == ["PyDMEmbeddedDisplay", "PyDMEmbeddedDisplay"]
+    assert [starts for _, _, starts in switched_displays(root)] == [False, True]
+
+
+@pytest.mark.parametrize(
+    "file_pv, control_pv, initial_state, address, start",
+    [
+        # The menu's configuration defines the variable (prof/GigE_control_screen.edl).
+        (r"LOC\\Display", r"LOC\\Display=i:0", "1", "loc://Display?type=int&init=0", 0),
+        # The window's comes first and reaches the menu (prof/XTCAV4Experiments.edl).
+        (r"LOC\\Display=i:1", r"LOC\\Display=i:0", "1", "loc://Display?type=int&init=1", 1),
+        (r"LOC\\Display=i:1", r"LOC\\Display", "0", "loc://Display?type=int&init=1", 1),
+        # With enum strings (prof/aravisGigE_cameras.edl).
+        (
+            r"LOC\\Display",
+            r"LOC\\Display=e:1,OFF,ON",
+            "0",
+            "loc://Display?type=int&init=1&enum_string=['OFF', 'ON']",
+            1,
+        ),
+        # Nothing configures it: the menu starts at initialState, or at 0 past its items.
+        (r"LOC\\Display", r"LOC\\Display", None, "loc://Display?type=int&init=0", 0),
+        (r"LOC\\Display", r"LOC\\Display", "5", "loc://Display?type=int&init=0", 0),
+        # A start from the screen's macros is known only when it runs, which declares it then.
+        (r"LOC\\Display", r"LOC\\Display", "$(START)", "loc://Display", 0),
+    ],
+)
+def test_menu_mux_and_displays_start_together(convert_with_menus, file_pv, control_pv, initial_state, address, start):
+    root, (menu,) = convert_with_menus(pip(file_pv, CAMERA_FILES), menu_mux(control_pv, initial_state))
+    assert menu["controlPv"] == address
+    displays = switched_displays(root)
+    assert [starts for _, _, starts in displays] == [index == start for index in range(len(CAMERA_FILES))]
+    # Configuration aside, the displays read the variable the menu writes.
+    assert {channel.split("?", 1)[0] for _, channel, _ in displays} == {"loc://Display"}
+
+
+def test_menu_mux_writes_the_resolved_unique_variable(tmp_path, convert_with_menus):
+    root, (menu,) = convert_with_menus(
+        pip(r"LOC\\$(!W)Display", CAMERA_FILES), menu_mux(r"LOC\\$(!W)Display", initial_state="1")
+    )
+    assert "__UNIQUE__" not in (tmp_path / "screen.ui").read_text()
+    assert "__UNIQUE__" not in (tmp_path / "screen.py").read_text()
+    # One variable: the screen's token plus the bare name, in the .ui and the .py.
+    names = {channel.split("://", 1)[1].split("?", 1)[0] for _, channel, _ in switched_displays(root)}
+    assert names == {menu["controlPv"].split("://", 1)[1].split("?", 1)[0]}
+    (name,) = names
+    assert name.endswith("Display") and name != "Display"
+    assert menu["controlPv"] == f"loc://{name}?type=int&init=1"
+
+
+def test_choice_button_and_menu_mux_share_the_definition(convert_with_menus):
+    root, (menu,) = convert_with_menus(
+        pip(r"LOC\\Display", CAMERA_FILES),
+        choice(r"LOC\\Display"),
+        menu_mux(r"LOC\\Display", initial_state="1"),
+    )
+    widgets = top_level(root)
+    # Two writers: never tabs, even with the button sitting on the window.
+    assert [w.get("class") for w in widgets] == ["PyDMEmbeddedDisplay", "PyDMEmbeddedDisplay", "PyDMEnumButton"]
+    assert prop(widgets[2], "channel") == menu["controlPv"] == "loc://Display?type=int&init=1"
+    assert [starts for _, _, starts in switched_displays(root)] == [False, True]
+
+
+def test_menu_mux_on_another_variable_leaves_the_window_static(convert_with_menus):
+    root, (menu,) = convert_with_menus(
+        pip(r"LOC\\Display=i:1", CAMERA_FILES), menu_mux(r"LOC\\DISP", initial_state="0")
+    )
+    (display,) = top_level(root)
+    assert prop(display, "filename") == "CamImage.ui"
+    assert json.loads(prop(display, "rules") or "[]") == []
+    assert menu["controlPv"] == "loc://DISP"
+
+
+def test_site_skipping_menu_muxes_leaves_their_window_alone(tmp_path):
+    from pydmconverter.edm.converter_helpers import pair_menu_pips
+    from pydmconverter.edm.parser import EDMFileParser
+
+    source = tmp_path / "screen.edl"
+    source.write_text(HEADER + pip(r"LOC\\Display", CAMERA_FILES) + menu_mux(r"LOC\\Display", initial_state="1"))
+    parser = EDMFileParser(str(source), str(tmp_path / "screen.ui"))
+
+    pair_menu_pips(parser.ui, {}, skip_widgets={"menumuxclass"})
+
+    assert [obj.name.lower() for obj in parser.ui.objects] == ["activepipclass", "menumuxclass"]
+    assert parser.ui.objects[1].properties["controlPv"] == "loc://Display"

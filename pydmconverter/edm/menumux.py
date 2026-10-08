@@ -309,6 +309,18 @@ def menu_items(obj: EDMObject, count: int, macros: list[tuple[str, list[str]]]) 
     return list(macros[0][1]) if macros else [""] * count
 
 
+def initial_state(obj: EDMObject) -> int | None:
+    """The item a menu mux starts on, read from its initialState as the screen
+    reads it (MenuMuxScreen.initial_index), or None when that depends on the
+    macros the screen is opened with."""
+    state = str(obj.properties.get("initialState", "0"))
+    if "${" in state:
+        return None
+    match = re.match(r" *(-?[0-9]+)", state)
+    index = int(match.group(1)) if match else 0
+    return index if 0 <= index < menu_item_count(obj) else 0
+
+
 def control_pv(obj: EDMObject, loc_declarations: dict[str, str]) -> str | None:
     """The address a menu mux writes its selected index to, or None without a controlPv.
 
