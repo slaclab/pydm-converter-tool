@@ -952,7 +952,7 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     pydm_widgets = handle_button_polygon_overlaps(pydm_widgets)
 
     if menu_mux_buttons:
-        generate_menumux_file(menu_mux_buttons, parser.output_file_path)
+        generate_menumux_file(menu_mux_buttons, parser.output_file_path, loc_declarations(parser.ui))
     return pydm_widgets, used_classes
 
 
@@ -1173,6 +1173,23 @@ def _loc_enum_strings(url: str) -> List[str]:
         return [str(state) for state in ast.literal_eval(literal)]
     except (ValueError, SyntaxError):
         return []
+
+
+def loc_declarations(root: EDMGroup) -> dict:
+    """Map each loc:// variable the converted .ui configures, by its bare
+    address (loc://name), to the address that configures it. Menu muxes are
+    left out: they become the separate .py screen. When several widgets
+    configure a variable differently the richest wins, as in pair_menu_pips:
+    most enum strings, then the first in the file."""
+    declarations = {}
+    for obj, _, _ in _walk_objects(root):
+        if isinstance(obj, EDMObject) and obj.name.lower() == "menumuxclass":
+            continue
+        for value in obj.properties.values():
+            for item in _as_list(value):
+                if isinstance(item, str) and item.startswith("loc://") and "?" in item:
+                    declarations.setdefault(item.split("?", 1)[0], []).append(item)
+    return {bare: max(urls, key=lambda url: len(_loc_enum_strings(url))) for bare, urls in declarations.items()}
 
 
 def _loc_init(url: str) -> int:

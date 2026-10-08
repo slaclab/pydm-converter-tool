@@ -336,6 +336,15 @@ def test_loc_conversion():
     assert result_unparseable == "loc://myLocal?type=str&init="
 
 
+def test_loc_conversion_untyped_value_with_colon():
+    """
+    A value whose first ':' field is not a type char becomes a str PV holding
+    the whole text. EDM would store "OS:LI20:3490"; we keep the full value.
+    """
+    result = loc_conversion("LOC\\DISP=CMOS:LI20:3490")
+    assert result == "loc://DISP?type=str&init=CMOS:LI20:3490"
+
+
 @pytest.mark.parametrize(
     "edm_content",
     [
