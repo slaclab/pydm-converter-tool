@@ -109,15 +109,25 @@ def prop(widget, name):
 
 
 def loaded_macros(tmp_path, qtbot):
-    """Load the converted screen in PyDM and return its embedded display's macros."""
+    """Load the converted screen in PyDM and return its embedded display's macros,
+    without the window id every one gets (see window_macros)."""
     window = uic.loadUi(str(tmp_path / "screen.ui"))
     qtbot.addWidget(window)
     (display,) = window.findChildren(QtEmbeddedDisplay)
-    return display.parsed_macros()
+    macros = display.parsed_macros()
+    assert macros.pop("EDM_W").startswith("${EDM_W_ROOT}")
+    return macros
 
 
 def custom_classes(root):
     return {c.find("class").text for c in root.iter("customwidget")}
+
+
+def own_macros(display):
+    """An embedded display's macros without the window id every one gets (see window_macros)."""
+    macros = json.loads(prop(display, "macros"))
+    assert macros.pop("EDM_W").startswith("${EDM_W_ROOT}")
+    return macros
 
 
 LASER = r"LOC\\laserDispPV=e:0,Drive Laser,Laser Heater,Infrastructure"
@@ -170,7 +180,7 @@ def test_tab_pages_take_their_own_macros_and_extensionless_names(tmp_path):
     (tabs,) = top_level(root)
     displays = [p.find("widget") for p in tabs.findall("widget")]
     assert [prop(d, "filename") for d in displays] == ["adsGraphEmb.ui", "adsGraphEmb.ui"]
-    assert [json.loads(prop(d, "macros")) for d in displays] == [
+    assert [own_macros(d) for d in displays] == [
         {"P": "UND1", "N": "LTC"},
         {"P": "UND1", "N": "STC"},
     ]
@@ -235,7 +245,7 @@ def test_menu_window_without_choice_button_shows_its_starting_entry(tmp_path, qt
     )
     (display,) = top_level(root)
     assert prop(display, "filename") == "GigE_other.ui"
-    assert json.loads(prop(display, "macros")) == {"P": "PROF:", "ID": "1800"}
+    assert own_macros(display) == {"P": "PROF:", "ID": "1800"}
     assert loaded_macros(tmp_path, qtbot) == {"P": "PROF:", "ID": "1800"}
 
 
@@ -271,7 +281,7 @@ def test_file_window_opens_its_file_not_a_menu_entry(tmp_path):
     )
     (display,) = top_level(root)
     assert prop(display, "filename") == "opsKlys_sector_${sector}.ui"
-    assert prop(display, "macros") is None
+    assert own_macros(display) == {}
 
 
 @pytest.mark.parametrize("symbols", [["sector=LI20"], ["sector=LI20", "sector=LI21"]])
@@ -282,7 +292,7 @@ def test_file_window_ignores_symbols(tmp_path, qtbot, symbols):
     root = convert_objects(tmp_path, source.replace('displaySource "menu"', 'displaySource "file"\nfile "sector_li20"'))
     (display,) = top_level(root)
     assert prop(display, "filename") == "sector_li20.ui"
-    assert prop(display, "macros") is None
+    assert own_macros(display) == {}
     assert loaded_macros(tmp_path, qtbot) == {}
 
 
@@ -377,10 +387,9 @@ def test_unique_marker_resolved_on_the_stacked_path(tmp_path):
         if widget.get("class") == "PyDMEnumButton":
             channels.add(prop(widget, "channel"))
     assert channels
-    # Every reference names one variable: the screen's token plus the bare name.
+    # Every reference names one variable: the screen's window macro plus the bare name.
     names = {c.split("://", 1)[1].split("?", 1)[0] for c in channels}
-    (name,) = names
-    assert name.endswith("v") and name != "v"
+    assert names == {"${EDM_W}v"}
 
 
 def test_site_skipping_choice_buttons_leaves_the_pair_alone(tmp_path):
@@ -622,8 +631,8 @@ def test_sparse_block_tabs_pair_titles_macros_and_start_by_index(tmp_path):
     assert [p.find("attribute[@name='title']/string").text for p in pages] == ["A", "C"]
     displays = [p.find("widget") for p in pages]
     assert [prop(d, "filename") for d in displays] == ["a.ui", "c.ui"]
-    assert prop(displays[0], "macros") is None
-    assert json.loads(prop(displays[1], "macros")) == {"P": "X"}
+    assert own_macros(displays[0]) == {}
+    assert own_macros(displays[1]) == {"P": "X"}
     # The variable starts at 2, which is the second page.
     assert prop(tabs, "currentIndex") == "1"
 
@@ -637,8 +646,8 @@ def test_sparse_block_stacked_displays_switch_on_their_edm_index(tmp_path):
     )
     displays = [w for w in top_level(root) if w.get("class") == "PyDMEmbeddedDisplay"]
     assert [prop(d, "filename") for d in displays] == ["a.ui", "c.ui"]
-    assert prop(displays[0], "macros") is None
-    assert json.loads(prop(displays[1], "macros")) == {"P": "X"}
+    assert own_macros(displays[0]) == {}
+    assert own_macros(displays[1]) == {"P": "X"}
     rules = [json.loads(prop(d, "rules"))[0] for d in displays]
     assert [r["expression"] for r in rules] == [
         "(float(ch[0]) >= 0.0 and float(ch[0]) < 1.0)",
@@ -659,7 +668,7 @@ def test_sparse_block_shown_display_takes_its_own_macros(tmp_path, init, filenam
     root = convert_objects(tmp_path, pip(rf"LOC\\v=e:{init}", SPARSE, symbols=SPARSE_SYMBOLS))
     (display,) = top_level(root)
     assert prop(display, "filename") == filename
-    assert (json.loads(prop(display, "macros")) if macros else prop(display, "macros")) == macros
+    assert own_macros(display) == (macros or {})
 
 
 ONE_BASED = {1: "a.edl", 2: "b.edl"}
@@ -674,7 +683,7 @@ def test_one_based_block_tabs(tmp_path):
     assert [p.find("attribute[@name='title']/string").text for p in pages] == ["First", "Second"]
     displays = [p.find("widget") for p in pages]
     assert [prop(d, "filename") for d in displays] == ["a.ui", "b.ui"]
-    assert [json.loads(prop(d, "macros")) for d in displays] == [{"P": "A"}, {"P": "B"}]
+    assert [own_macros(d) for d in displays] == [{"P": "A"}, {"P": "B"}]
     assert prop(tabs, "currentIndex") == "1"
 
 
@@ -686,7 +695,7 @@ def test_one_based_block_stacked_displays(tmp_path):
         message_button(r"LOC\\v", "2"),
     )
     displays = [w for w in top_level(root) if w.get("class") == "PyDMEmbeddedDisplay"]
-    assert [json.loads(prop(d, "macros")) for d in displays] == [{"P": "A"}, {"P": "B"}]
+    assert [own_macros(d) for d in displays] == [{"P": "A"}, {"P": "B"}]
     rules = [json.loads(prop(d, "rules"))[0] for d in displays]
     assert [r["expression"] for r in rules] == [
         "(float(ch[0]) >= 1.0 and float(ch[0]) < 2.0)",
@@ -706,4 +715,4 @@ def test_one_based_block_stacked_displays(tmp_path):
 def test_one_based_block_shown_display(tmp_path, init, filename, macros):
     (display,) = top_level(convert_objects(tmp_path, pip(rf"LOC\\v=i:{init}", ONE_BASED, **ONE_BASED_BLOCKS)))
     assert prop(display, "filename") == filename
-    assert json.loads(prop(display, "macros")) == macros
+    assert own_macros(display) == macros

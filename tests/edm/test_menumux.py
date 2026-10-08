@@ -77,7 +77,8 @@ SCREEN = textwrap.dedent(
     endObjectProperties
     """
 )
-VARIABLE = "__UNIQUE__menumuxFlag"
+# As the .ui names it; window_variable gives an open screen's name (see window_macros).
+VARIABLE = "${EDM_W}menumuxFlag"
 
 
 def menu_mux_screen(properties):
@@ -331,6 +332,12 @@ def variable_value(name):
     return None if connection is None else connection.value
 
 
+def window_variable(screen, name):
+    """An open screen's name for a variable the .ui names with ${EDM_W}: the
+    screen's window id takes its place (see window_macros)."""
+    return name.replace("${EDM_W}", screen.macros()["EDM_W"])
+
+
 @pytest.fixture
 def menumux_screen(request, tmp_path, monkeypatch):
     """Convert SCREEN, or the EDL text given as the fixture's param, into
@@ -370,16 +377,17 @@ def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot, monkey
     screen = load_file(str(menumux_screen), macros={"START": "1"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
+    variable = window_variable(screen, VARIABLE)
     (menu,) = screen.findChildren(QComboBox)
 
     # initialState "$(START)" with START=1 opens the menu on "On" (FLAG=1).
     assert menu.currentIndex() == 1
-    qtbot.waitUntil(lambda: variable_value(VARIABLE) == 1, timeout=3000)
+    qtbot.waitUntil(lambda: variable_value(variable) == 1, timeout=3000)
 
     menu.setCurrentIndex(0)
-    qtbot.waitUntil(lambda: variable_value(VARIABLE) == 0, timeout=3000)
+    qtbot.waitUntil(lambda: variable_value(variable) == 0, timeout=3000)
     menu.setCurrentIndex(1)
-    qtbot.waitUntil(lambda: variable_value(VARIABLE) == 1, timeout=3000)
+    qtbot.waitUntil(lambda: variable_value(variable) == 1, timeout=3000)
 
     # Macros the screen was opened with reach the embedded .ui too.
     assert screen.embedded.parsed_macros()["START"] == "1"
@@ -592,24 +600,24 @@ CONTROL_SCREEN = textwrap.dedent(
     endObjectProperties
     """
 )
-SHOW = "__UNIQUE__menumuxShow"
+SHOW = "${EDM_W}menumuxShow"
 
 
 @pytest.mark.parametrize(
     "menu_pv, rectangle_pv, address",
     [
         # Nothing configures the variable: the screen declares it from initialState when it runs.
-        (r"LOC\\$(!W)menumuxShow", r"LOC\\$(!W)menumuxShow", "loc://__UNIQUE__menumuxShow"),
+        (r"LOC\\$(!W)menumuxShow", r"LOC\\$(!W)menumuxShow", "loc://${EDM_W}menumuxShow"),
         # Another widget configures it: the menu configures it the same way.
         (
             r"LOC\\$(!W)menumuxShow",
             r"LOC\\$(!W)menumuxShow=e:0,Off,On",
-            "loc://__UNIQUE__menumuxShow?type=int&init=0&enum_string=['Off', 'On']",
+            "loc://${EDM_W}menumuxShow?type=int&init=0&enum_string=['Off', 'On']",
         ),
         # The .ui's widgets connect first, so their configuration wins over the menu's own.
-        (r"LOC\\$(!W)menumuxShow=i:2", r"LOC\\$(!W)menumuxShow=i:1", "loc://__UNIQUE__menumuxShow?type=int&init=1"),
+        (r"LOC\\$(!W)menumuxShow=i:2", r"LOC\\$(!W)menumuxShow=i:1", "loc://${EDM_W}menumuxShow?type=int&init=1"),
         # The menu's own configuration stands when nothing else configures the variable.
-        (r"LOC\\$(!W)menumuxShow=i:2", r"LOC\\$(!W)menumuxShow", "loc://__UNIQUE__menumuxShow?type=int&init=2"),
+        (r"LOC\\$(!W)menumuxShow=i:2", r"LOC\\$(!W)menumuxShow", "loc://${EDM_W}menumuxShow?type=int&init=2"),
         # A PV keeps its name; the screen expands its macros when it runs.
         ("$(P):MODE", r"LOC\\$(!W)menumuxShow", "${P}:MODE"),
     ],
@@ -636,7 +644,7 @@ def test_menu_takes_the_richest_ui_declaration(tmp_path, monkeypatch):
         + RECTANGLE.replace(r'visPv "LOC\\$(!W)menumuxShow"', r'visPv "LOC\\$(!W)menumuxShow=i:2"')
     )
     (menu,) = generated_menus(convert_elsewhere(tmp_path, monkeypatch, text))
-    assert menu["controlPv"] == "loc://__UNIQUE__menumuxShow?type=int&init=0&enum_string=['Off', 'On']"
+    assert menu["controlPv"] == "loc://${EDM_W}menumuxShow?type=int&init=0&enum_string=['Off', 'On']"
 
 
 def test_menu_without_control_pv_has_no_address(menumux_screen):
@@ -655,6 +663,7 @@ def test_menu_writes_and_follows_its_control_pv(tmp_path, monkeypatch, qtbot):
     )
     qtbot.addWidget(screen)
     screen.show()
+    show = window_variable(screen, SHOW)
     (menu,) = screen.findChildren(QComboBox)
     writes = []
     screen.control_writers[0].send_value_signal.connect(writes.append)
@@ -662,27 +671,27 @@ def test_menu_writes_and_follows_its_control_pv(tmp_path, monkeypatch, qtbot):
     # Nothing else configures the variable, so the menu declares it as an int
     # starting at initialState.
     assert menu.currentIndex() == 1
-    qtbot.waitUntil(lambda: variable_value(SHOW) == 1, timeout=3000)
-    assert loc_connection(SHOW)._configuration["type"] == ["int"]
+    qtbot.waitUntil(lambda: variable_value(show) == 1, timeout=3000)
+    assert loc_connection(show)._configuration["type"] == ["int"]
     qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
     (rectangle,) = screen.embedded.embedded_widget.findChildren(PyDMDrawingRectangle)
     qtbot.waitUntil(rectangle.isVisible, timeout=3000)
 
     # Choosing an item writes its index, and widgets reading the variable follow.
     menu.setCurrentIndex(0)
-    qtbot.waitUntil(lambda: variable_value(SHOW) == 0, timeout=3000)
+    qtbot.waitUntil(lambda: variable_value(show) == 0, timeout=3000)
     qtbot.waitUntil(lambda: not rectangle.isVisible(), timeout=3000)
     assert writes == [0]
 
     # A write from elsewhere moves the menu without writing it back.
-    loc_connection(SHOW).put_value(2)
+    loc_connection(show).put_value(2)
     qtbot.waitUntil(lambda: menu.currentIndex() == 2, timeout=3000)
-    loc_connection(SHOW).put_value(1)
+    loc_connection(show).put_value(1)
     qtbot.waitUntil(lambda: menu.currentIndex() == 1, timeout=3000)
     # Like EDM, a value past the last item shows the last item and stays in the variable.
-    loc_connection(SHOW).put_value(7)
+    loc_connection(show).put_value(7)
     qtbot.waitUntil(lambda: menu.currentIndex() == 2, timeout=3000)
-    assert variable_value(SHOW) == 7
+    assert variable_value(show) == 7
     assert writes == [0]
 
     # EDM reads the PV as an integer, a string like strtol, clamped to the items.
@@ -701,13 +710,14 @@ def test_menu_follows_a_variable_the_ui_declares(tmp_path, monkeypatch, qtbot):
     from pydm.widgets import PyDMDrawingRectangle
     from qtpy.QtWidgets import QComboBox
 
-    variable = "__UNIQUE__menumuxDeclared"
+    variable = "${EDM_W}menumuxDeclared"
     text = CONTROL_SCREEN.replace("menumuxShow", "menumuxDeclared").replace(
         r'visPv "LOC\\$(!W)menumuxDeclared"', r'visPv "LOC\\$(!W)menumuxDeclared=i:1"'
     )
     screen = load_file(str(convert_elsewhere(tmp_path, monkeypatch, text)), macros={"START": "2"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
+    variable = window_variable(screen, variable)
     (menu,) = screen.findChildren(QComboBox)
     (rectangle,) = screen.embedded.embedded_widget.findChildren(PyDMDrawingRectangle)
 
@@ -729,13 +739,15 @@ def test_menu_with_macros_follows_its_control_pv(tmp_path, monkeypatch, qtbot):
     from pydm.display import load_file
     from qtpy.QtWidgets import QComboBox
 
-    selection, flag = "__UNIQUE__menumuxSel", "__UNIQUE__menumuxSelFlag"
+    selection, flag = "${EDM_W}menumuxSel", "${EDM_W}menumuxSelFlag"
     text = SCREEN.replace("menumuxFlag", "menumuxSelFlag").replace(
         'initialState "$(START)"', 'controlPv "LOC\\\\$(!W)menumuxSel"\ninitialState "$(START)"'
     )
     screen = load_file(str(convert_elsewhere(tmp_path, monkeypatch, text)), macros={"START": "1"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
+    selection = window_variable(screen, selection)
+    flag = window_variable(screen, flag)
     (menu,) = screen.findChildren(QComboBox)
 
     assert menu.currentIndex() == 1
@@ -757,11 +769,12 @@ def test_closing_the_screen_releases_its_control_pv(tmp_path, monkeypatch, qtbot
     text = CONTROL_SCREEN.replace("menumuxShow", "menumuxGone")
     screen = load_file(str(convert_elsewhere(tmp_path, monkeypatch, text)), macros={"START": "1"}, target=None)
     screen.show()
-    qtbot.waitUntil(lambda: variable_value("__UNIQUE__menumuxGone") == 1, timeout=3000)
+    gone = window_variable(screen, "${EDM_W}menumuxGone")
+    qtbot.waitUntil(lambda: variable_value(gone) == 1, timeout=3000)
 
     # Not registered with qtbot: deleting it is the test.
     screen.deleteLater()
-    qtbot.waitUntil(lambda: loc_connection("__UNIQUE__menumuxGone") is None, timeout=3000)
+    qtbot.waitUntil(lambda: loc_connection(gone) is None, timeout=3000)
 
 
 def test_rule_on_a_macro_menus_control_pv_follows_after_a_reload(tmp_path, monkeypatch, qtbot):
@@ -772,7 +785,7 @@ def test_rule_on_a_macro_menus_control_pv_follows_after_a_reload(tmp_path, monke
     from pydm.widgets import PyDMDrawingRectangle
     from qtpy.QtWidgets import QComboBox
 
-    variable = "__UNIQUE__menumuxReload"
+    variable = "${EDM_W}menumuxReload"
     text = CONTROL_SCREEN.replace("menumuxShow", "menumuxReload").replace(
         'initialState "$(START)"',
         'initialState "$(START)"\nsymbol0 {\n  0 "M"\n  1 "M"\n  2 "M"\n}\nvalue0 {\n  0 "a"\n  1 "b"\n  2 "c"\n}',
@@ -780,6 +793,7 @@ def test_rule_on_a_macro_menus_control_pv_follows_after_a_reload(tmp_path, monke
     screen = load_file(str(convert_elsewhere(tmp_path, monkeypatch, text)), macros={"START": "1"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
+    variable = window_variable(screen, variable)
     (menu,) = screen.findChildren(QComboBox)
 
     def rectangle():
@@ -800,13 +814,14 @@ def test_a_value_arriving_during_a_reload_sets_the_macros(tmp_path, monkeypatch,
     from pydm.display import load_file
     from qtpy.QtWidgets import QComboBox
 
-    selection = "__UNIQUE__menumuxBurst"
+    selection = "${EDM_W}menumuxBurst"
     text = SCREEN.replace("menumuxFlag", "menumuxBurstFlag").replace(
         'initialState "$(START)"', 'controlPv "LOC\\\\$(!W)menumuxBurst"\ninitialState "$(START)"'
     )
     screen = load_file(str(convert_elsewhere(tmp_path, monkeypatch, text)), macros={"START": "1"}, target=None)
     qtbot.addWidget(screen)
     screen.show()
+    selection = window_variable(screen, selection)
     (menu,) = screen.findChildren(QComboBox)
     qtbot.waitUntil(lambda: variable_value(selection) == 1, timeout=3000)
 
@@ -919,6 +934,7 @@ def test_menu_switches_the_embedded_window_it_writes(tmp_path, monkeypatch, qtbo
     screen = load_file(str(path), target=None)
     qtbot.addWidget(screen)
     screen.show()
+    name = window_variable(screen, name)
     (combo,) = screen.findChildren(QComboBox)
     qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
     windows = screen.embedded.embedded_widget.findChildren(PyDMEmbeddedDisplay)
@@ -1001,6 +1017,7 @@ def test_reload_keeps_the_window_on_the_menu_item(
     screen = load_file(str(path), target=None)
     qtbot.addWidget(screen)
     screen.show()
+    name = window_variable(screen, name)
     window_menu, camera_menu = screen.findChildren(QComboBox)
 
     def shown():

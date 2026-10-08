@@ -711,12 +711,6 @@ def apply_widget_post_processing(
             # A menu window opens only its displayFileName entries (pip.cc), never its file.
             widget.filename = None
 
-        # Make LOC variables unique if they had $(!W) marker
-        if hasattr(widget, "channel") and widget.channel and "__UNIQUE__" in widget.channel:
-            widget_id = str(id(widget))[-6:]
-            widget.channel = widget.channel.replace("__UNIQUE__", widget_id)
-            logger.info(f"Made LOC variable unique: {widget.channel}")
-
     # Freeze button handling
     if obj.name.lower() == "activefreezebuttonclass":
         freeze_button = create_freeze_button(widget)
@@ -1367,12 +1361,6 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         logger.info("Skipping menu embedded window pairing (site rule)")
         return
 
-    # A $(!W) LOC variable is per-screen; the parser leaves a __UNIQUE__ marker
-    # (EDMFileParser.modify_text) that apply_widget_post_processing only resolves
-    # on an embedded display's own channel. The stacked path instead writes the
-    # name into visPv/controlPv strings, so resolve the marker here, once per
-    # screen, to the same name for every widget sharing the variable.
-    token = str(id(root))[-6:]
     # A site dropping menu muxes leaves their variables unwritten.
     writes_menus = not skip_widgets or "menumuxclass" not in skip_widgets
 
@@ -1389,16 +1377,14 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         files = block_items(pip.properties.get("displayFileName"))
         if not match or not files:
             continue
-        # The name as it appears in the tree, marker included: users and the
-        # definition are matched on this form, then the marker is resolved.
-        marked_name = match.group(1)
-        users = [(obj, group) for obj, group, _ in objects if obj is not pip and marked_name in loc_names[id(obj)]]
+        name = match.group(1)
+        users = [(obj, group) for obj, group, _ in objects if obj is not pip and name in loc_names[id(obj)]]
         choices = [
             (obj, group)
             for obj, group in users
             if isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         ]
-        menus = [obj for obj, _ in users if _menu_writes(obj, marked_name)] if writes_menus else []
+        menus = [obj for obj, _ in users if _menu_writes(obj, name)] if writes_menus else []
         if not choices and not menus:
             continue
 
@@ -1407,13 +1393,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             value
             for obj, _ in users
             for value in obj.properties.values()
-            if isinstance(value, str) and (value == f"loc://{marked_name}" or value.startswith(f"loc://{marked_name}?"))
+            if isinstance(value, str) and (value == f"loc://{name}" or value.startswith(f"loc://{name}?"))
         ]
         definition = max(references, key=lambda url: (len(_loc_enum_strings(url)), "?" in url))
-
-        name = marked_name.replace("__UNIQUE__", token)
-        if name != marked_name:
-            definition = definition.replace("__UNIQUE__", token)
 
         if "?" not in definition and menus:
             # Nothing configures the variable, so the first menu declares it when
@@ -1427,11 +1409,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
                 definition = f"loc://{name}?type=int&init={start}"
 
         if choices and len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
-            # Tabs switch on their own and never emit the variable, so the
-            # marked name never reaches the output.
             _absorb_pip_into_tabs(pip, parent, choices[0][0], files, definition, color_list_dict)
         else:
-            _stack_pip_displays(pip, parent, name, files, definition, users, marked_name)
+            _stack_pip_displays(pip, parent, name, files, definition, users)
 
 
 def _menu_writes(obj, name: str) -> bool:
@@ -1496,18 +1476,13 @@ def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dic
     logger.info(f"Converted choice button and menu embedded window on {definition} to tabs")
 
 
-def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name=None) -> None:
+def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
     """Replace the window with one embedded display per file, each visible only
     while the variable equals its EDM index (a group visPv in [i, i + 1)).
 
     files are the window's (EDM index, file) pairs; symbols[i] belongs to
-    displayFileName[i]. name is the resolved variable name, marked_name the form
-    still carrying the parser's __UNIQUE__ marker (the same when there is no
-    marker); user properties are matched on the marked form and rewritten to
-    the resolved one.
+    displayFileName[i].
     """
-    if marked_name is None:
-        marked_name = name
     symbols = dict(block_items(pip.properties.get("symbols")))
     start = _starting_index(_loc_init(definition), [index for index, _ in files])
     shared = {
@@ -1550,17 +1525,12 @@ def _stack_pip_displays(pip, parent, name, files, definition, users, marked_name
     # other configured use.
     for obj, _ in users:
         is_choice = isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
-        is_writer = is_choice or _menu_writes(obj, marked_name)
+        is_writer = is_choice or _menu_writes(obj, name)
         for key, value in obj.properties.items():
             if not isinstance(value, str):
                 continue
-            if value.startswith(f"loc://{marked_name}?") or (is_writer and value == f"loc://{marked_name}"):
+            if value.startswith(f"loc://{name}?") or (is_writer and value == f"loc://{name}"):
                 obj.properties[key] = definition
-            elif marked_name != name:
-                # A plain reference carrying no configuration (a label's visPv,
-                # say) keeps the marker otherwise, naming a different variable
-                # than the displays it is meant to track.
-                obj.properties[key] = value.replace(f"loc://{marked_name}", f"loc://{name}")
     logger.info(f"Stacked {len(files)} embedded displays switched by {definition}")
 
 
