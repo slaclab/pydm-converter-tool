@@ -731,6 +731,42 @@ def test_related_display_macros_load_one_per_filename_in_pydm(tmp_path, qtbot):
     ]
 
 
+# b.edl has an empty symbols entry and c.edl none (index 2 is skipped).
+FOUR_DISPLAYS = (
+    'displayFileName {\n  0 "a.edl"\n  1 "b.edl"\n  2 "c.edl"\n  3 "d.edl"\n}\n'
+    'symbols {\n  0 "DEV=A1"\n  1 ""\n  3 "DEV=D4,N=2"\n}'
+)
+
+
+def test_convert_related_display_macros_keep_empty_and_skipped_entries(tmp_path):
+    macros, filenames = _related_display_macros_and_filenames(tmp_path, FOUR_DISPLAYS, num_dsps=4)
+    assert filenames == ["a.ui", "b.ui", "c.ui", "d.ui"]
+    assert macros == ['{"DEV": "A1"}', "{}", "{}", '{"DEV": "D4", "N": "2"}']
+
+
+def test_related_display_opens_each_file_with_its_own_macros(tmp_path, qtbot):
+    """Opening each entry through PyDM gives that display its own symbols."""
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from pydm.widgets.related_display_button import PyDMRelatedDisplayButton
+
+    output_file = _convert_related_display(tmp_path, FOUR_DISPLAYS, num_dsps=4)
+    for name in "abcd":
+        (tmp_path / f"{name}.ui").write_text(
+            '<ui version="4.0"><class>Form</class><widget class="QWidget" name="Form"/></ui>'
+        )
+    screen = load_file(str(output_file), target=None)
+    qtbot.addWidget(screen)
+    (button,) = screen.findChildren(PyDMRelatedDisplayButton)
+
+    opened = {}
+    for item in button._get_items():
+        display = button.open_display(item["filename"], item["macros"])
+        qtbot.addWidget(display)
+        opened[item["filename"]] = display.macros()
+    assert opened == {"a.ui": {"DEV": "A1"}, "b.ui": {}, "c.ui": {}, "d.ui": {"DEV": "D4", "N": "2"}}
+
+
 def test_convert_shell_command_to_commands_property(tmp_path):
     """Test that EDM shellCmdClass command property maps to PyDM commands property."""
     edm_content = textwrap.dedent("""
