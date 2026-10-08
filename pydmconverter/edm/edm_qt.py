@@ -1,7 +1,7 @@
 """EDM -> Qt class and prop name maps for the IR adapter.
 
 The shared IR builder resolves widgets and props by Qt vocabulary (the keys
-Beaver's ``qtMapping``/``qtPropMap`` use). The EDM front-end therefore translates
+the registry's ``qtMapping``/``qtPropMap`` use). The EDM front-end therefore translates
 EDM class names -> Qt class names and EDM attribute names -> Qt prop names here;
 value coercion lives in ``ir_adapter.py``.
 
@@ -78,10 +78,10 @@ EDM_READBACK_CHANNEL_ORDER = ("indicatorPv", "readPv")
 # widget's channel (nor make a static label "live" — see has_pv).
 EDM_CHANNEL_ATTRS = EDM_PRIMARY_CHANNEL_ORDER + ("alarmPv",)
 
-# EDM attribute name -> Qt prop name (the key Beaver's qtPropMap consumes).
+# EDM attribute name -> Qt prop name (the key the registry's qtPropMap consumes).
 # Channel attrs are absent on purpose: the adapter routes them itself.
 EDM_TO_QT_PROP: dict[str, str] = {
-    # text / labels (Beaver maps "text" -> text/label per widget)
+    # text / labels (the registry maps "text" -> text/label per widget)
     "value": "text",
     "label": "text",
     "buttonLabel": "text",

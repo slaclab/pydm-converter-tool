@@ -2,5 +2,5 @@
 for the shared IR builder.
 
 ``.ui`` already speaks Qt/PyDM, so widget classes and property names map near-directly
-through Beaver's ``qtMapping``/``qtPropMap`` — no EDM-style translation table needed.
+through the registry's ``qtMapping``/``qtPropMap`` — no EDM-style translation table needed.
 """

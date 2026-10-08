@@ -120,7 +120,7 @@ ENV/
 
 *.json
 
-# Canopy IR data files (generated schema + vendored widget registry) are tracked assets
+# Canopy IR data files (vendored IR schema + widget registry) are tracked assets
 !pydmconverter/ir/data/*.json
 !pydmconverter/ir/data/widget-registry/*.json
 

@@ -46,7 +46,7 @@ class SourceNode:
         Qt/PyDM class to resolve against the registry (``"PyDMLabel"``). ``None``
         for a node with no widget mapping (forces an ``unknown-widget``).
     qt_props:
-        Prop values keyed by Qt property name (the keys Beaver's ``qtPropMap``
+        Prop values keyed by Qt property name (the keys the registry's ``qtPropMap``
         expects). The builder selects and transforms these.
     registry_id:
         Direct registry id to resolve (bypasses Qt-class lookup) — for source
