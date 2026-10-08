@@ -2378,12 +2378,12 @@ color_list_file : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1493</span>
-<span class="normal">1494</span>
-<span class="normal">1495</span>
-<span class="normal">1496</span>
-<span class="normal">1497</span>
-<span class="normal">1498</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1525</span>
+<span class="normal">1526</span>
+<span class="normal">1527</span>
+<span class="normal">1528</span>
+<span class="normal">1529</span>
+<span class="normal">1530</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the edm pizelsize to pydm pointsize (multiply by 0.75)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2922,11 +2922,11 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1459</span>
-<span class="normal">1460</span>
-<span class="normal">1461</span>
-<span class="normal">1462</span>
-<span class="normal">1463</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1491</span>
+<span class="normal">1492</span>
+<span class="normal">1493</span>
+<span class="normal">1494</span>
+<span class="normal">1495</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Takes in a value string and joins each element into a string separated by a new line</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3153,7 +3153,7 @@ most enum strings, then the first in the file.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Convert each menu embedded window that a choice button drives.</p>
+        <p>Convert each menu embedded window that a choice button or a menu mux drives.</p>
 <p>In EDM the two are separate widgets sharing a LOC\ variable: the choice
 button writes it (its states are the variable's enum strings) and the
 window shows displayFileName[value]. When the button sits on top of the
@@ -3162,6 +3162,10 @@ the choice button carries the pages and the window is removed. Otherwise
 the button stays a PyDMEnumButton and the window becomes one embedded
 display per file, shown only at its index, so EDM's layout and every other
 user of the variable keep working.</p>
+<p>A menu mux whose controlPv names the variable writes it too: the generated
+menu mux screen writes the chosen item's index there. The menu becomes part
+of that separate .py rather than a widget in the .ui, so it is never a tab
+bar, and its window always becomes the switched displays.</p>
 <p>skip_widgets is the site's set of EDM classes to drop; pairing rewrites both
 widgets together, so a site dropping either one leaves the tree untouched.</p>
 
@@ -3236,9 +3240,28 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 <span class="normal">1324</span>
 <span class="normal">1325</span>
 <span class="normal">1326</span>
-<span class="normal">1327</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1327</span>
+<span class="normal">1328</span>
+<span class="normal">1329</span>
+<span class="normal">1330</span>
+<span class="normal">1331</span>
+<span class="normal">1332</span>
+<span class="normal">1333</span>
+<span class="normal">1334</span>
+<span class="normal">1335</span>
+<span class="normal">1336</span>
+<span class="normal">1337</span>
+<span class="normal">1338</span>
+<span class="normal">1339</span>
+<span class="normal">1340</span>
+<span class="normal">1341</span>
+<span class="normal">1342</span>
+<span class="normal">1343</span>
+<span class="normal">1344</span>
+<span class="normal">1345</span>
+<span class="normal">1346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Convert each menu embedded window that a choice button drives.</span>
+<span class="sd">    Convert each menu embedded window that a choice button or a menu mux drives.</span>
 
 <span class="sd">    In EDM the two are separate widgets sharing a LOC\\ variable: the choice</span>
 <span class="sd">    button writes it (its states are the variable&#39;s enum strings) and the</span>
@@ -3248,6 +3271,11 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 <span class="sd">    the button stays a PyDMEnumButton and the window becomes one embedded</span>
 <span class="sd">    display per file, shown only at its index, so EDM&#39;s layout and every other</span>
 <span class="sd">    user of the variable keep working.</span>
+
+<span class="sd">    A menu mux whose controlPv names the variable writes it too: the generated</span>
+<span class="sd">    menu mux screen writes the chosen item&#39;s index there. The menu becomes part</span>
+<span class="sd">    of that separate .py rather than a widget in the .ui, so it is never a tab</span>
+<span class="sd">    bar, and its window always becomes the switched displays.</span>
 
 <span class="sd">    skip_widgets is the site&#39;s set of EDM classes to drop; pairing rewrites both</span>
 <span class="sd">    widgets together, so a site dropping either one leaves the tree untouched.</span>
@@ -3262,6 +3290,8 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
     <span class="c1"># name into visPv/controlPv strings, so resolve the marker here, once per</span>
     <span class="c1"># screen, to the same name for every widget sharing the variable.</span>
     <span class="n">token</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">root</span><span class="p">))[</span><span class="o">-</span><span class="mi">6</span><span class="p">:]</span>
+    <span class="c1"># A site dropping menu muxes leaves their variables unwritten.</span>
+    <span class="n">writes_menus</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">skip_widgets</span> <span class="ow">or</span> <span class="s2">&quot;menumuxclass&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip_widgets</span>
 
     <span class="n">objects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_walk_objects</span><span class="p">(</span><span class="n">root</span><span class="p">))</span>
     <span class="c1"># objects holds a reference to every walked object, so keying by id is safe.</span>
@@ -3283,7 +3313,8 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
             <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">users</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;activechoicebuttonclass&quot;</span>
         <span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span><span class="p">:</span>
+        <span class="n">menus</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">users</span> <span class="k">if</span> <span class="n">_menu_writes</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">marked_name</span><span class="p">)]</span> <span class="k">if</span> <span class="n">writes_menus</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">menus</span><span class="p">:</span>
             <span class="k">continue</span>
 
         <span class="c1"># The richest reference defines the variable: most enum strings, then any config at all.</span>
@@ -3299,7 +3330,18 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
         <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">marked_name</span><span class="p">:</span>
             <span class="n">definition</span> <span class="o">=</span> <span class="n">definition</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__UNIQUE__&quot;</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">users</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">_fits_tab_bar</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="o">*</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="s2">&quot;?&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">definition</span> <span class="ow">and</span> <span class="n">menus</span><span class="p">:</span>
+            <span class="c1"># Nothing configures the variable, so the first menu declares it when</span>
+            <span class="c1"># the screen runs: an int starting at the menu&#39;s initialState</span>
+            <span class="c1"># (MenuMuxScreen.control_address). Declare it so here, so the</span>
+            <span class="c1"># displays start where the variable does.</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">initial_state</span><span class="p">(</span><span class="n">menus</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> starts at a macro&#39;s value; its first display starts visible&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">definition</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">?type=int&amp;init=</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="n">choices</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">users</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">_fits_tab_bar</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="o">*</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
             <span class="c1"># Tabs switch on their own and never emit the variable, so the</span>
             <span class="c1"># marked name never reaches the output.</span>
             <span class="n">_absorb_pip_into_tabs</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">files</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">)</span>
@@ -3329,31 +3371,31 @@ This is just an example parser—adjust as needed.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1466</span>
-<span class="normal">1467</span>
-<span class="normal">1468</span>
-<span class="normal">1469</span>
-<span class="normal">1470</span>
-<span class="normal">1471</span>
-<span class="normal">1472</span>
-<span class="normal">1473</span>
-<span class="normal">1474</span>
-<span class="normal">1475</span>
-<span class="normal">1476</span>
-<span class="normal">1477</span>
-<span class="normal">1478</span>
-<span class="normal">1479</span>
-<span class="normal">1480</span>
-<span class="normal">1481</span>
-<span class="normal">1482</span>
-<span class="normal">1483</span>
-<span class="normal">1484</span>
-<span class="normal">1485</span>
-<span class="normal">1486</span>
-<span class="normal">1487</span>
-<span class="normal">1488</span>
-<span class="normal">1489</span>
-<span class="normal">1490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1498</span>
+<span class="normal">1499</span>
+<span class="normal">1500</span>
+<span class="normal">1501</span>
+<span class="normal">1502</span>
+<span class="normal">1503</span>
+<span class="normal">1504</span>
+<span class="normal">1505</span>
+<span class="normal">1506</span>
+<span class="normal">1507</span>
+<span class="normal">1508</span>
+<span class="normal">1509</span>
+<span class="normal">1510</span>
+<span class="normal">1511</span>
+<span class="normal">1512</span>
+<span class="normal">1513</span>
+<span class="normal">1514</span>
+<span class="normal">1515</span>
+<span class="normal">1516</span>
+<span class="normal">1517</span>
+<span class="normal">1518</span>
+<span class="normal">1519</span>
+<span class="normal">1520</span>
+<span class="normal">1521</span>
+<span class="normal">1522</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM font string like &#39;helvetica-bold-r-12.0&#39;</span>
 <span class="sd">    into a dictionary for a PyDM widget.</span>
