@@ -921,6 +921,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#edm.converter_helpers.loc_declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      loc_declarations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#edm.converter_helpers.pair_menu_pips" class="md-nav__link">
     <span class="md-ellipsis">
       pair_menu_pips
@@ -1516,6 +1525,15 @@
   <a href="#edm.converter_helpers.is_menu_pip" class="md-nav__link">
     <span class="md-ellipsis">
       is_menu_pip
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edm.converter_helpers.loc_declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      loc_declarations
     </span>
   </a>
   
@@ -2336,7 +2354,7 @@ color_list_file : str, optional
     <span class="n">pydm_widgets</span> <span class="o">=</span> <span class="n">handle_button_polygon_overlaps</span><span class="p">(</span><span class="n">pydm_widgets</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">menu_mux_buttons</span><span class="p">:</span>
-        <span class="n">generate_menumux_file</span><span class="p">(</span><span class="n">menu_mux_buttons</span><span class="p">,</span> <span class="n">parser</span><span class="o">.</span><span class="n">output_file_path</span><span class="p">)</span>
+        <span class="n">generate_menumux_file</span><span class="p">(</span><span class="n">menu_mux_buttons</span><span class="p">,</span> <span class="n">parser</span><span class="o">.</span><span class="n">output_file_path</span><span class="p">,</span> <span class="n">loc_declarations</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">ui</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">pydm_widgets</span><span class="p">,</span> <span class="n">used_classes</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2360,12 +2378,12 @@ color_list_file : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1476</span>
-<span class="normal">1477</span>
-<span class="normal">1478</span>
-<span class="normal">1479</span>
-<span class="normal">1480</span>
-<span class="normal">1481</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1493</span>
+<span class="normal">1494</span>
+<span class="normal">1495</span>
+<span class="normal">1496</span>
+<span class="normal">1497</span>
+<span class="normal">1498</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the edm pizelsize to pydm pointsize (multiply by 0.75)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2904,11 +2922,11 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1442</span>
-<span class="normal">1443</span>
-<span class="normal">1444</span>
-<span class="normal">1445</span>
-<span class="normal">1446</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1459</span>
+<span class="normal">1460</span>
+<span class="normal">1461</span>
+<span class="normal">1462</span>
+<span class="normal">1463</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Takes in a value string and joins each element into a string separated by a new line</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3052,17 +3070,72 @@ the button is placed after the polygon in the widget list (on top in z-order).</
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1189</span>
-<span class="normal">1190</span>
-<span class="normal">1191</span>
-<span class="normal">1192</span>
-<span class="normal">1193</span>
-<span class="normal">1194</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_menu_pip</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_menu_pip</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;An embedded window whose filePv picks among its displayFileName entries.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">EDMObject</span><span class="p">):</span>
         <span class="c1"># Groups carry properties but no class name, so they are never a window.</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;activepipclass&quot;</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;displaySource&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;menu&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="edm.converter_helpers.loc_declarations" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">loc_declarations</span><span class="p">(</span><span class="n">root</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Map each loc:// variable the converted .ui configures, by its bare
+address (loc://name), to the address that configures it. Menu muxes are
+left out: they become the separate .py screen. When several widgets
+configure a variable differently the richest wins, as in pair_menu_pips:
+most enum strings, then the first in the file.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">loc_declarations</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map each loc:// variable the converted .ui configures, by its bare</span>
+<span class="sd">    address (loc://name), to the address that configures it. Menu muxes are</span>
+<span class="sd">    left out: they become the separate .py screen. When several widgets</span>
+<span class="sd">    configure a variable differently the richest wins, as in pair_menu_pips:</span>
+<span class="sd">    most enum strings, then the first in the file.&quot;&quot;&quot;</span>
+    <span class="n">declarations</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">_walk_objects</span><span class="p">(</span><span class="n">root</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;menumuxclass&quot;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">_as_list</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;loc://&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;?&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                    <span class="n">declarations</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">bare</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">urls</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">url</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">_loc_enum_strings</span><span class="p">(</span><span class="n">url</span><span class="p">)))</span> <span class="k">for</span> <span class="n">bare</span><span class="p">,</span> <span class="n">urls</span> <span class="ow">in</span> <span class="n">declarations</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3095,24 +3168,7 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1242</span>
-<span class="normal">1243</span>
-<span class="normal">1244</span>
-<span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span>
-<span class="normal">1248</span>
-<span class="normal">1249</span>
-<span class="normal">1250</span>
-<span class="normal">1251</span>
-<span class="normal">1252</span>
-<span class="normal">1253</span>
-<span class="normal">1254</span>
-<span class="normal">1255</span>
-<span class="normal">1256</span>
-<span class="normal">1257</span>
-<span class="normal">1258</span>
-<span class="normal">1259</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1259</span>
 <span class="normal">1260</span>
 <span class="normal">1261</span>
 <span class="normal">1262</span>
@@ -3163,7 +3219,24 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 <span class="normal">1307</span>
 <span class="normal">1308</span>
 <span class="normal">1309</span>
-<span class="normal">1310</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1310</span>
+<span class="normal">1311</span>
+<span class="normal">1312</span>
+<span class="normal">1313</span>
+<span class="normal">1314</span>
+<span class="normal">1315</span>
+<span class="normal">1316</span>
+<span class="normal">1317</span>
+<span class="normal">1318</span>
+<span class="normal">1319</span>
+<span class="normal">1320</span>
+<span class="normal">1321</span>
+<span class="normal">1322</span>
+<span class="normal">1323</span>
+<span class="normal">1324</span>
+<span class="normal">1325</span>
+<span class="normal">1326</span>
+<span class="normal">1327</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert each menu embedded window that a choice button drives.</span>
 
@@ -3256,31 +3329,31 @@ This is just an example parser—adjust as needed.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1449</span>
-<span class="normal">1450</span>
-<span class="normal">1451</span>
-<span class="normal">1452</span>
-<span class="normal">1453</span>
-<span class="normal">1454</span>
-<span class="normal">1455</span>
-<span class="normal">1456</span>
-<span class="normal">1457</span>
-<span class="normal">1458</span>
-<span class="normal">1459</span>
-<span class="normal">1460</span>
-<span class="normal">1461</span>
-<span class="normal">1462</span>
-<span class="normal">1463</span>
-<span class="normal">1464</span>
-<span class="normal">1465</span>
-<span class="normal">1466</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1466</span>
 <span class="normal">1467</span>
 <span class="normal">1468</span>
 <span class="normal">1469</span>
 <span class="normal">1470</span>
 <span class="normal">1471</span>
 <span class="normal">1472</span>
-<span class="normal">1473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="normal">1473</span>
+<span class="normal">1474</span>
+<span class="normal">1475</span>
+<span class="normal">1476</span>
+<span class="normal">1477</span>
+<span class="normal">1478</span>
+<span class="normal">1479</span>
+<span class="normal">1480</span>
+<span class="normal">1481</span>
+<span class="normal">1482</span>
+<span class="normal">1483</span>
+<span class="normal">1484</span>
+<span class="normal">1485</span>
+<span class="normal">1486</span>
+<span class="normal">1487</span>
+<span class="normal">1488</span>
+<span class="normal">1489</span>
+<span class="normal">1490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM font string like &#39;helvetica-bold-r-12.0&#39;</span>
 <span class="sd">    into a dictionary for a PyDM widget.</span>
@@ -3488,15 +3561,15 @@ a menu window starts at its filePv's initial value, any other at entry 0.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1197</span>
-<span class="normal">1198</span>
-<span class="normal">1199</span>
-<span class="normal">1200</span>
-<span class="normal">1201</span>
-<span class="normal">1202</span>
-<span class="normal">1203</span>
-<span class="normal">1204</span>
-<span class="normal">1205</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">shown_display_index</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">shown_display_index</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The displayFileName/symbols entry an embedded window shows when it opens:</span>
 <span class="sd">    a menu window starts at its filePv&#39;s initial value, any other at entry 0.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">is_menu_pip</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
