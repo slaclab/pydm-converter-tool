@@ -1,7 +1,7 @@
 import dataclasses
 import re
 from typing import Optional, List, Tuple
-from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser, block_items
+from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser, block_items, block_list
 from pydmconverter.widgets import (
     PyDMDrawingRectangle,
     PyDMDrawingEllipse,
@@ -570,10 +570,13 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
     elif edm_attr in COLOR_ATTRIBUTES:
         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
     elif edm_attr == "plotColor":
-        color_list = []
-        for color in value:
-            color_list.append(convert_color_property_to_qcolor(color, color_data=color_list_dict))
-        value = color_list
+        # Trace i is yPv[i] / xPv[i] / plotColor[i] by EDM index; None marks an omitted color.
+        value = [
+            convert_color_property_to_qcolor(color, color_data=color_list_dict) if color else None
+            for color in block_list(value)
+        ]
+    elif edm_attr in ("xPv", "yPv") and isinstance(value, list):
+        value = block_list(value)
     elif edm_attr in ("menuLabel", "commandLabel"):
         # EDM uses \x18 (CAN character) as a placeholder meaning "use the filename".
         # Strip these so PyDM falls back to its default title behavior.

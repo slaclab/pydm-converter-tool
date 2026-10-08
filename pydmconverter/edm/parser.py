@@ -58,6 +58,17 @@ def block_items(value) -> list[tuple[int, str]]:
     return list(enumerate(items))
 
 
+def block_list(value) -> list[str]:
+    """A brace-block prop value as a list indexed by EDM array index, with ""
+    for each entry the file leaves out (``xPv { 1 "X" }`` -> ``["", "X"]``), for
+    consumers that pair parallel arrays by position."""
+    items = block_items(value)
+    values = [""] * (max((index for index, _ in items), default=-1) + 1)
+    for index, item in items:
+        values[index] = item
+    return values
+
+
 def edm_int(value) -> int:
     """EDM's integer read of a tag value (strtol semantics): the leading integer, else 0."""
     if isinstance(value, bool) or value is None:
@@ -924,6 +935,10 @@ class EDMFileParser:
         ``value { 5 }``) every line is kept as text. Values lose their
         surrounding quotes and ``\\"`` escapes either way.
 
+        In an indexed block, a line without a leading index continues the
+        previous entry (a quoted value spanning lines, ``0 "Label`` then ``"``),
+        and a repeated index replaces the earlier entry, as EDM's array read does.
+
         Parameters
         ----------
         lines : list[str]
@@ -940,9 +955,14 @@ class EDMFileParser:
         matches = [_INDEXED_LINE_RE.match(line.strip()) for line in lines]
         # A block of bare numbers (``value { 5 }``) is text, not indices with no
         # values; ``symbols { 0 "" }`` is still indexed (its value is empty).
-        if lines and all(matches) and any(match.group(2) is not None for match in matches):
-            return IndexedBlock(
-                [_clean_block_value(match.group(2) or "") for match in matches],
-                [int(match.group(1)) for match in matches],
-            )
+        if lines and matches[0] and any(match.group(2) is not None for match in matches if match):
+            entries: dict[int, str] = {}
+            for line, match in zip(lines, matches):
+                if match:
+                    index = int(match.group(1))
+                    entries[index] = match.group(2) or ""
+                else:
+                    entries[index] += "\n" + line.strip()
+            # A value continued onto the next line ends in a newline inside its quotes.
+            return IndexedBlock([_clean_block_value(value).strip("\n") for value in entries.values()], list(entries))
         return [_clean_block_value(line) for line in lines]

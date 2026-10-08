@@ -3,7 +3,7 @@ import pprint
 import re
 import textwrap
 from pathlib import Path
-from pydmconverter.edm.parser import EDMObject
+from pydmconverter.edm.parser import EDMObject, block_list
 
 logger = logging.getLogger(__name__)
 
@@ -356,10 +356,11 @@ def control_pv(obj: EDMObject, loc_declarations: dict[str, str]) -> str | None:
 
 
 def edm_array(value) -> list[str]:
-    """An EDM array property as a list: the parser gives a list for a
-    { ... } block and a str for a single value."""
+    """An EDM array property as a list indexed by item: the parser gives a list
+    for a { ... } block (an item EDM left out, e.g. an empty first value, is "")
+    and a str for a single value."""
     if isinstance(value, list):
-        return value
+        return block_list(value)
     return [value] if isinstance(value, str) else []
 
 
