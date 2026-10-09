@@ -517,6 +517,11 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
     if edm_attr == "font":
         value = parse_font_string(value)
     elif edm_attr in ("macro", "symbols"):
+        if obj.name.lower() == "activepipclass" and not is_menu_pip(obj):
+            # EDM (pip.cc) opens a file or stringPV window with the parent's macros
+            # only: symbols belong to the menu entries (openEmbeddedByIndex), so a
+            # window left with them by a switch from "menu" ignores them.
+            return None
         if isinstance(value, list):
             if isinstance(widget, PyDMEmbeddedDisplay) and is_menu_pip(obj) and value:
                 # A menu window pairs symbols[i] with displayFileName[i] by EDM array

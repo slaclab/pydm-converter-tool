@@ -10,6 +10,8 @@ import textwrap
 import xml.etree.ElementTree as ET
 
 import pytest
+from pydm.widgets import PyDMEmbeddedDisplay as QtEmbeddedDisplay
+from qtpy import uic
 
 from pydmconverter.edm.converter import convert
 from pydmconverter.edm.parser import EDMFileParser
@@ -104,6 +106,14 @@ def prop(widget, name):
     if value.tag == "rect":
         return tuple(int(value.find(k).text) for k in ("x", "y", "width", "height"))
     return value.text
+
+
+def loaded_macros(tmp_path, qtbot):
+    """Load the converted screen in PyDM and return its embedded display's macros."""
+    window = uic.loadUi(str(tmp_path / "screen.ui"))
+    qtbot.addWidget(window)
+    (display,) = window.findChildren(QtEmbeddedDisplay)
+    return display.parsed_macros()
 
 
 def custom_classes(root):
@@ -214,7 +224,7 @@ def test_choice_button_away_from_window_keeps_edm_layout(tmp_path):
     assert classes == ["PyDMEmbeddedDisplay", "PyDMEmbeddedDisplay", "PyDMEnumButton"]
 
 
-def test_menu_window_without_choice_button_shows_its_starting_entry(tmp_path):
+def test_menu_window_without_choice_button_shows_its_starting_entry(tmp_path, qtbot):
     root = convert_objects(
         tmp_path,
         pip(
@@ -226,6 +236,7 @@ def test_menu_window_without_choice_button_shows_its_starting_entry(tmp_path):
     (display,) = top_level(root)
     assert prop(display, "filename") == "GigE_other.ui"
     assert json.loads(prop(display, "macros")) == {"P": "PROF:", "ID": "1800"}
+    assert loaded_macros(tmp_path, qtbot) == {"P": "PROF:", "ID": "1800"}
 
 
 def test_menu_window_shows_its_entry_over_its_file(tmp_path):
@@ -260,7 +271,19 @@ def test_file_window_opens_its_file_not_a_menu_entry(tmp_path):
     )
     (display,) = top_level(root)
     assert prop(display, "filename") == "opsKlys_sector_${sector}.ui"
-    assert not isinstance(json.loads(prop(display, "macros")), dict)
+    assert prop(display, "macros") is None
+
+
+@pytest.mark.parametrize("symbols", [["sector=LI20"], ["sector=LI20", "sector=LI21"]])
+def test_file_window_ignores_symbols(tmp_path, qtbot, symbols):
+    # EDM (pip.cc) opens a file window with the parent's macros only: symbols belong
+    # to a menu window's entries, so a window switched to "file" ignores them.
+    source = pip(r"$(sector)", ["sector_li20", "sector_li21"][: len(symbols)], symbols=symbols)
+    root = convert_objects(tmp_path, source.replace('displaySource "menu"', 'displaySource "file"\nfile "sector_li20"'))
+    (display,) = top_level(root)
+    assert prop(display, "filename") == "sector_li20.ui"
+    assert prop(display, "macros") is None
+    assert loaded_macros(tmp_path, qtbot) == {}
 
 
 @pytest.mark.parametrize("file_line", ["", 'file ""\n'])
