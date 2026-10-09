@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydmconverter.edm.parser import EDMFileParser, EDMObject
+from pydmconverter.edm.parser import EDMFileParser, EDMObject, literal_macro_clashes
 import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
 from pydmconverter.edm.window_macros import resolve_window_macros
@@ -62,6 +62,14 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
     except FileNotFoundError:
         logger.error("File Not Found")
         return
+
+    # PyDM's .ui has no literal ${NAME}: a shell variable reads the same as a macro.
+    clashes = literal_macro_clashes(edm_parser.text)
+    if clashes:
+        logger.warning(
+            f"{input_path}: literal ${{NAME}} text (not a macro in EDM, e.g. a shell variable) shares its name "
+            f"with a macro, so PyDM substitutes the macro's value into it: {', '.join(clashes)}"
+        )
 
     # edm_parser.ui, _, _ = replace_calc_and_loc_in_edm_content(edm_parser.ui, input_path)
 

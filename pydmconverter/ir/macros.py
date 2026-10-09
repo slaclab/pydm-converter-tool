@@ -26,6 +26,14 @@ _VALID_NAME_RE = re.compile(MACRO_NAME_PATTERN)
 # EDM-style ``$(VAR)`` to tolerate on input; normalized to ``${VAR}`` (M1).
 _EDM_MACRO_RE = re.compile(r"\$\(([A-Za-z_][A-Za-z0-9_]*)\)")
 
+# Front-ends write this private-use character in place of the ``{`` of a
+# literal ``${VAR}`` (EDM expands only ``$(VAR)``, so its ``$\{VAR\}`` is a
+# shell variable), so macro collection and renaming skip it. The builder turns
+# it back into ``{`` once the macros are collected. The runtime has no escape
+# for a literal ``${``: a macro of the same name still replaces it.
+LITERAL_BRACE = "\ue000"
+LITERAL_REF_RE = re.compile(r"\$" + LITERAL_BRACE + r"(\w+)\}")
+
 
 def normalize_macro_syntax(value: Any) -> Any:
     """Rewrite ``$(VAR)`` -> ``${VAR}``. Non-strings pass through unchanged."""

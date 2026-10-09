@@ -672,12 +672,16 @@ def apply_widget_post_processing(
         widget.width = max(1, int(width))
         widget.height = max(1, int(height))
 
-    # PushButton off/on handling
+    # PushButton off/on handling. Labels that differ only in their padding
+    # ("Cancel " / "Cancel") get no separate off button.
     if isinstance(widget, PyDMPushButton) and ("offLabel" in obj.properties and "onLabel" not in obj.properties):
         widget.text = obj.properties["offLabel"]
     elif isinstance(widget, PyDMPushButton) and (
         (
-            ("offLabel" in obj.properties and obj.properties["offLabel"] != obj.properties["onLabel"])
+            (
+                "offLabel" in obj.properties
+                and str(obj.properties["offLabel"]).strip() != str(obj.properties["onLabel"]).strip()
+            )
             or ("offColor" in obj.properties and obj.properties["offColor"] != obj.properties["onColor"])
         )
         and hasattr(widget, "channel")

@@ -164,3 +164,50 @@ endObjectProperties
     assert [m.name for m in screen.macros] == ["M_6X6FBCKPV"]
     assert any("6X6FBCKPV -> M_6X6FBCKPV" in w for w in screen.root.warnings)
     assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_shell_variables_are_not_declared_as_macros(tmp_path):
+    """EDM expands only $(NAME). und/mc_undh_cam_main.edl runs
+    `for m in \\{1..5\\}; do caput $(CM):CM$\\{m\\}CALIBRATE.PROC 1; done` and
+    facet/evnt_in10_main.edl passes CRATE=$\\{CRATE\\} to pydm: ${m} and ${CRATE}
+    are shell variables. Declared with default "", the runtime would blank them."""
+    edl = tmp_path / "shell.edl"
+    edl.write_text(
+        r"""4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 300
+h 100
+endScreenProperties
+
+object shellCmdClass
+beginObjectProperties
+major 4
+minor 3
+release 0
+x 10
+y 10
+w 100
+h 20
+buttonLabel "Calibrate"
+numCmds 2
+command {
+  0 "for m in \{1..5\}; do caput $(CM):CM$\{m\}CALIBRATE.PROC 1; done"
+  1 "pydm -m \"LOCA=IN10,CRATE=$\{CRATE\}\" tprDiagNC.ui"
+}
+endObjectProperties
+""",
+        encoding="utf-8",
+    )
+    screen = edm_file_to_ir(edl)
+    (button,) = screen.root.children
+    assert [action["command"] for action in button.props["actions"]] == [
+        "for m in {1..5}; do caput ${CM}:CM${m}CALIBRATE.PROC 1; done",
+        'pydm -m "LOCA=IN10,CRATE=${CRATE}" tprDiagNC.ui',
+    ]
+    assert [m.name for m in screen.macros] == ["CM"]
+    assert screen.root.warnings == []

@@ -414,3 +414,63 @@ def test_undeclared_dimension_is_sized_from_content():
     )
     assert (ir.metadata.size.width, ir.metadata.size.height) == (684, 308)
     assert ir.root.warnings == ["note"]
+
+
+def test_literal_dollar_brace_is_neither_declared_nor_renamed():
+    """A front-end marks the brace of a literal ${VAR} (EDM's $\\{VAR\\}, a shell
+    variable) with LITERAL_BRACE. Declaring VAR (default "") would let the runtime
+    blank it, and renaming ${6X} would change the command; every string gets its
+    brace back once the macros are collected."""
+    from pydmconverter.ir.macros import LITERAL_BRACE as B
+    from pydmconverter.ir.source import RuleSpec
+
+    nodes = [
+        SourceNode(
+            qt_class="PyDMLabel",
+            qt_props={"channel": f"calc://sum?A=${{P}}:A&B=${B}b}}:B&expr=A+B", "text": f"${B}m}} ${B}6X}} {{1..5}}"},
+            rules=[
+                RuleSpec(
+                    target_property="visible",
+                    name=f"${B}r}}",
+                    pvs=[(f"${B}r}}:Y", True)],
+                    conditions=[("{0} != 0", True)],
+                    default=False,
+                )
+            ],
+            warnings=[f"note ${B}w}}"],
+        ),
+        SourceNode(
+            qt_class="PyDMRelatedDisplayButton",
+            qt_props={"filenames": ["t.edl"], "macros": {"acsw": f"${B}acsw}}"}},
+        ),
+    ]
+    screen = _screen(nodes)
+    label, button = screen.root.children
+    assert [m.name for m in screen.macros] == ["P"]
+    assert label.props["text"] == "${m} ${6X} {1..5}"
+    assert label.rules[0].name == "${r}"
+    assert label.rules[0].pvs[0].name == "${r}:Y"
+    assert label.warnings == ["note ${w}"]
+    assert [f.bindings for f in screen.formulas] == [{"A": "${P}:A", "B": "${b}:B"}]
+    assert button.props["macros"] == {"acsw": "${acsw}"}
+    assert screen.root.warnings == []
+    assert B not in to_json(screen)
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_literal_dollar_brace_sharing_a_macro_name_is_warned():
+    """camac/camac_lu_from_epics_detail.edl runs `luCWRestart $\\{LOCA\\} 0` beside
+    $(LOCA) PVs. The runtime has no escape for a literal ${, so LOCA's value
+    replaces the shell variable too; the screen says so."""
+    from pydmconverter.ir.macros import LITERAL_BRACE as B
+
+    nodes = [
+        SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${LOCA}:X", "text": f"luCWRestart ${B}LOCA}} 0"}),
+    ]
+    screen = _screen(nodes)
+    assert [m.name for m in screen.macros] == ["LOCA"]
+    assert screen.root.children[0].props["text"] == "luCWRestart ${LOCA} 0"
+    assert screen.root.warnings == [
+        "Literal ${NAME} text (not a macro in the source, e.g. a shell variable) shares its name with a macro, "
+        "so the runtime substitutes the macro's value into it: LOCA"
+    ]

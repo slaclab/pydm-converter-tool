@@ -22,10 +22,58 @@ logger = logging.getLogger(__name__)
 IGNORED_PROPERTIES = ("#", "x ", "y ", "w ", "h ", "major ", "minor ", "release ")
 # One line of an EDM array tag: an unquoted index, then the value.
 _INDEXED_LINE_RE = re.compile(r"^\s*(\d+)(?:\s+(.*?))?\s*$")
+# Tags holding PV names (controlPv, visPv, controlPvs, dataPvStr, pv, ...).
+_PV_TAG_RE = re.compile(r"\w*(?:Pv|Pvs|PvStr)|pv")
+# A quoted EDM value up to its closing quote or line break, escapes included.
+_QUOTED_VALUE_RE = re.compile(r'"((?:[^"\\\n]|\\[^\n])*)')
+_ESCAPE_RE = re.compile(r"\\(.)")
 
 
-def _clean_block_value(value: str) -> str:
-    return value.strip(' "').replace('\\"', '"')
+def read_edm_string(value: str, literal_brace: str | None = None) -> str:
+    """Unquote one EDM tag value.
+
+    EDM writes strings in double quotes and escapes ``\\``, ``"``, ``{`` and
+    ``}`` with a backslash; its reader skips leading whitespace and the opening
+    quote and turns any ``\\x`` into ``x``. A quoted value ends at the first
+    unescaped ``"`` or line break (or at the end of the text when the closing
+    quote is missing). Spaces inside the quotes are kept, as EDM keeps them
+    (``value { "Currently: " }``). A value that doesn't start with a quote keeps
+    the old handling: strip spaces, newlines and quotes at both ends, and
+    unescape ``\\"``.
+
+    EDM expands only ``$(NAME)`` macros, so ``$\\{VAR\\}`` reads as the literal
+    text ``${VAR}`` (a shell variable in a command). With ``literal_brace`` set,
+    that brace is replaced by ``literal_brace``, so the text can't be mistaken
+    for a ``$(NAME)`` macro, which :meth:`EDMFileParser.modify_text` writes as
+    ``${NAME}``.
+    """
+    text = value.lstrip()
+    if not text.startswith('"'):
+        return value.strip(' "\n').replace('\\"', '"')
+    body = _QUOTED_VALUE_RE.match(text).group(1)
+    if literal_brace is None:
+        return _ESCAPE_RE.sub(r"\1", body)
+
+    def unescape(match: re.Match) -> str:
+        # The character before the backslash is the one already read: "$" in
+        # "$\{" and in "\$\{" alike.
+        if match.group(1) == "{" and match.start() and body[match.start() - 1] == "$":
+            return literal_brace
+        return match.group(1)
+
+    return _ESCAPE_RE.sub(unescape, body)
+
+
+def literal_macro_clashes(text: str) -> list[str]:
+    """Names an EDM file uses both as a literal ``$\\{NAME\\}`` (a shell variable,
+    which EDM never expands) and as a ``$(NAME)`` macro, given the file's text
+    after :meth:`EDMFileParser.modify_text` (which writes the macro as ``${NAME}``).
+
+    Once read, both are ``${NAME}``, so a target that substitutes macros puts the
+    macro's value into the shell variable.
+    """
+    literal = set(re.findall(r"\$\\\{(\w+)\\\}", text))
+    return sorted(literal & set(re.findall(r"\$\{(\w+)\}", text)))
 
 
 class IndexedBlock(list):
@@ -237,6 +285,7 @@ class EDMFileParser:
         color_list_file: str | None = None,
         search_paths: SearchPaths = None,
         confine_file_refs: bool = False,
+        literal_brace: str | None = None,
     ):
         """Creates an instance of EDMFileParser for the given file_path
 
@@ -267,6 +316,11 @@ class EDMFileParser:
             elsewhere), is rejected before any existence check and leaves an empty
             group. EDMDATAFILES (and its ``.`` default, the CWD) is not searched, so
             the caller names every directory a symbol may come from.
+        literal_brace : str, optional
+            Written in place of the ``{`` of a literal ``${VAR}`` in a value (see
+            :func:`read_edm_string`). The react/IR target passes a marker so the
+            IR builder doesn't declare ``VAR`` as a macro; the default keeps
+            ``${VAR}``.
         """
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -292,6 +346,7 @@ class EDMFileParser:
         # Resolved paths of the display and of the symbol files being expanded, to stop
         # a symbol file that includes itself (directly or through others).
         self._symbol_stack: list[Path] = [_resolve_or_none(file_path) or Path(file_path)]
+        self.literal_brace = literal_brace
 
         self.text = _read_edm_text(file_path)
         self.modify_text(file_path)
@@ -345,7 +400,7 @@ class EDMFileParser:
                     self.missing_screen_size.append(prop)
                 else:
                     setattr(self.ui, prop, value)
-            other_properties = self.get_object_properties(screen_prop_text)
+            other_properties = self.get_object_properties(screen_prop_text, literal_brace=self.literal_brace)
             if "bgColor" in other_properties:
                 color_list_filepath = search_color_list(self.color_list_file)
                 color_list_dict = parse_colors_list(color_list_filepath)
@@ -422,7 +477,7 @@ class EDMFileParser:
                         continue
 
                 size_properties = self.get_size_properties(object_text)
-                properties = self.get_object_properties(object_text)
+                properties = self.get_object_properties(object_text, literal_brace=self.literal_brace)
 
                 if name.lower() == "activesymbolclass" or name.lower() == "anasymbolclass":
                     obj = self.get_symbol_group(properties=properties, size_properties=size_properties)
@@ -474,7 +529,7 @@ class EDMFileParser:
         group_body = text[begin_group_idx + len("beginGroup") : end_group_idx]
 
         size_props = self.get_size_properties(group_header)
-        properties = self.get_object_properties(group_header)
+        properties = self.get_object_properties(group_header, literal_brace=self.literal_brace)
 
         group = EDMGroup(**size_props)
         group.properties = properties
@@ -872,7 +927,7 @@ class EDMFileParser:
         return int(match.group(1)) if match else None
 
     @classmethod
-    def get_object_properties(cls, text: str) -> dict[str, bool | str | list[str]]:
+    def get_object_properties(cls, text: str, literal_brace: str | None = None) -> dict[str, bool | str | list[str]]:
         """Get the object properties from the given text. This can be any
         property that an EDM Object may use (e.g. fillColor, value, editable).
         Size properties and version information are ignored.
@@ -881,6 +936,8 @@ class EDMFileParser:
         ----------
         text : str
             Text to extract properties from
+        literal_brace : str, optional
+            Passed on to :func:`read_edm_string`
 
         Returns
         -------
@@ -899,8 +956,8 @@ class EDMFileParser:
             if in_multi_line:
                 if line == "}":
                     in_multi_line = False
-                    cleaned_prop = cls.remove_prepended_index(multi_line_prop)
-                    properties[multi_line_key] = cleaned_prop
+                    cleaned_prop = cls.remove_prepended_index(multi_line_prop, literal_brace)
+                    properties[multi_line_key] = cls._trim_pv_value(multi_line_key, cleaned_prop)
                     multi_line_prop = []
                 else:
                     multi_line_prop.append(line)
@@ -908,20 +965,44 @@ class EDMFileParser:
 
             try:
                 k, v = line.split(maxsplit=1)
-                v = v.strip(' "').replace('\\"', '"')
             except ValueError:
-                k, v = line, True
+                properties[line] = True
+                continue
 
-            if v == "{":
+            # A bare "{" opens a block; a quoted one ("\{" in EDM) is a value.
+            if v.strip() == "{":
                 in_multi_line = True
                 multi_line_key = k
             else:
-                properties[k] = v
+                properties[k] = cls._trim_pv_value(k, read_edm_string(v, literal_brace))
 
         return properties
 
+    @property
+    def literal_braces(self) -> bool:
+        """Whether the display or a symbol file read so far has a literal
+        ``$\\{`` that :func:`read_edm_string` marks when ``literal_brace`` is set."""
+        texts = [self.text, *(found[1] for found in self._symbol_files.values() if found)]
+        return any("$\\{" in text for text in texts)
+
     @staticmethod
-    def remove_prepended_index(lines: list[str]) -> list[str]:
+    def _trim_pv_value(key: str, value):
+        """Trim the spaces around a PV-name tag's value (or each value of a block).
+
+        EDM keeps them and passes the name to Channel Access as written, where an
+        IOC fails to resolve a name with a leading or trailing space (an all-space
+        name counts as no PV). Trimming keeps the channel the display meant.
+        """
+        if not _PV_TAG_RE.fullmatch(key):
+            return value
+        if isinstance(value, IndexedBlock):
+            return IndexedBlock([item.strip() for item in value], value.indices)
+        if isinstance(value, list):
+            return [item.strip() for item in value]
+        return value.strip()
+
+    @staticmethod
+    def remove_prepended_index(lines: list[str], literal_brace: str | None = None) -> list[str]:
         """Clean the raw lines of a multi-line (brace-block) property value.
 
         EDM writes array tags (``displayFileName``, ``symbols``, ``minValues``,
@@ -932,8 +1013,8 @@ class EDMFileParser:
         each value's EDM index, so consumers can align parallel arrays (a related
         display's ``symbols[i]`` belongs to its ``displayFileName[i]``). Otherwise
         (quoted text such as ``value { "1 GeV" }``, or bare numbers such as
-        ``value { 5 }``) every line is kept as text. Values lose their
-        surrounding quotes and ``\\"`` escapes either way.
+        ``value { 5 }``) every line is kept as text. Values are unquoted with
+        :func:`read_edm_string` either way.
 
         In an indexed block, a line without a leading index continues the
         previous entry (a quoted value spanning lines, ``0 "Label`` then ``"``),
@@ -943,6 +1024,8 @@ class EDMFileParser:
         ----------
         lines : list[str]
             The raw lines between ``{`` and ``}``
+        literal_brace : str, optional
+            Passed on to :func:`read_edm_string`
 
         Returns
         -------
@@ -963,6 +1046,6 @@ class EDMFileParser:
                     entries[index] = match.group(2) or ""
                 else:
                     entries[index] += "\n" + line.strip()
-            # A value continued onto the next line ends in a newline inside its quotes.
-            return IndexedBlock([_clean_block_value(value).strip("\n") for value in entries.values()], list(entries))
-        return [_clean_block_value(line) for line in lines]
+            # read_edm_string ends a value continued onto the next line at the line break.
+            return IndexedBlock([read_edm_string(value, literal_brace) for value in entries.values()], list(entries))
+        return [read_edm_string(line, literal_brace) for line in lines]

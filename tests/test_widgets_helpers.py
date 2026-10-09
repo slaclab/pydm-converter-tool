@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from pydmconverter.widgets_helpers import (
@@ -770,6 +772,18 @@ class TestMultiRuleExpression:
         assert '"expression": "(ch[0]!=1)"' in result
 
 
+@pytest.mark.parametrize("channel", ["ca://X", r"CALC\sum(A:B,C:D)", 'loc://x?init="a"', "tab\there"])
+def test_rule_channels_round_trip_through_json(channel):
+    """Rules are JSON: a backslash, quote or control character in a channel is escaped."""
+    rule = json.loads(f"[{BoolRule('Visible', channel).to_string()}]")[0]
+    assert rule["channels"][0]["channel"] == channel
+    assert rule["name"] == f"Visible_{channel}"
+
+    args = RuleArguments("Visible", channel, False, True, None, None)
+    rule = json.loads(f"[{MultiRule('Visible', [args], hide_on_disconnect_channel=channel).to_string()}]")[0]
+    assert [c["channel"] for c in rule["channels"]] == [channel, channel]
+
+
 def test_escape_qt_mnemonic_basic():
     assert escape_qt_mnemonic("A & B") == "A && B"
 
@@ -817,3 +831,9 @@ def test_unescape_qt_mnemonic_none_passthrough():
 def test_escape_unescape_round_trip():
     original = "PLC & UPS"
     assert unescape_qt_mnemonic(escape_qt_mnemonic(original)) == original
+
+
+def test_rule_notes_are_written():
+    args = RuleArguments("Visible", "X", False, True, None, None)
+    for rule in (BoolRule("Visible", "X", notes='a "note"'), MultiRule("Visible", [args], notes='a "note"')):
+        assert json.loads(rule.to_string())["notes"] == 'a "note"'

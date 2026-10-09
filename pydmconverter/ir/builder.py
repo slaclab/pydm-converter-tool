@@ -23,7 +23,13 @@ from typing import Any
 
 from pydmconverter.ir.fox import parse_calc_url
 from pydmconverter.ir.ids import FormulaPool, IdAllocator
-from pydmconverter.ir.macros import MACRO_REF_RE, find_macro_references, valid_macro_name
+from pydmconverter.ir.macros import (
+    LITERAL_BRACE,
+    LITERAL_REF_RE,
+    MACRO_REF_RE,
+    find_macro_references,
+    valid_macro_name,
+)
 from pydmconverter.ir.model import (
     Geometry,
     MacroDeclaration,
@@ -74,6 +80,8 @@ class IRBuilder:
         background: str | None = None,
         grow_to_fit: bool = True,
         warnings: list[str] | None = None,
+        macro_defaults: dict[str, str] | None = None,
+        literal_braces: bool = True,
     ) -> ScreenIR:
         """Assemble a screen: an ``absolute-canvas`` root wrapping the top-level nodes.
 
@@ -92,6 +100,14 @@ class IRBuilder:
         ``warnings`` are screen-level notes. The IR has no screen-level warnings
         field, so they ride on the root canvas node, where consumers that walk the
         node warnings (the Canopy conversion API) surface them.
+
+        A literal ``${VAR}`` that a front-end marked with
+        :data:`~pydmconverter.ir.macros.LITERAL_BRACE` is neither declared nor
+        renamed, and is written back as ``${VAR}``. A front-end that wrote no
+        marker passes ``literal_braces=False`` to skip that pass.
+
+        ``macro_defaults`` gives some declared macros a default other than ``""``,
+        by name.
         """
         width, height = size
         # Allocate the root id before children so the canvas stays w-001.
@@ -132,6 +148,20 @@ class IRBuilder:
             merged = "; ".join(f"{', '.join(olds)} -> {new}" for new, olds in sorted(collisions.items()))
             root.warnings.append(f"Renamed macros collide with other macro names and now share one value: {merged}")
         declared = macros if macros is not None else self._collect_macros(root)
+        if macro_defaults:
+            declared = [
+                macro.model_copy(update={"default": macro_defaults[macro.name]})
+                if macro.name in macro_defaults
+                else macro
+                for macro in declared
+            ]
+        literal = self._restore_literal_braces(root) if literal_braces else set()
+        shared = sorted(literal & {macro.name for macro in declared})
+        if shared:
+            root.warnings.append(
+                "Literal ${NAME} text (not a macro in the source, e.g. a shell variable) shares its name "
+                f"with a macro, so the runtime substitutes the macro's value into it: {', '.join(shared)}"
+            )
         return ScreenIR(
             id=screen_id,
             kind="screen",
@@ -359,6 +389,46 @@ class IRBuilder:
                 olds.add(new)
         collisions = {new: sorted(olds) for new, olds in sharing.items() if len(olds) > 1}
         return renamed, collisions
+
+    def _restore_literal_braces(self, root: WidgetNode) -> set[str]:
+        """Turn :data:`~pydmconverter.ir.macros.LITERAL_BRACE` back into ``{`` in
+        every string (props, recursively; rules; warnings; formulas). Returns the
+        names of the literal ``${NAME}`` refs it restored."""
+        names: set[str] = set()
+
+        def fix(value: Any) -> Any:
+            if isinstance(value, str):
+                if LITERAL_BRACE not in value:
+                    return value
+                names.update(LITERAL_REF_RE.findall(value))
+                return value.replace(LITERAL_BRACE, "{")
+            if isinstance(value, list):
+                return [fix(item) for item in value]
+            if isinstance(value, tuple):
+                return tuple(fix(item) for item in value)
+            if isinstance(value, dict):
+                return {fix(key): fix(item) for key, item in value.items()}
+            return value
+
+        def visit(node: WidgetNode) -> None:
+            node.props = fix(node.props)
+            node.warnings = fix(node.warnings)
+            for rule in node.rules:
+                rule.name = fix(rule.name)
+                for pv in rule.pvs:
+                    pv.name = fix(pv.name)
+                for condition in rule.conditions:
+                    condition.expression = fix(condition.expression)
+                    condition.value = fix(condition.value)
+                rule.default = fix(rule.default)
+            for child in node.children:
+                visit(child)
+
+        visit(root)
+        for formula in self.formulas.declarations:
+            formula.expression = fix(formula.expression)
+            formula.bindings = fix(formula.bindings)
+        return names
 
     def _collect_macros(self, root: WidgetNode) -> list[MacroDeclaration]:
         """Declare every ``${VAR}`` referenced in any string prop, default ``""``.
