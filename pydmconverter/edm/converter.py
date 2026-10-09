@@ -1,6 +1,8 @@
+from pathlib import Path
 from pydmconverter.edm.parser import EDMFileParser, EDMObject
 import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
+from pydmconverter.edm.window_macros import resolve_window_macros
 import logging
 
 from pydmconverter.widgets_helpers import PageHeader
@@ -88,6 +90,7 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
     ET.SubElement(ui_element, "resources")
     ET.SubElement(ui_element, "connections")
 
+    resolve_window_macros(ui_element, Path(output_path).stem)
     ET.indent(ui_element, space="  ", level=0)
 
     tree = ET.ElementTree(ui_element)

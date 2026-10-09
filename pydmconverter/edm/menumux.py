@@ -4,6 +4,7 @@ import re
 import textwrap
 from pathlib import Path
 from pydmconverter.edm.parser import EDMObject, block_list
+from pydmconverter.edm.window_macros import ROOT_MACRO, WINDOW_MACRO, window_macro
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +28,19 @@ def generate_menumux_file(
     menus = []
     for obj in menumux_buttons:
         count = menu_item_count(obj)
-        macros = menu_macros(obj, count)
+        # $(!W) in a tag, a value or the controlPv means this window's, as in the .ui.
+        macros = [[(name, window_macro(value)) for name, value in pairs] for pairs in menu_macros(obj, count)]
+        address = control_pv(obj, loc_declarations or {})
         menus.append(
             {
                 "x": obj.x,
                 "y": obj.y,
                 "width": obj.width,
                 "height": obj.height,
-                "items": menu_items(obj, count, macros),
+                "items": [window_macro(item) for item in menu_items(obj, count, macros)],
                 "macros": macros,
                 "initialState": str(obj.properties.get("initialState", "0")),
-                "controlPv": control_pv(obj, loc_declarations or {}),
+                "controlPv": None if address is None else window_macro(address),
             }
         )
     menus_literal = textwrap.indent(pprint.pformat(menus, width=100, sort_dicts=False), " " * 8).lstrip()
@@ -70,6 +73,12 @@ def disconnect_channels(channels, *args):
 
 class MenuMuxScreen(Display):
     def __init__(self, parent=None, args=None, macros=None):
+        # EDM gives each window its own $(!W) (its address). The .ui names it
+        # ${{{WINDOW_MACRO}}} and its embedded displays build theirs on
+        # {ROOT_MACRO}, so each open copy of this screen keeps its own local
+        # variables; a menu change keeps the window, and so the id.
+        window_id = format(id(self), "x")
+        macros = dict(macros or {{}}, {WINDOW_MACRO}=window_id, {ROOT_MACRO}=window_id)
         super().__init__(parent=parent, args=args, macros=macros)
 
         self.muxes = []
