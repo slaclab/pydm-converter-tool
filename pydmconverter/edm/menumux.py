@@ -127,7 +127,10 @@ class MenuMuxScreen(Display):
 
         self.destroyed.connect(partial(disconnect_channels, self.control_channels))
 
+        # No margin: EDM draws the menus and the .ui at their screen
+        # coordinates, also when the screen is embedded in another.
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.container)
 
         # Start every menu at its initial item, then load once

@@ -661,6 +661,15 @@ class EDMFileParser:
             temp_group.properties["symbolWarnings"] = warnings
         return temp_group
 
+    def edm_search_dirs(self) -> list[str]:
+        """The directories EDM looks in for a file the display names, in order: the
+        display's own directory, then ``search_paths``, then ``EDMDATAFILES`` (which a
+        confined parser skips)."""
+        dirs = [str(Path(self.file_path).parent), *self.search_paths]
+        if not self.confine_file_refs:
+            dirs.extend(split_edm_path_list(os.environ.get("EDMDATAFILES", ".")))
+        return dirs
+
     def _find_symbol_file(self, embedded_file: str) -> tuple[Path, str] | None:
         """
         Look up a symbol file and read it.
@@ -678,12 +687,7 @@ class EDMFileParser:
             no candidate inside the allowed roots also adds the name to
             ``_symbols_outside``.
         """
-        # EDM resolves symbol files beside the calling display first, then along
-        # EDMDATAFILES (explicit search_paths go before it). Confined lookups skip
-        # EDMDATAFILES.
-        edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
-        if not self.confine_file_refs:
-            edm_paths.extend(split_edm_path_list(os.environ.get("EDMDATAFILES", ".")))
+        edm_paths = self.edm_search_dirs()
         any_in_bounds = False
         for path in edm_paths:
             if self.confine_file_refs:
