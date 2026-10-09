@@ -80,7 +80,7 @@ def convert_bytes(
     site: str | None = None,
     filename: str | None = None,
     search_paths: SearchPaths = None,
-    confine_file_refs: bool = False,
+    confine_file_refs: bool = True,
 ) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
@@ -100,10 +100,11 @@ def convert_bytes(
     siblings of the original file are only found through here (e.g. the directory of
     an extracted archive).
 
-    ``confine_file_refs`` should be set when ``data`` is untrusted, e.g. a user upload.
-    File names inside the input come verbatim from the bytes, so by default an absolute
-    name or ``..`` can read any file the process can reach and inline it into the
-    returned IR. With the flag on:
+    ``confine_file_refs`` is on by default, because ``data`` is usually untrusted (a
+    user upload). File names inside the input come verbatim from the bytes, so without
+    it an absolute name or ``..`` can read any file the process can reach and inline it
+    into the returned IR. Pass ``False`` only for trusted input that needs EDM's own
+    lookups (``EDMDATAFILES``, the CWD). With the flag on:
 
     - ``kind="edl"``: an activeSymbolClass ``file`` is read only if it resolves inside
       the private staging dir or one of ``search_paths`` (any of them: a
