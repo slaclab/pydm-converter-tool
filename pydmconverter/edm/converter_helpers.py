@@ -28,6 +28,7 @@ from pydmconverter.widgets import (
     PyDMSlider,
     PyDMWaveformTable,
     PyDMAnalogIndicator,
+    filename_rule,
 )
 from pydmconverter.edm.parser_helpers import (
     convert_color_property_to_qcolor,
@@ -694,7 +695,9 @@ def apply_widget_post_processing(
     if isinstance(widget, PyDMEmbeddedDisplay) and obj.name.lower() == "activepipclass":
         if not is_menu_pip(obj):
             # EDM (pip.cc) opens a displayFileName entry only from a menu window.
-            widget.filename = pip_source_file(obj)
+            widget.filename, file_channel = pip_source_file(obj)
+            if file_channel:
+                widget.extra_rules.append(filename_rule(file_channel))
             logger.info(f"Set PyDMEmbeddedDisplay filename to: {widget.filename}")
         elif "displayFileName" in obj.properties and obj.properties["displayFileName"]:
             display_filenames = obj.properties["displayFileName"]
@@ -1281,29 +1284,31 @@ def shown_display_index(obj: EDMObject) -> int:
     return _starting_index(index, [i for i, _ in block_items(obj.properties.get("displayFileName"))])
 
 
-def pip_source_file(obj: EDMObject) -> Optional[str]:
-    """The file a non-menu embedded window opens (EDM pip.cc), or None for none.
+def pip_source_file(obj: EDMObject) -> Tuple[Optional[str], Optional[str]]:
+    """The file a non-menu embedded window opens (EDM pip.cc) and the channel
+    whose value names it, each None for none.
 
     A "file" window opens its file attribute and shows nothing when that is
-    blank. A "stringPV" window (the default displaySource) opens the file its
-    filePv's value names: known here only as a loc:// string variable's initial
-    value, which is what the window shows when the screen opens.
+    blank. A "stringPV" window (the default displaySource) reads its filePv as
+    a string (pip_readUpdate) and opens the file the value names, again on
+    every non-blank change. The channel drives the display's Filename rule; a
+    loc:// string variable's initial value is also the file it opens with.
     """
     if str(obj.properties.get("displaySource", "")).lower() == "file":
         file = obj.properties.get("file")
         if isinstance(file, str) and file.strip():
-            return file
+            return file, None
         logger.info(f"{obj.name} has displaySource file but no file; it shows nothing, as in EDM")
-        return None
+        return None, None
     file_pv = obj.properties.get("filePv")
     if not isinstance(file_pv, str) or not file_pv.strip():
         logger.info(f"{obj.name} has displaySource stringPV but no filePv; it shows nothing, as in EDM")
-        return None
+        return None, None
     file = loc_str_init(file_pv)
     if not file.strip():
-        logger.warning(f"{obj.name} opens the file named by {file_pv} at runtime; no file emitted")
-        return None
-    return file
+        logger.warning(f"{obj.name} opens the file named by {file_pv} at runtime, through a Filename rule")
+        return None, file_pv
+    return file, file_pv
 
 
 def _walk_objects(group: EDMGroup, hidden: bool = False):

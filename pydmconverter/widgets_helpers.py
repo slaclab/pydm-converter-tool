@@ -571,61 +571,6 @@ class Enum(XMLConvertible):
         return prop
 
 
-@dataclass
-class PyDMRule(XMLConvertible):
-    """
-    Represents a PyDM rule for a widget.
-
-    Attributes
-    ----------
-    name : str
-        The name of the rule.
-    rule_property : str
-        The property the rule affects.
-    expression : str
-        The expression for the rule.
-    channel : str
-        The channel associated with the rule.
-    initial_value : Any, optional
-        The initial value for the rule.
-    """
-
-    name: str
-    rule_property: str
-    expression: str
-    channel: str
-    initial_value: Any = None
-
-    def to_xml(self) -> etree.Element:
-        """
-        Convert the PyDM rule to an XML element.
-
-        Returns
-        -------
-        etree.Element
-            The XML element representing the rule.
-        """
-        prop: etree.Element = etree.Element("property", attrib={"name": "rules", "stdset": "0"})
-        rules_struct: list[dict[str, Any]] = [
-            {
-                "name": self.name,
-                "property": self.rule_property,
-                "initialValue": self.initial_value,
-                "expression": self.expression,
-                "channel": [
-                    {
-                        "channel": self.channel,
-                        "trigger": True,
-                        "use_enum": False,
-                    },
-                ],
-            },
-        ]
-        rules: etree.Element = etree.SubElement(prop, "rules")
-        rules.text = str(rules_struct)
-        return prop
-
-
 class Layout:
     """
     Represents a layout configuration for widgets.
@@ -1141,10 +1086,14 @@ class Rules(XMLConvertible):
         (rule_type, channel, initial_value, show_on_true, visMin, visMax).
     hide_on_disconnect_channel : str, optional
         An additional channel used to hide widgets if it disconnects.
+    extra_rules : list of dict, optional
+        Complete PyDM rules for other properties (an embedded display's
+        Filename), written after the grouped ones as given.
     """
 
     rules: List[RuleArguments]
     hide_on_disconnect_channel: Optional[str] = None
+    extra_rules: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_xml(self):
         """
@@ -1165,7 +1114,10 @@ class Rules(XMLConvertible):
                 rule_list.append(rule_string)
             elif rule_type == "Visible":
                 rule_string = MultiRule(rule_type, [], self.hide_on_disconnect_channel).to_string()
-                rule_list.append(rule_string)
+                # "" when there is no channel to hide on: leave it out of the list.
+                if rule_string:
+                    rule_list.append(rule_string)
+        rule_list.extend(_json_object(rule) for rule in self.extra_rules)
         output_string = f"[{', '.join(rule_list)}]"
         return Str("rules", output_string).to_xml()
 
@@ -1717,6 +1669,7 @@ class Controllable(Tangible):
     visPv: Optional[str] = None
     visInvert: Optional[bool] = None
     rules: Optional[List[str]] = field(default_factory=list)
+    extra_rules: List[Dict[str, Any]] = field(default_factory=list)
     visMin: Optional[Union[int, float, str]] = None
     visMax: Optional[Union[int, float, str]] = None
     text = None
@@ -1783,7 +1736,7 @@ class Controllable(Tangible):
             hidden_channel = self.symbolChannel
         else:
             hidden_channel = None
-        properties.append(Rules(self.rules, hidden_channel).to_xml())
+        properties.append(Rules(self.rules, hidden_channel, self.extra_rules).to_xml())
         return properties
 
 

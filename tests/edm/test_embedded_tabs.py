@@ -15,7 +15,7 @@ from qtpy import uic
 
 from pydmconverter.edm.converter import convert
 from pydmconverter.edm.parser import EDMFileParser
-from pydmconverter.widgets import edm_to_ui_filename
+from pydmconverter.widgets import FILENAME_RULE_EXPRESSION, edm_to_ui_filename, filename_rule
 
 HEADER = """\
 4 0 1
@@ -282,6 +282,8 @@ def test_file_window_opens_its_file_not_a_menu_entry(tmp_path):
     (display,) = top_level(root)
     assert prop(display, "filename") == "opsKlys_sector_${sector}.ui"
     assert own_macros(display) == {}
+    # It never reads the filePv it keeps either, so no rule follows it.
+    assert filename_rules(display) == []
 
 
 @pytest.mark.parametrize("symbols", [["sector=LI20"], ["sector=LI20", "sector=LI21"]])
@@ -298,29 +300,64 @@ def test_file_window_ignores_symbols(tmp_path, qtbot, symbols):
 
 @pytest.mark.parametrize("file_line", ["", 'file ""\n'])
 def test_file_window_without_a_file_shows_nothing(tmp_path, file_line):
-    # EDM opens nothing when a file window's file is blank (fileExists = 0).
+    # EDM opens nothing when a file window's file is blank (fileExists = 0), and
+    # never falls back to its filePv's value.
     source = pip(r"$(sector)", ["RESwaveforms", "RESwaveforms"])
     root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', f'displaySource "file"\n{file_line}'))
     (display,) = top_level(root)
     assert display.get("class") == "PyDMEmbeddedDisplay"
     assert prop(display, "filename") is None
+    assert filename_rules(display) == []
+
+
+def string_pv_pip(file_pv, files=()):
+    """A window with no displaySource line, which EDM reads as "stringPV"."""
+    return pip(file_pv, list(files)).replace('displaySource "menu"\n', 'file "unused"\n')
+
+
+def filename_rules(display):
+    return [rule for rule in json.loads(prop(display, "rules")) if rule["property"] == "Filename"]
 
 
 def test_string_pv_window_opens_its_local_variable_value(tmp_path):
     # No displaySource line means "stringPV": the window opens the file its filePv
-    # names, which for a LOC string is its initial value (misc/tdsEmbd.edl).
-    source = pip(r"LOC\\showMe=s:tdsVert", [], symbols=[])
-    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', 'file "unused"\n'))
+    # names, which for a LOC string is its initial value (misc/tdsEmbd.edl), and
+    # follows the variable from there.
+    root = convert_objects(tmp_path, string_pv_pip(r"LOC\\showMe=s:tdsVert"))
     (display,) = top_level(root)
     assert prop(display, "filename") == "tdsVert.ui"
+    (rule,) = filename_rules(display)
+    assert rule["channels"] == [{"channel": "loc://showMe?type=str&init=tdsVert", "trigger": True, "use_enum": True}]
+    assert rule["initial_value"] == ""
 
 
-def test_string_pv_window_on_a_channel_shows_nothing(tmp_path):
-    # The file name is the PV's value at runtime, which a .ui file cannot follow.
-    source = pip("CUDBMPR:MCC0:VIDEO1", ["GigE_controls"])
-    root = convert_objects(tmp_path, source.replace('displaySource "menu"\n', ""))
+def test_string_pv_window_on_a_channel_follows_it(tmp_path):
+    # The file name is the PV's value at runtime: no file to start with, and a
+    # Filename rule on the PV. The CUD PVs are enums, so the rule reads their
+    # state strings (EDM's get_string).
+    root = convert_objects(tmp_path, string_pv_pip("CUDBMPR:MCC0:VIDEO1", ["GigE_controls"]))
     (display,) = top_level(root)
     assert prop(display, "filename") is None
+    (rule,) = json.loads(prop(display, "rules"))
+    assert rule == filename_rule("CUDBMPR:MCC0:VIDEO1")
+    assert rule["channels"] == [{"channel": "CUDBMPR:MCC0:VIDEO1", "trigger": True, "use_enum": True}]
+
+
+def test_string_pv_window_keeps_its_group_visibility(tmp_path):
+    # prof/pgpClModel.edl: the window sits in a group shown only while the PV's
+    # severity is 0. Both rules go in the one rules property.
+    group = (
+        "object activeGroupClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 0\n"
+        "x 4\ny 24\nw 1148\nh 508\nbeginGroup\n"
+        + string_pv_pip("$(P)$(R)CamModelScreen")
+        + 'endGroup\nvisPv "$(P)$(R)CamModelScreen.SEVR"\nvisMin "0"\nvisMax "1"\nendObjectProperties\n'
+    )
+    root = convert_objects(tmp_path, group)
+    (display,) = [w for w in root.iter("widget") if w.get("class") == "PyDMEmbeddedDisplay"]
+    visible, filename = json.loads(prop(display, "rules"))
+    assert visible["property"] == "Visible"
+    assert visible["channels"][0]["channel"] == "${P}${R}CamModelScreen.SEVR"
+    assert filename == filename_rule("${P}${R}CamModelScreen")
 
 
 def test_edm_to_ui_filename():
@@ -329,6 +366,93 @@ def test_edm_to_ui_filename():
     assert edm_to_ui_filename("screen.ui") == "screen.ui"
     assert edm_to_ui_filename("GigE_v1.2") == "GigE_v1.2.ui"
     assert edm_to_ui_filename("composite file calc.edl;P=$(P),N=1") == "composite file calc.ui"
+
+
+def evaluate_filename_rule(value):
+    """The rule's expression as PyDM's RulesDispatcher evaluates it."""
+    return eval(FILENAME_RULE_EXPRESSION, {"ch": [value]})
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["tdsVert", "tdsVert.edl", "tdsVert.edl;P=1", "tdsVert.ui", "GigE_v1.2", "screen.edl.bak", "a b.edl;P=$(P),N=1"],
+)
+def test_filename_rule_maps_a_name_like_edm_to_ui_filename(value):
+    assert evaluate_filename_rule(value) == edm_to_ui_filename(value)
+    # Padding around the name (a fixed-width string PV) is dropped.
+    assert evaluate_filename_rule(f" {value}  ") == edm_to_ui_filename(value)
+
+
+@pytest.mark.parametrize("value", ["", "   ", 3, None, [116, 100]])
+def test_filename_rule_embeds_nothing_for_a_blank_or_non_string_value(value):
+    # An enum's index arrives before its strings; PyDM re-runs the rule once they do.
+    assert evaluate_filename_rule(value) == ""
+
+
+def stub_screen(path, label):
+    path.write_text(
+        '<ui version="4.0"><class>Form</class><widget class="QWidget" name="Form">'
+        f'<widget class="QLabel" name="{label}"/></widget></ui>'
+    )
+
+
+@pytest.mark.parametrize(
+    "file_pv, writes",
+    [
+        # misc/tdsEmbd.edl: message buttons write file names to a LOC string.
+        (r"LOC\\tdsShow=s:tdsVert", ["tdsMore", "tdsVert.edl"]),
+        # An enum PV, as the CUD screens use: its state string names the file.
+        (r"LOC\\cudShow=e:0,tdsVert,tdsMore", ["1", "0"]),
+    ],
+)
+def test_string_pv_window_switches_files_in_pydm(tmp_path, qtbot, file_pv, writes):
+    from pydm.display import load_file
+    from pydm.widgets import PyDMPushButton
+    from qtpy.QtWidgets import QLabel
+
+    root = convert_objects(tmp_path, string_pv_pip(file_pv), *(message_button(file_pv, w) for w in writes))
+    assert [w.get("class") for w in top_level(root)] == ["PyDMEmbeddedDisplay", "PyDMPushButton", "PyDMPushButton"]
+    for name in ("tdsVert", "tdsMore"):
+        stub_screen(tmp_path / f"{name}.ui", name)
+    screen = load_file(str(tmp_path / "screen.ui"), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    (display,) = screen.findChildren(QtEmbeddedDisplay)
+    more, back = sorted(screen.findChildren(PyDMPushButton), key=lambda b: writes.index(b.pressValue))
+
+    def shows(name):
+        return display.embedded_widget is not None and display.embedded_widget.findChild(QLabel, name) is not None
+
+    qtbot.waitUntil(lambda: shows("tdsVert") and more.value is not None, timeout=3000)
+    more.sendValue()
+    qtbot.waitUntil(lambda: shows("tdsMore"), timeout=3000)
+    assert display.filename == "tdsMore.ui"
+    back.sendValue()
+    qtbot.waitUntil(lambda: shows("tdsVert"), timeout=3000)
+
+
+def test_string_pv_window_written_blank_embeds_nothing_in_pydm(tmp_path, qtbot):
+    # EDM ignores a blank value and keeps the open display (pip.cc); PyDM's
+    # Filename "" unloads it. A later name loads again.
+    from pydm.display import load_file
+    from pydm.widgets import PyDMPushButton
+
+    file_pv = r"LOC\\blankShow=s:tdsVert"
+    convert_objects(tmp_path, string_pv_pip(file_pv), message_button(file_pv, "tdsVert"))
+    stub_screen(tmp_path / "tdsVert.ui", "tdsVert")
+    screen = load_file(str(tmp_path / "screen.ui"), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    (display,) = screen.findChildren(QtEmbeddedDisplay)
+    (button,) = screen.findChildren(PyDMPushButton)
+    qtbot.waitUntil(lambda: display.embedded_widget is not None and button.value is not None, timeout=3000)
+
+    button.send_value_signal[str].emit("")
+    qtbot.waitUntil(lambda: display.embedded_widget is None, timeout=3000)
+    assert display.filename == ""
+    button.sendValue()
+    qtbot.waitUntil(lambda: display.embedded_widget is not None, timeout=3000)
+    assert display.filename == "tdsVert.ui"
 
 
 def test_group_using_the_variable_switches_stacked_displays(tmp_path):
