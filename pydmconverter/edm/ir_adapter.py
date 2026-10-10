@@ -867,17 +867,32 @@ def _fixup_state_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list
     label is offLabel. With a readback channel the web button switches
     onLabel/offLabel live (isOn from readbackPV); without one distinct labels
     cannot switch — keep the resting label and say so.
+
+    activeButtonClass draws its state (on/off colour and label) from the
+    indicatorPv, else from the controlPv (button.cc drawActive,
+    stateStringPvId), so the control channel doubles as the readback. Its
+    labelType defaults to pvState and EDM writes the tag only for "literal":
+    without it the face shows the state PV's enum string and onLabel/offLabel
+    are never drawn, so they are dropped. (Message buttons show onLabel/offLabel
+    by press state, not from a PV: message_button.cc.)
     """
+    if obj.name.lower() == "activebuttonclass":
+        # EDM's Button is a toggle unless buttonType says otherwise; the web
+        # button defaults to momentary push, so the default must be written.
+        qt_props.setdefault("buttonType", "toggle")
+        if "readbackChannel" not in qt_props and qt_props.get("channel"):
+            qt_props["readbackChannel"] = qt_props["channel"]
+        if obj.properties.get("labelType") != "literal":
+            qt_props["labelType"] = "pvState"
+            for prop in ("text", "onLabel", "offLabel"):
+                qt_props.pop(prop, None)
+            return None
     off_label = obj.properties.get("offLabel")
     on_label = obj.properties.get("onLabel")
     if not qt_props.get("text"):
         label = off_label or on_label
         if label:
             qt_props["text"] = normalize_macro_syntax(str(label))
-    if obj.name.lower() == "activebuttonclass":
-        # EDM's Button is a toggle unless buttonType says otherwise; the web
-        # button defaults to momentary push, so the default must be written.
-        qt_props.setdefault("buttonType", "toggle")
     # Labels that differ only in their padding ("Cancel " / "Cancel") look the same.
     if on_label and off_label and str(on_label).strip() != str(off_label).strip() and "readbackChannel" not in qt_props:
         warnings.append("EDM on/off button labels differ; resting (off) label kept (no readback channel)")
