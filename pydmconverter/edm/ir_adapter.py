@@ -36,7 +36,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
-from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, edm_int
+from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, closing_display_indices, edm_int
 from pydmconverter.edm.parser_helpers import (
     SearchPaths,
     get_color_by_index,
@@ -1011,12 +1011,18 @@ def _fixup_related_display(obj: EDMObject, qt_props: dict[str, Any], warnings: l
     (``symbols { 2 "P=X" }``). The IR button carries one target, so it takes the
     lowest-numbered non-empty display and only that display's symbols (merging
     every entry's symbols handed the first target the last entry's macros).
+
+    EDM opens the display in a new window, then closes the parent when that
+    entry's closeAction is set (popupDisplay); ``openInNewWindow`` is false
+    then, so the display opens in place. It is written on every button with a
+    display, because the IR default (false) is not EDM's.
     """
     files = {index: name for index, name in block_items(obj.properties.get("displayFileName")) if name.strip()}
     if not files:
         return None
     first = min(files)
     qt_props["filenames"] = [normalize_macro_syntax(files[first])]
+    qt_props["openInNewWindow"] = first not in closing_display_indices(obj.properties)
     symbols = _by_index(obj.properties.get("symbols")).get(first)
     macros = _to_macros(symbols) if symbols else {}
     if macros:

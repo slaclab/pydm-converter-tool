@@ -17,9 +17,15 @@ def test_byte_class_to_pv_byte_led():
 
 
 def test_related_display_class():
-    """displayFileName list -> file (firstOf); buttonLabel -> label; symbols -> macros."""
+    """displayFileName list -> file (firstOf); buttonLabel -> label; symbols -> macros;
+    no closeAction -> openInNewWindow true (EDM's new window)."""
     rel = _by_type()["related-display-button"]
-    assert rel.props == {"file": "subscreen.screen.json", "label": "Open", "macros": {"DEV": "${P}"}}
+    assert rel.props == {
+        "file": "subscreen.screen.json",
+        "label": "Open",
+        "macros": {"DEV": "${P}"},
+        "openInNewWindow": True,
+    }
 
 
 def test_screen_validates():
