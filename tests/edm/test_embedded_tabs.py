@@ -79,9 +79,11 @@ def labeled_group(vis_pv, vis_min, vis_max, x=600, y=4, w=180, h=16):
 
 
 def message_button(control_pv, press_value):
+    # press_value=None leaves pressValue out, as EDM does for a button writing only on release.
+    press = "" if press_value is None else f'pressValue "{press_value}"\n'
     return (
         "object activeMessageButtonClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 0\n"
-        f'x 404\ny 4\nw 124\nh 20\ncontrolPv "{control_pv}"\npressValue "{press_value}"\n'
+        f'x 404\ny 4\nw 124\nh 20\ncontrolPv "{control_pv}"\n{press}'
         'onLabel "li21"\nendObjectProperties\n'
     )
 
@@ -718,3 +720,217 @@ def test_one_based_block_shown_display(tmp_path, init, filename, macros):
     (display,) = top_level(convert_objects(tmp_path, pip(rf"LOC\\v=i:{init}", ONE_BASED, **ONE_BASED_BLOCKS)))
     assert prop(display, "filename") == filename
     assert own_macros(display) == macros
+
+
+# Menu windows that message buttons or a real PV switch.
+HOMS = r"LOC\\\\intPV:=0"
+HOMS_FILES = ["homs_gantry.edl", "homs_gantry.edl", "homs_emb_pitch.edl"]
+HOMS_SYMBOLS = ["M1=Y1,ORIENT=Vertical", "M1=X1,ORIENT=Horizontal", "P=PITCH"]
+
+
+def with_lines(edm_object, *lines):
+    """edm_object with property lines added at its end."""
+    return edm_object.replace("endObjectProperties\n", "".join(f"{line}\n" for line in lines) + "endObjectProperties\n")
+
+
+def menu_button(control_pv):
+    return (
+        "object activeMenuButtonClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 0\n"
+        f'x 404\ny 4\nw 124\nh 20\ncontrolPv "{control_pv}"\nendObjectProperties\n'
+    )
+
+
+def test_message_buttons_writing_indices_switch_stacked_displays(tmp_path):
+    # xray/homs_main.edl: invisible message buttons over a drawing write the
+    # index of the display to show.
+    root = convert_objects(
+        tmp_path,
+        message_button(HOMS, "2"),
+        pip(HOMS, HOMS_FILES, symbols=HOMS_SYMBOLS),
+        message_button(HOMS, "0"),
+        message_button(HOMS, "1"),
+    )
+    widgets = top_level(root)
+    assert [w.get("class") for w in widgets] == ["PyDMPushButton"] + ["PyDMEmbeddedDisplay"] * 3 + [
+        "PyDMPushButton"
+    ] * 2
+    assert switched_displays(root) == [
+        ("homs_gantry.ui", "loc://intPV:", True),
+        ("homs_gantry.ui", "loc://intPV:", False),
+        ("homs_emb_pitch.ui", "loc://intPV:", False),
+    ]
+    assert [own_macros(d) for d in widgets[1:4]] == [
+        {"M1": "Y1", "ORIENT": "Vertical"},
+        {"M1": "X1", "ORIENT": "Horizontal"},
+        {"P": "PITCH"},
+    ]
+    assert {prop(b, "channel") for b in widgets[:1] + widgets[4:]} == {"loc://intPV:?type=int&init=0"}
+
+
+def test_bare_message_button_gets_the_variable_definition(tmp_path):
+    root = convert_objects(tmp_path, pip(r"LOC\\sel=i:1", ["a.edl", "b.edl"]), message_button(r"LOC\\sel", "0"))
+    assert switched_displays(root) == [("a.ui", "loc://sel", False), ("b.ui", "loc://sel", True)]
+    # The button may connect first; PyDM's local plugin takes the variable's
+    # type and initial value from the first channel.
+    assert prop(top_level(root)[-1], "channel") == "loc://sel?type=int&init=1"
+
+
+def test_message_button_writing_a_macro_switches_stacked_displays(tmp_path):
+    root = convert_objects(tmp_path, pip(r"LOC\\sel=i:0", ["a.edl", "b.edl"]), message_button(r"LOC\\sel", "$(TAB)"))
+    assert [d[0] for d in switched_displays(root)] == ["a.ui", "b.ui"]
+
+
+def test_message_button_window_starting_at_minus_one_opens_on_entry_zero(tmp_path):
+    # A window whose variable starts at -1 writes 0 on its first value rather
+    # than popping its menu up (pip.cc), so the variable starts at 0.
+    root = convert_objects(tmp_path, pip(r"LOC\\ebwM=i:-1", ["a.edl", "b.edl"]), message_button(r"LOC\\ebwM", "1"))
+    assert switched_displays(root) == [("a.ui", "loc://ebwM", True), ("b.ui", "loc://ebwM", False)]
+    assert prop(top_level(root)[-1], "channel") == "loc://ebwM?type=int&init=0"
+
+
+SEL = r"LOC\\sel=i:0"
+
+
+@pytest.mark.parametrize(
+    "objects",
+    [
+        # A button writing no display index.
+        pytest.param([pip(SEL, ["a.edl", "b.edl"]), message_button(SEL, "7")], id="not-an-index"),
+        # vac/valve_password.edl: the converted button would not ask for the password.
+        pytest.param(
+            [pip(SEL, ["a.edl", "b.edl"]), with_lines(message_button(SEL, "1"), 'password "secret"')], id="password"
+        ),
+        pytest.param(
+            [
+                pip(SEL, ["a.edl", "b.edl"]),
+                message_button(SEL, "1"),
+                with_lines(message_button(SEL, "0"), 'releaseValue "-1"'),
+            ],
+            id="writes-minus-one",
+        ),
+        # llrf/res4cavity.edl: a "menu" button writes -1 on release, which pops the
+        # window's menu up in EDM; the stacked displays would all hide.
+        pytest.param(
+            [
+                pip(r"LOC\\ebwM=i:-1", ["a.edl", "b.edl"]),
+                message_button(r"LOC\\ebwM", "1"),
+                with_lines(message_button(r"LOC\\ebwM", None), 'releaseValue "-1"'),
+            ],
+            id="release-writes-minus-one",
+        ),
+        # cud/facet_bpms.edl: the converted menu button writes nothing.
+        pytest.param([pip(SEL, ["a.edl", "b.edl"]), menu_button(SEL)], id="menu-button"),
+        # misc/histViewer.edl: a LOC variable the parser leaves untranslated.
+        pytest.param([pip(r"LOC\\$(SIG)_View=0", ["a.edl", "b.edl"])], id="untranslated-loc"),
+        # A named calculation missing from calc.list stays untranslated.
+        pytest.param([pip(r"CALC\\sum(X, Y)", ["a.edl", "b.edl"])], id="untranslated-calc"),
+        pytest.param([pip("", ["a.edl", "b.edl"])], id="blank-file-pv"),
+        pytest.param([pip("#GDET:FEE1:1:CONFIG", ["a.edl", "b.edl"])], id="comment-file-pv"),
+    ],
+)
+def test_menu_window_nothing_switches_shows_one_display(tmp_path, objects):
+    root = convert_objects(tmp_path, *objects)
+    displays = [w for w in top_level(root) if w.get("class") == "PyDMEmbeddedDisplay"]
+    assert [prop(d, "filename") for d in displays] == ["a.ui"]
+    assert not any(rule["property"] == "Visible" for rule in json.loads(prop(displays[0], "rules") or "[]"))
+
+
+def test_site_skipping_message_buttons_leaves_their_window_alone(tmp_path):
+    from pydmconverter.edm.converter_helpers import pair_menu_pips
+
+    source = tmp_path / "screen.edl"
+    source.write_text(HEADER + pip(SEL, ["a.edl", "b.edl"]) + message_button(r"LOC\\sel", "1"))
+    parser = EDMFileParser(str(source), str(tmp_path / "screen.ui"))
+
+    pair_menu_pips(parser.ui, {}, skip_widgets={"activemessagebuttonclass"})
+
+    assert [obj.name.lower() for obj in parser.ui.objects] == ["activepipclass", "activemessagebuttonclass"]
+    assert parser.ui.objects[1].properties["controlPv"] == "loc://sel"
+
+
+@pytest.mark.parametrize(
+    "file_pv, channel",
+    [
+        # xray/gdet_main.edl
+        ("GDET:FEE1:241:CONFIG", "GDET:FEE1:241:CONFIG"),
+        # rm/thermoFHT.edl
+        ("$(P):CH_DISP01", "${P}:CH_DISP01"),
+    ],
+)
+def test_menu_window_on_a_pv_switches_stacked_displays(tmp_path, file_pv, channel):
+    root = convert_objects(
+        tmp_path, pip(file_pv, ["gdet_a.edl", "gdet_b.edl"], symbols=["N=1", "N=2"]), choice(file_pv)
+    )
+    widgets = top_level(root)
+    # A choice button on the PV stays one: only a LOC variable's pair becomes tabs.
+    assert [w.get("class") for w in widgets] == ["PyDMEmbeddedDisplay", "PyDMEmbeddedDisplay", "PyDMEnumButton"]
+    # EDM opens nothing until the PV's first value, so no display starts visible.
+    assert switched_displays(root) == [("gdet_a.ui", channel, False), ("gdet_b.ui", channel, False)]
+    assert [own_macros(d) for d in widgets[:2]] == [{"N": "1"}, {"N": "2"}]
+    assert prop(widgets[2], "channel") == channel
+
+
+def load_switched_screen(tmp_path, qtbot, macros=None):
+    """Load tmp_path/screen.ui in PyDM; return its embedded displays and its
+    message buttons by press value."""
+    from pydm.display import load_file
+    from pydm.widgets import PyDMPushButton
+
+    screen = load_file(str(tmp_path / "screen.ui"), macros=macros, target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    buttons = {button.pressValue: button for button in screen.findChildren(PyDMPushButton)}
+    qtbot.waitUntil(lambda: all(button.value is not None for button in buttons.values()), timeout=3000)
+    return screen.findChildren(QtEmbeddedDisplay), buttons
+
+
+def visible_indices(displays):
+    return [index for index, display in enumerate(displays) if display.isVisible()]
+
+
+def test_message_buttons_switch_displays_in_pydm(tmp_path, qtbot):
+    homs = r"LOC\\homsPV=i:0"
+    convert_objects(
+        tmp_path,
+        message_button(homs, "2"),
+        pip(homs, ["gantry.edl", "gantry.edl", "pitch.edl"], symbols=["ORIENT=V", "ORIENT=H", "P=PITCH"]),
+        message_button(homs, "0"),
+        message_button(homs, "1"),
+    )
+    for name in ("gantry", "pitch"):
+        (tmp_path / f"{name}.ui").write_text(
+            '<ui version="4.0"><class>Form</class><widget class="QWidget" name="Form"/></ui>'
+        )
+    displays, buttons = load_switched_screen(tmp_path, qtbot)
+    assert [d.filename for d in displays] == ["gantry.ui", "gantry.ui", "pitch.ui"]
+
+    qtbot.waitUntil(lambda: visible_indices(displays) == [0], timeout=3000)
+    for press in ("2", "1", "0"):
+        buttons[press].sendValue()
+        qtbot.waitUntil(lambda: visible_indices(displays) == [int(press)], timeout=3000)
+        # PyDM loads a hidden embedded display once it shows.
+        assert displays[int(press)].embedded_widget is not None
+    assert displays[1].embedded_widget.macros()["ORIENT"] == "H"
+
+
+def test_message_button_window_starts_on_a_macro_value_in_pydm(tmp_path, qtbot):
+    # llrf/rf_srf_cavity_main.edl: the variable starts at $(SELTAB).
+    tab = r"LOC\\tabPV=i:$(SELTAB)"
+    convert_objects(tmp_path, pip(tab, ["a.edl", "b.edl", "c.edl"]), message_button(tab, "0"))
+    displays, buttons = load_switched_screen(tmp_path, qtbot, macros={"SELTAB": "2"})
+
+    qtbot.waitUntil(lambda: visible_indices(displays) == [2], timeout=3000)
+    buttons["0"].sendValue()
+    qtbot.waitUntil(lambda: visible_indices(displays) == [0], timeout=3000)
+
+
+def test_message_button_window_starting_at_minus_one_shows_entry_zero_in_pydm(tmp_path, qtbot):
+    # EDM writes 0 to a window's variable that starts at -1 (pip.cc): entry 0
+    # stays shown once the variable connects.
+    convert_objects(tmp_path, pip(r"LOC\\ebwM=i:-1", ["a.edl", "b.edl"]), message_button(r"LOC\\ebwM", "1"))
+    displays, buttons = load_switched_screen(tmp_path, qtbot)
+
+    assert buttons["1"].value == 0
+    qtbot.waitUntil(lambda: visible_indices(displays) == [0], timeout=3000)
+    buttons["1"].sendValue()
+    qtbot.waitUntil(lambda: visible_indices(displays) == [1], timeout=3000)
