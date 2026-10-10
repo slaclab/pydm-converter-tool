@@ -36,6 +36,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
+from pydmconverter.edm.display_roots import map_display_roots
 from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, edm_int
 from pydmconverter.edm.parser_helpers import (
     SearchPaths,
@@ -1487,8 +1488,9 @@ def edm_file_to_ir(
     ``calc_list_path`` points at an EDM ``calc.list`` used to resolve named
     ``CALC\\`` PVs; when omitted the parser searches beside the input file, then
     ``$EDMFILES/calc.list``, then beside ``$EDMCOLORFILE``. Unresolvable named
-    calcs stay as warnings. ``site`` applies site skip rules (same vocabulary as
-    the PyDM target, e.g. ``"slac"`` drops exit buttons).
+    calcs stay as warnings. ``site`` applies site rules (same vocabulary as the
+    PyDM target, e.g. ``"slac"`` drops exit buttons and maps display names under
+    its display roots to root-relative ones, see :mod:`pydmconverter.edm.display_roots`).
 
     ``search_paths`` are extra directories, searched after the file's own directory
     and before ``EDMDATAFILES``, for activeSymbolClass symbol files and (after the
@@ -1505,7 +1507,7 @@ def edm_file_to_ir(
     directory could hold the name, and as not found otherwise. ``EDMDATAFILES``
     (default ``.``, the CWD) is not searched at all.
     """
-    from pydmconverter.sites import get_skip_widgets
+    from pydmconverter.sites import get_display_roots, get_skip_widgets
 
     path = Path(input_path)
     parser = EDMFileParser(
@@ -1521,6 +1523,7 @@ def edm_file_to_ir(
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
     skip_classes = frozenset(get_skip_widgets(site))
+    map_display_roots(parser.ui, get_display_roots(site))
     # One registry for both: colour-rule targets must match the builder's prop map.
     registry = registry or VendoredRegistry()
     top_level = edm_group_to_source_nodes(parser.ui, colors=colors, skip_classes=skip_classes, registry=registry)

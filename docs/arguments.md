@@ -25,7 +25,7 @@ This argument applies site-specific conversion rules during the conversion proce
 
 | Site   | Rules Applied |
 |--------|---------------|
-| `slac` | Skips `activeExitButtonClass` (exit buttons present on every SLAC EDM screen that have no PyDM equivalent) |
+| `slac` | Skips `activeExitButtonClass` (exit buttons present on every SLAC EDM screen that have no PyDM equivalent). Maps related display and embedded display names under `/usr/local/lcls/tools/edm/display/` or `/usr/local/facet/tools/edm/display/` to paths below that directory (`misc/steeringpanels/steer_li21_xcor.ui`); PyDM finds them when the converted display tree is the working directory or is listed in `PYDM_DISPLAYS_PATH` |
 
 **Usage:**
 ``` bash
@@ -33,7 +33,7 @@ pydmconverter /path/to/file.edl output.ui --site slac
 ```
 
 **Adding a new site:**
-To add conversion rules for a new site, create a new module in `pydmconverter/sites/` (e.g. `mysite.py`) that defines a `SKIP_WIDGETS` set, then register it in `pydmconverter/sites/__init__.py`.
+To add conversion rules for a new site, create a new module in `pydmconverter/sites/` (e.g. `mysite.py`) that defines a `SKIP_WIDGETS` set and a `DISPLAY_ROOTS` tuple (it may be empty), then register it in `get_skip_widgets` and `get_display_roots` in `pydmconverter/sites/__init__.py`.
 
 ## Help
 

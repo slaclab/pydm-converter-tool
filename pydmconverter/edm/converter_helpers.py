@@ -37,6 +37,7 @@ from pydmconverter.edm.parser_helpers import (
     loc_str_init,
 )
 from pydmconverter.edm.menumux import generate_menumux_file, initial_state, menu_item_count, menu_items, menu_macros
+from pydmconverter.edm.display_roots import map_display_roots
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -965,6 +966,9 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     ----------
     parser : EDMFileParser
         The EDMFileParser instance containing parsed EDM objects and groups.
+    site : str, optional
+        Site rules to apply: EDM classes to skip, and display roots whose names
+        become root-relative (see pydmconverter.sites).
     color_list_file : str, optional
         Explicit path to an EDM ``colors.list`` palette used to resolve "index N"
         colors. Falls back to ``EDMCOLORFILE``, ``$EDMFILES/colors.list``, then
@@ -975,9 +979,11 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     Tuple[List, set]
         A tuple of (pydm_widgets, used_classes).
     """
-    from pydmconverter.sites import get_skip_widgets
+    from pydmconverter.sites import get_display_roots, get_skip_widgets
 
     skip_widgets = get_skip_widgets(site)
+    # First, so the tab pages and stacked displays built from a menu window copy mapped names.
+    map_display_roots(parser.ui, get_display_roots(site))
 
     used_classes = set()
     color_list_filepath = search_color_list(color_list_file)
