@@ -8,6 +8,7 @@ from pydmconverter.sites import get_skip_widgets
 import logging
 
 from pydmconverter.widgets_helpers import PageHeader
+from pydmconverter.edm.converter_helpers import start_rules_at_loc_inits
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ def convert(
         style_sheet_elem.text = f"background-color: {bg_color};"
 
     central_widget.extend(widget_elements)
+    start_rules_at_loc_inits(ui_element)
 
     customwidgets_el = build_customwidgets_element(used_classes)
     ui_element.append(customwidgets_el)
