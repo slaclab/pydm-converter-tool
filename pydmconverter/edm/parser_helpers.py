@@ -1268,7 +1268,9 @@ def convert_color_property_to_qcolor(fillColor: str, color_data: Dict[str, Any])
     red, green, blue = rgb[:3]
     alpha = 255
 
-    max_val = color_data.get("max", 256)
+    # Without a colors.list (parse_colors_list gives max None), or one with no "max"
+    # line, components are 16-bit: EDM starts from maxColor = 0x10000 (color_pkg.cc).
+    max_val = color_data.get("max") or 0x10000
     rgbMax = max(rgb)
     if rgbMax > 256:
         # Scale from 0-65535 to 0-255

@@ -41,6 +41,15 @@ def test_convert_to_ir_rejects_unknown_suffix(tmp_path):
         react.convert_to_ir(bogus)
 
 
+def test_convert_to_ir_accepts_a_file_named_just_edl(tmp_path):
+    """Path(".edl").suffix is "", so the type comes from the name: the file converts."""
+    source = tmp_path / ".edl"
+    source.write_bytes(EDM_FIXTURE.read_bytes())
+    ir = react.convert_to_ir(source)
+    assert ir.metadata.source.type == "edl-converter"
+    assert ir.root.children
+
+
 def test_convert_file_writes_screen_json(tmp_path):
     out = react.convert_file(EDM_FIXTURE, tmp_path / "vac", override=True)
     assert out.name == "vac.screen.json"
@@ -71,6 +80,17 @@ def test_convert_folder(tmp_path):
     assert failed == []
     assert (tmp_path / "out" / "a.screen.json").is_file()
     assert (tmp_path / "out" / "nested" / "b.screen.json").is_file()
+
+
+def test_convert_folder_converts_a_file_named_just_edl(tmp_path):
+    """The walk matches names, not Path.suffix (""), so a ".edl" file is found and converted."""
+    src = tmp_path / "in"
+    (src / "nested").mkdir(parents=True)
+    (src / "nested" / ".edl").write_bytes(EDM_FIXTURE.read_bytes())
+
+    found, failed = react.convert_folder(src, tmp_path / "out", override=True)
+    assert (found, failed) == (1, [])
+    assert (tmp_path / "out" / "nested" / ".edl.screen.json").is_file()
 
 
 # --- convert_bytes keeps the upload's identity (filename / search_paths) -------
