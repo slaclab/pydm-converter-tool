@@ -29,7 +29,6 @@ from pydmconverter.widgets_helpers import (
     _json_text,
 )
 import logging
-from epics import PV
 
 
 def edm_to_ui_filename(file_string: str) -> str:
@@ -572,11 +571,6 @@ class PyDMPushButton(PyDMPushButtonBase):
 
             self.rules.append(RuleArguments("Visible", self.channel, False, show_button, None, None))
             self.rules.append(RuleArguments("Enable", self.channel, False, show_button, None, None))
-            enum_index = 0 if self.is_off_button else 1
-            if self.text is None and self.channel is not None:
-                pv = PV(self.channel, connection_timeout=0.5)
-                if pv and pv.enum_strs and len(list(pv.enum_strs)) >= 2:
-                    self.text = pv.enum_strs[enum_index]
         if self.is_freeze_button is not None and not self.is_freeze_button:
             self.channel = "loc://FROZEN_STATE?type=int&init=0"
             self.rules.append(RuleArguments("Visible", "loc://FROZEN_STATE", False, False, None, None))
