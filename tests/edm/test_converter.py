@@ -1106,6 +1106,32 @@ def test_message_button_off_variant_ignores_label_padding(tmp_path, on_label, of
     assert sum(widget.get("class") == "PyDMPushButton" for widget in widgets) == buttons
 
 
+def test_unlabelled_on_off_button_keeps_an_empty_label(tmp_path):
+    """EDM's default labelType (pvState) reads the state names from the PV while the
+    screen runs (button.cc). Converting can't, so both buttons keep an empty label."""
+    source = tmp_path / "button.edl"
+    source.write_text(
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 200\nh 100\nendScreenProperties\n\n"
+        "object activeButtonClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 0\nx 10\ny 10\nw 80\nh 20\n"
+        'onColor index 15\noffColor index 20\ncontrolPv "X:VALVE"\nendObjectProperties\n'
+    )
+    convert(str(source), str(tmp_path / "button.ui"))
+
+    buttons = [w for w in ET.parse(tmp_path / "button.ui").iter("widget") if w.get("class") == "PyDMPushButton"]
+    assert [button.find("property[@name='text']") for button in buttons] == [None, None]
+    # The off and on buttons show by turns on the control PV's state.
+    visible = [
+        rule
+        for button in buttons
+        for rule in json.loads(button.find("property[@name='rules']/string").text)
+        if rule["name"] == "Visible"
+    ]
+    assert sorted((rule["expression"], rule["channels"][0]["channel"]) for rule in visible) == [
+        ("(ch[0]!=1)", "X:VALVE"),
+        ("(ch[0]==1)", "X:VALVE"),
+    ]
+
+
 def test_convert_warns_when_a_shell_variable_shares_a_macro_name(tmp_path, caplog):
     r"""camac/camac_lu_from_epics_detail.edl: $\{LOCA\} (a shell variable) next to the
     $(LOCA) macro. Both read as ${LOCA}, which PyDM substitutes."""
