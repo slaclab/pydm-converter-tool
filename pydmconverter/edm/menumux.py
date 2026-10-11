@@ -145,10 +145,10 @@ class MenuMuxScreen(Display):
     def initial_index(self, state, count):
         # EDM's initialState: the index of the first item shown. It may use
         # the screen's macros ("${{initDev}}") and is read like strtol, so
-        # "3+1" is 3; anything unusable starts at 0.
-        match = re.match("[ ]*(-?[0-9]+)", self.expand(state))
-        index = int(match.group(1)) if match else 0
-        return index if 0 <= index < count else 0
+        # "3+1" is 3; anything unusable starts at 0. Past the items EDM sets
+        # the last item's macros (getMacros in menu_mux.cc clamps the index),
+        # so the menu starts there.
+        return self.menu_index(self.expand(state), count, 0)
 
     def control_address(self, address, start):
         # With a controlPv, EDM ignores initialState: the menu shows the PV's
@@ -336,9 +336,10 @@ def initial_state(obj: EDMObject) -> int | None:
     state = str(obj.properties.get("initialState", "0"))
     if "${" in state:
         return None
-    match = re.match(r" *(-?[0-9]+)", state)
+    match = re.match(r" *([-+]?[0-9]+)", state)
     index = int(match.group(1)) if match else 0
-    return index if 0 <= index < menu_item_count(obj) else 0
+    # Clamped to the items, and 0 without any.
+    return max(0, min(index, menu_item_count(obj) - 1))
 
 
 def control_pv(obj: EDMObject, loc_declarations: dict[str, str]) -> str | None:
