@@ -1,5 +1,6 @@
 import re
 import os
+import struct
 from functools import partial
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -207,6 +208,103 @@ def _move_edm_object(obj: EDMObjectBase, dx: int, dy: int) -> None:
             _move_edm_object(child, dx, dy)
     elif isinstance(obj, EDMObject):
         _map_line_points(obj, lambda px, py: (px + dx, py + dy))
+
+
+def _edm_round(value: float) -> int:
+    """EDM's ``(int) ( v + 0.5 )``: the cast truncates toward zero, so -1.5 gives -1 (not ``round``)."""
+    return int(value + 0.5)
+
+
+def _edm_float(value: float) -> float:
+    """``value`` rounded to a C ``float``, the type activeLineClass::updateDimensions works in."""
+    return struct.unpack("f", struct.pack("f", value))[0]
+
+
+def _scale_ratio(new: int, old: int) -> float:
+    """activeGroupClass's scale factor ``_w / w``. EDM divides by zero for a 0-wide
+    or 0-high group; it is taken as 1 here."""
+    return new / old if old else 1.0
+
+
+# Classes whose own checkResizeSelectBoxAbs refuses under a fixed width or
+# height instead of activeGraphicClass's 2; None refuses any resize.
+_RESIZE_MINIMUM: dict[str, int | None] = {
+    "activepngclass": None,  # pnglib/png.cc: "no resize allowed"
+    "cfcf6c8a_dbeb_11d2_8a97_00104b8742df": None,  # activeGifClass (giflib/gif.cc)
+    "textupdateclass": 10,  # pvFactory/textupdate.cc, inherited by the two below
+    "textentryclass": 10,
+    "regtextupdateclass": 10,
+    "activetableclass": 10,  # baselib/table.cc
+    "activecoeftableclass": 10,  # baselib/coefTable.cc
+}
+
+
+def _resize_check(objs: list[EDMObjectBase], sx: float, sy: float) -> str | None:
+    """Why EDM's checkResizeSelectBoxAbs would refuse to scale ``objs`` by (sx, sy), or None.
+
+    An object whose scaled width or height would be under 2 refuses
+    (activeGraphicClass), a line never does (activeLineClass), and a group asks
+    its children with its own rounded ratio (activeGroupClass). A symbol inside
+    the symbol refuses too: EDM scales one unless it has ``useOriginalSize``, but
+    its expanded group here keeps neither that flag nor its saved size.
+
+    Some classes ask for more (``_RESIZE_MINIMUM``): an image refuses any resize,
+    a text update or table anything under 10. Bars, meters, sliders and the like
+    work out their minimum from their font, which the converter doesn't, so they
+    are held to 2.
+    """
+    for obj in objs:
+        w, h = _edm_round(obj.width * sx), _edm_round(obj.height * sy)
+        if isinstance(obj, EDMGroup):
+            if obj.is_symbol:
+                return "EDM symbol holds a symbol, which the converter does not scale; drawn at the symbol file's size"
+            reason = _resize_check(obj.objects, _scale_ratio(w, obj.width), _scale_ratio(h, obj.height))
+            if reason:
+                return reason
+        elif isinstance(obj, EDMObject) and obj.name.lower() in _RESIZE_MINIMUM:
+            minimum = _RESIZE_MINIMUM[obj.name.lower()]
+            if minimum is None or w < minimum or h < minimum:
+                return "EDM symbol resize underflow; drawn at the symbol file's size"
+        elif (w < 2 or h < 2) and not (isinstance(obj, EDMObject) and obj.name.lower() == "activelineclass"):
+            return "EDM symbol resize underflow; drawn at the symbol file's size"
+    return None
+
+
+def _resize_children(objs: list[EDMObjectBase], ax: int, ay: int, x: int, y: int, sx: float, sy: float) -> None:
+    """Scale ``objs`` by (sx, sy) about (ax, ay) and put that point at (x, y), as
+    activeGroupClass/activeSymbolClass::resizeAbs do with their children."""
+    for obj in objs:
+        _resize_edm_object(
+            obj,
+            x + _edm_round((obj.x - ax) * sx),
+            y + _edm_round((obj.y - ay) * sy),
+            _edm_round(obj.width * sx),
+            _edm_round(obj.height * sy),
+        )
+
+
+def _resize_edm_object(obj: EDMObjectBase, x: int, y: int, w: int, h: int) -> None:
+    """EDM's resizeAbs(): give ``obj`` the rect (x, y, w, h).
+
+    A group scales its children by its own ratio, new size over old
+    (activeGroupClass). A line stretches its points from the old rect to the new
+    one in float and clamps them into it (activeLineClass::updateDimensions,
+    with a 0 width or height taken as 1). Anything else only takes the rect: a
+    text keeps its font, an arc its angles, and every object its lineWidth.
+    """
+    if isinstance(obj, EDMGroup):
+        _resize_children(obj.objects, obj.x, obj.y, x, y, _scale_ratio(w, obj.width), _scale_ratio(h, obj.height))
+    elif isinstance(obj, EDMObject):
+        old_x, old_y = obj.x, obj.y
+        x_stretch, y_stretch = _edm_float(w / (obj.width or 1)), _edm_float(h / (obj.height or 1))
+        _map_line_points(
+            obj,
+            lambda px, py: (
+                min(max(x + _edm_round(_edm_float((px - old_x) * x_stretch)), x), x + w),
+                min(max(y + _edm_round(_edm_float((py - old_y) * y_stretch)), y), y + h),
+            ),
+        )
+    obj.x, obj.y, obj.width, obj.height = x, y, w, h
 
 
 def _reorient_point(orientation: str, ox: int, oy: int, px: int, py: int) -> tuple[int, int]:
@@ -616,13 +714,21 @@ class EDMFileParser:
         EDM reads the file's top-level objects in order as the states and stops at
         the first one that is not a group (states read so far are kept). A symbol
         with no control PV (``numPvs`` 0 or absent, EDM's default, or a blank
-        ``controlPvs`` entry) draws state 1 only.
+        ``controlPvs`` entry) draws state 1 only. The states are then scaled to the
+        symbol's saved size and, last, rotated or flipped (symbol.cc createFromFile).
         """
         temp_group = EDMGroup()
         warnings: list[str] = []
         match = self.screen_prop_pattern.search(embedded_text)
         screen_properties_end = match.end() if match else 0
         self.parse_objects_and_groups(embedded_text[screen_properties_end:], temp_group)
+        # symbol.cc createFromFile: if ( numStates < 1 ) numStates = 1;
+        num_states = max(1, edm_int(properties.get("numStates")))
+        # readSymbolFile fails when one of the first numStates objects is not a
+        # group; EDM then does not scale the symbol.
+        read_ok = bool(temp_group.objects) and all(
+            isinstance(obj, EDMGroup) and not obj.is_symbol for obj in temp_group.objects[:num_states]
+        )
         states: list[EDMGroup] = []
         for obj in temp_group.objects:
             if not isinstance(obj, EDMGroup):
@@ -638,11 +744,12 @@ class EDMFileParser:
         control_pvs = [pv for _, pv in block_items(properties.get("controlPvs"))]
         has_control = 0 < num_pvs <= len(control_pvs) and all(pv.strip() for pv in control_pvs[:num_pvs])
         self.resize_symbol_groups(temp_group, size_properties)
+        box = None
+        if read_ok:
+            box = self.scale_symbol_groups(temp_group, properties, size_properties, num_states, warnings)
         self.add_symbol_properties(temp_group, properties)
         if "orientation" in properties:
-            # symbol.cc createFromFile: if ( numStates < 1 ) numStates = 1;
-            num_states = max(1, edm_int(properties.get("numStates")))
-            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties, num_states)
+            self.reorient_symbol_groups(temp_group, properties["orientation"], size_properties, num_states, box)
         if not has_control:
             # symbol.cc: controlExists = 0 -> index = 1; drawActive draws state 1 only.
             # Pick it from the full state list: remove_extra_groups keeps only
@@ -732,15 +839,79 @@ class EDMFileParser:
             sub_group.x = size_properties["x"]
             sub_group.y = size_properties["y"]
 
+    def scale_symbol_groups(
+        self,
+        temp_group: EDMGroup,
+        properties: dict[str, bool | str | list[str]],
+        size_properties: dict[str, int],
+        num_states: int,
+        warnings: list[str],
+    ) -> tuple[int, int]:
+        """
+        Given a group of symbol groups moved to the symbol's position, scale every
+        state to the symbol's saved size, as EDM does unless the symbol has
+        ``useOriginalSize`` (symbol.cc createFromFile). readSymbolFile leaves the
+        symbol as wide and tall as the largest of the first ``num_states`` groups
+        (w = maxW; h = maxH); when the saved w/h differ, resizeAbs scales the
+        content of every state by saved/max, per axis, about the symbol's top-left
+        corner.
+
+        EDM refuses when an object would end up under 2 pixels wide or high
+        ("Symbol resize underflow - using original size"); the symbol then keeps
+        the symbol file's size and a warning is added to ``warnings``.
+
+        Parameters
+        ----------
+        temp_group: EDMGroup
+            The EDMGroup making up each symbol group whose objects will be modified
+        properties: dict[str, bool | str | list[str]]
+            Object properties from the activesymbolclass
+        size_properties : dict[str, int]
+            The coordinate and size_properties of the activesymbolclass
+        num_states : int
+            The symbol's numStates (at least 1); groups past it don't size the symbol
+        warnings : list[str]
+            The symbol's warnings, extended when EDM would refuse to scale it
+
+        Returns
+        ----------
+        tuple[int, int]
+            The symbol's width and height afterwards
+        """
+        read = temp_group.objects[:num_states]
+        max_w = max((state.width for state in read), default=0)
+        max_h = max((state.height for state in read), default=0)
+        save_w, save_h = size_properties["width"], size_properties["height"]
+        # EDM reads a bare useOriginalSize tag as 1 and its absence as 0.
+        flag = properties.get("useOriginalSize")
+        use_original_size = flag is True or edm_int(flag) != 0
+        # A 0 (or negative) read or saved size gives no usable scale; keep the file's size.
+        if use_original_size or (save_w, save_h) == (max_w, max_h) or min(max_w, max_h, save_w, save_h) <= 0:
+            return max_w, max_h
+        sx, sy = save_w / max_w, save_h / max_h
+        warning = _resize_check([obj for state in read for obj in state.objects], sx, sy)
+        if warning:
+            warnings.append(warning)
+            return max_w, max_h
+        x, y = size_properties["x"], size_properties["y"]
+        for state in temp_group.objects:
+            _resize_children(state.objects, x, y, x, y, sx, sy)
+            state.width, state.height = _edm_round(state.width * sx), _edm_round(state.height * sy)
+        return save_w, save_h
+
     def reorient_symbol_groups(
-        self, temp_group: EDMGroup, orientation: str, size_properties: dict[str, int], num_states: int = 1
+        self,
+        temp_group: EDMGroup,
+        orientation: str,
+        size_properties: dict[str, int],
+        num_states: int = 1,
+        box: tuple[int, int] | None = None,
     ) -> None:
         """
         Given a group of symbol groups, rotate (rotateCW, rotateCCW) or flip
         (FlipV, FlipH) every state group and everything in it, nested groups
         included, about the symbol's midpoint (symbol.cc createFromFile calls
-        rotateInternal/flipInternal at getXMid(), getYMid()). The symbol's rect
-        comes from the first ``num_states`` groups only, the ones EDM reads.
+        rotateInternal/flipInternal at getXMid(), getYMid(), after any scaling).
 
         Parameters
         ----------
@@ -752,15 +923,19 @@ class EDMFileParser:
             The coordinate and size_properties of the activesymbolclass
         num_states : int
             The symbol's numStates (at least 1); groups past it don't size the symbol
+        box : tuple[int, int], optional
+            The symbol's width and height from :meth:`scale_symbol_groups`. Without
+            it, the largest of the first ``num_states`` groups, the ones EDM reads.
         """
         if orientation not in SYMBOL_ORIENTATIONS or not temp_group.objects:
             return
-        # readSymbolFile reads only the first numStates groups and leaves the symbol
-        # as wide and tall as the largest of those (w = maxW; h = maxH); the converter
-        # never scales a symbol to its saved size, so that is its rect.
-        read = temp_group.objects[:num_states]
-        ox = size_properties["x"] + max(state.width for state in read) // 2
-        oy = size_properties["y"] + max(state.height for state in read) // 2
+        if box is None:
+            # readSymbolFile leaves the symbol as wide and tall as the largest of the
+            # numStates groups it reads (w = maxW; h = maxH).
+            read = temp_group.objects[:num_states]
+            box = (max(state.width for state in read), max(state.height for state in read))
+        ox = size_properties["x"] + box[0] // 2
+        oy = size_properties["y"] + box[1] // 2
         for state in temp_group.objects:
             _reorient_edm_object(state, orientation, ox, oy)
 
