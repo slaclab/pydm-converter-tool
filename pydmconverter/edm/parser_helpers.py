@@ -37,6 +37,42 @@ def normalize_search_paths(search_paths: SearchPaths) -> List[str]:
     return [path for path in map(os.fspath, search_paths) if path]
 
 
+def split_edm_path_list(value: str) -> List[str]:
+    """
+    Split an EDM path list such as ``EDMDATAFILES`` into its directories.
+
+    EDM separates directories with ``:``, as in ``/usr/local/lcls/display:/usr/local/lcls/pps``.
+    ``;`` separates them too, and a Windows drive (a single letter before ``:\\`` or ``:/``,
+    as in ``C:\\edm``) stays one entry. Empty entries are dropped.
+
+    As in EDM, a leading ``=`` (its mark for the default directory) is not part of the
+    directory, and the ``:`` of an ``http://`` or ``https://`` entry does not split it.
+    Such a URL entry is left out: EDM reads it over the network, the converter reads
+    local files only.
+    """
+    directories: List[str] = []
+    for chunk in value.split(";"):
+        parts = chunk.split(":")
+        i = 0
+        while i < len(parts):
+            part = parts[i]
+            # app_pkg.cc: "= means use this a default"; the "=" is stripped and the
+            # directory is still searched.
+            if part.startswith("="):
+                part = part[1:]
+            # app_pkg.cc fixupHttpPart keeps these four spellings of a URL scheme whole.
+            if part in ("http", "HTTP", "https", "HTTPS") and i + 1 < len(parts) and parts[i + 1].startswith("//"):
+                i += 2
+                continue
+            if len(part) == 1 and part.isalpha() and i + 1 < len(parts) and parts[i + 1][:1] in ("\\", "/"):
+                part = f"{part}:{parts[i + 1]}"
+                i += 1
+            if part:
+                directories.append(part)
+            i += 1
+    return directories
+
+
 def resolve_inside(base: Union[str, "os.PathLike[str]"], name: str, allowed_roots: Sequence[Path]) -> Optional[Path]:
     """
     Resolve a file name taken from an untrusted input, confined to allowed roots.
