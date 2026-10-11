@@ -728,8 +728,9 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
         The titles for the display.
     macros : Optional[Union[str, List[str]]]
         Macros used for the display: one JSON string per filename, by position.
-    open_in_new_window : Optional[bool]
-        If True, opens the display in a new window.
+    open_in_new_window : bool
+        If True (the default, as in EDM), opens the display in a new window; if
+        False, a PyDM main window opens it in place of the current display.
     follow_symlinks : Optional[bool]
         If True, follows symbolic links.
     count : ClassVar[int]
@@ -740,7 +741,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
     filenames: Optional[str] = None
     titles: Optional[str] = None
     macros: Optional[Union[str, List[str]]] = None
-    open_in_new_window: Optional[bool] = None
+    open_in_new_window: bool = True
     follow_symlinks: Optional[bool] = None
     displayFileName = None
 
@@ -770,8 +771,7 @@ class PyDMRelatedDisplayButton(PyDMPushButtonBase):
                 properties.append(StringList("macros", self.macros).to_xml())
             else:
                 properties.append(Str("macros", self.macros).to_xml())
-        # if self.open_in_new_window is not None:
-        properties.append(Bool("openInNewWindow", True).to_xml())
+        properties.append(Bool("openInNewWindow", self.open_in_new_window).to_xml())
         if self.follow_symlinks is not None:
             properties.append(Bool("followSymlinks", self.follow_symlinks).to_xml())
         if (

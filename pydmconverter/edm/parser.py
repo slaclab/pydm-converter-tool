@@ -127,6 +127,35 @@ def edm_int(value) -> int:
     return int(match.group(1)) if match else 0
 
 
+def _edm_flag(value) -> bool:
+    """EDM's read of a flag tag: 1 for a bare tag (parsed as True), else its integer."""
+    return value is True or edm_int(value) != 0
+
+
+def closing_display_indices(properties: dict) -> set[int]:
+    """The related display entries (EDM array indices) that close the parent window
+    after opening their display.
+
+    EDM (related_display.cc) reads the ``closeAction`` and ``closeDisplay`` tags
+    into the same closeAction array, each setting only the indices it lists, so
+    where a file writes both for one index the later tag wins.
+
+    popupDisplay closes the parent only when the display isn't a popup, so none
+    close with ``button3Popup`` (a right-click popup) or with ``useFocus`` on a
+    button of one menu item (a hover popup). EDM counts numDsps menu items, less
+    a ``helpCommand "item N"`` entry, which this doesn't model.
+    """
+    if _edm_flag(properties.get("button3Popup")) or (
+        _edm_flag(properties.get("useFocus")) and edm_int(properties.get("numDsps")) <= 1
+    ):
+        return set()
+    flags: dict[int, bool] = {}
+    for name, value in properties.items():
+        if name in ("closeAction", "closeDisplay"):
+            flags.update((index, edm_int(flag) != 0) for index, flag in block_items(value))
+    return {index for index, closes in flags.items() if closes}
+
+
 def _read_edm_text(path) -> str:
     """Read an EDM file as text, falling back to Latin-1 when it isn't valid UTF-8."""
     try:
