@@ -21,6 +21,16 @@ A screen opened without these macros keeps ``${EDM_W}`` literally, which PyDM
 accepts in a loc:// name, so its top-level variables are shared with another
 copy opened the same way in the same process. PyDM opens each new window in a
 new process.
+
+The Screen IR (``ir_adapter._name_windows``) names ``$(!W)`` and numbers its
+embedded displays the same way. The Canopy runtime keeps one set of local
+variables per page and substitutes macros in loc:// channels, so there too
+each embedded copy names its own.
+
+Unlike a .ui, the IR also passes each embedded display's id on as
+``EDM_W_ROOT``: Canopy substitutes an embedded display's macros once, against
+its parent's, so the windows an embedded copy embeds build their ids on that
+copy's, and two copies of a screen give them different ones.
 """
 
 import json
@@ -40,19 +50,22 @@ def window_macro(text: str) -> str:
     return text.replace(WINDOW_MARKER, "${" + WINDOW_MACRO + "}")
 
 
-def resolve_window_macros(ui: ET.Element, screen_name: str) -> None:
-    """Give each embedded display of a converted .ui its own EDM_W, and name
-    every $(!W) marker (channels, rules, macros) as ${EDM_W}.
+def embedded_window_id(screen_name: str, index: int) -> str:
+    """The EDM_W the index-th embedded display of screen_name passes:
+    ``${EDM_W_ROOT}<crc32 of screen_name>_<index>``. The same on every
+    conversion, and different for every embedding site, also between screens
+    embedded in one another. The .ui and Screen IR targets both use it."""
+    return "${" + ROOT_MACRO + "}" + f"{zlib.crc32(screen_name.encode()):08x}_{index}"
 
-    The n-th embedded display in document order gets
-    ``${EDM_W_ROOT}<crc32 of screen_name>_<n>``: the same on every conversion,
-    and different for every embedding site, also between screens embedded in
-    one another.
+
+def resolve_window_macros(ui: ET.Element, screen_name: str) -> None:
+    """Give each embedded display of a converted .ui its own EDM_W
+    (:func:`embedded_window_id`, numbered in document order), and name every $(!W)
+    marker (channels, rules, macros) as ${EDM_W}.
     """
-    site = format(zlib.crc32(screen_name.encode()), "08x")
     displays = [widget for widget in ui.iter("widget") if widget.get("class") == "PyDMEmbeddedDisplay"]
     for index, display in enumerate(displays):
-        window_id = "${" + ROOT_MACRO + "}" + f"{site}_{index}"
+        window_id = embedded_window_id(screen_name, index)
         string = display.find("property[@name='macros']/string")
         if string is None:
             display.append(Str("macros", json.dumps({WINDOW_MACRO: window_id})).to_xml())

@@ -63,7 +63,8 @@ def test_file_pip_ignores_leftover_menu_entries_and_symbols(tmp_path):
     # entries; EDM (pip.cc) opens the file with the parent's macros only.
     pip = _convert_pip(tmp_path, 'displaySource "file"\nfilePv "$(sector)"\nfile "sector_$(sector)"\n' + LEFTOVER_MENU)
     assert pip.props["file"] == "sector_${sector}"
-    assert "macros" not in pip.props
+    # Only its own window id ($(!W)), none of the menu entries' symbols.
+    assert list(pip.props["macros"]) == ["EDM_W", "EDM_W_ROOT"]
 
 
 def test_file_pip_without_a_file_opens_nothing(tmp_path):

@@ -48,6 +48,7 @@ from pydmconverter.edm.parser_helpers import (
     search_color_list,
     static_color_by_name,
 )
+from pydmconverter.edm.window_macros import ROOT_MACRO, WINDOW_MACRO, embedded_window_id, window_macro
 from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import LITERAL_BRACE, normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
@@ -1228,6 +1229,59 @@ def _object_to_source(
     )
 
 
+def _name_windows(nodes: list[SourceNode], screen_name: str) -> None:
+    """EDM's per-window ``$(!W)`` (:mod:`~pydmconverter.edm.window_macros`):
+    name the parser's marker as ``${EDM_W}`` in every string, and give each
+    embedded display that opens a file its own ``EDM_W``
+    (:func:`~pydmconverter.edm.window_macros.embedded_window_id`, numbered in
+    document order), as the .ui target does.
+
+    Canopy keeps one set of local variables per page and substitutes macros in
+    loc:// channels and rule bindings, so each embedded copy then names its
+    own. ``EDM_W`` and ``EDM_W_ROOT`` are declared with the default "" like any
+    other macro, so a screen opened on its own names its variables without a
+    prefix.
+
+    Each embedded display also passes its id as ``EDM_W_ROOT``, so the windows
+    the embedded screen embeds build their ids on it: two copies of a screen
+    then give the screens they embed different ids too, as EDM gives every
+    window a new ``$(!W)``. The .ui target cannot (PyDM substitutes until the
+    text stops changing, and this value names EDM_W_ROOT itself), but Canopy
+    substitutes an embedded display's macros once, against its parent's.
+    """
+    displays = 0
+
+    def rename(value: Any) -> Any:
+        if isinstance(value, str):
+            return window_macro(value)
+        if isinstance(value, list):
+            return [rename(item) for item in value]
+        if isinstance(value, dict):
+            return {key: rename(item) for key, item in value.items()}
+        return value
+
+    def visit(node: SourceNode) -> None:
+        nonlocal displays
+        node.qt_props = rename(node.qt_props)
+        node.raw_props = rename(node.raw_props)
+        node.warnings = rename(node.warnings)
+        for rule in node.rules:
+            rule.pvs = [(rename(name), trigger) for name, trigger in rule.pvs]
+            rule.conditions = [(rename(expression), rename(value)) for expression, value in rule.conditions]
+            rule.default = rename(rule.default)
+        if node.qt_class == "PyDMEmbeddedDisplay" and str(node.qt_props.get("filename") or "").strip():
+            macros = dict(node.qt_props.get("macros") or {})
+            macros[WINDOW_MACRO] = embedded_window_id(screen_name, displays)
+            macros[ROOT_MACRO] = macros[WINDOW_MACRO]
+            node.qt_props["macros"] = macros
+            displays += 1
+        for child in node.children:
+            visit(child)
+
+    for node in nodes:
+        visit(node)
+
+
 def _symbol_state_vis(group: EDMGroup) -> VisTuple | None:
     """Per-state visibility for an exploded activeSymbolClass state group.
 
@@ -1524,6 +1578,7 @@ def edm_file_to_ir(
     # One registry for both: colour-rule targets must match the builder's prop map.
     registry = registry or VendoredRegistry()
     top_level = edm_group_to_source_nodes(parser.ui, colors=colors, skip_classes=skip_classes, registry=registry)
+    _name_windows(top_level, path.stem)
     builder = IRBuilder(registry)
     # Screen background: the parser resolves bgColor to an (r, g, b, a) tuple.
     background: str | None = None
