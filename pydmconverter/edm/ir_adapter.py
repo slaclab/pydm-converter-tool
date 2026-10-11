@@ -49,6 +49,7 @@ from pydmconverter.edm.parser_helpers import (
     static_color_by_name,
 )
 from pydmconverter.ir.builder import IRBuilder
+from pydmconverter.ir.fox import parse_calc_url
 from pydmconverter.ir.macros import LITERAL_BRACE, normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
@@ -316,6 +317,55 @@ def _severity_channel(pv: str) -> str:
     return _FIELD_SUFFIX_RE.sub("", pv) + ".SEVR"
 
 
+# A calc argument variable (parser_helpers.translate_calc_pv_to_pydm names them
+# A-L) and a constant argument (EDM legalFloat). A constant written as ca://15
+# reaches the bindings as "15": parse_calc_url only inlines a bare number.
+_CALC_VARIABLE_RE = re.compile(r"^[A-L]$")
+_CALC_CONSTANT_RE = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
+
+
+def _severity_channels(pv: str) -> list[str]:
+    """The CA channels whose alarm severities make up ``pv``'s severity.
+
+    A plain PV has its record's ``.SEVR``. A CALC PV's severity is the highest
+    of its PV arguments' (calc_pv_factory.cc ``CALC_ProcessVariable::recalc``;
+    constant arguments don't count), so a ``calc://`` address gives each PV
+    argument's ``.SEVR``. A LOC variable is NO_ALARM once it has a value
+    (loc_pv_factory.cc), so a ``loc://`` address, or a calc argument that is
+    one, gives none. No channels: always NO_ALARM.
+    """
+    if pv.startswith("loc://"):
+        return []
+    if not pv.startswith("calc://"):
+        return [_severity_channel(pv)]
+    parsed = parse_calc_url(pv)
+    if parsed is None:
+        return []  # a short calc://<id> names no arguments (the IR target never writes one)
+    channels = [
+        _severity_channel(value)
+        for var, value in parsed[1].items()
+        if _CALC_VARIABLE_RE.match(var)
+        and not value.startswith("loc://")
+        and not _CALC_CONSTANT_RE.match(value.strip())
+    ]
+    return list(dict.fromkeys(channels))
+
+
+def _severity_conditions(conditions: list[tuple[str, str]], count: int) -> list[tuple[str, str]]:
+    """Palette severity conditions (over ``{0}``) for the highest of ``count`` severities.
+
+    Each condition holds for exactly one severity, so checking the highest first
+    and asking whether any input has it picks the maximum (first true wins).
+    Fox's ``max`` is numpy's reduction, not a variadic max.
+    """
+    if count <= 1:
+        return list(conditions)
+    return [
+        (" or ".join(f"({expression.replace('{0}', f'{{{index}}}')})" for index in range(count)), colour)
+        for expression, colour in reversed(conditions)
+    ]
+
+
 # IR colour target -> the Qt prop holding the part's resolved static colour.
 _TARGET_STATIC_QT_PROP = {
     "lineColor": "penColor",
@@ -341,6 +391,10 @@ def _alarm_rules(
     drawing classes, fgAlarm/bgAlarm on label classes. alarmPv without any flag
     (or a flag without alarmPv) does nothing, matching EDM. bgAlarm on an unfilled
     Textupdate is skipped: it paints no background (:func:`_textupdate_bg_unpainted`).
+    A CALC alarmPv tracks the highest severity of its PV arguments, and a LOC one
+    (or a calc with no PV argument) stays NO_ALARM: its rule has no PVs and no
+    conditions, only the NO_ALARM colour (:func:`_severity_channels`), which
+    :func:`_object_to_source` makes the static colour unless a colour rule joins it.
     """
     alarm_pv = obj.properties.get("alarmPv")
     if isinstance(alarm_pv, list):
@@ -358,6 +412,11 @@ def _alarm_rules(
     if _textupdate_bg_unpainted(obj):
         targets = tuple((flag, target) for flag, target in targets if flag != "bgAlarm")
     conditions, no_alarm = _alarm_palette(colors)
+    channels = _severity_channels(alarm_pv)
+    if channels:
+        conditions = _severity_conditions(conditions, len(channels))
+    else:
+        conditions = []  # no condition can hold: the rule shows its NO_ALARM default
     rules: list[RuleSpec] = []
     for flag, target in targets:
         if obj.properties.get(flag):
@@ -370,7 +429,7 @@ def _alarm_rules(
                 RuleSpec(
                     target_property=target,
                     name=f"Alarm color ({target})",
-                    pvs=[(_severity_channel(alarm_pv), True)],
+                    pvs=[(channel, True) for channel in channels],
                     conditions=list(conditions),
                     default=default,
                 )
@@ -618,7 +677,9 @@ def _color_rules(
         merged = next((r for r in alarm_rules if r.target_property == target), None)
         if merged is not None and _alarm_palette(colors)[1] != _STATIC_COLOR:
             continue  # a named NO_ALARM colour hides the rule colour while alarm-sensitive
-        conditions, default = _rule_ladder(colors, index, rule, "{1}" if merged else "{0}", notes)
+        # Merged: the value channel follows the alarm rule's severity channels.
+        token = f"{{{len(merged.pvs)}}}" if merged else "{0}"
+        conditions, default = _rule_ladder(colors, index, rule, token, notes)
         if default is None:
             continue
         if merged is not None:
@@ -1212,6 +1273,12 @@ def _object_to_source(
             and not any(rule.target_property == "backgroundColor" for rule in rules)
         ):
             warnings.append("EDM dynamic color (bgAlarm) is not supported; static colors emitted")
+        for rule in [rule for rule in rules if not rule.pvs]:
+            # An alarm rule with no severity channel that no colour rule joined
+            # only ever paints its NO_ALARM colour: make that the static colour
+            # (the IR schema wants a rule's pvs and conditions).
+            qt_props[_TARGET_STATIC_QT_PROP[rule.target_property]] = rule.default
+            rules.remove(rule)
         fixup = _CLASS_FIXUPS.get(obj.name.lower())
         if fixup is not None:
             override = fixup(obj, qt_props, warnings)
