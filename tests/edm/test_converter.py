@@ -1,10 +1,14 @@
 import json
+import os
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 import textwrap
 from pathlib import Path
 
 import pytest
 
+import pydmconverter
 from pydmconverter.edm.converter import convert, build_customwidgets_element, add_widgets_to_parent, content_extent
 from pydmconverter.widgets import PyDMLabel, PyDMFrame
 
@@ -1119,3 +1123,100 @@ def test_convert_warns_when_a_shell_variable_shares_a_macro_name(tmp_path, caplo
     assert "luCWRestart ${LOCA} ${LOCA} ${HOME}" in (tmp_path / "shell.ui").read_text()
     (warning,) = [r.getMessage() for r in caplog.records if "shares its name with a macro" in r.getMessage()]
     assert warning.endswith(": LOCA")
+
+
+NESTED_VISIBILITY = textwrap.dedent("""\
+    4 0 1
+    beginScreenProperties
+    major 4
+    minor 0
+    release 1
+    x 0
+    y 0
+    w 200
+    h 200
+    endScreenProperties
+
+    object activeGroupClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 0
+    x 10
+    y 10
+    w 100
+    h 100
+
+    beginGroup
+
+    object activeGroupClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 0
+    x 20
+    y 20
+    w 50
+    h 50
+
+    beginGroup
+
+    object activeRectangleClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 0
+    x 30
+    y 30
+    w 20
+    h 20
+    lineColor index 14
+    visPv "$(P):OWN"
+    visMin "1"
+    visMax "2"
+    endObjectProperties
+
+    endGroup
+
+    visPv "$(P):INNER"
+    visInvert
+    endObjectProperties
+
+    endGroup
+
+    visPv "$(P):OUTER"
+    endObjectProperties
+    """)
+
+
+def test_rule_order_does_not_depend_on_hash_seed(tmp_path):
+    """A rectangle inside two groups with visPvs has three Visible terms. Converted in
+    fresh interpreters with different string hash seeds, they keep one order: the
+    outer group's, the inner group's, then the rectangle's own."""
+    source = tmp_path / "nested.edl"
+    source.write_text(NESTED_VISIBILITY)
+    # The tree under test, not whatever pydmconverter the interpreter would find first.
+    package_root = str(Path(pydmconverter.__file__).resolve().parents[1])
+    code = "import sys; from pydmconverter.edm.converter import convert; convert(sys.argv[1], sys.argv[2])"
+    rules_by_seed = {}
+    for seed in ("1", "2", "3", "4"):
+        output = tmp_path / f"nested_{seed}.ui"
+        env = dict(os.environ, PYTHONHASHSEED=seed, QT_QPA_PLATFORM="offscreen")
+        env["PYTHONPATH"] = os.pathsep.join(filter(None, [package_root, env.get("PYTHONPATH")]))
+        result = subprocess.run(
+            [sys.executable, "-c", code, str(source), str(output)],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        rectangle = next(
+            w for w in ET.parse(output).getroot().iter("widget") if w.get("class") == "PyDMDrawingRectangle"
+        )
+        rules_by_seed[seed] = json.loads(rectangle.find("property[@name='rules']/string").text)
+
+    (visible,) = [r for r in rules_by_seed["1"] if r["property"] == "Visible"]
+    assert [c["channel"] for c in visible["channels"]] == ["${P}:OUTER", "${P}:INNER", "${P}:OWN"]
+    assert visible["expression"] == "(ch[0]==1) and (ch[1]!=1) and (float(ch[2]) >= 1.0 and float(ch[2]) < 2.0)"
+    assert all(rules == rules_by_seed["1"] for rules in rules_by_seed.values())

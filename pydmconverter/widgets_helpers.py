@@ -1177,7 +1177,8 @@ class Rules(XMLConvertible):
         -------
         dict of str to list of RuleArguments
             A dictionary where the keys are rule types (e.g., "Visible", "Enable"),
-            and the values are lists of unique rules for that type.
+            and the values are lists of unique rules for that type, each in the
+            order its first occurrence was added.
         """
 
         bool_rule_types = ["Visible", "Enable"]
@@ -1185,8 +1186,10 @@ class Rules(XMLConvertible):
         for rule in self.rules:
             if rule.rule_type in rule_variables:
                 rule_variables[rule.rule_type].append(rule)
-        for rule_name in rule_variables.keys():  # removes repeated tuples
-            rule_variables[rule_name] = list(set(rule_variables[rule_name]))
+        for rule_name in rule_variables.keys():
+            # Drop repeats but keep the first of each in place: a set's order follows
+            # the string hashes, so the terms would change order with PYTHONHASHSEED.
+            rule_variables[rule_name] = list(dict.fromkeys(rule_variables[rule_name]))
         return rule_variables
 
 
