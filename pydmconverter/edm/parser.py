@@ -833,11 +833,26 @@ class EDMFileParser:
         num_states = edm_int(properties.get("numStates"))
         if len(block_items(properties.get("controlPvs"))) > 1:
             logger.warning(f"This symbol object has more than one pV: {properties}")
+        symbol_channel = self._symbol_channel(properties)
         for i in range(
             min(len(temp_group.objects), num_states)
         ):  # TODO: Figure out what happens when numStates < temp_group.objects
+            # The state's range and the channel it is read from travel together:
+            # the .ui converter builds the state's visibility rule from all three.
             temp_group.objects[i].properties["symbolMin"] = ranges[i][0]
             temp_group.objects[i].properties["symbolMax"] = ranges[i][1]
+            temp_group.objects[i].properties["symbolChannel"] = symbol_channel
+        if temp_group.objects and num_states > 0:
+            # EDM shows state 0 when no state's range holds the value (symbol.cc
+            # executeDeferred: index = 0 unless a range matches), so state 0 also
+            # shows outside every other state's range, states with no group included.
+            temp_group.objects[0].properties["symbolOtherRanges"] = ranges[1:num_states]
+
+    @staticmethod
+    def _symbol_channel(properties: dict[str, bool | str | list[str]]) -> str | None:
+        """The PV a symbol picks its state from: its first control PV, by EDM index."""
+        control_pvs = [pv for _, pv in sorted(block_items(properties.get("controlPvs")))]
+        return control_pvs[0] if control_pvs else None
 
     def add_symbol_properties(self, temp_group: EDMGroup, properties: dict[str, bool | str | list[str]]) -> None:
         """
@@ -851,8 +866,7 @@ class EDMFileParser:
         properties: dict[str, bool | str | list[str]]
             Object properties from the activesymbolclass
         """
-        control_pvs = [pv for _, pv in sorted(block_items(properties.get("controlPvs")))]
-        symbol_channel = control_pvs[0] if control_pvs else None
+        symbol_channel = self._symbol_channel(properties)
 
         for sub_group in temp_group.objects:
             for sub_object in sub_group.objects:
