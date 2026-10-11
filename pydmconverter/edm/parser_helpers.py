@@ -530,6 +530,12 @@ def loc_conversion(edm_string: str) -> str:
     A value with no recognized type prefix (e.g. "CMOS:LI20:3490") becomes a
     str PV holding the whole text, whereas EDM drops its first two characters.
 
+    Other attributes without a ":" are read as EDM's setAttributes
+    (loc_pv_factory.cc) reads them: the first character is the type and the
+    next one is skipped, so "LOC\\x=intPv=Show" is an int holding 0. A bare
+    number stays an int ("LOC\\x=0"); attributes starting with no type EDM
+    knows give a bare "loc://<name>" that declares nothing.
+
     Parameters
     ----------
     edm_string : str
@@ -563,30 +569,16 @@ def loc_conversion(edm_string: str) -> str:
         "e": "int",  # mapping enum to int
     }
 
-    edm_type_keywords = {"intpv": "i", "doublepv": "d", "stringpv": "s", "enumpv": "e"}
-
     try:
         name, type_and_value = content.split("=", 1)
         name = name.lstrip("\\")
-        type_and_value = type_and_value.lstrip("=")  # for edgecases with ==
+        # EDM reads the attributes up to the next "=" or "~", skipping repeated
+        # separators as in LOC\name==0 (strtok_r in loc_pv_factory.cc create).
+        type_and_value = re.split(r"[=~]", type_and_value.lstrip("=~"), maxsplit=1)[0]
     except ValueError:
         name = content.lstrip("\\")
         return f"loc://{name}"
         # raise ValueError("Invalid EDM format: Missing '=' separator")
-
-    # Handle EDM type keyword format: LOC\$(!W)intPv=<name> or LOC\$(!W)intPv=intPv=<name>
-    name_suffix = name.split(")")[-1] if ")" in name else name
-    if name_suffix.lower() in edm_type_keywords:
-        macro_prefix = name[: len(name) - len(name_suffix)] if ")" in name else ""
-        type_char = edm_type_keywords[name_suffix.lower()]
-        # Strip redundant type keyword prefix from value (e.g., intPv=ShowChannels -> ShowChannels)
-        if "=" in type_and_value:
-            prefix_part, actual_name = type_and_value.split("=", 1)
-            if prefix_part.lower() in edm_type_keywords:
-                type_and_value = actual_name
-        name = macro_prefix + type_and_value
-        pydm_type = type_mapping.get(type_char, "int")
-        return f"loc://{name}?type={pydm_type}&init=0"
 
     try:
         type_char, value = type_and_value.split(":", 1)
@@ -622,13 +614,23 @@ def loc_conversion(edm_string: str) -> str:
                 value = type_and_value
                 type_char = "d"
             except ValueError:
-                # EDM falls back to a string PV with an empty value when the
-                # initialization is unparseable, so mirror that behavior here.
-                logger.warning(
-                    f"Unparseable local PV initialization '{type_and_value}' for '{name}', defaulting to an empty string"
-                )
-                value = ""
-                type_char = "s"
+                if type_and_value[:1] not in type_mapping:
+                    # No type EDM knows either (bcs/BCS_Zone_3_Input's second
+                    # form, LOC\$(!W)intPv=ShowChannels). EDM ignores the
+                    # attributes of all but a variable's first declaration, so
+                    # name the variable without declaring it: an empty string
+                    # declared here could win over the real one.
+                    logger.warning(f"Unparseable local PV attributes '{type_and_value}' for '{name}', not declaring it")
+                    return f"loc://{name}"
+                # The first character is the type and the next one is skipped,
+                # as in EDM's setAttributes; an int, double or enum value is read
+                # with atol/atof, so LOC\name=intPv is an int holding 0.
+                type_char, value = type_and_value[0], type_and_value[2:]
+                if type_char != "s":
+                    head, sep, states = value.partition(",") if type_char == "e" else (value, "", "")
+                    number_pattern = r"\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?" if type_char == "d" else r"\s*[+-]?\d+"
+                    number = re.match(number_pattern, head)
+                    value = (number.group().strip() if number else "0") + sep + states
 
     edm_type = type_char.lower()
     if edm_type.isdigit():

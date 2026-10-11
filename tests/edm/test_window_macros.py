@@ -346,3 +346,67 @@ def test_menu_mux_labels_name_the_window_macro(out, labels):
         if isinstance(node, ast.Assign) and getattr(node.targets[0], "attr", None) == "menus"
     ]
     assert menus[0]["items"] == ["${EDM_W}a", "${EDM_W}b"]
+
+
+def channel_button(value, y):
+    """A bcs/BCS_Zone_3_Input.edl toggle writing its channel number."""
+    return edm_object(
+        "activeMessageButtonClass",
+        10,
+        y,
+        150,
+        50,
+        r'controlPv "LOC\\$(!W)intPv=intPv=ShowChannels"',
+        f'pressValue "{value}"',
+        'releaseValue "0"',
+        f'onLabel "ch{value}"',
+        f'offLabel "ch{value}"',
+        # Colours that differ split it into an off and an on button.
+        "onColor index 56",
+        "offColor index 55",
+        "toggle",
+    )
+
+
+def channel_group(value, y):
+    """The BCS group shown while the variable is the given channel number."""
+    return edm_object(
+        "activeGroupClass",
+        200,
+        y,
+        50,
+        20,
+        "beginGroup\n" + edm_object("activeRectangleClass", 200, y, 50, 20) + "endGroup",
+        r'visPv "LOC\\$(!W)intPv=ShowChannels"',
+        f'visMin "{value}"',
+        f'visMax "{value + 1}"',
+    )
+
+
+def test_both_forms_of_a_window_variable_name_one_int(out, qtbot):
+    """bcs/BCS_Zone_3_Input.edl declares LOC\\$(!W)intPv=intPv=ShowChannels on its
+    buttons, then names LOC\\$(!W)intPv=ShowChannels on its groups. EDM reads "i" as
+    the type, skips "n" and reads "tPv" with atol, an int holding 0, and ignores the
+    later declaration's attributes (loc_pv_factory.cc)."""
+    pytest.importorskip("pydm")
+    from pydm.widgets import PyDMDrawingRectangle, PyDMPushButton
+
+    ui = convert_screen(
+        out, "screen", channel_button(1, 10), channel_button(2, 70), channel_group(1, 10), channel_group(2, 70)
+    )
+    screen, _ = open_screen(qtbot, ui)
+    buttons = screen.findChildren(PyDMPushButton)
+    (name,) = {variable(button) for button in buttons}
+    off = [button for button in buttons if button.objectName().endswith("_off")]
+    assert len(off) == 2
+    one, two = sorted(screen.findChildren(PyDMDrawingRectangle), key=lambda rect: rect.y())
+
+    qtbot.waitUntil(lambda: getattr(connection(name), "value", None) == 0, timeout=3000)
+    assert type(connection(name).value) is int
+    # Every off button shows, so there is something to press; no group shows yet.
+    qtbot.waitUntil(lambda: all(not button.isHidden() for button in off), timeout=3000)
+    assert one.isHidden() and two.isHidden()
+
+    connection(name).put_value(2)
+    qtbot.waitUntil(lambda: not two.isHidden(), timeout=3000)
+    assert one.isHidden()
