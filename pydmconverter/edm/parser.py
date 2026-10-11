@@ -574,8 +574,15 @@ class EDMFileParser:
             return EDMGroup(**size_properties, properties={"symbolFileOutsideSearchPaths": embedded_file})
         if found is None:
             # Keep the symbol's rect and name the missing file so the IR adapter can
-            # attach a node warning (nothing may disappear silently).
-            return EDMGroup(**size_properties, properties={"symbolFileNotFound": embedded_file})
+            # attach a node warning (nothing may disappear silently). A confined lookup
+            # never searched EDMDATAFILES, so its warning must not point there.
+            return EDMGroup(
+                **size_properties,
+                properties={
+                    "symbolFileNotFound": embedded_file,
+                    "symbolSearchedEdmDataFiles": not self.confine_file_refs,
+                },
+            )
         symbol_path, embedded_text = found
         if symbol_path in self._symbol_stack:
             # Expanding it again would never end (it used to raise RecursionError).
@@ -703,6 +710,8 @@ class EDMFileParser:
         if self.confine_file_refs and not any_in_bounds:
             logger.warning(f"Symbol file {embedded_file!r} is outside the search paths; not read")
             self._symbols_outside.add(embedded_file)
+        elif self.confine_file_refs:
+            logger.warning(f"Symbol file {embedded_file!r} not found beside the display or on the search paths")
         else:
             logger.warning(
                 f"Symbol file {embedded_file!r} not found beside the display, on the search paths or on EDMDATAFILES"

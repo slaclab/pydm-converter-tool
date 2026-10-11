@@ -350,6 +350,27 @@ def test_confine_file_refs_skips_edmdatafiles(symbol_tree, monkeypatch):
     assert _symbol_node("secret", confine_file_refs=True).children == []
 
 
+@pytest.mark.parametrize(
+    ("confine_file_refs", "searched"),
+    [
+        (True, "beside the display or on the search paths"),
+        (False, "beside the display, on the search paths or on EDMDATAFILES"),
+    ],
+    ids=["confined", "unconfined"],
+)
+def test_missing_symbol_warning_names_the_places_searched(
+    symbol_tree, monkeypatch, caplog, confine_file_refs, searched
+):
+    """A confined lookup never reads EDMDATAFILES, so its "not found" warning, in the
+    log and on the node, doesn't send users there."""
+    _isolate_symbol_lookup(monkeypatch, symbol_tree)
+    node = _symbol_node("no_such_file", search_paths=[symbol_tree / "root"], confine_file_refs=confine_file_refs)
+    assert node.children == []
+    assert f"EDM symbol file 'no_such_file.edl' not found {searched}; symbol not rendered" in node.warnings
+    logged = [r.getMessage() for r in caplog.records if "no_such_file.edl" in r.getMessage()]
+    assert logged == [f"Symbol file 'no_such_file.edl' not found {searched}"]
+
+
 def test_symbol_files_unconfined_by_default(symbol_tree):
     """Without the flag (CLI and PyDM target) absolute and ``..`` symbol paths resolve as in EDM."""
     root = symbol_tree / "root"
