@@ -1736,8 +1736,8 @@ def _index_writers(users, name: str, indices: List[int]) -> List[EDMObject]:
 
 def _names_a_pv(file_pv) -> bool:
     """A filePv naming a PV: not blank, not a comment (EDM's blankOrComment), and
-    not a LOC\\ or CALC\\ variable the parser left untranslated, such as
-    LOC\\$(SIG)_View=0 (a PV name never holds "=")."""
+    not a LOC\\ or CALC\\ variable the parser left untranslated (a PV name never
+    holds "=")."""
     if not isinstance(file_pv, str) or not file_pv.strip():
         return False
     pv = file_pv.strip()

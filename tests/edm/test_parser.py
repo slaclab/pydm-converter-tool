@@ -486,3 +486,28 @@ def test_parser_knows_whether_it_read_a_literal_dollar_brace(tmp_path):
             "endObjectProperties\n"
         )
         assert EDMFileParser(str(edl), str(tmp_path / "shell.ui")).literal_braces is expected
+
+
+@pytest.mark.parametrize(
+    "pv, expected",
+    [
+        # misc/histViewer.edl: EDM expands $(SIG) and keeps the backslash, so this
+        # is a LOC variable named after the macro's value (pv_factory.cc).
+        (r"LOC\\$(SIG)_View=0", "loc://${SIG}_View?type=int&init=0"),
+        (r"LOC\\$(SIG)_View==0", "loc://${SIG}_View?type=int&init=0"),
+        (r"LOC\\$(SIG)_View", "loc://${SIG}_View"),
+        (r"LOC\\\\$(SIG)_View=0", "loc://${SIG}_View?type=int&init=0"),
+        (r"LOC\\$(!W)show=i:0", "loc://__UNIQUE__show?type=int&init=0"),
+        # Outside a LOC name the backslash before a macro is kept too.
+        (r"\\$(X)", r"\${X}"),
+    ],
+)
+def test_macro_after_a_backslash_keeps_the_backslash(tmp_path, pv, expected):
+    edl = tmp_path / "loc.edl"
+    edl.write_text(
+        "beginScreenProperties\nw 100\nh 100\nendScreenProperties\n"
+        "object activeXTextDspClass\nbeginObjectProperties\nx 0\ny 0\nw 50\nh 20\n"
+        f'controlPv "{pv}"\nendObjectProperties\n'
+    )
+    (text_control,) = EDMFileParser(str(edl), str(tmp_path / "loc.ui")).ui.objects
+    assert text_control.properties["controlPv"] == expected

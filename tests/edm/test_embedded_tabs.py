@@ -490,6 +490,21 @@ def test_choice_button_without_orientation_still_reads_as_a_tab_bar(tmp_path):
     assert len(tabs.findall("widget")) == 3
 
 
+def test_choice_button_on_a_macro_named_variable_becomes_tabs(tmp_path):
+    # misc/bkh_as01_tm04.edl: the button and the window name LOC\\$(!W1)show,
+    # a LOC variable once EDM expands the macro (it keeps the backslash).
+    root = convert_objects(
+        tmp_path,
+        pip(r"LOC\\$(!W1)show=e:0,3222,3314", ["bkh_3222.edl", "bkh_3314.edl"]),
+        choice(r"LOC\\$(!W1)show"),
+    )
+    (tabs,) = top_level(root)
+    assert tabs.get("class") == "QTabWidget"
+    pages = tabs.findall("widget")
+    assert [p.find("attribute[@name='title']/string").text for p in pages] == ["3222", "3314"]
+    assert [prop(p.find("widget"), "filename") for p in pages] == ["bkh_3222.ui", "bkh_3314.ui"]
+
+
 def test_unique_marker_resolved_on_the_stacked_path(tmp_path):
     source = tmp_path / "screen.edl"
     output = tmp_path / "screen.ui"
@@ -947,8 +962,8 @@ SEL = r"LOC\\sel=i:0"
         ),
         # cud/facet_bpms.edl: the converted menu button writes nothing.
         pytest.param([pip(SEL, ["a.edl", "b.edl"]), menu_button(SEL)], id="menu-button"),
-        # misc/histViewer.edl: a LOC variable the parser leaves untranslated.
-        pytest.param([pip(r"LOC\\$(SIG)_View=0", ["a.edl", "b.edl"])], id="untranslated-loc"),
+        # misc/histViewer.edl: nothing in the file writes its macro-named LOC variable.
+        pytest.param([pip(r"LOC\\$(SIG)_View=0", ["a.edl", "b.edl"])], id="macro-named-loc-nothing-writes"),
         # A named calculation missing from calc.list stays untranslated.
         pytest.param([pip(r"CALC\\sum(X, Y)", ["a.edl", "b.edl"])], id="untranslated-calc"),
         pytest.param([pip("", ["a.edl", "b.edl"])], id="blank-file-pv"),
