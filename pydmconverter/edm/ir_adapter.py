@@ -1421,9 +1421,13 @@ def edm_group_to_source_nodes(
                 )
             elif "symbolFileNotFound" in obj.properties:
                 missing_symbol = obj.properties["symbolFileNotFound"]
+                searched = (
+                    "beside the display, on the search paths or on EDMDATAFILES"
+                    if obj.properties.get("symbolSearchedEdmDataFiles", True)
+                    else "beside the display or on the search paths"
+                )
                 group_node.warnings.append(
-                    f"EDM symbol file '{missing_symbol}' not found beside the display, on the search paths or "
-                    "on EDMDATAFILES; symbol not rendered"
+                    f"EDM symbol file '{missing_symbol}' not found {searched}; symbol not rendered"
                     if missing_symbol
                     else "EDM symbol has no file property; symbol not rendered"
                 )
