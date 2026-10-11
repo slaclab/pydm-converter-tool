@@ -234,14 +234,10 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
 
     expr_part, args_part = get_calc_groups(edm_pv)
     name_or_expr = clean_escape_characters(expr_part).strip()
-    arg_string = clean_escape_characters(args_part)
-
-    arg_list: List[str] = []
-    if arg_string:
-        arg_list = [arg.strip() for arg in arg_string.split(",")]
-        for i in range(len(arg_list)):
-            if arg_list[i].startswith("LOC\\"):
-                arg_list[i] = loc_conversion(arg_list[i])
+    arg_list = get_calc_arguments(clean_escape_characters(args_part))
+    for i in range(len(arg_list)):
+        if arg_list[i].startswith("LOC\\"):
+            arg_list[i] = loc_conversion(arg_list[i])
 
     is_inline_expr = False
     if name_or_expr.startswith("{") and name_or_expr.endswith("}"):
@@ -250,35 +246,66 @@ def parse_calc_pv(edm_pv: str) -> Tuple[str, List[str], bool]:
     return name_or_expr, arg_list, is_inline_expr
 
 
-def get_calc_groups(edm_pv: str) -> Tuple[str]:
+def get_calc_groups(edm_pv: str) -> Tuple[str, str]:
+    """
+    Split a CALC PV into its expression (a calc.list name or an inline ``{...}``
+    expression) and the text after the ``(`` that opens its arguments.
+
+    As in EDM's ``CALC_PV_Factory::create`` (calc_pv_factory.cc), the expression
+    ends at the first ``(`` outside braces; without one there are no arguments.
+    """
     prefix = "CALC\\"
     if not edm_pv.startswith(prefix):
         raise ValueError(f"Not a CALC PV: {edm_pv}")
 
     edm_pv = edm_pv[len(prefix) :]
-    if "(" not in edm_pv and ")" not in edm_pv:
-        return edm_pv, ""
+    braces = 0
+    for i, ch in enumerate(edm_pv):
+        if ch == "{":
+            braces += 1
+        elif ch == "}" and braces:
+            braces -= 1
+        elif ch == "(" and not braces:
+            return edm_pv[:i], edm_pv[i + 1 :]
+    return edm_pv, ""
 
-    depth = 0
-    end_idx = -1
-    for i in range(len(edm_pv) - 1, -1, -1):
-        if edm_pv[i] == ")":
-            depth += 1
-        elif edm_pv[i] == "(":
-            depth -= 1
-            if depth == 0:
-                end_idx = i
+
+# A number as EDM's legalFloat (calc_pv_factory.cc) reads it.
+_CALC_CONSTANT = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
+
+
+def get_calc_arguments(args: str) -> List[str]:
+    """
+    Split the text after a CALC PV's ``(`` into its arguments like EDM's
+    ``get_arg`` (calc_pv_factory.cc).
+
+    Runs of ``,``, spaces, tabs and ``)`` before an argument are skipped, so an
+    empty argument disappears and the ones after it move up (``(X,,Y)`` makes Y
+    argument B). An argument ends at a top-level ``,`` or at the first ``)`` it
+    did not open, so a stray ``)`` never becomes part of a PV name.
+    """
+    arguments = []
+    i = 0
+    while True:
+        while i < len(args) and args[i] in ", \t)":
+            i += 1
+        if i >= len(args):
+            return arguments
+        # Like get_arg, start looking for the end after the first character.
+        end = i + 1
+        depth = 0
+        while end < len(args):
+            if args[end] == "(":
+                depth += 1
+            elif args[end] == ")":
+                depth -= 1
+                if depth < 0:
+                    break
+            elif args[end] == "," and depth == 0:
                 break
-
-    if end_idx == -1:
-        logger.info(
-            f"Fixing Invalid CALC PV format (unbalanced parens): {edm_pv}"
-        )  # TODO: Comeback to see if I should fix this in the EDM file too
-
-        edm_pv += ")"
-        end_idx = edm_pv.rfind("(")
-        # raise ValueError(f"Invalid CALC PV format (unbalanced parens): {edm_pv}")
-    return edm_pv[:end_idx], edm_pv[end_idx + 1 : -1]
+            end += 1
+        arguments.append(args[i:end].rstrip())
+        i = end
 
 
 def clean_escape_characters(expr: str) -> str:
@@ -413,6 +440,15 @@ def translate_calc_pv_to_pydm(
     for i, arg in enumerate(arg_list):
         if i < len(letters):
             var_map[letters[i]] = arg
+
+    # A numeric argument is a constant, not a PV (CALC_ProcessVariable,
+    # calc_pv_factory.cc). PyDM would wait for a channel named "ca://15" to
+    # connect and never evaluate, so the number goes into the expression.
+    for letter, arg_val in list(var_map.items()):
+        if _CALC_CONSTANT.match(arg_val):
+            del var_map[letter]
+            value = f"({arg_val})" if arg_val[0] in "+-" else arg_val
+            expression = re.sub(rf"(?<!\$\{{)\b{letter}\b", value, expression)
 
     query_pairs = []
     for letter, arg_val in var_map.items():
