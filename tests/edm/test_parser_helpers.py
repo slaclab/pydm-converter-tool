@@ -299,6 +299,37 @@ def test_reformat_calc_expression():
     assert reformat_calc_expression("A?B?1:2:3") == "((1 if B else 2) if A else 3)"
 
 
+@pytest.mark.parametrize(
+    "epics, python",
+    [
+        # bcs/config/calc.list: ternaries inside parentheses
+        ("A=1?3:(A=2?5:0)", "(3 if A==1 else (5 if A==2 else 0))"),
+        ("A=1?4:(A=2?3:(A=3?2:0))", "(4 if A==1 else (3 if A==2 else (2 if A==3 else 0)))"),
+        ("(A?1:2)+1", "(1 if A else 2)+1"),
+        # each function argument on its own
+        ("MAX(A?1:2,B)", "MAX(1 if A else 2,B)"),
+        ("MAX(B,A?1:2)", "MAX(B,1 if A else 2)"),
+        # ! binds tighter than any binary operator (postfix.c), not looser like Python's not
+        ("!A&&B", "(not A) and B"),
+        ("!A=1", "(not A)==1"),
+        ("!A|B", "(not A)|B"),
+        ("!(A=0)", "(not (A==0))"),
+        ("!MAX(A,B)+1", "(not MAX(A,B))+1"),
+        ("!!A", "(not (not A))"),
+        ("C?!(D&&E):!(A||B)", "((not (D and E)) if C else (not (A or B)))"),
+        ("!(A?1:0)", "(not (1 if A else 0))"),
+        # != and # stay comparisons
+        ("A!=B", "A!=B"),
+        ("A#B", "A!=B"),
+    ],
+)
+def test_reformat_calc_expression_nested(epics, python):
+    """Ternaries inside parentheses and EPICS logical not become valid Python."""
+    converted = reformat_calc_expression(epics)
+    assert converted == python
+    compile(converted, "<calc>", "eval")
+
+
 def test_loc_conversion():
     """
     Test loc_conversion from LOC to loc:// syntax with type mapping and init values.

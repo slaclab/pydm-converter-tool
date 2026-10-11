@@ -441,7 +441,9 @@ def reformat_calc_expression(exp):
     - ``#`` not equal -> ``!=``
     - ``=`` equality -> ``==`` (leaving ``<=``, ``>=``, ``!=``, ``==`` untouched)
     - ``&&`` / ``||`` -> ``and`` / ``or``
-    - ``cond ? a : b`` ternary -> ``(a if cond else b)`` (handles nesting)
+    - ``!x`` logical not -> ``(not x)``
+    - ``cond ? a : b`` ternary -> ``(a if cond else b)`` (handles nesting, also
+      inside parentheses)
     """
     # Exponentiation: ^ -> **
     exp = exp.replace("^", "**")
@@ -454,6 +456,7 @@ def reformat_calc_expression(exp):
 
     # Logical operators
     exp = exp.replace("&&", " and ").replace("||", " or ")
+    exp = _convert_calc_not(exp)
 
     # C-style ternary -> Python conditional expression
     exp = _convert_calc_ternary(exp)
@@ -461,15 +464,69 @@ def reformat_calc_expression(exp):
     return exp
 
 
-def _convert_calc_ternary(exp: str) -> str:
-    """
-    Convert an EPICS C-style ternary ``cond ? a : b`` into the Python
-    conditional expression ``(a if cond else b)``.
+# The name, number or ${MACRO} an EPICS unary operator applies to.
+_CALC_OPERAND_TOKEN = re.compile(r"(?:\$\{[^}]*\}|[\w.])*")
 
-    Handles right-associative nesting (``a ? b : c ? d : e``) and ternaries
-    nested in the true branch (``a ? b ? c : d : e``) by balancing ``?`` and
-    ``:`` like brackets while ignoring anything inside parentheses.
+
+def _calc_operand_end(exp: str, start: int) -> int:
     """
+    Index just past the operand that starts at ``exp[start]``: further unary
+    operators, then a name or number, then an optional parenthesised group (a
+    function call's arguments, or the whole operand).
+    """
+    i = start
+    while i < len(exp) and (exp[i].isspace() or exp[i] in "!-+~"):
+        i += 1
+    i = _CALC_OPERAND_TOKEN.match(exp, i).end()
+    if i < len(exp) and exp[i] == "(":
+        depth = 0
+        for j in range(i, len(exp)):
+            if exp[j] == "(":
+                depth += 1
+            elif exp[j] == ")":
+                depth -= 1
+                if depth == 0:
+                    return j + 1
+        return len(exp)
+    return i
+
+
+def _convert_calc_not(exp: str) -> str:
+    """
+    Convert EPICS logical not ``!x`` (but not ``!=``) into ``(not x)``.
+
+    In EPICS calc a unary operator binds tighter than any binary one (postfix.c
+    gives ``!`` the highest priority), so ``!A&&B`` is ``(!A)&&B`` and ``!A=1`` is
+    ``(!A)=1``. Python's ``not`` binds looser than comparisons and arithmetic, so
+    it is wrapped in parentheses together with its operand.
+    """
+    match = re.search(r"!(?!=)", exp)
+    if match is None:
+        return exp
+    start = match.start()
+    end = _calc_operand_end(exp, start + 1)
+    operand = exp[start + 1 : end].strip()
+    if not operand:
+        return exp[: start + 1] + _convert_calc_not(exp[start + 1 :])
+    return f"{exp[:start]}(not {_convert_calc_not(operand)}){_convert_calc_not(exp[end:])}"
+
+
+def _convert_calc_ternary(exp: str, wrap: bool = True) -> str:
+    """
+    Convert EPICS C-style ternaries ``cond ? a : b`` into Python conditional
+    expressions ``(a if cond else b)``.
+
+    EPICS accepts a ternary wherever an operand can go, so the ternaries inside
+    parentheses are converted first, one function argument at a time:
+    ``A=1?3:(A=2?5:0)`` becomes ``(3 if A==1 else (5 if A==2 else 0))`` and
+    ``MAX(A?1:2,B)`` becomes ``MAX(1 if A else 2,B)``. Then the top-level one:
+    right-associative nesting (``a ? b : c ? d : e``) and ternaries nested in
+    the true branch (``a ? b ? c : d : e``) are handled by balancing ``?`` and
+    ``:`` like brackets. ``wrap=False`` leaves out the outer parentheses, for a
+    ternary that already fills a parenthesised group or argument.
+    """
+    exp = _convert_calc_ternary_in_groups(exp)
+
     depth = 0
     q_index = -1
     for i, ch in enumerate(exp):
@@ -505,14 +562,50 @@ def _convert_calc_ternary(exp: str) -> str:
         # Unbalanced ternary; leave the expression untouched.
         return exp
 
-    cond = exp[:q_index].strip()
-    true_part = exp[q_index + 1 : colon_index].strip()
-    false_part = exp[colon_index + 1 :].strip()
+    cond = _convert_calc_ternary(exp[:q_index].strip())
+    true_part = _convert_calc_ternary(exp[q_index + 1 : colon_index].strip())
+    false_part = _convert_calc_ternary(exp[colon_index + 1 :].strip())
 
-    return (
-        f"({_convert_calc_ternary(true_part)} if {_convert_calc_ternary(cond)} "
-        f"else {_convert_calc_ternary(false_part)})"
-    )
+    converted = f"{true_part} if {cond} else {false_part}"
+    return f"({converted})" if wrap else converted
+
+
+def _convert_calc_ternary_in_groups(exp: str) -> str:
+    """Convert the ternaries inside each top-level parenthesised group of
+    ``exp``, splitting the group on its top-level commas (function arguments)."""
+    pieces = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(exp):
+        if ch == "(":
+            if depth == 0:
+                pieces.append(exp[start : i + 1])
+                start = i + 1
+            depth += 1
+        elif ch == ")" and depth > 0:
+            depth -= 1
+            if depth == 0:
+                pieces.append(_convert_calc_ternary_arguments(exp[start:i]))
+                start = i
+    pieces.append(exp[start:])
+    return "".join(pieces)
+
+
+def _convert_calc_ternary_arguments(group: str) -> str:
+    """Convert a ternary in each top-level comma-separated part of ``group``."""
+    arguments = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(group):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            arguments.append(group[start:i])
+            start = i + 1
+    arguments.append(group[start:])
+    return ",".join(_convert_calc_ternary(argument, wrap=False) for argument in arguments)
 
 
 def loc_conversion(edm_string: str) -> str:
