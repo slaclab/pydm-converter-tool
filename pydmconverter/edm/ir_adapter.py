@@ -27,6 +27,7 @@ import json
 import logging
 import math
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -927,11 +928,32 @@ def _pip_source(obj: EDMObject) -> str:
     return str(obj.properties.get("displaySource") or "stringPV").strip().lower()
 
 
+def _menu_entries(obj: EDMObject) -> list[tuple[int, str, dict[str, str]]]:
+    """displaySource=menu pip: ``(EDM index, file, macros)`` per non-blank
+    ``displayFileName`` entry, lowest index first. EDM (pip.cc
+    ``openEmbeddedByIndex``) opens entry ``i`` with ``symbols[i]`` only, so an
+    entry without a symbols line gets no macros."""
+    symbols = _by_index(obj.properties.get("symbols"))
+    return [
+        (index, normalize_macro_syntax(name), _to_macros(symbols[index]) if index in symbols else {})
+        for index, name in sorted(_by_index(obj.properties.get("displayFileName")).items())
+        if name.strip()
+    ]
+
+
+def _entry_macros_differ(entries: list[tuple[int, str, dict[str, str]]]) -> bool:
+    return any(macros != entries[0][2] for _, _, macros in entries[1:])
+
+
 def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """activePipClass fixup by displaySource (EDM pip.cc):
 
     - "menu": ``filePv`` selects among ``displayFileName`` entries; emit the
       first entry as the static file and let ``_pip_rules`` switch it live.
+      Entry ``i`` opens with ``symbols[i]`` only, and a rule cannot switch
+      macros, so when the entries' macros differ the window opens with the
+      first entry's (a loc:// filePv is split per entry instead, see
+      :func:`_menu_entry_nodes`).
     - "file": the macro-bearing ``file`` template is already mapped
       (file -> filename -> screenRef keeps ``${VAR}`` refs for view-time
       resolution); a blank one opens nothing (fileExists = 0).
@@ -949,7 +971,17 @@ def _fixup_pip(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) ->
         if names and obj.properties.get("filePv"):
             # Raw first entry: the builder's screenRef transform normalizes it.
             qt_props["filename"] = normalize_macro_syntax(names[0])
-            if len(_as_str_list(obj.properties.get("symbols"))) > 1:
+            entries = _menu_entries(obj)
+            if _entry_macros_differ(entries):
+                qt_props.pop("macros", None)
+                if entries[0][2]:
+                    qt_props["macros"] = entries[0][2]
+                if not _to_channel(obj.properties["filePv"]).startswith("loc://"):
+                    warnings.append(
+                        "EDM menu pip entries pass different symbols; the window opens with the first entry's, "
+                        "and its macros do not switch with the file"
+                    )
+            elif len(_as_str_list(obj.properties.get("symbols"))) > 1:
                 warnings.append("EDM menu pip per-entry symbols are merged; macros do not switch with the file")
         else:
             qt_props.pop("filename", None)
@@ -996,6 +1028,82 @@ def _pip_rules(obj: EDMObject) -> list[RuleSpec]:
             default=refs[0][1],
         )
     ]
+
+
+def _loc_definitions(group: EDMGroup) -> dict[str, str]:
+    """Bare ``loc://name`` -> the first address in object order that gives the
+    variable a value (``loc://name?type=...&init=...``). EDM
+    (loc_pv_factory.cc) sets a LOC variable from the first reference with a
+    value; a bare reference only names it."""
+    definitions: dict[str, str] = {}
+
+    def note(value: Any) -> None:
+        if isinstance(value, list):
+            for item in value:
+                note(item)
+        elif isinstance(value, str) and value.startswith("loc://") and "?" in value:
+            address = normalize_macro_syntax(value)
+            definitions.setdefault(address.split("?", 1)[0], address)
+
+    def visit(parent: EDMGroup) -> None:
+        for obj in parent.objects:
+            for value in (getattr(obj, "properties", None) or {}).values():
+                note(value)
+            if isinstance(obj, EDMGroup):
+                visit(obj)
+
+    visit(group)
+    return definitions
+
+
+def _menu_entry_nodes(obj: EDMObject, node: SourceNode, loc_definitions: dict[str, str]) -> list[SourceNode]:
+    """A menu pip on a loc:// variable whose entries pass different macros ->
+    one embedded display per entry, each with its own file and macros
+    (:func:`_menu_entries`); ``[node]`` for any other object.
+
+    A rule can switch the file but not the macros (rule values are scalars), so
+    each display carries a ``visible`` rule instead: entry ``i`` shows while the
+    variable is ``i``, and the lowest entry also for a value no entry has, as
+    the file rule's default did (pip.cc opens entry 0 for such a value when the
+    window opens, and later keeps the entry shown, which a rule cannot
+    express). The window's other rules (its visPv) stay on every display; its
+    file rule goes.
+
+    The rules read the variable as the file declares it. One that nothing gives
+    a value would never connect, leaving every display shown, so the rules
+    declare it an int starting at 0: what EDM reads from an empty LOC value
+    (loc_pv_factory.cc ``get_int``).
+    """
+    if obj.name.lower() != "activepipclass" or _pip_source(obj) != "menu" or not obj.properties.get("filePv"):
+        return [node]
+    file_pv = _to_channel(obj.properties["filePv"])
+    entries = _menu_entries(obj)
+    if not file_pv.startswith("loc://") or not _entry_macros_differ(entries):
+        return [node]
+    if "?" not in file_pv:
+        file_pv = loc_definitions.get(file_pv, f"{file_pv}?type=int&init=0")
+    rules = [rule for rule in node.rules if rule.target_property != "file"]
+    first = entries[0][0]
+    others = [index for index, _, _ in entries[1:]]
+    nodes = []
+    for index, name, macros in entries:
+        qt_props = {key: value for key, value in node.qt_props.items() if key != "macros"}
+        qt_props["filename"] = name
+        if macros:
+            qt_props["macros"] = macros
+        if index == first:
+            conditions = [(f"{{0}} == {other}", False) for other in others]
+        else:
+            conditions = [(f"{{0}} == {index}", True)]
+        entry_rule = RuleSpec(
+            target_property="visible",
+            name=f"Embedded file (menu entry {index})",
+            pvs=[(file_pv, True)],
+            conditions=conditions,
+            default=index == first,
+        )
+        nodes.append(replace(node, qt_props=qt_props, rules=[*rules, entry_rule], warnings=list(node.warnings)))
+    return nodes
 
 
 # EDM attrs a class fixup maps itself (the generic prop loop skips them).
@@ -1375,6 +1483,7 @@ def edm_group_to_source_nodes(
     colors: dict[str, Any] | None = None,
     skip_classes: frozenset[str] = frozenset(),
     registry: RegistryClient | None = None,
+    loc_definitions: dict[str, str] | None = None,
 ) -> list[SourceNode]:
     """Materialize an EDM group tree into a list of widget SourceNodes.
 
@@ -1389,13 +1498,16 @@ def edm_group_to_source_nodes(
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
     to resolve "index N" color props to hex. ``registry`` is the one the IR builder
     will use (default: the vendored registry); colour rules target the IR props it
-    maps the colour props to.
+    maps the colour props to. ``loc_definitions`` (:func:`_loc_definitions`) is
+    found from ``group`` when not given; nested groups get the top level's.
 
     Errors are isolated per object: an object whose conversion raises becomes an
     ``unknown-widget`` placeholder carrying the failure as its warning, and a group
     whose visibility cannot be converted keeps its children with a warning, so one
     bad object never aborts the screen.
     """
+    if loc_definitions is None:
+        loc_definitions = _loc_definitions(group)
     nodes: list[SourceNode] = []
     for obj in group.objects:
         if isinstance(obj, EDMGroup):
@@ -1406,7 +1518,9 @@ def edm_group_to_source_nodes(
                 geometry=(obj.x, obj.y, obj.width, obj.height),
                 raw_class="activeGroupClass",
                 raw_props=dict(obj.properties),
-                children=edm_group_to_source_nodes(obj, colors=colors, skip_classes=skip_classes, registry=registry),
+                children=edm_group_to_source_nodes(
+                    obj, colors=colors, skip_classes=skip_classes, registry=registry, loc_definitions=loc_definitions
+                ),
             )
             outside_symbol = obj.properties.get("symbolFileOutsideSearchPaths")
             if outside_symbol:
@@ -1451,6 +1565,7 @@ def edm_group_to_source_nodes(
                 if own_vis is not None:
                     # Append: the node may already carry alarm-color rules.
                     node.rules.append(_visibility_rule_spec([own_vis]))
+                entry_nodes = _menu_entry_nodes(obj, node, loc_definitions)
             except Exception as exc:  # noqa: BLE001 - one bad object must not abort the screen
                 logger.warning("EDM %s failed to convert; emitting a placeholder", obj.name, exc_info=True)
                 node = SourceNode(
@@ -1460,7 +1575,8 @@ def edm_group_to_source_nodes(
                     raw_props=dict(obj.properties),
                     placeholder_reason=conversion_failure(obj.name, exc),
                 )
-            nodes.append(node)
+                entry_nodes = [node]
+            nodes.extend(entry_nodes)
     return nodes
 
 
