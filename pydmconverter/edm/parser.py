@@ -351,6 +351,11 @@ class EDMFileParser:
         self.text = _read_edm_text(file_path)
         self.modify_text(file_path)
 
+        # Set by convert_edm_to_pydm_widgets: the menu muxes that make the menu screen
+        # (.py) and the loc:// declarations it shares with the .ui.
+        self.menu_mux_buttons: list[EDMObject] = []
+        self.menu_loc_declarations: dict[str, str] = {}
+
         self.screen_properties_end = 0
         self.ui = EDMGroup()
         # Screen dimensions ("width"/"height") the file does not declare as integers;
