@@ -27,6 +27,8 @@ _PV_TAG_RE = re.compile(r"\w*(?:Pv|Pvs|PvStr)|pv")
 # A quoted EDM value up to its closing quote or line break, escapes included.
 _QUOTED_VALUE_RE = re.compile(r'"((?:[^"\\\n]|\\[^\n])*)')
 _ESCAPE_RE = re.compile(r"\\(.)")
+# A merge-conflict marker line ("<<<<<<< file.edl", "=======", ">>>>>>> 1.54").
+_CONFLICT_MARKER_RE = re.compile(r"^(?:<{7}|={7}|>{7})(?: |$)", re.MULTILINE)
 
 
 def read_edm_string(value: str, literal_brace: str | None = None) -> str:
@@ -128,14 +130,21 @@ def edm_int(value) -> int:
 
 
 def _read_edm_text(path) -> str:
-    """Read an EDM file as text, falling back to Latin-1 when it isn't valid UTF-8."""
+    """Read an EDM file as text, falling back to Latin-1 when it isn't valid UTF-8.
+
+    Warns when the file holds CVS merge-conflict markers: the converter does not
+    resolve them, so both sides of each conflict are read as tags.
+    """
     try:
         with open(path, "r") as file:
-            return file.read()
+            text = file.read()
     except UnicodeDecodeError as e:
         logger.warning(f"Could not read file as UTF-8 (bad byte at {e.start}): {e}. Switching to Latin-1...")
         with open(path, "r", encoding="latin-1") as file:
-            return file.read()
+            text = file.read()
+    if _CONFLICT_MARKER_RE.search(text):
+        logger.warning(f"CVS conflict markers in {path}: objects inside a conflict may get wrong values")
+    return text
 
 
 def _resolve_or_none(path: str | Path) -> Path | None:

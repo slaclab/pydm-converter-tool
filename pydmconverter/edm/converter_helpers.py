@@ -339,6 +339,15 @@ def _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x,
         )
 
 
+def _set_header_geometry(widget, obj, parent_pydm_group, container_height, scale, offset_x, offset_y) -> None:
+    """Place ``widget`` at the object's own x/y/w/h (see :func:`_compute_geometry`), at least 1x1."""
+    x, y, width, height = _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
+    widget.x = int(x)
+    widget.y = int(y)
+    widget.width = max(1, int(width))
+    widget.height = max(1, int(height))
+
+
 def get_polyline_widget_type(obj: EDMObject) -> type:
     """
     Determine if an activelineclass should be PyDMDrawingPolyline or PyDMDrawingIrregularPolygon.
@@ -628,7 +637,14 @@ def apply_widget_post_processing(
         if "xPoints" in obj.properties and "yPoints" in obj.properties:
             x_points = obj.properties["xPoints"]
             y_points = obj.properties["yPoints"]
-            abs_pts = [(int(float(x) * scale), int(float(y) * scale)) for x, y in zip(x_points, y_points)]
+            try:
+                abs_pts = [(int(float(x) * scale), int(float(y) * scale)) for x, y in zip(x_points, y_points)]
+            except (TypeError, ValueError) as e:
+                # A point that is not a number, e.g. a CVS conflict marker left in the
+                # block: keep the header geometry, as the IR target does (ir_adapter._parse_line_points).
+                logger.warning(f"{obj.name} at ({obj.x}, {obj.y}) has malformed points ({e}); using its x/y/w/h")
+                _set_header_geometry(widget, obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
+                return
             pen = int(obj.properties.get("lineWidth", 1))
 
             arrow_size = 0
@@ -666,11 +682,7 @@ def apply_widget_post_processing(
     elif not (
         obj.name.lower() == "activelineclass" and isinstance(widget, (PyDMDrawingPolyline, PyDMDrawingIrregularPolygon))
     ):
-        x, y, width, height = _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
-        widget.x = int(x)
-        widget.y = int(y)
-        widget.width = max(1, int(width))
-        widget.height = max(1, int(height))
+        _set_header_geometry(widget, obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
 
     # PushButton off/on handling. Labels that differ only in their padding
     # ("Cancel " / "Cancel") get no separate off button.

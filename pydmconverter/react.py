@@ -53,7 +53,8 @@ def convert_to_ir(
     ``search_paths``, never ``EDMDATAFILES`` (see :func:`convert_bytes`,
     :func:`edm_file_to_ir` and :func:`ui_file_to_ir`).
     """
-    suffix = Path(input_path).suffix.lower()
+    # By name, not Path.suffix, which is "" for a file named just ".edl".
+    suffix = next((s for s in _ADAPTERS if Path(input_path).name.lower().endswith(s)), Path(input_path).suffix.lower())
     adapter = _ADAPTERS.get(suffix)
     if adapter is None:
         raise ValueError(f"--target react supports {', '.join(SUPPORTED_SUFFIXES)} inputs, not {suffix!r}")
@@ -222,7 +223,8 @@ def convert_folder(
     found = 0
     failed: list[str] = []
     for source in sorted(input_dir.rglob("*")):
-        if not source.is_file() or source.suffix.lower() not in _ADAPTERS:
+        # By name, as in convert_to_ir: a file named just ".edl" has no Path.suffix.
+        if not source.is_file() or not source.name.lower().endswith(SUPPORTED_SUFFIXES):
             continue
         found += 1
         relative = source.relative_to(input_dir)
