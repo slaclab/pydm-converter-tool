@@ -1,3 +1,4 @@
+import itertools
 import json
 
 import pytest
@@ -35,6 +36,7 @@ from pydmconverter.widgets_helpers import (
     Text,
     BoolRule,
     MultiRule,
+    Rules,
     escape_qt_mnemonic,
     unescape_qt_mnemonic,
 )
@@ -770,6 +772,30 @@ class TestMultiRuleExpression:
         result = MultiRule("Visible", [rule]).to_string()
         assert '"initial_value": "true"' in result
         assert '"expression": "(ch[0]!=1)"' in result
+
+
+@pytest.mark.parametrize("order", list(itertools.permutations(range(3))), ids=lambda order: "".join(map(str, order)))
+def test_rules_keep_first_occurrence_order(order):
+    """A widget's Visible terms and channels follow the order its rules were added
+    (group visPvs, then its own), with repeats dropped, whatever the string hashes."""
+    distinct = [
+        RuleArguments("Visible", "ca://OUTER", False, True, None, None),
+        RuleArguments("Visible", "ca://INNER", False, False, None, None),
+        RuleArguments("Visible", "ca://OWN", False, True, "1", "2"),
+    ]
+    added = [distinct[i] for i in order]
+    rules = Rules([*added, added[0], RuleArguments("Enable", "ca://E", False, True, None, None), added[1]])
+    assert rules.group_by_rules()["Visible"] == added
+
+    (visible,) = [r for r in json.loads(rules.to_xml().find("string").text) if r["property"] == "Visible"]
+    assert [c["channel"] for c in visible["channels"]] == [rule.channel for rule in added]
+    terms = {
+        "ca://OUTER": "ch[{}]==1",
+        "ca://INNER": "ch[{}]!=1",
+        "ca://OWN": "float(ch[{0}]) >= 1.0 and float(ch[{0}]) < 2.0",
+    }
+    expected = [terms[rule.channel].format(i) for i, rule in enumerate(added)]
+    assert visible["expression"] == "(" + ") and (".join(expected) + ")"
 
 
 @pytest.mark.parametrize("channel", ["ca://X", r"CALC\sum(A:B,C:D)", 'loc://x?init="a"', "tab\there"])
