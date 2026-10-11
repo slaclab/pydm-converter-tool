@@ -12,6 +12,7 @@ from pydmconverter.edm.parser_helpers import (
     resolve_inside,
     search_color_list,
     replace_calc_and_loc_in_edm_content,
+    split_edm_path_list,
 )
 from pydmconverter.ir.source import exception_detail
 import logging
@@ -678,14 +679,11 @@ class EDMFileParser:
             ``_symbols_outside``.
         """
         # EDM resolves symbol files beside the calling display first, then along
-        # EDMDATAFILES (explicit search_paths go before it). Split on ":" only when
-        # it is not a Windows drive colon (":" followed by a path separator), and
-        # accept ";" separators too. Confined lookups skip EDMDATAFILES.
+        # EDMDATAFILES (explicit search_paths go before it). Confined lookups skip
+        # EDMDATAFILES.
         edm_paths: list[str] = [str(Path(self.file_path).parent), *self.search_paths]
         if not self.confine_file_refs:
-            datafiles = os.environ.get("EDMDATAFILES", ".")
-            for chunk in datafiles.split(";"):
-                edm_paths.extend(p for p in re.split(r":(?![\\/])", chunk) if p)
+            edm_paths.extend(split_edm_path_list(os.environ.get("EDMDATAFILES", ".")))
         any_in_bounds = False
         for path in edm_paths:
             if self.confine_file_refs:
