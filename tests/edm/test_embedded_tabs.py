@@ -364,6 +364,21 @@ def test_choice_button_without_orientation_still_reads_as_a_tab_bar(tmp_path):
     assert len(tabs.findall("widget")) == 3
 
 
+def test_choice_button_on_a_macro_named_variable_becomes_tabs(tmp_path):
+    # misc/bkh_as01_tm04.edl: the button and the window name LOC\\$(!W1)show,
+    # a LOC variable once EDM expands the macro (it keeps the backslash).
+    root = convert_objects(
+        tmp_path,
+        pip(r"LOC\\$(!W1)show=e:0,3222,3314", ["bkh_3222.edl", "bkh_3314.edl"]),
+        choice(r"LOC\\$(!W1)show"),
+    )
+    (tabs,) = top_level(root)
+    assert tabs.get("class") == "QTabWidget"
+    pages = tabs.findall("widget")
+    assert [p.find("attribute[@name='title']/string").text for p in pages] == ["3222", "3314"]
+    assert [prop(p.find("widget"), "filename") for p in pages] == ["bkh_3222.ui", "bkh_3314.ui"]
+
+
 def test_unique_marker_resolved_on_the_stacked_path(tmp_path):
     source = tmp_path / "screen.edl"
     output = tmp_path / "screen.ui"

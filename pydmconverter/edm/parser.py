@@ -368,7 +368,10 @@ class EDMFileParser:
         self.text = self.text.replace(
             "$(!A)", ""
         )  # remove global macros TODO: In edm, these macros (!W) and (!A) are used to specify the scope of the macros (outside of a specific screen) this may need to be resolved more cleanly later
-        pattern = r"\\*\$\(([^)]+)\)"
+        # Backslashes before a macro stay: EDM expands $(SIG) in LOC\\$(SIG)_View=0
+        # and keeps the backslash (expString.cc), which PV_Factory then splits on
+        # (pv_factory.cc), so the LOC\ prefix must survive to the conversion below.
+        pattern = r"\$\(([^)]+)\)"
         self.text = re.sub(pattern, r"${\1}", self.text)
         self.text, _, _ = replace_calc_and_loc_in_edm_content(
             self.text,

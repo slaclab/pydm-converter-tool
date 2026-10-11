@@ -1,5 +1,6 @@
 """EDM's $(!W): one id per window, a new one for every embedded window, so two
-open copies of a screen keep their own local variables (see window_macros)."""
+open copies of a screen keep their own local variables (see window_macros).
+Also local variables named after an ordinary macro, LOC\\$(SIG)_View."""
 
 import ast
 import json
@@ -346,3 +347,57 @@ def test_menu_mux_labels_name_the_window_macro(out, labels):
         if isinstance(node, ast.Assign) and getattr(node.targets[0], "attr", None) == "menus"
     ]
     assert menus[0]["items"] == ["${EDM_W}a", "${EDM_W}b"]
+
+
+@pytest.fixture
+def parent_and_child_on_a_macro_variable(out):
+    """misc/histViewer.edl and the emb-hist-viewer.edl it embeds: both name the
+    variable LOC\\$(SIG)_View, which EDM expands to one variable per signal."""
+    convert_screen(out, "child", text_control(r"LOC\\$(SIG)_View=0"))
+    return convert_screen(
+        out,
+        "parent",
+        rectangle(r"LOC\\$(SIG)_View=0", y=370),
+        embedded(["child.edl"], 10, symbols=["SIG=$(SIG)"]),
+    )
+
+
+def test_macro_in_a_variable_name_names_it_in_parent_and_child(parent_and_child_on_a_macro_variable, out):
+    text = parent_and_child_on_a_macro_variable.read_text() + (out / "child.ui").read_text()
+    assert "LOC" not in text
+    assert loc_names(text) == {"${SIG}_View"}
+
+
+def test_macro_in_a_variable_name_in_the_ir(out):
+    from pydmconverter.edm.ir_adapter import edm_file_to_ir
+
+    source = out / "viewer.edl"
+    source.write_text(
+        HEADER
+        + embedded(["a.edl", "b.edl"], 100, source="menu", file_pv=r"LOC\\$(SIG)_View=0")
+        # The child's "Menu" button: EDM's popup idiom writes -1.
+        + message_button(r"LOC\\$(SIG)_View=0", "-1")
+    )
+    screen = edm_file_to_ir(source)
+    window, button = screen.root.children
+    (rule,) = [r for r in window.rules if r.target_property == "file"]
+    assert rule.pvs[0].name == "loc://${SIG}_View?type=int&init=0"
+    assert button.type == "pv-button"
+    assert button.props["pv"] == "loc://${SIG}_View?type=int&init=0"
+    assert "SIG" in {m.name for m in screen.macros}
+
+
+def test_macro_named_variable_is_shared_with_the_embedded_screen(parent_and_child_on_a_macro_variable, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.widgets import PyDMDrawingRectangle, PyDMLineEdit
+
+    screen, (child,) = open_screen(qtbot, parent_and_child_on_a_macro_variable, {"SIG": "BPMS:LI24:801:X"})
+    edit = child.findChild(PyDMLineEdit)
+    (rect,) = [r for r in screen.findChildren(PyDMDrawingRectangle) if not child.isAncestorOf(r)]
+    assert variable(edit) == "BPMS:LI24:801:X_View"
+
+    qtbot.waitUntil(lambda: connection("BPMS:LI24:801:X_View") is not None, timeout=3000)
+    qtbot.waitUntil(lambda: edit.value == 0, timeout=3000)
+    assert rect.isHidden()
+    connection("BPMS:LI24:801:X_View").put_value(1)
+    qtbot.waitUntil(lambda: edit.value == 1 and not rect.isHidden(), timeout=3000)
