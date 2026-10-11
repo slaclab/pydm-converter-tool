@@ -44,6 +44,7 @@ import math
 import os
 import copy
 import json
+from urllib.parse import unquote
 
 EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame,  QComboBox
     # Graphics widgets
@@ -1218,12 +1219,13 @@ def _loc_names(obj: EDMObject) -> set:
 
 def _loc_enum_strings(url: str) -> List[str]:
     """States of an enum loc:// URL. parser_helpers.loc_conversion writes them
-    last, as a Python list literal (the form PyDM's local plugin reads)."""
+    last, as a Python list literal (the form PyDM's local plugin reads), with
+    "%", "&" and "+" percent-encoded."""
     _, found, literal = url.partition("&enum_string=")
     if not found:
         return []
     try:
-        return [str(state) for state in ast.literal_eval(literal)]
+        return [str(state) for state in ast.literal_eval(unquote(literal))]
     except (ValueError, SyntaxError):
         return []
 
