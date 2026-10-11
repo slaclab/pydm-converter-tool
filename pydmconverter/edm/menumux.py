@@ -56,6 +56,7 @@ from pydm.widgets import PyDMEmbeddedDisplay
 from pydm.widgets.channel import PyDMChannel
 from pydm.widgets.rules import unregister_widget_rules
 from functools import partial
+from urllib.parse import unquote
 import json
 import re
 
@@ -114,7 +115,7 @@ class MenuMuxScreen(Display):
                 # the variable agree before the channel's first value arrives.
                 # (A PV's menu shows initialState until then.)
                 init = re.search("[?&]init=([^&]*)", address)
-                start = self.menu_index(init.group(1) if init else "0", combo.count(), start)
+                start = self.menu_index(unquote(init.group(1)) if init else "0", combo.count(), start)
             combo.setCurrentIndex(start)
             combo.currentIndexChanged.connect(
                 lambda selected_index, combo_index=i: self.menu_selected(combo_index, selected_index)

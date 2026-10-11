@@ -19,6 +19,14 @@ def test_parse_preserves_plus_operator():
     assert expr == "A+1"
 
 
+def test_values_are_percent_decoded():
+    """The parser escapes "%" and "&" in calc values, as PyDM's calc plugin reads
+    them: an EPICS bitwise AND or modulo, and a nested loc:// address."""
+    expr, bindings = parse_calc_url("calc://f?A=loc://x?type=float%26init=0.15&B=ca://Y&expr=(A%264)==4+B%2532")
+    assert expr == "(A&4)==4+B%32"
+    assert bindings == {"A": "loc://x?type=float&init=0.15", "B": "Y"}
+
+
 def test_macros_in_bindings_normalized():
     _, bindings = parse_calc_url("calc://f?A=channel://$(PREFIX):V&expr=A*2")
     assert bindings == {"A": "${PREFIX}:V"}

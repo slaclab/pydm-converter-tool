@@ -3,6 +3,7 @@ import re
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union, Any
+from urllib.parse import unquote
 from pydmconverter.custom_types import RGBA
 
 logger = logging.getLogger(__name__)
@@ -416,11 +417,11 @@ def translate_calc_pv_to_pydm(
 
     query_pairs = []
     for letter, arg_val in var_map.items():
-        if not any(arg_val.startswith(proto) for proto in ("ca://", "pva://", "channel://")):
+        if "://" not in arg_val:
             arg_val = f"{default_prefix}{arg_val}"
-        query_pairs.append(f"{letter}={arg_val}")
+        query_pairs.append(f"{letter}={qs_escape(arg_val, plus=False)}")
 
-    query_pairs.append(f"expr={expression}")
+    query_pairs.append(f"expr={qs_escape(expression, plus=False)}")
 
     query_str = "&".join(query_pairs)
     pydm_calc_address = f"calc://{identifier}?{query_str}"
@@ -513,6 +514,33 @@ def _convert_calc_ternary(exp: str) -> str:
         f"({_convert_calc_ternary(true_part)} if {_convert_calc_ternary(cond)} "
         f"else {_convert_calc_ternary(false_part)})"
     )
+
+
+def qs_escape(text: str, plus: bool = True) -> str:
+    """
+    Escape a value for the query of a loc:// or calc:// address.
+
+    PyDM reads these queries with parse_qs (local_plugin.py and calc_plugin.py
+    UrlToPython), which ends a value at "&", decodes "%XX" and turns "+" into a
+    space. Only those characters are escaped: anything else, macros like
+    ${EDM_W} included, stays as written, since PyDM substitutes macros in the
+    address before it parses it. The calc plugin protects "+" itself
+    (parse_qs(query.replace("+", "%2B"))), so its values pass plus=False.
+
+    Parameters
+    ----------
+    text : str
+        The value as the variable or calc should see it.
+    plus : bool, optional
+        Whether to escape "+" too (the local plugin's queries).
+
+    Returns
+    -------
+    str
+        The value with "%", "&" and, with plus, "+" percent-encoded.
+    """
+    text = text.replace("%", "%25").replace("&", "%26")
+    return text.replace("+", "%2B") if plus else text
 
 
 def loc_conversion(edm_string: str) -> str:
@@ -664,9 +692,10 @@ def loc_conversion(edm_string: str) -> str:
         value_arr: List[str] = value.split(",")
         init: str = value_arr[0]
         enum_string: List[str] = value_arr[1:]
-        pydm_string = f"loc://{name}?type={pydm_type}&init={init}&enum_string={enum_string}"
+        query = f"init={qs_escape(init)}&enum_string={qs_escape(str(enum_string))}"
+        pydm_string = f"loc://{name}?type={pydm_type}&{query}"
     else:
-        pydm_string = f"loc://{name}?type={pydm_type}&init={value}"
+        pydm_string = f"loc://{name}?type={pydm_type}&init={qs_escape(value)}"
 
     return pydm_string
 
@@ -676,7 +705,7 @@ def loc_str_init(url: str) -> str:
     if not url.startswith("loc://") or not re.search(r"[?&]type=str(&|$)", url):
         return ""
     match = re.search(r"[?&]init=([^&]*)", url)
-    return match.group(1) if match else ""
+    return unquote(match.group(1)) if match else ""
 
 
 def replace_calc_and_loc_in_edm_content(
