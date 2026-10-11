@@ -1,6 +1,8 @@
 import dataclasses
 import re
-from typing import Optional, List, Tuple
+import xml.etree.ElementTree as ET
+from typing import Any, Optional, List, Tuple
+from urllib.parse import parse_qs
 from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser, block_items, block_list
 from pydmconverter.widgets import (
     PyDMDrawingRectangle,
@@ -37,6 +39,7 @@ from pydmconverter.edm.parser_helpers import (
     loc_str_init,
 )
 from pydmconverter.edm.menumux import generate_menumux_file, initial_state, menu_item_count, menu_items, menu_macros
+from pydmconverter.edm.window_macros import WINDOW_MARKER
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -246,6 +249,50 @@ TAB_PAGES = "_tab_pages"
 STARTS_VISIBLE = "_starts_visible"
 
 LOC_NAME_PATTERN = re.compile(r"loc://([^?&\s\"',]+)")
+
+# A channel address as PyDM splits it (pydm/utilities/remove_protocol.py
+# parsed_address): protocol, netloc, path, query. The local plugin names a
+# variable by its netloc.
+PYDM_ADDRESS_PATTERN = re.compile(r"(.*?)://([^/?]*)(?:(/[^?]*)?(?:\?(.*))?)?")
+
+# The loc:// types PyDM converts init with (local_plugin.py convert_value),
+# arrays aside.
+LOC_TYPES = {"int": int, "float": float, "str": str, "bool": bool}
+
+# The value of a loc:// variable that is only known once PyDM loads the screen.
+UNKNOWN_VALUE = object()
+
+# PyDM widgets the converter writes that have no channel Qt property, and no
+# rules property: a .ui sets these on them as dynamic properties, which PyDM
+# never connects. Qt's own classes have neither.
+NO_CHANNEL_CLASSES = {"PyDMEmbeddedDisplay", "PyDMTabWidget", "PyDMWaveformPlot"}
+NO_RULES_CLASSES = {"PyDMTabWidget"}
+
+# The nodes of the rule expressions MultiRule writes: ch[i], numbers, None,
+# float(), comparisons, and, or, not. _rule_nodes_allowed restricts some further.
+RULE_EXPRESSION_NODES = (
+    ast.Expression,
+    ast.BoolOp,
+    ast.And,
+    ast.Or,
+    ast.UnaryOp,
+    ast.Not,
+    ast.USub,
+    ast.Compare,
+    ast.Eq,
+    ast.NotEq,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.Is,
+    ast.IsNot,
+    ast.Call,
+    ast.Subscript,
+    ast.Name,
+    ast.Load,
+    ast.Constant,
+)
 
 COLOR_ATTRIBUTES: set = {
     "fgColor",
@@ -1248,6 +1295,152 @@ def loc_declarations(root: EDMGroup) -> dict:
 def _loc_init(url: str) -> int:
     match = re.search(r"[?&]init=(-?\d+)", url)
     return int(match.group(1)) if match else 0
+
+
+def _loc_variable(address) -> Tuple[Optional[str], Any]:
+    """(name, initial value) of a loc:// address, read as PyDM's local plugin
+    reads it (local_plugin.py UrlToPython, convert_value).
+
+    The name is None for any other address. Only an address with both type and
+    init configures the variable: the value is None for one without, and
+    UNKNOWN_VALUE when it is only known once PyDM loads the screen (a macro, an
+    array or other type, an init its type rejects).
+    """
+    match = PYDM_ADDRESS_PATTERN.match(address) if isinstance(address, str) else None
+    if match is None or match.group(1) != "loc" or not match.group(2):
+        return None, None
+    name = match.group(2)
+    config = parse_qs(match.group(4) or "")
+    if "type" not in config or "init" not in config:
+        return name, None
+    value_type, init = config["type"][0], config["init"][0]
+    convert = LOC_TYPES.get(value_type)
+    has_macro = "$" in value_type + init or WINDOW_MARKER in value_type + init
+    if convert is None or has_macro or config.keys() & {"dtype", "copy", "order", "subok", "ndmin"}:
+        return name, UNKNOWN_VALUE
+    try:
+        # bool("0") is True: PyDM converts the text, not the number.
+        return name, convert(init)
+    except ValueError:
+        return name, UNKNOWN_VALUE
+
+
+def _rule_nodes_allowed(tree: ast.AST) -> bool:
+    """Whether a parsed rule expression is built only from what MultiRule writes."""
+    for node in ast.walk(tree):
+        if not isinstance(node, RULE_EXPRESSION_NODES):
+            return False
+        if isinstance(node, ast.Name) and node.id not in ("ch", "float"):
+            return False
+        if isinstance(node, ast.Call):
+            if not (isinstance(node.func, ast.Name) and node.func.id == "float"):
+                return False
+            if len(node.args) != 1 or node.keywords:
+                return False
+        if isinstance(node, ast.Subscript):
+            if not (isinstance(node.value, ast.Name) and node.value.id == "ch"):
+                return False
+            if not (isinstance(node.slice, ast.Constant) and type(node.slice.value) is int):
+                return False
+        if isinstance(node, ast.Constant) and not (node.value is None or type(node.value) in (int, float, bool)):
+            return False
+        # A negative visMin or visMax.
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            if not (isinstance(node.operand, ast.Constant) and type(node.operand.value) in (int, float)):
+                return False
+    return True
+
+
+def _rule_start(rule: dict, declared: dict) -> Optional[str]:
+    """A Visible or Enable rule's value, "true" or "false", while the loc://
+    variables it reads hold their initial values. None when that is not known
+    here: another rule, a channel that is not a declared loc:// variable, or an
+    expression MultiRule does not write.
+
+    The expression is evaluated as PyDM's rules engine does (rules.py
+    calculate_expression), but only once every node of it passes
+    _rule_nodes_allowed, and with no builtins but float.
+    """
+    if rule.get("property") not in ("Visible", "Enable") or not rule.get("channels"):
+        return None
+    values = []
+    for channel in rule["channels"]:
+        name, _ = _loc_variable(channel.get("channel"))
+        value = declared.get(name, UNKNOWN_VALUE)
+        # PyDM substitutes an enum string for the value unless use_enum is false.
+        if value is UNKNOWN_VALUE or channel.get("use_enum", True):
+            return None
+        values.append(value)
+    try:
+        tree = ast.parse(rule.get("expression", ""), mode="eval")
+        if not _rule_nodes_allowed(tree):
+            return None
+        result = eval(compile(tree, "<rule>", "eval"), {"__builtins__": {}}, {"ch": values, "float": float})
+    except Exception:
+        # PyDM logs the error and keeps the initial value.
+        return None
+    if not isinstance(result, bool):
+        return None
+    return "true" if result else "false"
+
+
+def start_rules_at_loc_inits(ui_element: ET.Element) -> None:
+    """Start every Visible or Enable rule that reads only loc:// variables at
+    the value it has for their initial values.
+
+    PyDM's local plugin sends a joining listener the variable's value and only
+    then tells it the channel is connected (local_plugin.py add_listener), and
+    the rules engine skips a value from a channel that is not connected yet
+    (rules.py callback_value) and does not evaluate on connecting
+    (callback_conn). So the last rule to join a variable is not evaluated until
+    the value changes, and shows its initial_value, false, rather than what the
+    variable selects. Rules join in document order, and after the widgets'
+    channels when PyDM's Back and Forward bring a display back.
+
+    PyDM configures a variable from the first address that joins it with both
+    type and init, so the first declaration in the document wins here too, also
+    over a later one with a different init. A widget joins with its channel and
+    its rules' channels, which PyDM's .ui loader sets in document order (a
+    widget's properties before its children); the channel of a widget without
+    a channel property, such as an embedded display, never joins. Waveform
+    curves are not read.
+    """
+    declared = {}
+    rule_properties = []
+    for widget in ui_element.iter("widget"):
+        widget_class = widget.get("class", "")
+        if not widget_class.startswith("PyDM"):
+            continue
+        for prop in widget.findall("property"):
+            string = prop.find("string")
+            if string is None or not string.text:
+                continue
+            if prop.get("name") == "channel" and widget_class not in NO_CHANNEL_CLASSES:
+                addresses = [string.text]
+            elif prop.get("name") == "rules" and widget_class not in NO_RULES_CLASSES:
+                try:
+                    rules = json.loads(string.text)
+                except ValueError:
+                    continue
+                rule_properties.append((string, rules))
+                addresses = [channel.get("channel") for rule in rules for channel in rule.get("channels", [])]
+            else:
+                continue
+            for address in addresses:
+                name, value = _loc_variable(address)
+                if name is not None and value is not None:
+                    declared.setdefault(name, value)
+
+    for string, rules in rule_properties:
+        changed = False
+        for rule in rules:
+            start = _rule_start(rule, declared)
+            if start is not None and start != rule.get("initial_value"):
+                rule["initial_value"] = start
+                changed = True
+        if changed:
+            # As Rules.to_xml writes it: each rule as _json_object, joined by ", ".
+            string.text = json.dumps(rules, ensure_ascii=False)
 
 
 def _as_list(value) -> list:
