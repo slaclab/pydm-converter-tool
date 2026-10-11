@@ -1,9 +1,11 @@
+import hashlib
 import os
 import re
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union, Any
 from pydmconverter.custom_types import RGBA
+from pydmconverter.edm.window_macros import WINDOW_MARKER
 
 logger = logging.getLogger(__name__)
 
@@ -387,8 +389,7 @@ def translate_calc_pv_to_pydm(
 
     if is_inline_expr:
         expression = name_or_expr
-        # identifier = "inline_expr"
-        identifier = f"calc_{hash(edm_pv)}"
+        identifier = "calc"
     else:
         calc_name = name_or_expr
         if calc_name == "sum2":  # convert sum2 to sum (sum2 is not in calc_dict)
@@ -423,9 +424,32 @@ def translate_calc_pv_to_pydm(
     query_pairs.append(f"expr={expression}")
 
     query_str = "&".join(query_pairs)
-    pydm_calc_address = f"calc://{identifier}?{query_str}"
+    pydm_calc_address = f"calc://{_calc_identifier(identifier, query_str)}?{query_str}"
 
     return pydm_calc_address
+
+
+def _calc_identifier(base: str, query: str) -> str:
+    """
+    The netloc of a calc URL: ``<base>_<12 hex digits of sha1(query)>``, then
+    ``_${NAME}`` for each macro the query uses and ``__UNIQUE__`` when it uses
+    ``$(!W)``.
+
+    PyDM keys calc connections by the netloc alone, for the whole application
+    (calc_plugin.py ``CalculationPlugin.get_connection_id``), while EDM keys a
+    CALC PV by its whole text. So calcs with the same name but different inputs
+    would share one result, and so would two embedded copies of a screen whose
+    macros differ. The digest tells different queries apart and is the same on
+    every conversion. Macros are substituted only when PyDM loads the screen,
+    so the netloc names them too and expands with them; ``__UNIQUE__`` becomes
+    ``${EDM_W}`` like every other ``$(!W)`` (window_macros.py).
+    """
+    identifier = f"{base}_{hashlib.sha1(query.encode()).hexdigest()[:12]}"
+    for macro in dict.fromkeys(re.findall(r"\$\{[^}]*\}", query)):
+        identifier += f"_{macro}"
+    if WINDOW_MARKER in query:
+        identifier += WINDOW_MARKER
+    return identifier
 
 
 def reformat_calc_expression(exp):

@@ -1,4 +1,5 @@
 import os
+import re
 import pytest
 import tempfile
 import textwrap
@@ -245,22 +246,22 @@ def test_translate_calc_pv_to_pydm():
 
     edm_pv_named = "CALC\\sum(pv1)"
     pydm_pv = translate_calc_pv_to_pydm(edm_pv_named, calc_dict, default_prefix="pva://")
-    assert "calc://sum?" in pydm_pv
+    assert re.match(r"calc://sum_[0-9a-f]{12}\?", pydm_pv)
     assert "A=pva://pv1" in pydm_pv
     assert "B=pva://pv1.SEVR" in pydm_pv
     assert "expr=A+B" in pydm_pv
 
     edm_pv_named_no_rewrite = "CALC\\sub(myPV1, myPV2)"
     pydm_pv_no_rewrite = translate_calc_pv_to_pydm(edm_pv_named_no_rewrite, calc_dict, default_prefix="pva://")
-    assert "calc://sub?" in pydm_pv_no_rewrite
+    assert re.match(r"calc://sub_[0-9a-f]{12}\?", pydm_pv_no_rewrite)
     assert "A=pva://myPV1" in pydm_pv_no_rewrite
     assert "B=pva://myPV2" in pydm_pv_no_rewrite
     assert "expr=A-B" in pydm_pv_no_rewrite
 
     edm_pv_inline = "CALC\\{A*B}(x, y)"
     pydm_inline = translate_calc_pv_to_pydm(edm_pv_inline, default_prefix="pva://")
-    # Inline expressions now use hash-based identifiers for uniqueness
-    assert "calc://calc_" in pydm_inline
+    # Inline expressions are named "calc", plus the digest of their query
+    assert re.match(r"calc://calc_[0-9a-f]{12}\?", pydm_inline)
     assert "A=pva://x" in pydm_inline
     assert "B=pva://y" in pydm_inline
     assert "expr=A*B" in pydm_inline
@@ -481,7 +482,7 @@ def test_replace_calc_uses_explicit_calc_list(tmp_path):
         edm_content, filepath=str(fake_file), calc_list_file=str(calc_list_file)
     )
 
-    assert "calc://sum?A=ca://pv1&B=ca://pv2&expr=A+B" in new_content
+    assert re.search(r"calc://sum_[0-9a-f]{12}\?A=ca://pv1&B=ca://pv2&expr=A\+B", new_content)
     assert "CALC\\\\sum(pv1, pv2)" in encountered_calcs
 
 
