@@ -329,11 +329,40 @@ def test_loc_conversion():
     result_no_colon = loc_conversion(edm_string_missing_colon)
     assert "loc://noColon" in result_no_colon, f"Expected loc://noColon in result, got '{result_no_colon}'"
 
-    # An unparseable initialization falls back to a string PV with an empty
-    # value, matching EDM behavior
+    # EDM reads the attributes up to the next "=", takes "i" as the type, skips
+    # "n" and reads "tPv" with atol: an int holding 0
     edm_string_unparseable = "LOC\\myLocal=intPv=ShowChannels"
     result_unparseable = loc_conversion(edm_string_unparseable)
-    assert result_unparseable == "loc://myLocal?type=str&init="
+    assert result_unparseable == "loc://myLocal?type=int&init=0"
+
+
+@pytest.mark.parametrize(
+    "edm_string, expected",
+    [
+        # The EDM manual's examples (userManual/edm.sgml), whose names are not keywords
+        ("LOC\\intPv=i:55", "loc://intPv?type=int&init=55"),
+        ("LOC\\stringPv=s:this is a string", "loc://stringPv?type=str&init=this is a string"),
+        ("LOC\\enumPv=e:1,zero,one,two", "loc://enumPv?type=int&init=1&enum_string=['zero', 'one', 'two']"),
+        # bcs/BCS_Zone_3_Input's two forms: the first declares an int holding 0,
+        # the second names the variable without declaring it
+        ("LOC\\__UNIQUE__intPv=intPv=ShowChannels", "loc://__UNIQUE__intPv?type=int&init=0"),
+        ("LOC\\__UNIQUE__intPv=ShowChannels", "loc://__UNIQUE__intPv"),
+        # First character the type, the next one skipped, numbers read like atol/atof
+        ("LOC\\x=i_12abc", "loc://x?type=int&init=12"),
+        ("LOC\\x=d_2.5V", "loc://x?type=float&init=2.5"),
+        ("LOC\\x=dZ", "loc://x?type=float&init=0"),
+        ("LOC\\x=e_1,off,on", "loc://x?type=int&init=1&enum_string=['off', 'on']"),
+        ("LOC\\x=e_on,off,on", "loc://x?type=int&init=0&enum_string=['off', 'on']"),
+        ("LOC\\x=s_text", "loc://x?type=str&init=text"),
+        # A bare number stays an int; repeated separators are skipped
+        ("LOC\\x=0", "loc://x?type=int&init=0"),
+        ("LOC\\x==0", "loc://x?type=int&init=0"),
+        ("LOC\\x=~i:3", "loc://x?type=int&init=3"),
+        ("LOC\\x==", "loc://x"),
+    ],
+)
+def test_loc_conversion_reads_attributes_like_edm(edm_string, expected):
+    assert loc_conversion(edm_string) == expected
 
 
 def test_loc_conversion_untyped_value_with_colon():
