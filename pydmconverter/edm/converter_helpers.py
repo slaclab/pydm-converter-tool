@@ -1356,7 +1356,13 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
     A menu mux whose controlPv names the variable writes it too: the generated
     menu mux screen writes the chosen item's index there. The menu becomes part
     of that separate .py rather than a widget in the .ui, so it is never a tab
-    bar, and its window always becomes the switched displays.
+    bar, and its window always becomes the switched displays. So does a window
+    whose message buttons write display indices to the variable
+    (_index_writers).
+
+    A window whose filePv is a real PV switches on the PV's value the same way:
+    it becomes the switched displays, all hidden until the PV's first value, as
+    EDM opens nothing until then (pip.cc).
 
     skip_widgets is the site's set of EDM classes to drop; pairing rewrites both
     widgets together, so a site dropping either one leaves the tree untouched.
@@ -1365,8 +1371,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         logger.info("Skipping menu embedded window pairing (site rule)")
         return
 
-    # A site dropping menu muxes leaves their variables unwritten.
+    # A site dropping menu muxes or message buttons leaves their variables unwritten.
     writes_menus = not skip_widgets or "menumuxclass" not in skip_widgets
+    writes_buttons = not skip_widgets or "activemessagebuttonclass" not in skip_widgets
 
     objects = list(_walk_objects(root))
     # objects holds a reference to every walked object, so keying by id is safe.
@@ -1379,7 +1386,11 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         # (EDM index, file): the variable's value v shows displayFileName[v], and a
         # file may skip indices or start at 1.
         files = block_items(pip.properties.get("displayFileName"))
-        if not match or not files:
+        if not files:
+            continue
+        if not match:
+            if _names_a_pv(file_pv):
+                _stack_pip_displays(pip, parent, file_pv.strip(), files, None)
             continue
         name = match.group(1)
         users = [(obj, group) for obj, group, _ in objects if obj is not pip and name in loc_names[id(obj)]]
@@ -1389,7 +1400,8 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             if isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         ]
         menus = [obj for obj, _ in users if _menu_writes(obj, name)] if writes_menus else []
-        if not choices and not menus:
+        writers = _index_writers(users, name, [index for index, _ in files]) if writes_buttons else []
+        if not choices and not menus and not writers:
             continue
 
         # The richest reference defines the variable: most enum strings, then any config at all.
@@ -1412,20 +1424,73 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             else:
                 definition = f"loc://{name}?type=int&init={start}"
 
+        if _loc_init(definition) == -1:
+            # A window whose variable starts at -1 writes 0 on its first value
+            # rather than popping its menu up (pip.cc), so it opens on entry 0.
+            definition = definition.replace("init=-1", "init=0")
+
         if choices and len(users) == 1 and len(files) > 1 and _fits_tab_bar(pip, parent, hidden, *choices[0]):
             _absorb_pip_into_tabs(pip, parent, choices[0][0], files, definition, color_list_dict)
         else:
-            _stack_pip_displays(pip, parent, name, files, definition, users)
+            start = _starting_index(_loc_init(definition), [index for index, _ in files])
+            _stack_pip_displays(pip, parent, f"loc://{name}", files, start)
+            _hand_over_definition(name, definition, users, writers)
+
+
+def _controls(obj, name: str) -> bool:
+    """The object's controlPv is the variable itself."""
+    control = obj.properties.get("controlPv")
+    match = LOC_NAME_PATTERN.match(control.strip()) if isinstance(control, str) else None
+    return match is not None and match.group(1) == name
 
 
 def _menu_writes(obj, name: str) -> bool:
     """A menu mux whose controlPv is the variable: the generated menu mux screen
     writes the chosen item's index to it (menumux.control_pv)."""
-    if not isinstance(obj, EDMObject) or obj.name.lower() != "menumuxclass":
+    return isinstance(obj, EDMObject) and obj.name.lower() == "menumuxclass" and _controls(obj, name)
+
+
+def _as_int(value) -> Optional[int]:
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _index_writers(users, name: str, indices: List[int]) -> List[EDMObject]:
+    """The message buttons that write one of the window's display indices to the
+    variable: their controlPv is the variable and their pressValue an index, or
+    a macro (known only when the screen runs).
+
+    None when a message button on the variable asks for a password, which the
+    converted button doesn't: showing the displays it guards would skip it. None
+    either when one writes -1, EDM's popup idiom: on -1 the window pops its menu
+    up (pip.cc), and the stacked displays would all hide.
+    """
+    buttons = [
+        obj
+        for obj, _ in users
+        if isinstance(obj, EDMObject) and obj.name.lower() == "activemessagebuttonclass" and _controls(obj, name)
+    ]
+    if any("password" in obj.properties for obj in buttons):
+        return []
+    if any(_as_int(obj.properties.get(key)) == -1 for obj in buttons for key in ("pressValue", "releaseValue")):
+        return []
+    return [
+        obj
+        for obj in buttons
+        if _as_int(obj.properties.get("pressValue")) in indices or "${" in str(obj.properties.get("pressValue", ""))
+    ]
+
+
+def _names_a_pv(file_pv) -> bool:
+    """A filePv naming a PV: not blank, not a comment (EDM's blankOrComment), and
+    not a LOC\\ or CALC\\ variable the parser left untranslated, such as
+    LOC\\$(SIG)_View=0 (a PV name never holds "=")."""
+    if not isinstance(file_pv, str) or not file_pv.strip():
         return False
-    control = obj.properties.get("controlPv")
-    match = LOC_NAME_PATTERN.match(control.strip()) if isinstance(control, str) else None
-    return match is not None and match.group(1) == name
+    pv = file_pv.strip()
+    return not pv.startswith("#") and not re.match(r"(?i)(loc|calc)(\\|\$|://)", pv) and "=" not in pv
 
 
 def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dict) -> None:
@@ -1480,15 +1545,15 @@ def _absorb_pip_into_tabs(pip, parent, choice, files, definition, color_list_dic
     logger.info(f"Converted choice button and menu embedded window on {definition} to tabs")
 
 
-def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
+def _stack_pip_displays(pip, parent, channel, files, start) -> None:
     """Replace the window with one embedded display per file, each visible only
-    while the variable equals its EDM index (a group visPv in [i, i + 1)).
+    while the channel equals its EDM index (a group visPv in [i, i + 1)).
 
     files are the window's (EDM index, file) pairs; symbols[i] belongs to
-    displayFileName[i].
+    displayFileName[i]. start is the EDM index of the display that shows when
+    the screen opens, or None for none until the channel's first value.
     """
     symbols = dict(block_items(pip.properties.get("symbols")))
-    start = _starting_index(_loc_init(definition), [index for index, _ in files])
     shared = {
         key: value
         for key, value in pip.properties.items()
@@ -1508,7 +1573,7 @@ def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
                 height=pip.height,
                 objects=[display],
                 properties={
-                    "visPv": f"loc://{name}",
+                    "visPv": channel,
                     "visMin": str(index),
                     "visMax": str(index + 1),
                     # The starting display's rule begins true so it shows as soon as
@@ -1520,22 +1585,25 @@ def _stack_pip_displays(pip, parent, name, files, definition, users) -> None:
         )
     position = parent.objects.index(pip)
     parent.objects[position : position + 1] = stack
+    logger.info(f"Stacked {len(files)} embedded displays switched by {channel}")
 
-    # PyDM's local plugin takes a variable's type, initial value and enum
-    # strings from the first channel that connects and ignores later ones. The
-    # window carried the full definition; hand it to the choice buttons (which
-    # need the enum strings for their states), to the menu muxes (whose screen
-    # declares the variable from controlPv when the .ui does not) and to every
-    # other configured use.
+
+def _hand_over_definition(name, definition, users, writers) -> None:
+    """PyDM's local plugin takes a variable's type, initial value and enum
+    strings from the first channel that connects and ignores later ones. The
+    window carried the full definition; hand it to the choice buttons (which
+    need the enum strings for their states), to the menu muxes (whose screen
+    declares the variable from controlPv when the .ui does not), to the index
+    writing message buttons, and to every other configured use."""
     for obj, _ in users:
         is_choice = isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
-        is_writer = is_choice or _menu_writes(obj, name)
+        is_writer = is_choice or _menu_writes(obj, name) or any(obj is writer for writer in writers)
         for key, value in obj.properties.items():
             if not isinstance(value, str):
                 continue
             if value.startswith(f"loc://{name}?") or (is_writer and value == f"loc://{name}"):
                 obj.properties[key] = definition
-    logger.info(f"Stacked {len(files)} embedded displays switched by {definition}")
+    logger.info(f"loc://{name} is defined by {definition}")
 
 
 def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
