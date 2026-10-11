@@ -355,6 +355,29 @@ def test_generated_screen_compiles_and_names_its_ui_without_a_path(menumux_scree
     assert "pydmconverter" not in code
 
 
+def test_failed_conversion_leaves_no_menu_screen(tmp_path, monkeypatch):
+    """The menu screen embeds the .ui, so it is written only after the .ui: a
+    conversion that fails once the widgets are built leaves neither file."""
+    import pydmconverter.edm.converter as converter
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("late failure")
+
+    source = tmp_path / "screen.edl"
+    source.write_text(SCREEN)
+    monkeypatch.chdir(tmp_path)
+    with monkeypatch.context() as patch:
+        patch.setattr(converter, "resolve_window_macros", fail)
+        with pytest.raises(RuntimeError, match="late failure"):
+            convert(str(source), str(tmp_path / "screen.ui"))
+    assert not (tmp_path / "screen.py").exists()
+    assert not (tmp_path / "screen.ui").exists()
+
+    convert(str(source), str(tmp_path / "screen.ui"))
+    assert (tmp_path / "screen.ui").is_file()
+    assert "self.embedded.filename = 'screen.ui'" in (tmp_path / "screen.py").read_text()
+
+
 def test_menu_without_tags_is_labelled_by_its_values(tmp_path, monkeypatch):
     source = tmp_path / "untagged.edl"
     source.write_text(SCREEN.replace('symbolTag {\n  0 "Off"\n  1 "On"\n}\n', ""))

@@ -2,6 +2,7 @@ from pathlib import Path
 from pydmconverter.edm.parser import EDMFileParser, EDMObject, literal_macro_clashes
 import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
+from pydmconverter.edm.menumux import generate_menumux_file
 from pydmconverter.edm.window_macros import resolve_window_macros
 import logging
 
@@ -103,6 +104,13 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
 
     tree = ET.ElementTree(ui_element)
     tree.write(output_path, encoding="utf-8", xml_declaration=True)
+
+    # The menu screen embeds the .ui, so it is written last: a conversion that fails
+    # leaves no menu screen pointing at a missing or stale .ui.
+    if edm_parser.menu_mux_buttons:
+        generate_menumux_file(
+            edm_parser.menu_mux_buttons, edm_parser.output_file_path, edm_parser.menu_loc_declarations
+        )
 
 
 QT_BASE_CLASSES = {"QPushButton", "QTabWidget", "QFrame", "QLabel", "QWidget", "QLineEdit", "QComboBox", "QTableWidget"}
