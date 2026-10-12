@@ -138,6 +138,8 @@ def test_screen_ref_rewrites_to_screen_json():
     assert screen_ref("motor-simple.ui") == "motor-simple.screen.json"
     assert screen_ref("sub/dir/foo.edl") == "sub/dir/foo.screen.json"
     assert screen_ref("Collimator/Widget.ui") == "Collimator/Widget.screen.json"
+    # a PyDM Python display (a converted menu-mux screen around menu.ui)
+    assert screen_ref("sub/menu.py") == "sub/menu.screen.json"
     # filenames stringlist -> first, rewritten
     assert screen_ref(["a.ui", "b.ui"]) == "a.screen.json"
     # extensionless PyDM related-display target -> append

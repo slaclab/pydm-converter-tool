@@ -429,7 +429,8 @@ def test_centralwidget_overflow_still_grows_screen(tmp_path):
     assert (ir.root.geometry.width, ir.root.geometry.height) == (458, 348)
 
 
-def _related_display_ui(tmp_path, macros_xml):
+def _related_display_ui(tmp_path, macros_xml, filenames=("a.ui", "b.ui")):
+    entries = "".join(f"<string>{name}</string>" for name in filenames)
     ui = tmp_path / "rd.ui"
     ui.write_text(
         f"""<?xml version="1.0"?>
@@ -438,7 +439,7 @@ def _related_display_ui(tmp_path, macros_xml):
  <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
  <widget class="PyDMRelatedDisplayButton" name="rd">
   <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>20</height></rect></property>
-  <property name="filenames" stdset="0"><stringlist><string>a.ui</string><string>b.ui</string></stringlist></property>
+  <property name="filenames" stdset="0"><stringlist>{entries}</stringlist></property>
   {macros_xml}
  </widget>
 </widget></ui>"""
@@ -502,6 +503,91 @@ def test_related_display_pretty_printed_macros_string(tmp_path):
         tmp_path, '<property name="macros" stdset="0"><string>{\n "P": "A"\n}</string></property>'
     )
     assert button.props["macros"] == {"P": "A"}
+
+
+def test_related_display_multiple_targets_warn(tmp_path):
+    """The IR button opens only the first of several files; say so, as EDM -> IR does."""
+    button = _related_display_ui(tmp_path, "")
+    assert button.props["file"] == "a.screen.json"
+    assert "PyDM related display offers 2 displays; only the first is carried" in button.warnings
+
+
+def test_related_display_single_target_does_not_warn(tmp_path):
+    """Blank entries are not targets."""
+    button = _related_display_ui(tmp_path, "", filenames=("a.ui", ""))
+    assert not any("only the first is carried" in warning for warning in button.warnings)
+
+
+def _embedded_display_ui(tmp_path, macros_xml, filename="child.ui"):
+    ui = tmp_path / "emb.ui"
+    ui.write_text(
+        f"""<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="Form">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMEmbeddedDisplay" name="emb">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>50</height></rect></property>
+  <property name="filename" stdset="0"><string>{filename}</string></property>
+  {macros_xml}
+ </widget>
+</widget></ui>"""
+    )
+    return ui_file_to_ir(ui)
+
+
+def test_embedded_display_json_macros_become_object(tmp_path):
+    """PyDM's macros is a JSON string; the IR (and the runtime, which forwards only an
+    object) wants an object of strings."""
+    screen = _embedded_display_ui(
+        tmp_path,
+        '<property name="macros" stdset="0"><string>{"P": "${DEV}", "W": "${EDM_W_ROOT}1"}</string></property>',
+    )
+    (emb,) = screen.root.children
+    assert emb.props == {"file": "child.screen.json", "macros": {"P": "${DEV}", "W": "${EDM_W_ROOT}1"}}
+    assert not emb.warnings
+    assert [m.name for m in screen.macros] == ["DEV", "EDM_W_ROOT"]
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_embedded_display_epics_macros_become_object(tmp_path):
+    """PyDM also reads the EPICS NAME=value,... form."""
+    screen = _embedded_display_ui(tmp_path, '<property name="macros" stdset="0"><string>P=A, R=B</string></property>')
+    assert screen.root.children[0].props["macros"] == {"P": "A", "R": "B"}
+
+
+def test_embedded_display_macro_values_become_strings(tmp_path):
+    screen = _embedded_display_ui(
+        tmp_path, '<property name="macros" stdset="0"><string>{"N": 1, "X": 2.5}</string></property>'
+    )
+    assert screen.root.children[0].props["macros"] == {"N": "1", "X": "2.5"}
+
+
+def test_embedded_display_empty_macros_dropped(tmp_path):
+    for text in ("", "{}", "  "):
+        screen = _embedded_display_ui(
+            tmp_path, f'<property name="macros" stdset="0"><string>{text}</string></property>'
+        )
+        (emb,) = screen.root.children
+        assert "macros" not in emb.props
+        assert not emb.warnings
+
+
+def test_embedded_display_unparseable_macros_dropped_with_warning(tmp_path):
+    for text in ("not macros", '["P", "A"]', '"P=A"'):
+        screen = _embedded_display_ui(
+            tmp_path, f'<property name="macros" stdset="0"><string>{text}</string></property>'
+        )
+        (emb,) = screen.root.children
+        assert "macros" not in emb.props
+        assert "emb has unparseable macros; dropped" in emb.warnings
+
+
+def test_python_display_link_maps_to_its_screen(tmp_path):
+    """A link to a menu-mux screen names X.py (the menus around X.ui); its IR is X.screen.json."""
+    screen = _embedded_display_ui(tmp_path, "", filename="sub/menu.py")
+    assert screen.root.children[0].props["file"] == "sub/menu.screen.json"
+    button = _related_display_ui(tmp_path, "", filenames=("menu.py",))
+    assert button.props["file"] == "menu.screen.json"
 
 
 def test_shell_command_only_names_default_to_themselves(tmp_path):

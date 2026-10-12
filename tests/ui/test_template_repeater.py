@@ -99,6 +99,14 @@ def test_repeater_vertical_and_spacing(tmp_path):
     assert [c.geometry.x for c in embeds] == [10, 10, 10]
 
 
+def test_repeater_record_values_become_strings(tmp_path):
+    """PyDM substitutes a record's values as text (str()); the IR's macros are an
+    object of strings, which the runtime resolves as strings."""
+    ui = _write_screen(tmp_path, template="Widget.ui", data="data.json", records=[{"N": 1, "ON": True, "X": 2.5}])
+    (embed,) = [c for c in ui_file_to_ir(ui).root.children if c.type == "embedded-display"]
+    assert embed.props["macros"] == {"N": "1", "ON": "True", "X": "2.5"}
+
+
 def test_missing_datasource_falls_back_to_unknown(tmp_path):
     ui = _write_screen(tmp_path, template="Widget.ui", data="nope.json", records=None)
     children = ui_file_to_ir(ui).root.children

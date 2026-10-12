@@ -147,7 +147,8 @@ def screen_ref(value: Any) -> Any:
     ref = value.strip().replace("\\", "/")
     if ref.endswith(".screen.json"):
         return ref
-    for ext in (".ui", ".edl"):
+    # X.py is a PyDM Python display, e.g. a converted menu-mux screen around X.ui.
+    for ext in (".ui", ".edl", ".py"):
         if ref.endswith(ext):
             return ref[: -len(ext)] + ".screen.json"
     # Extensionless targets get the extension appended; macro refs can't be
