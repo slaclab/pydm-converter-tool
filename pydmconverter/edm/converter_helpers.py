@@ -856,6 +856,10 @@ def traverse_group(
                         False,
                     )
                 ]
+                if "symbolOtherRanges" in obj.properties:
+                    # State 0 also shows while no other state's range holds the value.
+                    other_ranges = tuple(tuple(other) for other in obj.properties["symbolOtherRanges"])
+                    symbol_vispv = [symbol_vispv[0] + (False, other_ranges)]
             else:
                 symbol_vispv = []
 

@@ -34,6 +34,14 @@ def _json_object(value: dict) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def _range_limits(vis_min, vis_max) -> Tuple[float, float]:
+    """A range rule's (min, max) as numbers; a limit that is not a number empties the range."""
+    try:
+        return float(vis_min), float(vis_max)
+    except (ValueError, TypeError):
+        return 0.0, 0.0
+
+
 class XMLConvertible:
     """
     Abstract base class for objects that can be converted to XML.
@@ -1035,7 +1043,9 @@ class MultiRule(XMLConvertible):
                     replacement_init = replacement_init[: replacement_init.find("}") + 1]
                 channel_list.append({"channel": channel, "trigger": True, "use_enum": False})
                 expression_list.append(
-                    self.get_expression(i, rule.show_on_true, rule.visMin, rule.visMax, replacement_init)
+                    self.get_expression(
+                        i, rule.show_on_true, rule.visMin, rule.visMax, replacement_init, rule.or_outside
+                    )
                 )
         if self.hide_on_disconnect_channel is not None:
             new_index = len(self.rule_list)
@@ -1069,7 +1079,9 @@ class MultiRule(XMLConvertible):
             }
         )
 
-    def get_expression(self, index, show_on_true, visMin, visMax, init):  # TODO: Can clean up with fstrings
+    def get_expression(
+        self, index, show_on_true, visMin, visMax, init, or_outside=None
+    ):  # TODO: Can clean up with fstrings
         """
         Build a conditional expression string for a specific channel.
 
@@ -1085,6 +1097,9 @@ class MultiRule(XMLConvertible):
             Maximum threshold value for range-based conditions.
         init : str, optional
             Replacement initialization value for the channel, if applicable.
+        or_outside : tuple of (min, max), optional
+            Ranges a range rule shown on true also holds outside of: it is true
+            while the value is in its range or in none of these.
 
         Returns
         -------
@@ -1095,14 +1110,14 @@ class MultiRule(XMLConvertible):
         ch = f"ch[{index}]"
 
         if visMin is not None and visMax is not None:
-            try:
-                vis_min = float(visMin)
-                vis_max = float(visMax)
-            except (ValueError, TypeError):
-                vis_min = 0.0
-                vis_max = 0.0
+            vis_min, vis_max = _range_limits(visMin, visMax)
             show_on_true_string = f"float({ch}) >= {vis_min} and float({ch}) < {vis_max}"
             show_on_false_string = f"float({ch}) < {vis_min} or float({ch}) >= {vis_max}"
+            if or_outside is not None:
+                # An empty range holds no value, so being outside it says nothing.
+                limits = (_range_limits(*other) for other in or_outside)
+                outside = [f"(float({ch}) < {low} or float({ch}) >= {high})" for low, high in limits if low < high]
+                show_on_true_string = f"({show_on_true_string}) or ({' and '.join(outside) or 'True'})"
         else:
             show_on_true_string = f"{ch}==1"
             show_on_false_string = f"{ch}!=1"  # TODO: maybe need to change from specifically 1 (== 0 or != 0)?
@@ -1746,7 +1761,10 @@ class Controllable(Tangible):
         if self.visPvList is not None:
             for elem in self.visPvList:
                 group_initial = False
-                if len(elem) == 5:
+                group_or_outside = None
+                if len(elem) == 6:
+                    group_channel, group_min, group_max, group_invert, group_initial, group_or_outside = elem
+                elif len(elem) == 5:
                     group_channel, group_min, group_max, group_invert, group_initial = elem
                 elif len(elem) == 4:
                     group_channel, group_min, group_max, group_invert = elem
@@ -1761,6 +1779,7 @@ class Controllable(Tangible):
                         not group_invert,
                         group_min,
                         group_max,
+                        group_or_outside,
                     )
                 )
 

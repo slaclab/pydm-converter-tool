@@ -753,6 +753,21 @@ class TestMultiRuleExpression:
         result = rule.get_expression(0, True, None, None, None)
         assert result == "ch[0]==1"
 
+    def test_or_outside_also_holds_outside_every_range(self):
+        """An EDM symbol's state 0 also shows while no other state's range holds the value;
+        an empty range holds no value, so it adds nothing."""
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, "0", "1", None, (("1", "2"), ("3", "3"), ("4", "6")))
+        assert result == (
+            "(float(ch[0]) >= 0.0 and float(ch[0]) < 1.0) or "
+            "((float(ch[0]) < 1.0 or float(ch[0]) >= 2.0) and (float(ch[0]) < 4.0 or float(ch[0]) >= 6.0))"
+        )
+
+    def test_or_outside_only_empty_ranges_always_holds(self):
+        rule = MultiRule("Visible", [])
+        result = rule.get_expression(0, True, "1", "1", None, (("2", "2"),))
+        assert result == "(float(ch[0]) >= 1.0 and float(ch[0]) < 1.0) or (True)"
+
     def test_keyword_constructed_rule_arguments(self):
         """RuleArguments field names must match how MultiRule reads them.
 

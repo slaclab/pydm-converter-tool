@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,9 @@ class RuleArguments:
     show_on_true: bool
     visMin: Optional[Union[int, float, str]]
     visMax: Optional[Union[int, float, str]]
+    # (min, max) ranges: a range rule shown on true also holds while the value
+    # is in none of them (an EDM symbol's state 0, which shows when no state matches).
+    or_outside: Optional[Tuple[Tuple[Union[int, float, str], Union[int, float, str]], ...]] = None
 
     def __iter__(self):
         yield self.rule_type
@@ -35,6 +38,15 @@ class RuleArguments:
         yield self.show_on_true
         yield self.visMin
         yield self.visMax
+        yield self.or_outside
 
     def to_tuple(self):
-        return (self.rule_type, self.channel, self.initial_value, self.show_on_true, self.visMin, self.visMax)
+        return (
+            self.rule_type,
+            self.channel,
+            self.initial_value,
+            self.show_on_true,
+            self.visMin,
+            self.visMax,
+            self.or_outside,
+        )
