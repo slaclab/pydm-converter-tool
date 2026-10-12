@@ -2636,7 +2636,21 @@ EDMObjects and EDMGroups</p>
 <span class="normal">1046</span>
 <span class="normal">1047</span>
 <span class="normal">1048</span>
-<span class="normal">1049</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
+<span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span>
+<span class="normal">1053</span>
+<span class="normal">1054</span>
+<span class="normal">1055</span>
+<span class="normal">1056</span>
+<span class="normal">1057</span>
+<span class="normal">1058</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDMFileParser class parses .edl files and creates a tree of</span>
 <span class="sd">    EDMObjects and EDMGroups&quot;&quot;&quot;</span>
 
@@ -3207,11 +3221,26 @@ EDMObjects and EDMGroups</p>
         <span class="n">num_states</span> <span class="o">=</span> <span class="n">edm_int</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numStates&quot;</span><span class="p">))</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">block_items</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">)))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">symbol_channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbol_channel</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
             <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">),</span> <span class="n">num_states</span><span class="p">)</span>
         <span class="p">):</span>  <span class="c1"># TODO: Figure out what happens when numStates &lt; temp_group.objects</span>
+            <span class="c1"># The state&#39;s range and the channel it is read from travel together:</span>
+            <span class="c1"># the .ui converter builds the state&#39;s visibility rule from all three.</span>
             <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolMin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolMax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolChannel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">symbol_channel</span>
+        <span class="k">if</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span> <span class="ow">and</span> <span class="n">num_states</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># EDM shows state 0 when no state&#39;s range holds the value (symbol.cc</span>
+            <span class="c1"># executeDeferred: index = 0 unless a range matches), so state 0 also</span>
+            <span class="c1"># shows outside every other state&#39;s range, states with no group included.</span>
+            <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolOtherRanges&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">num_states</span><span class="p">]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_symbol_channel</span><span class="p">(</span><span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The PV a symbol picks its state from: its first control PV, by EDM index.&quot;&quot;&quot;</span>
+        <span class="n">control_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">pv</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">pv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">block_items</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">)))]</span>
+        <span class="k">return</span> <span class="n">control_pvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">control_pvs</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3225,8 +3254,7 @@ EDMObjects and EDMGroups</p>
 <span class="sd">        properties: dict[str, bool | str | list[str]]</span>
 <span class="sd">            Object properties from the activesymbolclass</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">control_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">pv</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">pv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">block_items</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">)))]</span>
-        <span class="n">symbol_channel</span> <span class="o">=</span> <span class="n">control_pvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">control_pvs</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">symbol_channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbol_channel</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">sub_group</span> <span class="ow">in</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">sub_object</span> <span class="ow">in</span> <span class="n">sub_group</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
@@ -3703,25 +3731,24 @@ properties: dict[str, bool | str | list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">840</span>
-<span class="normal">841</span>
-<span class="normal">842</span>
-<span class="normal">843</span>
-<span class="normal">844</span>
-<span class="normal">845</span>
-<span class="normal">846</span>
-<span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span>
-<span class="normal">851</span>
-<span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">855</span>
 <span class="normal">856</span>
 <span class="normal">857</span>
-<span class="normal">858</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">858</span>
+<span class="normal">859</span>
+<span class="normal">860</span>
+<span class="normal">861</span>
+<span class="normal">862</span>
+<span class="normal">863</span>
+<span class="normal">864</span>
+<span class="normal">865</span>
+<span class="normal">866</span>
+<span class="normal">867</span>
+<span class="normal">868</span>
+<span class="normal">869</span>
+<span class="normal">870</span>
+<span class="normal">871</span>
+<span class="normal">872</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Add properties to each sub object within a symbol group. (isSymbol and symbolChannel)</span>
 <span class="sd">    These are used to determine if the symbol should hide when symbolChannel is disconnected.</span>
@@ -3733,8 +3760,7 @@ properties: dict[str, bool | str | list[str]]
 <span class="sd">    properties: dict[str, bool | str | list[str]]</span>
 <span class="sd">        Object properties from the activesymbolclass</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">control_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">pv</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">pv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">block_items</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">)))]</span>
-    <span class="n">symbol_channel</span> <span class="o">=</span> <span class="n">control_pvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">control_pvs</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">symbol_channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbol_channel</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">sub_group</span> <span class="ow">in</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">sub_object</span> <span class="ow">in</span> <span class="n">sub_group</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
@@ -3762,21 +3788,7 @@ properties: dict[str, bool | str | list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">860</span>
-<span class="normal">861</span>
-<span class="normal">862</span>
-<span class="normal">863</span>
-<span class="normal">864</span>
-<span class="normal">865</span>
-<span class="normal">866</span>
-<span class="normal">867</span>
-<span class="normal">868</span>
-<span class="normal">869</span>
-<span class="normal">870</span>
-<span class="normal">871</span>
-<span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">874</span>
 <span class="normal">875</span>
 <span class="normal">876</span>
 <span class="normal">877</span>
@@ -3784,7 +3796,21 @@ properties: dict[str, bool | str | list[str]]
 <span class="normal">879</span>
 <span class="normal">880</span>
 <span class="normal">881</span>
-<span class="normal">882</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span>
+<span class="normal">890</span>
+<span class="normal">891</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span>
+<span class="normal">895</span>
+<span class="normal">896</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the matching endGroup for a beginGroup, handling nested groups&quot;&quot;&quot;</span>
     <span class="n">pos</span> <span class="o">=</span> <span class="n">begin_group_pos</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;beginGroup&quot;</span><span class="p">)</span>
     <span class="n">group_depth</span> <span class="o">=</span> <span class="mi">1</span>
@@ -3930,21 +3956,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">927</span>
-<span class="normal">928</span>
-<span class="normal">929</span>
-<span class="normal">930</span>
-<span class="normal">931</span>
-<span class="normal">932</span>
-<span class="normal">933</span>
-<span class="normal">934</span>
-<span class="normal">935</span>
-<span class="normal">936</span>
-<span class="normal">937</span>
-<span class="normal">938</span>
-<span class="normal">939</span>
-<span class="normal">940</span>
-<span class="normal">941</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">941</span>
 <span class="normal">942</span>
 <span class="normal">943</span>
 <span class="normal">944</span>
@@ -3980,7 +3992,21 @@ literal_brace : str, optional
 <span class="normal">974</span>
 <span class="normal">975</span>
 <span class="normal">976</span>
-<span class="normal">977</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">977</span>
+<span class="normal">978</span>
+<span class="normal">979</span>
+<span class="normal">980</span>
+<span class="normal">981</span>
+<span class="normal">982</span>
+<span class="normal">983</span>
+<span class="normal">984</span>
+<span class="normal">985</span>
+<span class="normal">986</span>
+<span class="normal">987</span>
+<span class="normal">988</span>
+<span class="normal">989</span>
+<span class="normal">990</span>
+<span class="normal">991</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_object_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the object properties from the given text. This can be any</span>
 <span class="sd">    property that an EDM Object may use (e.g. fillColor, value, editable).</span>
@@ -4063,21 +4089,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">884</span>
-<span class="normal">885</span>
-<span class="normal">886</span>
-<span class="normal">887</span>
-<span class="normal">888</span>
-<span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
-<span class="normal">892</span>
-<span class="normal">893</span>
-<span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span>
-<span class="normal">897</span>
-<span class="normal">898</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">898</span>
 <span class="normal">899</span>
 <span class="normal">900</span>
 <span class="normal">901</span>
@@ -4096,7 +4108,21 @@ literal_brace : str, optional
 <span class="normal">914</span>
 <span class="normal">915</span>
 <span class="normal">916</span>
-<span class="normal">917</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">917</span>
+<span class="normal">918</span>
+<span class="normal">919</span>
+<span class="normal">920</span>
+<span class="normal">921</span>
+<span class="normal">922</span>
+<span class="normal">923</span>
+<span class="normal">924</span>
+<span class="normal">925</span>
+<span class="normal">926</span>
+<span class="normal">927</span>
+<span class="normal">928</span>
+<span class="normal">929</span>
+<span class="normal">930</span>
+<span class="normal">931</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_size_properties</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the size properties from the given text (x, y, width, height)</span>
 
@@ -4594,7 +4620,16 @@ ranges: list[list[str]]
 <span class="normal">835</span>
 <span class="normal">836</span>
 <span class="normal">837</span>
-<span class="normal">838</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4614,11 +4649,20 @@ ranges: list[list[str]]
     <span class="n">num_states</span> <span class="o">=</span> <span class="n">edm_int</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numStates&quot;</span><span class="p">))</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">block_items</span><span class="p">(</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;controlPvs&quot;</span><span class="p">)))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This symbol object has more than one pV: </span><span class="si">{</span><span class="n">properties</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">symbol_channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_symbol_channel</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
         <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">),</span> <span class="n">num_states</span><span class="p">)</span>
     <span class="p">):</span>  <span class="c1"># TODO: Figure out what happens when numStates &lt; temp_group.objects</span>
+        <span class="c1"># The state&#39;s range and the channel it is read from travel together:</span>
+        <span class="c1"># the .ui converter builds the state&#39;s visibility rule from all three.</span>
         <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolMin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolMax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolChannel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">symbol_channel</span>
+    <span class="k">if</span> <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span> <span class="ow">and</span> <span class="n">num_states</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># EDM shows state 0 when no state&#39;s range holds the value (symbol.cc</span>
+        <span class="c1"># executeDeferred: index = 0 unless a range matches), so state 0 also</span>
+        <span class="c1"># shows outside every other state&#39;s range, states with no group included.</span>
+        <span class="n">temp_group</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;symbolOtherRanges&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">num_states</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4733,21 +4777,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1002</span>
-<span class="normal">1003</span>
-<span class="normal">1004</span>
-<span class="normal">1005</span>
-<span class="normal">1006</span>
-<span class="normal">1007</span>
-<span class="normal">1008</span>
-<span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span>
-<span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
-<span class="normal">1015</span>
-<span class="normal">1016</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1016</span>
 <span class="normal">1017</span>
 <span class="normal">1018</span>
 <span class="normal">1019</span>
@@ -4780,7 +4810,21 @@ literal_brace : str, optional
 <span class="normal">1046</span>
 <span class="normal">1047</span>
 <span class="normal">1048</span>
-<span class="normal">1049</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span>
+<span class="normal">1053</span>
+<span class="normal">1054</span>
+<span class="normal">1055</span>
+<span class="normal">1056</span>
+<span class="normal">1057</span>
+<span class="normal">1058</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">remove_prepended_index</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Clean the raw lines of a multi-line (brace-block) property value.</span>
 
