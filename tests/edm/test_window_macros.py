@@ -346,3 +346,129 @@ def test_menu_mux_labels_name_the_window_macro(out, labels):
         if isinstance(node, ast.Assign) and getattr(node.targets[0], "attr", None) == "menus"
     ]
     assert menus[0]["items"] == ["${EDM_W}a", "${EDM_W}b"]
+
+
+# ── Screen IR ────────────────────────────────────────────────────────────────
+
+
+def convert_ir(directory, name, *objects):
+    from pydmconverter.edm.ir_adapter import edm_file_to_ir
+
+    source = directory / f"{name}.edl"
+    source.write_text(HEADER + "".join(objects))
+    return edm_file_to_ir(source)
+
+
+def ir_displays(screen):
+    """The embedded-display nodes, in document order."""
+    found = []
+
+    def visit(node):
+        if node.type == "embedded-display":
+            found.append(node)
+        for child in node.children:
+            visit(child)
+
+    visit(screen.root)
+    return found
+
+
+def test_ir_names_every_window_variable_by_the_window_macro(tmp_path):
+    from pydmconverter.ir.emit import to_wire_dict
+    from pydmconverter.ir.schema import validate_screen_json
+
+    screen = convert_ir(
+        tmp_path,
+        "screen",
+        text_control(r"LOC\\$(!W)tab=i:0"),
+        message_button(r"LOC\\$(!W)tab", "1", vis_pv=r"LOC\\$(!W)tab"),
+        group(r"LOC\\$(!W)tab", rectangle(r"LOC\\$(!W)tab")),
+        embedded(["a.edl", "b.edl"], 100, source="menu", file_pv=r"LOC\\$(!W)tab=i:0"),
+        # A calc reading a window variable: the variable becomes a formula binding.
+        rectangle(r"CALC\\{A}(LOC\\$(!W)flag=i:0)", y=300),
+    )
+    wire = to_wire_dict(screen)
+    text = json.dumps(wire)
+    assert "__UNIQUE__" not in text
+    assert loc_names(text) == {"${EDM_W}tab", "${EDM_W}flag"}
+    label, button, box, pip, calc = wire["root"]["children"]
+    assert label["props"]["pv"] == "loc://${EDM_W}tab?type=int&init=0"
+    assert [pv["name"] for pv in box["rules"][0]["pvs"]] == ["loc://${EDM_W}tab"]
+    assert [pv["name"] for pv in pip["rules"][0]["pvs"]] == ["loc://${EDM_W}tab?type=int&init=0"]
+    (formula,) = wire["formulas"]
+    (binding,) = formula["bindings"].values()
+    assert binding.startswith("loc://${EDM_W}flag?")
+    assert calc["rules"][0]["pvs"][0]["name"] == f"fox://{formula['name']}"
+    # Declared like any other macro: opened on its own, a screen names its
+    # variables without a prefix.
+    assert {(m["name"], m["default"]) for m in wire["macros"]} >= {("EDM_W", ""), ("EDM_W_ROOT", "")}
+    assert validate_screen_json(wire) == []
+
+
+def test_ir_gives_each_embedded_display_its_own_window_id(out):
+    objects = (
+        embedded(["child.edl"], 10, source="menu", file_pv=r"LOC\\sel=i:0", symbols=["DEV=A"]),
+        embedded(["child.edl"], 120),
+        embedded([""], 230),  # opens nothing: no id
+        embedded(["c.edl", "d.edl"], 230, source="menu", file_pv=r"LOC\\$(!W)v=e:0,C,D"),
+        choice(r"LOC\\$(!W)v"),
+    )
+    displays = ir_displays(convert_ir(out, "parent", *objects))
+    assert "macros" not in displays[2].props
+    ids = [display.props["macros"]["EDM_W"] for display in displays[:2] + displays[3:]]
+    assert len(set(ids)) == 3
+    assert all(re.fullmatch(r"\$\{EDM_W_ROOT\}[0-9a-f]{8}_\d", i) for i in ids)
+    # Each passes its id on as EDM_W_ROOT too, for the windows its screen embeds.
+    assert displays[0].props["macros"] == {"DEV": "A", "EDM_W": ids[0], "EDM_W_ROOT": ids[0]}
+
+    # The same ids on every conversion; another screen's embedding sites differ.
+    def ids_of(name):
+        return [d.props["macros"]["EDM_W"] for d in ir_displays(convert_ir(out, name, *objects)) if "macros" in d.props]
+
+    assert ids_of("parent") == ids
+    assert not set(ids_of("other")) & set(ids)
+    # The .ui target numbers its displays the same way: its first two (the menu
+    # window it keeps whole, and the file window) carry the same ids.
+    assert [m["EDM_W"] for m in window_ids(convert_screen(out, "parent", *objects))[:2]] == ids[:2]
+
+
+def canopy_substitute(text, macros):
+    """Canopy's substituteMacros (canopy-screen-runtime macros.ts): one pass,
+    leaving a macro it has no value for as written."""
+    return re.sub(r"\$\{(\w+)\}|\$\((\w+)\)", lambda m: macros.get(m[1] or m[2], m[0]), text)
+
+
+def test_ir_screens_embedded_in_two_embedded_copies_keep_their_own_variables(out):
+    from pydmconverter.ir.emit import to_wire_dict
+
+    # The parent embeds the child twice, and each child copy embeds the grandchild
+    # (as cryo_cryoplant_io_diags does with cryo_cryoplant_io_diags_db_embed).
+    # In EDM each of the five is a window with its own $(!W).
+    screens = {
+        "grand": [text_control(r"LOC\\$(!W)x=i:0")],
+        "child": [text_control(r"LOC\\$(!W)x=i:0"), embedded(["grand.edl"], 150)],
+        "parent": [text_control(r"LOC\\$(!W)x=i:0"), embedded(["child.edl"], 50), embedded(["child.edl"], 200)],
+    }
+    wires = {name: to_wire_dict(convert_ir(out, name, *objects)) for name, objects in screens.items()}
+    variables, passed = [], []
+
+    def render(name, provided):
+        """Name the variables of a screen as Canopy renders it (ScreenRenderer):
+        its declared defaults under the macros it is given, and an embedded
+        display giving its screen these macros plus its own, substituted once
+        against them (macros.ts resolveScreenMacros, childMacros)."""
+        macros = {m["name"]: m["default"] for m in wires[name]["macros"]} | provided
+        for node in wires[name]["root"]["children"]:
+            props = node["props"]
+            if node["type"] == "embedded-display":
+                given = {key: canopy_substitute(value, macros) for key, value in props["macros"].items()}
+                passed.append(given)
+                render(props["file"].removesuffix(".screen.json"), macros | given)
+            else:
+                variables.append(canopy_substitute(props["pv"], macros).split("?")[0])
+
+    render("parent", {})
+    # The parent, each child copy and the grandchild in each copy name their own.
+    assert len(variables) == 5 and len(set(variables)) == 5
+    # Every id resolves in one pass, so it does not grow or keep a macro.
+    assert all("$" not in given["EDM_W"] + given["EDM_W_ROOT"] for given in passed)
