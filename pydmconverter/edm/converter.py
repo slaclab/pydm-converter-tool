@@ -2,7 +2,9 @@ from pathlib import Path
 from pydmconverter.edm.parser import EDMFileParser, EDMObject, literal_macro_clashes
 import xml.etree.ElementTree as ET
 from pydmconverter.edm.converter_helpers import convert_edm_to_pydm_widgets
+from pydmconverter.edm.menu_links import link_menu_screens
 from pydmconverter.edm.window_macros import resolve_window_macros
+from pydmconverter.sites import get_skip_widgets
 import logging
 
 from pydmconverter.widgets_helpers import PageHeader
@@ -53,10 +55,28 @@ CUSTOM_WIDGET_DEFINITIONS = {
 }
 
 
-def convert(input_path, output_path, scrollable=False, site=None, calc_list_file=None, color_list_file=None):
+def convert(
+    input_path,
+    output_path,
+    scrollable=False,
+    site=None,
+    calc_list_file=None,
+    color_list_file=None,
+    search_paths=None,
+):
+    """Convert an EDM .edl file to a PyDM .ui (plus a .py when it has menu muxes).
+
+    ``search_paths`` are extra directories searched, after the file's own directory
+    and before ``EDMDATAFILES``, for symbol files, calc.list and the displays its links
+    open.
+    """
     try:
         edm_parser = EDMFileParser(
-            input_path, output_path, calc_list_file=calc_list_file, color_list_file=color_list_file
+            input_path,
+            output_path,
+            calc_list_file=calc_list_file,
+            color_list_file=color_list_file,
+            search_paths=search_paths,
         )
         logger.info(f"Successfully parsed EDM file: {input_path}")
     except FileNotFoundError:
@@ -99,6 +119,7 @@ def convert(input_path, output_path, scrollable=False, site=None, calc_list_file
     ET.SubElement(ui_element, "connections")
 
     resolve_window_macros(ui_element, Path(output_path).stem)
+    link_menu_screens(ui_element, edm_parser.edm_search_dirs(), get_skip_widgets(site))
     ET.indent(ui_element, space="  ", level=0)
 
     tree = ET.ElementTree(ui_element)
