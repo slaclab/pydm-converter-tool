@@ -28,7 +28,7 @@ def test_message_button_falls_back_to_off_label():
 def test_state_button_notes_differing_labels_and_keeps_resting():
     qt_props = {}
     warnings = []
-    obj = _obj("activeButtonClass", {"onLabel": "Running", "offLabel": "Stopped"})
+    obj = _obj("activeButtonClass", {"onLabel": "Running", "offLabel": "Stopped", "labelType": "literal"})
     _fixup_state_button(obj, qt_props, warnings)
     assert qt_props["text"] == "Stopped"
     assert any("resting" in w for w in warnings)
