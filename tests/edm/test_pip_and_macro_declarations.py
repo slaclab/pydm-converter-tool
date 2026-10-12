@@ -97,6 +97,161 @@ def test_menu_pip_without_file_pv_opens_nothing(tmp_path):
     assert not pip.rules
 
 
+# ── menu windows whose entries pass different macros ────────────────────────
+
+
+def _menu_screen(tmp_path, file_pv, entries, extra_lines="", other_objects=""):
+    """A screen with one menu pip on ``file_pv``; ``entries`` are
+    ``(index, file, symbols or None)``."""
+    names = "".join(f'  {index} "{name}"\n' for index, name, _ in entries)
+    symbols = "".join(f'  {index} "{symbol}"\n' for index, _, symbol in entries if symbol is not None)
+    edl = tmp_path / "menu.edl"
+    edl.write_text(
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 400\nh 300\n"
+        "endScreenProperties\n\n" + other_objects + "object activePipClass\nbeginObjectProperties\nmajor 4\n"
+        'minor 1\nrelease 0\nx 20\ny 20\nw 233\nh 137\ndisplaySource "menu"\n'
+        f'filePv "{file_pv}"\nnumDsps {len(entries)}\ndisplayFileName {{\n{names}}}\nsymbols {{\n{symbols}}}\n'
+        + extra_lines
+        + "noScroll\nendObjectProperties\n",
+        encoding="utf-8",
+    )
+    return edm_file_to_ir(edl)
+
+
+def _shape(rule):
+    return [(c.expression, c.value) for c in rule.conditions], rule.default
+
+
+DURATIONS = [(0, "plot.edl", "DUR=LAST_N"), (1, "plot.edl", "DUR=1MIN"), (2, "other.edl", "DUR=WEEK")]
+
+
+def test_menu_window_with_uniform_macros_keeps_its_file_rule(tmp_path):
+    entries = [(0, "a.edl", "P=X"), (1, "b.edl", "P=X")]
+    screen = _menu_screen(tmp_path, "LOC\\\\sel=i:1", entries)
+    (pip,) = screen.root.children
+    assert pip.props["file"] == "a.screen.json"
+    assert pip.props["macros"] == {"P": "X"}
+    assert [r.target_property for r in pip.rules] == ["file"]
+
+
+def test_menu_window_on_a_local_variable_splits_per_entry(tmp_path):
+    """Archive/laser-orig/pid_plot_terms.edl: one file, nine entries, each with
+    its own DUR. The merged macros opened every entry with the last DUR."""
+    from pydmconverter.ir.emit import to_wire_dict
+    from pydmconverter.ir.schema import validate_screen_json
+
+    screen = _menu_screen(tmp_path, "LOC\\\\sel=i:1", DURATIONS)
+    displays = screen.root.children
+    assert [d.type for d in displays] == ["embedded-display"] * 3
+    assert [d.props["file"] for d in displays] == ["plot.screen.json", "plot.screen.json", "other.screen.json"]
+    assert [d.props["macros"] for d in displays] == [{"DUR": "LAST_N"}, {"DUR": "1MIN"}, {"DUR": "WEEK"}]
+    assert [d.geometry for d in displays] == [displays[0].geometry] * 3
+    rules = [d.rules for d in displays]
+    assert all(len(r) == 1 and r[0].target_property == "visible" for r in rules)
+    assert all([pv.name for pv in r[0].pvs] == ["loc://sel?type=int&init=1"] for r in rules)
+    # The first entry also shows for a value no entry has (pip.cc opens entry 0).
+    assert _shape(rules[0][0]) == ([("{0} == 1", False), ("{0} == 2", False)], True)
+    assert _shape(rules[1][0]) == ([("{0} == 1", True)], False)
+    assert _shape(rules[2][0]) == ([("{0} == 2", True)], False)
+    assert not any(d.warnings for d in displays)
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_split_menu_window_keeps_edm_indices(tmp_path):
+    screen = _menu_screen(tmp_path, "LOC\\\\sel=i:3", [(1, "a.edl", "P=A"), (3, "b.edl", "P=B")])
+    first, second = screen.root.children
+    assert _shape(first.rules[0]) == ([("{0} == 3", False)], True)
+    assert _shape(second.rules[0]) == ([("{0} == 3", True)], False)
+    assert (first.props["macros"], second.props["macros"]) == ({"P": "A"}, {"P": "B"})
+
+
+def test_split_menu_entry_without_symbols_gets_no_macros(tmp_path):
+    # laser/profile1.edl: entry 0 (Rectangle) has no symbols line; it got entry 1's ID.
+    screen = _menu_screen(tmp_path, "LOC\\\\sel=i:0", [(0, "blank.edl", None), (1, "cam.edl", "ID=$(ID)")])
+    blank, cam = screen.root.children
+    assert "macros" not in blank.props
+    assert cam.props["macros"] == {"ID": "${ID}"}
+
+
+def test_split_menu_window_declares_a_variable_nothing_gives_a_value(tmp_path):
+    # laser/profile1.edl: LOC\Display is only ever named; unconnected, every display would show.
+    screen = _menu_screen(tmp_path, "LOC\\\\Display", DURATIONS)
+    for display in screen.root.children:
+        assert [pv.name for pv in display.rules[0].pvs] == ["loc://Display?type=int&init=0"]
+
+
+def test_split_menu_window_reads_a_variable_another_widget_declares(tmp_path):
+    label = (
+        "object activeXTextDspClass:noedit\nbeginObjectProperties\nmajor 4\nminor 7\nrelease 0\n"
+        'x 10\ny 200\nw 100\nh 20\ncontrolPv "LOC\\\\sel=i:2"\nendObjectProperties\n\n'
+    )
+    screen = _menu_screen(tmp_path, "LOC\\\\sel", DURATIONS, other_objects=label)
+    for display in screen.root.children[1:]:
+        assert [pv.name for pv in display.rules[0].pvs] == ["loc://sel?type=int&init=2"]
+
+
+def _loc_label(pv, y=200):
+    """A text update on ``pv`` (EDL object text)."""
+    return (
+        "object activeXTextDspClass:noedit\nbeginObjectProperties\nmajor 4\nminor 7\nrelease 0\n"
+        f'x 10\ny {y}\nw 100\nh 20\ncontrolPv "{pv}"\nendObjectProperties\n\n'
+    )
+
+
+def _group(objects):
+    """An activeGroupClass holding ``objects`` (EDL object text)."""
+    return (
+        "object activeGroupClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 0\n"
+        "x 0\ny 0\nw 400\nh 300\nbeginGroup\n\n" + objects + "endGroup\n\nendObjectProperties\n\n"
+    )
+
+
+def _split_rule_pvs(displays):
+    assert [d.type for d in displays] == ["embedded-display"] * len(DURATIONS)
+    return {pv.name for d in displays for pv in d.rules[0].pvs}
+
+
+def test_split_menu_window_reads_a_declaration_inside_a_group(tmp_path):
+    screen = _menu_screen(tmp_path, "LOC\\\\sel", DURATIONS, other_objects=_group(_loc_label("LOC\\\\sel=i:2")))
+    _group_node, *displays = screen.root.children
+    assert _split_rule_pvs(displays) == {"loc://sel?type=int&init=2"}
+
+
+def test_split_menu_window_in_a_group_reads_a_declaration_outside_it(tmp_path):
+    # A nested group's objects read the whole file's declarations, not just their group's.
+    _menu_screen(tmp_path, "LOC\\\\sel", DURATIONS)
+    edl = tmp_path / "menu.edl"
+    head, pip = edl.read_text(encoding="utf-8").split("object activePipClass", 1)
+    edl.write_text(head + _loc_label("LOC\\\\sel=i:2") + _group("object activePipClass" + pip), encoding="utf-8")
+    _label, group = edm_file_to_ir(edl).root.children
+    assert _split_rule_pvs(group.children) == {"loc://sel?type=int&init=2"}
+
+
+def test_split_menu_window_reads_the_first_declaration(tmp_path):
+    # EDM (loc_pv_factory.cc) keeps the first value a reference gives the variable.
+    labels = _loc_label("LOC\\\\sel=i:2") + _loc_label("LOC\\\\sel=i:1", y=230)
+    screen = _menu_screen(tmp_path, "LOC\\\\sel", DURATIONS, other_objects=labels)
+    assert _split_rule_pvs(screen.root.children[2:]) == {"loc://sel?type=int&init=2"}
+
+
+def test_split_menu_window_keeps_its_visibility_rule(tmp_path):
+    screen = _menu_screen(tmp_path, "LOC\\\\sel=i:1", DURATIONS, extra_lines='visPv "SHOW"\nvisMin "1"\nvisMax "2"\n')
+    for display in screen.root.children:
+        assert (display.rules[0].name, display.rules[0].pvs[0].name) == ("Visibility", "SHOW")
+        assert display.rules[1].target_property == "visible"
+
+
+def test_menu_window_on_a_channel_opens_with_the_first_entrys_macros(tmp_path):
+    # xray/gdet_main.edl: a real PV drives the window, so it stays one display
+    # with the file rule; the macros cannot follow it.
+    screen = _menu_screen(tmp_path, "GDET:FEE1:1:CONFIG", DURATIONS)
+    (pip,) = screen.root.children
+    assert pip.props["file"] == "plot.screen.json"
+    assert pip.props["macros"] == {"DUR": "LAST_N"}
+    assert [r.target_property for r in pip.rules] == ["file"]
+    assert any("different symbols" in w and "first entry" in w for w in pip.warnings)
+
+
 def test_macros_declared_from_rule_pvs_and_action_commands():
     screen = _convert("pip_menu.edl")
     declared = {m.name for m in screen.macros}
