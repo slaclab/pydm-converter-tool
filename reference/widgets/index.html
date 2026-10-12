@@ -8280,8 +8280,9 @@ titles : Optional[str]
     The titles for the display.
 macros : Optional[Union[str, List[str]]]
     Macros used for the display: one JSON string per filename, by position.
-open_in_new_window : Optional[bool]
-    If True, opens the display in a new window.
+open_in_new_window : bool
+    If True (the default, as in EDM), opens the display in a new window; if
+    False, a PyDM main window opens it in place of the current display.
 follow_symlinks : Optional[bool]
     If True, follows symbolic links.
 count : ClassVar[int]
@@ -8382,8 +8383,9 @@ count : ClassVar[int]
 <span class="sd">        The titles for the display.</span>
 <span class="sd">    macros : Optional[Union[str, List[str]]]</span>
 <span class="sd">        Macros used for the display: one JSON string per filename, by position.</span>
-<span class="sd">    open_in_new_window : Optional[bool]</span>
-<span class="sd">        If True, opens the display in a new window.</span>
+<span class="sd">    open_in_new_window : bool</span>
+<span class="sd">        If True (the default, as in EDM), opens the display in a new window; if</span>
+<span class="sd">        False, a PyDM main window opens it in place of the current display.</span>
 <span class="sd">    follow_symlinks : Optional[bool]</span>
 <span class="sd">        If True, follows symbolic links.</span>
 <span class="sd">    count : ClassVar[int]</span>
@@ -8394,7 +8396,7 @@ count : ClassVar[int]
     <span class="n">filenames</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">titles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">macros</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">open_in_new_window</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">open_in_new_window</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">follow_symlinks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">displayFileName</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -8424,8 +8426,7 @@ count : ClassVar[int]
                 <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;macros&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">macros</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Str</span><span class="p">(</span><span class="s2">&quot;macros&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">macros</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-        <span class="c1"># if self.open_in_new_window is not None:</span>
-        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;openInNewWindow&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;openInNewWindow&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_in_new_window</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">follow_symlinks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;followSymlinks&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">follow_symlinks</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">if</span> <span class="p">(</span>
@@ -8505,8 +8506,7 @@ count : ClassVar[int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/widgets.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">747</span>
-<span class="normal">748</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">748</span>
 <span class="normal">749</span>
 <span class="normal">750</span>
 <span class="normal">751</span>
@@ -8566,8 +8566,7 @@ count : ClassVar[int]
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="s2">&quot;macros&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">macros</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Str</span><span class="p">(</span><span class="s2">&quot;macros&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">macros</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
-    <span class="c1"># if self.open_in_new_window is not None:</span>
-    <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;openInNewWindow&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+    <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;openInNewWindow&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_in_new_window</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">follow_symlinks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;followSymlinks&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">follow_symlinks</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">if</span> <span class="p">(</span>

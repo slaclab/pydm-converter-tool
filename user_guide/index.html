@@ -1059,6 +1059,29 @@ To convert EDM files in a folder called "edm" to PYDM file in the current folder
 <p>To convert with SLAC-specific rules (e.g. skipping exit buttons):
 <div class="highlight"><pre><span></span><code>pydmconverter<span class="w"> </span>/afs/slac/g/lcls/edm/file.edl<span class="w"> </span>file.ui<span class="w"> </span>--site<span class="w"> </span>slac
 </code></pre></div></p>
+<h1 id="edm-behaviours-that-convert-differently">EDM Behaviours That Convert Differently</h1>
+<h2 id="related-display-buttons">Related display buttons</h2>
+<ul>
+<li><strong>Close the parent window.</strong> An EDM related display entry with <em>close action</em>
+  set (<code>closeAction</code> or <code>closeDisplay</code>) opens its display in a new window, then
+  closes the window it was opened from. When every entry of a button closes,
+  the converted button has <code>openInNewWindow</code> set to false: in the PyDM app the
+  new display replaces the current one in the same window, and the back button
+  returns to it. Shift-click and the right-click <em>Open in New Window</em> still open
+  a new window. A button where only some entries close opens all of them in a
+  new window and leaves the parent open.
+  EDM never closes the parent from a popup (<em>button3Popup</em>, or <em>useFocus</em> on a
+  button with one display), so such a button keeps a new window.</li>
+<li><strong>Macro precedence.</strong> PyDM passes the parent display's macros to the new
+  display and lets the button's own macros override them. EDM, by default, puts
+  the parent's macros first and drops a later duplicate, so where both define
+  the same name the parent's value wins in EDM and the button's value wins in
+  PyDM.</li>
+<li><strong><code>propagateMacros</code> and <code>replaceSymbols</code>.</strong> EDM can open a display with only
+  the button's symbols (<code>replaceSymbols</code>), or with the <code>edm -m</code> macros and the
+  button's symbols but not the parent's macros (<code>propagateMacros</code> off). PyDM
+  always passes the parent's macros, so neither setting is converted.</li>
+</ul>
 
 
 
