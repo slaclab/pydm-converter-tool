@@ -1,7 +1,14 @@
 import dataclasses
 import re
 from typing import Optional, List, Tuple
-from pydmconverter.edm.parser import EDMObject, EDMGroup, EDMFileParser, block_items, block_list
+from pydmconverter.edm.parser import (
+    EDMObject,
+    EDMGroup,
+    EDMFileParser,
+    block_items,
+    block_list,
+    closing_display_indices,
+)
 from pydmconverter.widgets import (
     PyDMDrawingRectangle,
     PyDMDrawingEllipse,
@@ -714,6 +721,23 @@ def apply_widget_post_processing(
         else:
             # A menu window opens only its displayFileName entries (pip.cc), never its file.
             widget.filename = None
+
+    # Related display that closes its parent
+    if isinstance(widget, PyDMRelatedDisplayButton):
+        # EDM (related_display.cc popupDisplay) opens the display in a new window and, for
+        # an entry with closeAction set, then closes the parent (from inside an embedded
+        # display, its top-level window). PyDM's nearest match is opening in place: with
+        # openInNewWindow false the PyDM main window swaps to the new display and keeps the
+        # parent in its back history. The property is per button, so every entry must close.
+        files = [index for index, name in block_items(obj.properties.get("displayFileName")) if name.strip()]
+        closing = closing_display_indices(obj.properties)
+        if files and all(index in closing for index in files):
+            widget.open_in_new_window = False
+        elif closing:
+            logger.info(
+                f"Related display closes its parent for only some entries ({sorted(closing)} of {files}); "
+                "opening all in a new window"
+            )
 
     # Freeze button handling
     if obj.name.lower() == "activefreezebuttonclass":

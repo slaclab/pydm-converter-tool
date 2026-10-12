@@ -5,6 +5,7 @@
     "filenames": { "to": "file", "transform": "screenRef" },
     "text": { "to": "label" },
     "macros": { "to": "macros" },
+    "openInNewWindow": { "to": "openInNewWindow" },
     "fontSize": { "to": "fontSize" }
   }
 }
