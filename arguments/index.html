@@ -500,6 +500,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#display-roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Display roots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#help" class="md-nav__link">
     <span class="md-ellipsis">
       Help
@@ -917,6 +926,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#display-roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Display roots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#help" class="md-nav__link">
     <span class="md-ellipsis">
       Help
@@ -977,6 +995,22 @@
 </code></pre></div></p>
 <p><strong>Adding a new site:</strong>
 To add conversion rules for a new site, create a new module in <code>pydmconverter/sites/</code> (e.g. <code>mysite.py</code>) that defines a <code>SKIP_WIDGETS</code> set, then register it in <code>pydmconverter/sites/__init__.py</code>.</p>
+<h2 id="display-roots">Display roots</h2>
+<p><code>--display-root &lt;dir&gt;</code> or the <code>PYDMCONVERTER_DISPLAY_ROOTS</code> environment variable</p>
+<p>An EDM display can open another display by its absolute path on the EDM console, for example <code>/opt/edm/display/misc/panel.edl</code>. PyDM joins each directory it searches with the display name, so an absolute name only finds a file at that exact path. Give the console's display directory as a display root, and related display and embedded display names below it are written relative to it: <code>/opt/edm/display/misc/panel.edl</code> becomes <code>misc/panel.ui</code> (<code>misc/panel.screen.json</code> with <code>--target react</code>). PyDM finds the converted display when the converted display tree is the working directory or is listed in <code>PYDM_DISPLAYS_PATH</code>.</p>
+<ul>
+<li>Repeat <code>--display-root</code> for more than one directory. In the environment variable, separate them with <code>:</code>, as in <code>EDMDATAFILES</code>.</li>
+<li><code>--display-root</code> overrides the environment variable. With neither, display names are left as they are.</li>
+<li>A display root must be an absolute directory other than <code>/</code>.</li>
+<li>Other names are unchanged: relative names, other absolute paths, a name that climbs out of the root with <code>..</code>, and image and shell command files.</li>
+<li>The roots are the EDM console's directories, not those of the machine running the converter, so they are not taken from <code>EDMDATAFILES</code>.</li>
+</ul>
+<p><strong>Usage:</strong>
+<div class="highlight"><pre><span></span><code>pydmconverter<span class="w"> </span>/path/to/file.edl<span class="w"> </span>output.ui<span class="w"> </span>--display-root<span class="w"> </span>/opt/edm/display
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PYDMCONVERTER_DISPLAY_ROOTS</span><span class="o">=</span>/opt/edm/display:/opt/other/edm/display
+pydmconverter<span class="w"> </span>/path/to/file.edl<span class="w"> </span>output.ui
+</code></pre></div></p>
 <h2 id="help">Help</h2>
 <p><code>-h</code> or <code>--help</code></p>
 <p>This argument shows the converter's help message, which outlines the available arguments for users.</p>
