@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from pydmconverter import react
+from pydmconverter.edm.parser import EDMFileParser
 
 EDM_FIXTURE = Path(__file__).parent / "edm" / "fixtures" / "basic_widgets.edl"
 UI_FIXTURE = Path(__file__).parent / "ui" / "fixtures" / "basic_widgets.ui"
@@ -241,11 +242,16 @@ def symbol_tree(tmp_path):
     return tmp_path
 
 
-def _symbol_node(symbol_file, **kwargs):
-    """Convert symbol_two_state.edl with its symbol ``file`` replaced; return the symbol's group."""
+def _with_symbol_file(symbol_file):
+    """symbol_two_state.edl's bytes with its symbol ``file`` replaced."""
     data = (EDM_FIXTURES / "symbol_two_state.edl").read_bytes()
     assert b'file "symbol_states"' in data
-    data = data.replace(b'file "symbol_states"', f'file "{symbol_file}"'.encode())
+    return data.replace(b'file "symbol_states"', f'file "{symbol_file}"'.encode())
+
+
+def _symbol_node(symbol_file, **kwargs):
+    """Convert symbol_two_state.edl with its symbol ``file`` replaced; return the symbol's group."""
+    data = _with_symbol_file(symbol_file)
     return react.convert_bytes(data, kind="edl", filename="upload.edl", **kwargs).root.children[0]
 
 
@@ -282,7 +288,7 @@ def test_confine_file_refs_rejects_symlink_out_of_search_path(symbol_tree):
         (root / "link").symlink_to(symbol_tree / "outside", target_is_directory=True)
     except OSError:
         pytest.skip("symlinks not available")
-    assert len(_state_groups(_symbol_node("link/secret", search_paths=[root]))) == 2
+    assert len(_state_groups(_symbol_node("link/secret", search_paths=[root], confine_file_refs=False))) == 2
     confined = _symbol_node("link/secret", search_paths=[root], confine_file_refs=True)
     assert confined.children == []
     assert any("symbol file 'link/secret.edl' not found" in w for w in confined.warnings)
@@ -339,24 +345,52 @@ def test_confine_file_refs_skips_edmdatafiles(symbol_tree, monkeypatch):
     """Confined lookups search only the display's dir and search_paths: not $EDMDATAFILES,
     and not its "." (CWD) default."""
     monkeypatch.setenv("EDMDATAFILES", str(symbol_tree / "outside"))
-    assert len(_state_groups(_symbol_node("secret"))) == 2
+    assert len(_state_groups(_symbol_node("secret", confine_file_refs=False))) == 2
     confined = _symbol_node("secret", confine_file_refs=True)
     assert confined.children == []
     assert any("symbol file 'secret.edl' not found" in w for w in confined.warnings)
 
     monkeypatch.delenv("EDMDATAFILES")
     monkeypatch.chdir(symbol_tree / "outside")
-    assert len(_state_groups(_symbol_node("secret"))) == 2
+    assert len(_state_groups(_symbol_node("secret", confine_file_refs=False))) == 2
     assert _symbol_node("secret", confine_file_refs=True).children == []
 
 
-def test_symbol_files_unconfined_by_default(symbol_tree):
-    """Without the flag (CLI and PyDM target) absolute and ``..`` symbol paths resolve as in EDM."""
+def test_symbol_files_unconfined_when_asked(symbol_tree):
+    """With confine_file_refs=False (as the CLI and PyDM target run) absolute and ``..``
+    symbol paths resolve as in EDM."""
     root = symbol_tree / "root"
     for name in ((symbol_tree / "outside" / "secret").as_posix(), "../outside/secret"):
-        node = _symbol_node(name, search_paths=[root])
+        node = _symbol_node(name, search_paths=[root], confine_file_refs=False)
         assert len(_state_groups(node)) == 2, name
         assert not any("symbol file" in w for w in node.warnings)
+
+
+def test_convert_bytes_confines_by_default(symbol_tree):
+    """convert_bytes is for uploads, so a caller that forgets the flag is still confined."""
+    root = symbol_tree / "root"
+    for name in ((symbol_tree / "outside" / "secret").as_posix(), "../outside/secret"):
+        assert _rejected(_symbol_node(name, search_paths=[root])), name
+    assert len(_state_groups(_symbol_node("sub/symbol_states", search_paths=[root]))) == 2
+
+
+def test_file_entry_points_stay_unconfined_by_default(symbol_tree, monkeypatch):
+    """Only convert_bytes confines by default: convert_to_ir (convert_file, convert_folder,
+    the react CLI) and the PyDM target's parser still find a symbol by an absolute name,
+    ``..`` or EDMDATAFILES, as EDM does."""
+    display = symbol_tree / "root" / "display.edl"
+    monkeypatch.delenv("EDMDATAFILES", raising=False)
+    for name in ((symbol_tree / "outside" / "secret").as_posix(), "../outside/secret", "secret"):
+        if name == "secret":
+            monkeypatch.setenv("EDMDATAFILES", str(symbol_tree / "outside"))
+        display.write_bytes(_with_symbol_file(name))
+        node = react.convert_to_ir(display).root.children[0]
+        assert len(_state_groups(node)) == 2, name
+        assert not any("symbol file" in w for w in node.warnings), name
+
+        symbol = EDMFileParser(display, display.with_suffix(".ui")).ui.objects[0]
+        assert len(symbol.objects) == 2, name
+        assert not any(key.startswith("symbolFile") for key in symbol.properties), name
 
 
 # --- symbol files that include themselves are not expanded again ----------------

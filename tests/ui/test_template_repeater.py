@@ -239,10 +239,14 @@ def test_convert_bytes_ui_confines_repeater_datasource(tmp_path):
     secret = tmp_path / "secret.json"
     secret.write_text(json.dumps([{"Token": SECRET}]))
     ui_bytes = REPEATER_UI.format(template="Widget.ui", data=secret).encode()
-    # Without the flag, an uploaded .ui reads any JSON list the process can reach.
-    assert SECRET in convert_bytes(ui_bytes, kind="ui", filename="u.ui").model_dump_json()
+    # Unconfined, an uploaded .ui reads any JSON list the process can reach.
+    assert SECRET in convert_bytes(ui_bytes, kind="ui", filename="u.ui", confine_file_refs=False).model_dump_json()
 
-    confined = convert_bytes(ui_bytes, kind="ui", filename="u.ui", confine_file_refs=True)
-    assert SECRET not in confined.model_dump_json()
-    assert [c.type for c in confined.root.children] == ["unknown-widget"]
-    assert any(OUTSIDE in w for w in confined.root.children[0].warnings)
+    # convert_bytes confines by default.
+    for confined in (
+        convert_bytes(ui_bytes, kind="ui", filename="u.ui"),
+        convert_bytes(ui_bytes, kind="ui", filename="u.ui", confine_file_refs=True),
+    ):
+        assert SECRET not in confined.model_dump_json()
+        assert [c.type for c in confined.root.children] == ["unknown-widget"]
+        assert any(OUTSIDE in w for w in confined.root.children[0].warnings)
