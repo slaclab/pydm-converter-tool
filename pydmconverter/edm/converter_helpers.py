@@ -37,6 +37,7 @@ from pydmconverter.widgets import (
     PyDMAnalogIndicator,
 )
 from pydmconverter.edm.parser_helpers import (
+    SearchPaths,
     convert_color_property_to_qcolor,
     search_color_list,
     parse_colors_list,
@@ -44,6 +45,7 @@ from pydmconverter.edm.parser_helpers import (
     loc_str_init,
 )
 from pydmconverter.edm.menumux import generate_menumux_file, initial_state, menu_item_count, menu_items, menu_macros
+from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -997,7 +999,9 @@ def traverse_group(
     return pydm_widgets, menu_mux_buttons
 
 
-def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_file: str | None = None):
+def convert_edm_to_pydm_widgets(
+    parser: EDMFileParser, site=None, color_list_file: str | None = None, display_roots: SearchPaths = None
+):
     """
     Converts an EDMFileParser object into a collection of PyDM widget instances.
 
@@ -1009,6 +1013,10 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
         Explicit path to an EDM ``colors.list`` palette used to resolve "index N"
         colors. Falls back to ``EDMCOLORFILE``, ``$EDMFILES/colors.list``, then
         ``/etc/edm/colors.list`` when omitted.
+    display_roots : str | Sequence[str], optional
+        Absolute directories whose display names become root-relative (see
+        pydmconverter.edm.display_roots). Falls back to ``PYDMCONVERTER_DISPLAY_ROOTS``
+        when omitted.
 
     Returns
     -------
@@ -1018,6 +1026,8 @@ def convert_edm_to_pydm_widgets(parser: EDMFileParser, site=None, color_list_fil
     from pydmconverter.sites import get_skip_widgets
 
     skip_widgets = get_skip_widgets(site)
+    # First, so the tab pages and stacked displays built from a menu window copy mapped names.
+    map_display_roots(parser.ui, resolve_display_roots(display_roots))
 
     used_classes = set()
     color_list_filepath = search_color_list(color_list_file)

@@ -4,8 +4,10 @@ from unittest.mock import patch
 from pydmconverter.__main__ import (
     copy_img_files,
     convert_files_in_folder,
+    main,
     run,
 )
+from pydmconverter.edm.display_roots import DISPLAY_ROOTS_ENV
 
 
 class TestCopyImgFiles:
@@ -281,3 +283,82 @@ class TestRun:
 
         args = mock_convert_folder.call_args[0]
         assert args[2] == ".edl"
+
+
+class TestDisplayRootOption:
+    """Tests for --display-root."""
+
+    @patch("pydmconverter.__main__.run")
+    def test_repeated_option_reaches_run(self, mock_run, tmp_path, monkeypatch):
+        input_file = tmp_path / "test.edl"
+        input_file.write_text("EDM content")
+        argv = ["pydmconverter", str(input_file), str(tmp_path / "test.ui"), "--display-root", "/a/display"]
+        monkeypatch.setattr("sys.argv", argv + ["--display-root", "/b/display"])
+
+        main()
+
+        assert mock_run.call_args.kwargs["display_roots"] == ["/a/display", "/b/display"]
+
+    @patch("pydmconverter.__main__.run")
+    def test_without_option_run_gets_none(self, mock_run, tmp_path, monkeypatch):
+        input_file = tmp_path / "test.edl"
+        input_file.write_text("EDM content")
+        monkeypatch.setattr("sys.argv", ["pydmconverter", str(input_file), str(tmp_path / "test.ui")])
+
+        main()
+
+        # None, so the conversion falls back to the env var.
+        assert mock_run.call_args.kwargs["display_roots"] is None
+
+    @pytest.mark.parametrize("option, env", [(["--display-root", "display"], None), ([], "/a/display:display")])
+    @patch("pydmconverter.__main__.run")
+    def test_relative_root_is_a_usage_error(self, mock_run, option, env, tmp_path, monkeypatch, capsys):
+        input_file = tmp_path / "test.edl"
+        input_file.write_text("EDM content")
+        if env is not None:
+            monkeypatch.setenv(DISPLAY_ROOTS_ENV, env)
+        monkeypatch.setattr("sys.argv", ["pydmconverter", str(input_file), str(tmp_path / "test.ui"), *option])
+
+        with pytest.raises(SystemExit):
+            main()
+
+        assert "absolute directory" in capsys.readouterr().err
+        mock_run.assert_not_called()
+
+    @patch("pydmconverter.__main__.convert")
+    @patch("pydmconverter.__main__.copy_img_files")
+    def test_run_passes_display_roots_to_convert(self, mock_copy_img, mock_convert, tmp_path):
+        input_file = tmp_path / "test.edl"
+        input_file.write_text("EDM content")
+
+        run(str(input_file), str(tmp_path / "test.ui"), display_roots=["/a/display"])
+
+        assert mock_convert.call_args.kwargs["display_roots"] == ["/a/display"]
+
+    @patch("pydmconverter.__main__.convert")
+    @patch("pydmconverter.__main__.copy_img_files")
+    def test_folder_conversion_passes_display_roots(self, mock_copy_img, mock_convert, tmp_path):
+        sub = tmp_path / "input" / "sub"
+        sub.mkdir(parents=True)
+        (sub / "test.edl").write_text("EDM content")
+
+        run(str(tmp_path / "input"), str(tmp_path / "output"), input_file_type=".edl", display_roots=["/a/display"])
+
+        assert mock_convert.call_args.kwargs["display_roots"] == ["/a/display"]
+
+    @patch("pydmconverter.react.convert_file")
+    def test_react_target_passes_display_roots(self, mock_convert_file, tmp_path):
+        input_file = tmp_path / "test.edl"
+        input_file.write_text("EDM content")
+
+        run(str(input_file), str(tmp_path / "test.screen.json"), target="react", display_roots=["/a/display"])
+
+        assert mock_convert_file.call_args.kwargs["display_roots"] == ["/a/display"]
+
+    @patch("pydmconverter.react.convert_folder", return_value=(1, []))
+    def test_react_folder_passes_display_roots(self, mock_convert_folder, tmp_path):
+        (tmp_path / "input").mkdir()
+
+        run(str(tmp_path / "input"), str(tmp_path / "output"), target="react", display_roots=["/a/display"])
+
+        assert mock_convert_folder.call_args.kwargs["display_roots"] == ["/a/display"]

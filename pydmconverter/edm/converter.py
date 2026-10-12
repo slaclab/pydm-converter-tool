@@ -63,12 +63,17 @@ def convert(
     calc_list_file=None,
     color_list_file=None,
     search_paths=None,
+    display_roots=None,
 ):
     """Convert an EDM .edl file to a PyDM .ui (plus a .py when it has menu muxes).
 
     ``search_paths`` are extra directories searched, after the file's own directory
     and before ``EDMDATAFILES``, for symbol files, calc.list and the displays its links
     open.
+
+    ``display_roots`` are absolute directories whose display names become root-relative
+    (see :mod:`pydmconverter.edm.display_roots`); ``PYDMCONVERTER_DISPLAY_ROOTS`` when
+    omitted.
     """
     try:
         edm_parser = EDMFileParser(
@@ -93,7 +98,9 @@ def convert(
 
     # edm_parser.ui, _, _ = replace_calc_and_loc_in_edm_content(edm_parser.ui, input_path)
 
-    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(edm_parser, site=site, color_list_file=color_list_file)
+    pydm_widgets, used_classes = convert_edm_to_pydm_widgets(
+        edm_parser, site=site, color_list_file=color_list_file, display_roots=display_roots
+    )
     logger.info(f"Converted EDM objects to {len(pydm_widgets)} PyDM widgets.")
 
     # Serialize each widget once and measure those same elements: to_xml() is not idempotent

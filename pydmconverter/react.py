@@ -38,6 +38,7 @@ def convert_to_ir(
     site: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
+    display_roots: SearchPaths = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
 
@@ -52,6 +53,10 @@ def convert_to_ir(
     are read only from inside the file's own directory or, for ``.edl``,
     ``search_paths``, never ``EDMDATAFILES`` (see :func:`convert_bytes`,
     :func:`edm_file_to_ir` and :func:`ui_file_to_ir`).
+
+    ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
+    names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
+    omitted they come from the ``PYDMCONVERTER_DISPLAY_ROOTS`` env var.
     """
     # By name, not Path.suffix, which is "" for a file named just ".edl".
     suffix = next((s for s in _ADAPTERS if Path(input_path).name.lower().endswith(s)), Path(input_path).suffix.lower())
@@ -67,6 +72,7 @@ def convert_to_ir(
             site=site,
             search_paths=search_paths,
             confine_file_refs=confine_file_refs,
+            display_roots=display_roots,
         )
     return ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
 
@@ -82,6 +88,7 @@ def convert_bytes(
     filename: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = True,
+    display_roots: SearchPaths = None,
 ) -> ScreenIR:
     """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
 
@@ -123,6 +130,10 @@ def convert_bytes(
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+
+    ``display_roots`` (``kind="edl"`` only) are absolute directories whose display
+    names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
+    omitted they come from the ``PYDMCONVERTER_DISPLAY_ROOTS`` env var.
     """
     if kind not in ("edl", "ui"):
         raise ValueError(f"convert_bytes kind must be 'edl' or 'ui', not {kind!r}")
@@ -149,6 +160,7 @@ def convert_bytes(
             site=site,
             search_paths=search_paths,
             confine_file_refs=confine_file_refs,
+            display_roots=display_roots,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -182,12 +194,17 @@ def convert_file(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    display_roots: SearchPaths = None,
 ) -> Path:
     """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+
+    ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
+    names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
+    omitted they come from the ``PYDMCONVERTER_DISPLAY_ROOTS`` env var.
     """
     inp = Path(input_path)
     out = _screen_json_path(inp, Path(output_path))
@@ -195,7 +212,12 @@ def convert_file(
         raise FileExistsError(f"Output file '{out}' already exists. Use --override or -o to overwrite it.")
     return write_screen_json(
         convert_to_ir(
-            inp, registry=registry, color_list_path=color_list_path, calc_list_path=calc_list_path, site=site
+            inp,
+            registry=registry,
+            color_list_path=color_list_path,
+            calc_list_path=calc_list_path,
+            site=site,
+            display_roots=display_roots,
         ),
         out,
     )
@@ -210,6 +232,7 @@ def convert_folder(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    display_roots: SearchPaths = None,
 ) -> tuple[int, list[str]]:
     """Recursively convert every ``.edl``/``.ui`` under ``input_dir``.
 
@@ -218,6 +241,10 @@ def convert_folder(
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+
+    ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
+    names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
+    omitted they come from the ``PYDMCONVERTER_DISPLAY_ROOTS`` env var.
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -242,6 +269,7 @@ def convert_folder(
                     color_list_path=color_list_path,
                     calc_list_path=calc_list_path,
                     site=site,
+                    display_roots=display_roots,
                 ),
                 out,
             )

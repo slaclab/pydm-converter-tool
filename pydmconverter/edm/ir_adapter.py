@@ -37,6 +37,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     resolve_qt_class,
 )
+from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.parser import EDMFileParser, EDMGroup, EDMObject, block_items, closing_display_indices, edm_int
 from pydmconverter.edm.parser_helpers import (
     SearchPaths,
@@ -1610,6 +1611,7 @@ def edm_file_to_ir(
     site: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
+    display_roots: SearchPaths = None,
 ) -> ScreenIR:
     """Parse an ``.edl`` file and build its Screen IR.
 
@@ -1626,6 +1628,11 @@ def edm_file_to_ir(
     ``$EDMFILES/calc.list``, then beside ``$EDMCOLORFILE``. Unresolvable named
     calcs stay as warnings. ``site`` applies site skip rules (same vocabulary as
     the PyDM target, e.g. ``"slac"`` drops exit buttons).
+
+    ``display_roots`` are absolute directories (a single directory or a sequence):
+    a related display or embedded window naming a display below one gets the
+    root-relative name (see :mod:`pydmconverter.edm.display_roots`). When omitted
+    they come from ``PYDMCONVERTER_DISPLAY_ROOTS``; with neither, names are kept.
 
     ``search_paths`` are extra directories, searched after the file's own directory
     and before ``EDMDATAFILES``, for activeSymbolClass symbol files and (after the
@@ -1658,6 +1665,7 @@ def edm_file_to_ir(
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
     skip_classes = frozenset(get_skip_widgets(site))
+    map_display_roots(parser.ui, resolve_display_roots(display_roots))
     # One registry for both: colour-rule targets must match the builder's prop map.
     registry = registry or VendoredRegistry()
     top_level = edm_group_to_source_nodes(parser.ui, colors=colors, skip_classes=skip_classes, registry=registry)
