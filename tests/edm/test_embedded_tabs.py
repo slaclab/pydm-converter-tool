@@ -503,9 +503,12 @@ def test_menu_mux_never_becomes_tabs(convert_with_menus):
             "loc://Display?type=int&init=1&enum_string=['OFF', 'ON']",
             1,
         ),
-        # Nothing configures it: the menu starts at initialState, or at 0 past its items.
+        # Nothing configures it: the menu starts at initialState, clamped to its items.
         (r"LOC\\Display", r"LOC\\Display", None, "loc://Display?type=int&init=0", 0),
-        (r"LOC\\Display", r"LOC\\Display", "5", "loc://Display?type=int&init=0", 0),
+        (r"LOC\\Display", r"LOC\\Display", "5", "loc://Display?type=int&init=1", 1),
+        (r"LOC\\Display", r"LOC\\Display", "-1", "loc://Display?type=int&init=0", 0),
+        # Read like atol, so a leading "+" counts.
+        (r"LOC\\Display", r"LOC\\Display", "+1", "loc://Display?type=int&init=1", 1),
         # A start from the screen's macros is known only when it runs, which declares it then.
         (r"LOC\\Display", r"LOC\\Display", "$(START)", "loc://Display", 0),
     ],

@@ -392,13 +392,16 @@ def test_menu_change_reinitialises_local_variables(menumux_screen, qtbot, monkey
     # Macros the screen was opened with reach the embedded .ui too.
     assert screen.embedded.parsed_macros()["START"] == "1"
 
-    # initialState reads like strtol and falls back to the first item.
+    # initialState reads like strtol, falls back to the first item and, as
+    # in EDM, is clamped to the items.
     def initial(state, count=5):
         return screen.initial_index(state, count)
 
     assert initial("${START}+1") == 1
     assert initial("3") == 3
-    assert initial("9") == 0
+    assert initial("+2") == 2
+    assert initial("9") == 4
+    assert initial("-1") == 0
     assert initial("${MISSING}") == 0
 
 
@@ -548,6 +551,29 @@ def test_first_menu_to_set_a_macro_wins(menumux_screen, qtbot):
 
     # With neither menu setting anything, the macros stay as they were.
     second.setCurrentIndex(1)
+    assert macros_and_label(screen) == ({"sector": "LI30"}, "LI30 ${visibleLI20} ${visibleLI24}")
+
+
+# TWO_MENU_SCREEN with the first menu's initialState past its items, as in
+# misc/spearCudLaunch2.edl (initialState "16" on 16 items, the last "NONE").
+PAST_THE_END_SCREEN = TWO_MENU_SCREEN.replace('initialState "0"', 'initialState "4"', 1)
+
+
+@pytest.mark.parametrize("menumux_screen", [PAST_THE_END_SCREEN], ids=["past_the_end"], indirect=True)
+def test_menu_past_its_items_opens_on_the_last(menumux_screen, qtbot):
+    pytest.importorskip("pydm")
+    from pydm.display import load_file
+    from qtpy.QtWidgets import QComboBox
+
+    screen = load_file(str(menumux_screen), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    first, second = screen.findChildren(QComboBox)
+    qtbot.waitUntil(lambda: screen.embedded.embedded_widget is not None, timeout=3000)
+
+    # EDM clamps the index to the items, so the first menu sets the macros of
+    # its last item "?": none, and the second menu's sector applies.
+    assert first.currentIndex() == 3
     assert macros_and_label(screen) == ({"sector": "LI30"}, "LI30 ${visibleLI20} ${visibleLI24}")
 
 
