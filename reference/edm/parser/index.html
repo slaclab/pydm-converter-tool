@@ -1886,16 +1886,7 @@ EDMObjects and EDMGroups</p>
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 292</span>
-<span class="normal"> 293</span>
-<span class="normal"> 294</span>
-<span class="normal"> 295</span>
-<span class="normal"> 296</span>
-<span class="normal"> 297</span>
-<span class="normal"> 298</span>
-<span class="normal"> 299</span>
-<span class="normal"> 300</span>
-<span class="normal"> 301</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 301</span>
 <span class="normal"> 302</span>
 <span class="normal"> 303</span>
 <span class="normal"> 304</span>
@@ -2690,7 +2681,16 @@ EDMObjects and EDMGroups</p>
 <span class="normal">1093</span>
 <span class="normal">1094</span>
 <span class="normal">1095</span>
-<span class="normal">1096</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EDMFileParser</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDMFileParser class parses .edl files and creates a tree of</span>
 <span class="sd">    EDMObjects and EDMGroups&quot;&quot;&quot;</span>
 
@@ -3580,16 +3580,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
 <span class="normal">321</span>
@@ -3663,7 +3654,16 @@ literal_brace : str, optional
 <span class="normal">389</span>
 <span class="normal">390</span>
 <span class="normal">391</span>
-<span class="normal">392</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">output_file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
@@ -3775,16 +3775,7 @@ properties: dict[str, bool | str | list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">888</span>
-<span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
-<span class="normal">892</span>
-<span class="normal">893</span>
-<span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span>
-<span class="normal">897</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">897</span>
 <span class="normal">898</span>
 <span class="normal">899</span>
 <span class="normal">900</span>
@@ -3792,7 +3783,16 @@ properties: dict[str, bool | str | list[str]]
 <span class="normal">902</span>
 <span class="normal">903</span>
 <span class="normal">904</span>
-<span class="normal">905</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span>
+<span class="normal">912</span>
+<span class="normal">913</span>
+<span class="normal">914</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_symbol_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Add properties to each sub object within a symbol group. (isSymbol and symbolChannel)</span>
 <span class="sd">    These are used to determine if the symbol should hide when symbolChannel is disconnected.</span>
@@ -3834,14 +3834,14 @@ confined parser skips).</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">693</span>
-<span class="normal">694</span>
-<span class="normal">695</span>
-<span class="normal">696</span>
-<span class="normal">697</span>
-<span class="normal">698</span>
-<span class="normal">699</span>
-<span class="normal">700</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edm_search_dirs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">702</span>
+<span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span>
+<span class="normal">706</span>
+<span class="normal">707</span>
+<span class="normal">708</span>
+<span class="normal">709</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edm_search_dirs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The directories EDM looks in for a file the display names, in order: the</span>
 <span class="sd">    display&#39;s own directory, then ``search_paths``, then ``EDMDATAFILES`` (which a</span>
 <span class="sd">    confined parser skips).&quot;&quot;&quot;</span>
@@ -3871,16 +3871,7 @@ confined parser skips).</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">907</span>
-<span class="normal">908</span>
-<span class="normal">909</span>
-<span class="normal">910</span>
-<span class="normal">911</span>
-<span class="normal">912</span>
-<span class="normal">913</span>
-<span class="normal">914</span>
-<span class="normal">915</span>
-<span class="normal">916</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">916</span>
 <span class="normal">917</span>
 <span class="normal">918</span>
 <span class="normal">919</span>
@@ -3893,7 +3884,16 @@ confined parser skips).</p>
 <span class="normal">926</span>
 <span class="normal">927</span>
 <span class="normal">928</span>
-<span class="normal">929</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">929</span>
+<span class="normal">930</span>
+<span class="normal">931</span>
+<span class="normal">932</span>
+<span class="normal">933</span>
+<span class="normal">934</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_matching_end_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">begin_group_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the matching endGroup for a beginGroup, handling nested groups&quot;&quot;&quot;</span>
     <span class="n">pos</span> <span class="o">=</span> <span class="n">begin_group_pos</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;beginGroup&quot;</span><span class="p">)</span>
     <span class="n">group_depth</span> <span class="o">=</span> <span class="mi">1</span>
@@ -3948,16 +3948,7 @@ and a state the file leaves out keeps EDM's default 0.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">818</span>
-<span class="normal">819</span>
-<span class="normal">820</span>
-<span class="normal">821</span>
-<span class="normal">822</span>
-<span class="normal">823</span>
-<span class="normal">824</span>
-<span class="normal">825</span>
-<span class="normal">826</span>
-<span class="normal">827</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">827</span>
 <span class="normal">828</span>
 <span class="normal">829</span>
 <span class="normal">830</span>
@@ -3975,7 +3966,16 @@ and a state the file leaves out keeps EDM's default 0.</p>
 <span class="normal">842</span>
 <span class="normal">843</span>
 <span class="normal">844</span>
-<span class="normal">845</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_pv_ranges</span><span class="p">(</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_pv_ranges</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>  <span class="c1"># Should pass in minValues, maxValues, num_states in directly instead of properties</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4039,16 +4039,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 974</span>
-<span class="normal"> 975</span>
-<span class="normal"> 976</span>
-<span class="normal"> 977</span>
-<span class="normal"> 978</span>
-<span class="normal"> 979</span>
-<span class="normal"> 980</span>
-<span class="normal"> 981</span>
-<span class="normal"> 982</span>
-<span class="normal"> 983</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 983</span>
 <span class="normal"> 984</span>
 <span class="normal"> 985</span>
 <span class="normal"> 986</span>
@@ -4089,7 +4080,16 @@ literal_brace : str, optional
 <span class="normal">1021</span>
 <span class="normal">1022</span>
 <span class="normal">1023</span>
-<span class="normal">1024</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">1024</span>
+<span class="normal">1025</span>
+<span class="normal">1026</span>
+<span class="normal">1027</span>
+<span class="normal">1028</span>
+<span class="normal">1029</span>
+<span class="normal">1030</span>
+<span class="normal">1031</span>
+<span class="normal">1032</span>
+<span class="normal">1033</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_object_properties</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the object properties from the given text. This can be any</span>
 <span class="sd">    property that an EDM Object may use (e.g. fillColor, value, editable).</span>
@@ -4172,16 +4172,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">931</span>
-<span class="normal">932</span>
-<span class="normal">933</span>
-<span class="normal">934</span>
-<span class="normal">935</span>
-<span class="normal">936</span>
-<span class="normal">937</span>
-<span class="normal">938</span>
-<span class="normal">939</span>
-<span class="normal">940</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">940</span>
 <span class="normal">941</span>
 <span class="normal">942</span>
 <span class="normal">943</span>
@@ -4205,7 +4196,16 @@ literal_brace : str, optional
 <span class="normal">961</span>
 <span class="normal">962</span>
 <span class="normal">963</span>
-<span class="normal">964</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">964</span>
+<span class="normal">965</span>
+<span class="normal">966</span>
+<span class="normal">967</span>
+<span class="normal">968</span>
+<span class="normal">969</span>
+<span class="normal">970</span>
+<span class="normal">971</span>
+<span class="normal">972</span>
+<span class="normal">973</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_size_properties</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the size properties from the given text (x, y, width, height)</span>
 
@@ -4273,16 +4273,7 @@ size_properties : dict[str, int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">571</span>
-<span class="normal">572</span>
-<span class="normal">573</span>
-<span class="normal">574</span>
-<span class="normal">575</span>
-<span class="normal">576</span>
-<span class="normal">577</span>
-<span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">580</span>
 <span class="normal">581</span>
 <span class="normal">582</span>
 <span class="normal">583</span>
@@ -4337,7 +4328,16 @@ size_properties : dict[str, int]
 <span class="normal">632</span>
 <span class="normal">633</span>
 <span class="normal">634</span>
-<span class="normal">635</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_symbol_group</span><span class="p">(</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_symbol_group</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EDMGroup</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4432,16 +4432,7 @@ parent_group : EDMGroup
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
-<span class="normal">463</span>
-<span class="normal">464</span>
-<span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
-<span class="normal">469</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">469</span>
 <span class="normal">470</span>
 <span class="normal">471</span>
 <span class="normal">472</span>
@@ -4495,7 +4486,16 @@ parent_group : EDMGroup
 <span class="normal">520</span>
 <span class="normal">521</span>
 <span class="normal">522</span>
-<span class="normal">523</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_objects_and_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_objects_and_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively parse the given text into a tree of EDMObjects and</span>
 <span class="sd">    EDMGroups. The parsed EDMObjects and EDMGroups are added to the</span>
 <span class="sd">    given parent_group, which is the root EDMGroup of the tree.</span>
@@ -4587,16 +4587,7 @@ parsed (:meth:<code>size_missing_from_content</code>).</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">412</span>
-<span class="normal">413</span>
-<span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span>
-<span class="normal">419</span>
-<span class="normal">420</span>
-<span class="normal">421</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">421</span>
 <span class="normal">422</span>
 <span class="normal">423</span>
 <span class="normal">424</span>
@@ -4617,7 +4608,16 @@ parsed (:meth:<code>size_missing_from_content</code>).</p>
 <span class="normal">439</span>
 <span class="normal">440</span>
 <span class="normal">441</span>
-<span class="normal">442</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_screen_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_screen_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the screen properties from the .edl file and set the UI</span>
 <span class="sd">    height and width.</span>
 
@@ -4679,16 +4679,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span>
-<span class="normal">851</span>
-<span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
-<span class="normal">856</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">856</span>
 <span class="normal">857</span>
 <span class="normal">858</span>
 <span class="normal">859</span>
@@ -4712,7 +4703,16 @@ ranges: list[list[str]]
 <span class="normal">877</span>
 <span class="normal">878</span>
 <span class="normal">879</span>
-<span class="normal">880</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
+<span class="normal">880</span>
+<span class="normal">881</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">populate_symbol_pvs</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4776,16 +4776,7 @@ ranges: list[list[str]]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">798</span>
-<span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span>
-<span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
-<span class="normal">807</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">807</span>
 <span class="normal">808</span>
 <span class="normal">809</span>
 <span class="normal">810</span>
@@ -4794,7 +4785,16 @@ ranges: list[list[str]]
 <span class="normal">813</span>
 <span class="normal">814</span>
 <span class="normal">815</span>
-<span class="normal">816</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_extra_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_extra_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, remove extra groups that are outside</span>
 <span class="sd">    of the ranges given. (if there are more groups than ranges, the extra</span>
@@ -4860,16 +4860,7 @@ literal_brace : str, optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1049</span>
-<span class="normal">1050</span>
-<span class="normal">1051</span>
-<span class="normal">1052</span>
-<span class="normal">1053</span>
-<span class="normal">1054</span>
-<span class="normal">1055</span>
-<span class="normal">1056</span>
-<span class="normal">1057</span>
-<span class="normal">1058</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1058</span>
 <span class="normal">1059</span>
 <span class="normal">1060</span>
 <span class="normal">1061</span>
@@ -4907,7 +4898,16 @@ literal_brace : str, optional
 <span class="normal">1093</span>
 <span class="normal">1094</span>
 <span class="normal">1095</span>
-<span class="normal">1096</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">remove_prepended_index</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Clean the raw lines of a multi-line (brace-block) property value.</span>
 
@@ -4990,16 +4990,7 @@ num_states : int
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span>
-<span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">775</span>
 <span class="normal">776</span>
 <span class="normal">777</span>
 <span class="normal">778</span>
@@ -5020,7 +5011,16 @@ num_states : int
 <span class="normal">793</span>
 <span class="normal">794</span>
 <span class="normal">795</span>
-<span class="normal">796</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reorient_symbol_groups</span><span class="p">(</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reorient_symbol_groups</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">orientation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">num_states</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -5080,16 +5080,7 @@ size_properties : dict[str, int]
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">743</span>
-<span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
-<span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">752</span>
 <span class="normal">753</span>
 <span class="normal">754</span>
 <span class="normal">755</span>
@@ -5101,7 +5092,16 @@ size_properties : dict[str, int]
 <span class="normal">761</span>
 <span class="normal">762</span>
 <span class="normal">763</span>
-<span class="normal">764</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resize_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resize_symbol_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_group</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">size_properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a group of symbol groups, modify the coordinates of each</span>
 <span class="sd">    object within the symbol groupsto be in relation to the coordinates</span>
@@ -5150,21 +5150,21 @@ dimensions and lets the builder size them the same way.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">444</span>
-<span class="normal">445</span>
-<span class="normal">446</span>
-<span class="normal">447</span>
-<span class="normal">448</span>
-<span class="normal">449</span>
-<span class="normal">450</span>
-<span class="normal">451</span>
-<span class="normal">452</span>
-<span class="normal">453</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">453</span>
 <span class="normal">454</span>
 <span class="normal">455</span>
 <span class="normal">456</span>
 <span class="normal">457</span>
-<span class="normal">458</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">size_missing_from_content</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">size_missing_from_content</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Size each dimension in ``missing_screen_size`` from the content.</span>
 
 <span class="sd">    The dimension becomes the top-level content extent (max ``x + width`` /</span>
@@ -5228,17 +5228,17 @@ dimensions and lets the builder size them the same way.</p>
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">EDMGroup</span><span class="p">(</span><span class="n">EDMObjectBase</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDM Group class represents a group in .edl files&quot;&quot;&quot;</span>
 
@@ -5307,12 +5307,12 @@ dimensions and lets the builder size them the same way.</p>
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">EDMObject</span><span class="p">(</span><span class="n">EDMObjectBase</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDM Object class represents an object in .edl files&quot;&quot;&quot;</span>
 
@@ -5369,14 +5369,14 @@ dimensions and lets the builder size them the same way.</p>
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">EDMObjectBase</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDM Abstract Object class represents an abstract object in .edl files&quot;&quot;&quot;</span>
 
@@ -5435,16 +5435,16 @@ saw); <code>indices[i]</code> is the EDM array index of item <code>i</code>.</p>
 
               <details class="quote">
                 <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">82</span>
 <span class="normal">83</span>
 <span class="normal">84</span>
 <span class="normal">85</span>
 <span class="normal">86</span>
 <span class="normal">87</span>
 <span class="normal">88</span>
-<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IndexedBlock</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IndexedBlock</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A brace-block value parsed from EDM ``&lt;index&gt; &lt;value&gt;`` lines.</span>
 
 <span class="sd">    Behaves as the compact list of values (what positional consumers always</span>
@@ -5497,9 +5497,7 @@ string is entry 0.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 94</span>
 <span class="normal"> 95</span>
 <span class="normal"> 96</span>
 <span class="normal"> 97</span>
@@ -5512,7 +5510,9 @@ string is entry 0.</p>
 <span class="normal">104</span>
 <span class="normal">105</span>
 <span class="normal">106</span>
-<span class="normal">107</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_items</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_items</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A brace-block prop value -&gt; ``[(EDM array index, value)]``.</span>
 
 <span class="sd">    An :class:`IndexedBlock` keeps the indices the file wrote (``symbols { 2</span>
@@ -5552,15 +5552,15 @@ consumers that pair parallel arrays by position.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">112</span>
 <span class="normal">113</span>
 <span class="normal">114</span>
 <span class="normal">115</span>
 <span class="normal">116</span>
 <span class="normal">117</span>
-<span class="normal">118</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_list</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_list</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A brace-block prop value as a list indexed by EDM array index, with &quot;&quot;</span>
 <span class="sd">    for each entry the file leaves out (``xPv { 1 &quot;X&quot; }`` -&gt; ``[&quot;&quot;, &quot;X&quot;]``), for</span>
 <span class="sd">    consumers that pair parallel arrays by position.&quot;&quot;&quot;</span>
@@ -5599,9 +5599,7 @@ a <code>helpCommand "item N"</code> entry, which this doesn't model.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">138</span>
 <span class="normal">139</span>
 <span class="normal">140</span>
 <span class="normal">141</span>
@@ -5620,7 +5618,9 @@ a <code>helpCommand "item N"</code> entry, which this doesn't model.</p>
 <span class="normal">154</span>
 <span class="normal">155</span>
 <span class="normal">156</span>
-<span class="normal">157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">closing_display_indices</span><span class="p">(</span><span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">closing_display_indices</span><span class="p">(</span><span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The related display entries (EDM array indices) that close the parent window</span>
 <span class="sd">    after opening their display.</span>
 
@@ -5664,14 +5664,14 @@ a <code>helpCommand "item N"</code> entry, which this doesn't model.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">123</span>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
-<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edm_int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edm_int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;EDM&#39;s integer read of a tag value (strtol semantics): the leading integer, else 0.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">0</span>
@@ -5705,16 +5705,16 @@ macro's value into the shell variable.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span>
 <span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
-<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">literal_macro_clashes</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">literal_macro_clashes</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Names an EDM file uses both as a literal ``$\\{NAME\\}`` (a shell variable,</span>
 <span class="sd">    which EDM never expands) and as a ``$(NAME)`` macro, given the file&#39;s text</span>
 <span class="sd">    after :meth:`EDMFileParser.modify_text` (which writes the macro as ``${NAME}``).</span>
@@ -5759,9 +5759,7 @@ for a <code>$(NAME)</code> macro, which :meth:<code>EDMFileParser.modify_text</c
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/parser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">35</span>
 <span class="normal">36</span>
 <span class="normal">37</span>
 <span class="normal">38</span>
@@ -5791,7 +5789,9 @@ for a <code>$(NAME)</code> macro, which :meth:<code>EDMFileParser.modify_text</c
 <span class="normal">62</span>
 <span class="normal">63</span>
 <span class="normal">64</span>
-<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">read_edm_string</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">read_edm_string</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">literal_brace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Unquote one EDM tag value.</span>
 
 <span class="sd">    EDM writes strings in double quotes and escapes ``\\``, ``&quot;``, ``{`` and</span>
