@@ -424,3 +424,32 @@ def test_symbol_cut_short_as_recursive_still_renders_at_top_level(tmp_path, conf
         assert len(_state_groups(node)) == 2
         assert not any("includes itself" in w for w in node.warnings)
         assert f"EDM symbol file 'loop.edl' {INCLUDES_ITSELF}" in _all_warnings(node)
+
+
+def test_symbol_found_on_an_absolute_edmdatafiles_list(symbol_tree, monkeypatch):
+    """EDMDATAFILES lists absolute directories joined with ":"; a symbol in the second one is found."""
+    (symbol_tree / "empty").mkdir()
+    monkeypatch.setenv("EDMDATAFILES", f"{symbol_tree / 'empty'}:{symbol_tree / 'outside'}")
+    node = _symbol_node("secret", confine_file_refs=False)
+    assert len(_state_groups(node)) == 2
+    assert not any("symbol file" in w for w in node.warnings)
+
+
+def test_symbol_found_on_an_edmdatafiles_default_entry(symbol_tree, monkeypatch):
+    """A leading "=" marks EDM's default directory; the directory after it is searched."""
+    monkeypatch.setenv("EDMDATAFILES", f"={symbol_tree / 'outside'}")
+    node = _symbol_node("secret", confine_file_refs=False)
+    assert len(_state_groups(node)) == 2
+    assert not any("symbol file" in w for w in node.warnings)
+
+
+def test_edmdatafiles_url_entry_is_not_split_into_local_directories(symbol_tree, monkeypatch):
+    """An http:// entry is not split on its "://", so "http" (here a dir in the CWD) is
+    not searched."""
+    (symbol_tree / "http").mkdir()
+    (symbol_tree / "http" / "secret.edl").write_bytes((symbol_tree / "outside" / "secret.edl").read_bytes())
+    monkeypatch.chdir(symbol_tree)
+    monkeypatch.setenv("EDMDATAFILES", "http://example.invalid/displays")
+    node = _symbol_node("secret", confine_file_refs=False)
+    assert _state_groups(node) == []
+    assert any("'secret.edl' not found" in w for w in node.warnings), node.warnings

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from pydmconverter.edm.parser_helpers import (
     normalize_search_paths,
+    split_edm_path_list,
     resolve_inside,
     search_calc_list,
     parse_calc_list,
@@ -706,3 +707,29 @@ def test_default_invalid(monkeypatch, clear_env):
 
     result = search_color_list()
     assert result is None, "Should return None if nothing else is found"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        # EDM's own form: absolute directories joined with ":".
+        ("/usr/local/lcls/display:/usr/local/lcls/pps", ["/usr/local/lcls/display", "/usr/local/lcls/pps"]),
+        ("lcls:pps", ["lcls", "pps"]),
+        (".", ["."]),
+        ("", []),
+        ("::/a::", ["/a"]),
+        # A Windows drive stays one entry, with ";" or ":" between entries.
+        ("C:\\edm\\display;D:\\pps", ["C:\\edm\\display", "D:\\pps"]),
+        ("C:\\edm:D:\\pps", ["C:\\edm", "D:\\pps"]),
+        ("C:/edm:/usr/x", ["C:/edm", "/usr/x"]),
+        # A leading "=" marks EDM's default directory; the directory is still searched.
+        ("/usr/a:=/usr/b", ["/usr/a", "/usr/b"]),
+        ("=", []),
+        # A URL entry is not split on its "://" and, not being local, is left out.
+        ("http://host/edm:/usr/x", ["/usr/x"]),
+        ("/usr/x;https://host/edm:.", ["/usr/x", "."]),
+        ("HTTPS://host/edm:=HTTP://host/pps", []),
+    ],
+)
+def test_split_edm_path_list(value, expected):
+    assert split_edm_path_list(value) == expected
