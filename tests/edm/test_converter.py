@@ -272,6 +272,64 @@ def test_content_extent_ignores_unparseable_geometry():
     assert content_extent([], 400, 300) == (400, 300)
 
 
+# Indented so a merge-conflict check doesn't read the markers as this file's own.
+CONFLICTED_LINE_SCREEN = textwrap.dedent("""\
+    4 0 1
+    beginScreenProperties
+    major 4
+    minor 0
+    release 1
+    x 0
+    y 0
+    w 300
+    h 200
+    endScreenProperties
+
+    # (Lines)
+    object activeLineClass
+    beginObjectProperties
+    major 4
+    minor 0
+    release 1
+    x 10
+    y 20
+    w 50
+    h 16
+    lineWidth 1
+    numPoints 2
+    xPoints {
+      0 10
+      1 60
+    }
+    yPoints {
+    <<<<<<< test.edl
+      0 20
+      1 36
+    =======
+      0 30
+      1 26
+    >>>>>>> 1.54
+    }
+    endObjectProperties
+""")
+
+
+def test_conflict_markers_in_line_points_keep_header_geometry(tmp_path, caplog):
+    """CVS conflict markers left in a points block: the line keeps its x/y/w/h
+    (as the IR target does) instead of failing the conversion, with warnings."""
+    input_file = tmp_path / "test.edl"
+    output_file = tmp_path / "test.ui"
+    input_file.write_text(CONFLICTED_LINE_SCREEN)
+
+    convert(str(input_file), str(output_file))
+
+    line = ET.parse(output_file).getroot().find(".//widget[@class='PyDMDrawingPolyline']")
+    rect = line.find("property[@name='geometry']/rect")
+    assert [int(rect.find(key).text) for key in ("x", "y", "width", "height")] == [10, 20, 50, 16]
+    assert f"CVS conflict markers in {input_file}" in caplog.text
+    assert "activeLineClass at (10, 20) has malformed points" in caplog.text
+
+
 def test_convert_with_explicit_color_list(tmp_path, monkeypatch):
     """Test that an explicit color_list_file is used to resolve the screen bgColor."""
     monkeypatch.delenv("EDMCOLORFILE", raising=False)

@@ -2,9 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from pydmconverter.edm import ir_adapter
+from pydmconverter.custom_types import RGBA
+from pydmconverter.edm import converter_helpers, ir_adapter, parser
+from pydmconverter.edm.converter import convert
 from pydmconverter.edm.ir_adapter import edm_color_to_hex
-from pydmconverter.edm.parser_helpers import parse_colors_list
+from pydmconverter.edm.parser_helpers import convert_color_property_to_qcolor, parse_colors_list
 from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
 from pydmconverter.react import convert_to_ir
@@ -54,6 +56,11 @@ def test_rgb_256_is_scaled_as_16bit(colors):
 def test_rgb_tolerates_extra_whitespace(colors):
     """Multiple/irregular spaces between components still resolve (split on any run)."""
     assert edm_color_to_hex("rgb  65535   0 0", colors) == "#ff0000"
+
+
+def test_qcolor_scales_16bit_rgb_without_a_palette():
+    """No colors.list found (max None): rgb is 16-bit, EDM's maxColor default (0x10000)."""
+    assert convert_color_property_to_qcolor("rgb 65535 0 47872", parse_colors_list(None)) == RGBA(255, 0, 186)
 
 
 @pytest.mark.parametrize("value", ["banana", "", None])
@@ -194,3 +201,15 @@ def test_env_color_list_still_resolves_screen_bgcolor(monkeypatch, tmp_path):
     edl_path = _write_screen_edl(tmp_path)
     ir = convert_to_ir(edl_path)
     assert ir.root.props["backgroundColor"] == "#0000ff"
+
+
+def test_16bit_rgb_screen_bgcolor_without_a_palette(monkeypatch, tmp_path):
+    """With no colors.list anywhere, a 16-bit rgb screen colour converts on both targets."""
+    for module in (parser, converter_helpers, ir_adapter):
+        monkeypatch.setattr(module, "search_color_list", lambda cli_color_file=None: None)
+    edl_path = tmp_path / "screen.edl"
+    edl_path.write_text(_SCREEN_EDL.replace("index 25", "rgb 47872 47872 47872"), encoding="utf-8")
+
+    assert convert_to_ir(edl_path).root.props["backgroundColor"] == "#bababa"
+    convert(str(edl_path), str(tmp_path / "screen.ui"))
+    assert "background-color: rgba(186, 186, 186, 255);" in (tmp_path / "screen.ui").read_text()
