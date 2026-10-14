@@ -192,10 +192,16 @@ def channel_roles(name_lower: str) -> ChannelRoles:
     return EDM_CHANNEL_ROLES.get(name_lower, _DEFAULT_ROLES)
 
 
+# Classes whose ``value`` is the text they show. Elsewhere it is not a label: a
+# related display writes value[i] to pv[i] when it opens a display
+# (related_display.cc), and a stray value on a drawing or group shows nothing.
+EDM_TEXT_VALUE_CLASSES = frozenset({"activextextclass", "activexregtextclass"})
+
 # EDM attribute name -> Qt prop name (the key the registry's qtPropMap consumes).
 # Channel attrs are absent on purpose: the adapter routes them itself.
 EDM_TO_QT_PROP: dict[str, str] = {
-    # text / labels (the registry maps "text" -> text/label per widget)
+    # text / labels (the registry maps "text" -> text/label per widget);
+    # value only on EDM_TEXT_VALUE_CLASSES
     "value": "text",
     "label": "text",
     "buttonLabel": "text",
