@@ -84,10 +84,20 @@ def test_constant_argument_evaluates_in_pydm(qtbot):
     url = translate_calc_pv_to_pydm(r"CALC\\\{A+B\}(LOC\\calcConstantIn, 15)", default_prefix="")
 
     # The variable is defined (type and initial value) before the calc connects to it.
-    source = PyDMLineEdit(init_channel="loc://calcConstantIn?type=int&init=2")
-    label = PyDMLabel(init_channel=url)
+    source = PyDMLineEdit(init_channel="loc://calcConstantIn?type=int&init=0")
     qtbot.addWidget(source)
+    variables = plugin_for_address("loc://x").connections
+    qtbot.waitUntil(lambda: "calcConstantIn" in variables, timeout=10000)
+
+    label = PyDMLabel(init_channel=url)
     qtbot.addWidget(label)
-    qtbot.waitUntil(lambda: label.text() == "17", timeout=3000)
-    plugin_for_address("loc://x").connections["calcConstantIn"].put_value(5)
-    qtbot.waitUntil(lambda: label.text() == "20", timeout=3000)
+    # The calc subscribes to its input from its own thread. Write the input once it
+    # has, as PyDM's own calc test does, rather than rely on the calc picking up the
+    # initial value.
+    calc = url.split("://", 1)[1].split("?", 1)[0]
+    calcs = plugin_for_address("calc://x").connections
+    qtbot.waitUntil(lambda: calc in calcs and calcs[calc].connected, timeout=10000)
+
+    for value, shown in ((2, "17"), (5, "20")):
+        variables["calcConstantIn"].put_value(value)
+        qtbot.waitUntil(lambda: label.text() == shown, timeout=10000)
