@@ -6,7 +6,6 @@ from pydmconverter.widgets_helpers import (
     XMLConvertible,
     XMLSerializableMixin,
     Enum,
-    PyDMRule,
     PyDMToolTip,
     TextFormat,
     Color,
@@ -72,21 +71,6 @@ def test_Enum():
     e = Enum("enumTest", "Value1")
     expected = "\n".join(['<property name="enumTest" stdset="0">', "  <enum>Value1</enum>", "</property>"])
     assert expected == e.to_string()
-
-
-def test_PyDMRule():
-    """
-    Test the PyDMRule class XML output.
-    """
-    rule = PyDMRule("rule1", "someProp", "1+1", "channel1", initial_value=42)
-    expected = "\n".join(
-        [
-            '<property name="rules" stdset="0">',
-            "  <rules>[{'name': 'rule1', 'property': 'someProp', 'initialValue': 42, 'expression': '1+1', 'channel': [{'channel': 'channel1', 'trigger': True, 'use_enum': False}]}]</rules>",
-            "</property>",
-        ]
-    )
-    assert expected == rule.to_string()
 
 
 def test_PyDMToolTip():

@@ -52,6 +52,31 @@ def edm_to_ui_filename(file_string: str) -> str:
     return f"{name}.ui"
 
 
+# edm_to_ui_filename as a PyDM rule expression on the channel's value, after
+# stripping it. A blank value, or one that is not a string yet (an enum's index
+# before its strings arrive), gives "", which embeds nothing.
+FILENAME_RULE_EXPRESSION = (
+    "(lambda s: '' if not s else s if s.endswith('.ui') else "
+    "(lambda n: (n[:-4] if n.endswith('.edl') else n) + '.ui')(s.partition(';')[0]))"
+    "(ch[0].strip() if isinstance(ch[0], str) else '')"
+)
+
+
+def filename_rule(channel: str) -> Dict[str, Any]:
+    """A PyDMEmbeddedDisplay rule that embeds the display the channel's value names.
+
+    use_enum makes an enum PV give its state string, as EDM's get_string does.
+    """
+    return {
+        "name": "Filename",
+        "property": "Filename",
+        "initial_value": "",
+        "expression": FILENAME_RULE_EXPRESSION,
+        "channels": [{"channel": channel, "trigger": True, "use_enum": True}],
+        "notes": "",
+    }
+
+
 @dataclass
 class PyDMFrame(Alarmable):
     """
