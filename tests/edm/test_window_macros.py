@@ -109,19 +109,23 @@ def test_every_use_of_a_window_variable_names_it_the_same(out):
     ui = convert_screen(
         out,
         "screen",
-        # A menu window switched by message buttons (not paired, keeps its filePv)...
+        # A menu window whose message button writes no display index (not paired,
+        # keeps its filePv)...
         embedded(["a.edl", "b.edl"], 100, source="menu", file_pv=r"LOC\\$(!W)tab=i:0"),
-        message_button(r"LOC\\$(!W)tab", "1", vis_pv=r"LOC\\$(!W)tab"),
+        message_button(r"LOC\\$(!W)tab", "2", vis_pv=r"LOC\\$(!W)tab"),
         group(r"LOC\\$(!W)tab", rectangle(r"LOC\\$(!W)tab")),
-        # ...and one a choice button switches (stacked displays with visibility rules).
+        # ...one a choice button switches (stacked displays with visibility rules)...
         embedded(["c.edl", "d.edl"], 250, source="menu", file_pv=r"LOC\\$(!W)v=e:0,C,D"),
         choice(r"LOC\\$(!W)v"),
+        # ...and one a message button switches (stacked displays, llrf/rf_srf_cavity_main.edl).
+        embedded(["e.edl", "f.edl"], 400, source="menu", file_pv=r"LOC\\$(!W)m=i:0"),
+        message_button(r"LOC\\$(!W)m", "1"),
     )
     text = ui.read_text()
     assert "__UNIQUE__" not in text
     # Channels, rules and the window's own channel name one variable each, for
     # PyDM to substitute once per loaded copy.
-    assert loc_names(text) == {"${EDM_W}tab", "${EDM_W}v"}
+    assert loc_names(text) == {"${EDM_W}tab", "${EDM_W}v", "${EDM_W}m"}
 
 
 def test_two_menu_windows_on_one_window_variable_both_switch(out):
