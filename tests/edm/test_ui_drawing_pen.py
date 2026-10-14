@@ -187,6 +187,13 @@ VERTICAL = "numPoints 2\nxPoints {\n  20\n  20\n}\nyPoints {\n  20\n  50\n}"
             (20, 20, 54, 34),
             id="polygon",
         ),
+        # The alarm pen keeps EDM's width, so the polygon needs no more room under alarm.
+        pytest.param(
+            f'{LINE}\nlineWidth 2\n{FILL}\nclosePolygon\n{POLYGON}\nalarmPv "X:STAT"\nlineAlarm',
+            "PyDMDrawingIrregularPolygon",
+            (20, 20, 54, 34),
+            id="lineAlarm polygon",
+        ),
         # The stroke reaches past 2 * pen when the span is over half the pen.
         pytest.param(
             f"{LINE}\nlineWidth 6\n{FILL}\nclosePolygon\n{SMALL_POLYGON}",
