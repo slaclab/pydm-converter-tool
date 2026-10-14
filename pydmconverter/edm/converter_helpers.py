@@ -40,6 +40,7 @@ from pydmconverter.widgets import (
     PyDMAnalogIndicator,
     filename_rule,
 )
+from pydmconverter.widgets_helpers import Alarmable
 from pydmconverter.edm.parser_helpers import (
     SearchPaths,
     convert_color_property_to_qcolor,
@@ -53,6 +54,9 @@ from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
 from pydmconverter.edm.edm_qt import (
+    EDM_ALARM_BORDER_CLASSES,
+    EDM_ALARM_FLAGS,
+    EDM_ALARM_PROPS,
     EDM_DATA_PV_ATTRS,
     EDM_TEXT_VALUE_CLASSES,
     XY_GRAPH_UNMAPPED_PVS,
@@ -215,11 +219,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "gridColor": "axisColor",
     "yAxisSrc": "yAxisSrc",
     "xAxisSrc": "xAxisSrc",
-    # Alarm sensitivity
-    "alarmSensitiveContent": "alarmSensitiveContent",
-    "alarmSensitiveBorder": "alarmSensitiveBorder",
-    "fgAlarm": "alarmSensitiveContent",
-    "lineAlarm": "alarmSensitiveContent",
+    # Alarm flags are mapped per class by apply_alarm_flags.
     # Push Button attributes
     "pressValue": "press_value",
     "releaseValue": "release_value",
@@ -655,6 +655,32 @@ def apply_channel_roles(widget, obj: EDMObject) -> None:
                 logger.warning(f"{obj.name}: {tag} {', '.join(pvs)} ({effect}) has no place in the .ui; dropped")
 
 
+def apply_alarm_flags(widget, obj: EDMObject) -> None:
+    """Make the widget follow its channel's alarm severity only where the
+    object's alarm flags say EDM does (edm_qt.EDM_ALARM_PROPS); an object
+    without them never changes colour for alarms. A flag the table doesn't map
+    for the class (a slider's bgAlarm, a bar's indicatorAlarm, a text's bgAlarm)
+    is dropped with a warning.
+    """
+    if not isinstance(widget, Alarmable):
+        return
+    name = obj.name.lower()
+    props = obj.properties
+    flags = EDM_ALARM_PROPS.get(name, {})
+    # Only a filled shape has a fill to colour: PyDM would fill an unfilled one,
+    # and colour a polyline's arrowheads.
+    filled = bool(props.get("fill")) and not isinstance(widget, PyDMDrawingLine)
+    on = {qt_prop for flag, qt_prop in flags.items() if props.get(flag) and (flag != "fillAlarm" or filled)}
+    if name in EDM_ALARM_BORDER_CLASSES and props.get("useAlarmBorder") and "alarmSensitiveContent" in on:
+        on = {"alarmSensitiveBorder"}
+    widget.alarm_sensitive_content = "alarmSensitiveContent" in on
+    widget.alarm_sensitive_border = "alarmSensitiveBorder" in on
+    # Against the table, not what is on: a fillAlarm without a fill loses nothing EDM draws.
+    for flag in EDM_ALARM_FLAGS:
+        if props.get(flag) and flag not in flags:
+            logger.warning(f"{obj.name}: {flag} has no place in the .ui; static colours kept")
+
+
 def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
     """
     Convert a single EDM attribute value to its PyDM equivalent.
@@ -815,9 +841,6 @@ def apply_widget_post_processing(
                     widget.brushFill = True
                     logger.info("Setting default white fill color for IrregularPolygon (no fillColor specified)")
 
-                widget.alarm_sensitive_content = True
-                logger.info("Enabled alarm_sensitive_content for IrregularPolygon to ensure fill is visible")
-
             widget.x = int(geom["x"] + offset_x)
             widget.y = int(geom["y"] + offset_y)
             widget.width = int(geom["width"])
@@ -928,12 +951,6 @@ def apply_widget_post_processing(
     if isinstance(widget, (PyDMLabel, PyDMLineEdit)):
         widget.width = max(widget.width, 20)
         widget.height = max(widget.height, 14)
-
-    # Drawing shape alarm sensitivity
-    if isinstance(widget, (PyDMDrawingArc, PyDMDrawingPie, PyDMDrawingRectangle, PyDMDrawingEllipse)):
-        if hasattr(widget, "brushColor") and widget.brushColor is not None:
-            widget.alarm_sensitive_content = True
-            logger.info(f"Enabled alarm_sensitive_content for {type(widget).__name__} to ensure fill is visible")
 
     # Auto-size
     if obj.properties.get("autoSize", False) and hasattr(widget, "autoSize"):
@@ -1117,8 +1134,10 @@ def traverse_group(
                     widget.visPv = None
                 else:
                     widget.visMin, widget.visMax = limits
-            # Before post-processing: on/off button variants copy the channel and key their rules on it.
+            # Before post-processing: on/off button variants copy the channel and key their rules on it,
+            # and the alarm flags with it.
             apply_channel_roles(widget, obj)
+            apply_alarm_flags(widget, obj)
 
             # 4. Post-processing (geometry, button variants, dimension padding, etc.)
             apply_widget_post_processing(

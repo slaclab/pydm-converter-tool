@@ -852,3 +852,69 @@ def test_pydmembeddeddisplay_non_pip_has_no_border():
     assert last_style_sheet(widget.to_xml()) == "color: rgba(0, 0, 255, 255);background-color: none;"
     plain = PyDMEmbeddedDisplay(name="activeChoiceButtonClass1_page1")
     assert last_style_sheet(plain.to_xml()) == "background-color: transparent;"
+
+
+ALARM_SELECTORS = [f'[alarmSensitiveContent="true"][alarmSeverity="{severity}"]' for severity in (1, 2, 3, 4)]
+
+
+def test_pydmlabel_without_alarm_keeps_its_plain_style_sheet():
+    label = PyDMLabel(foreground_color=RGBA(0, 0, 0), background_color=RGBA(187, 187, 187))
+
+    assert last_style_sheet(label.to_xml()) == "background-color: rgba(187, 187, 187, 255); color: rgba(0, 0, 0, 255);"
+
+
+def test_pydmlabel_alarm_content_carries_pydm_alarm_colours():
+    label = PyDMLabel(
+        foreground_color=RGBA(0, 0, 0), background_color=RGBA(187, 187, 187), alarm_sensitive_content=True
+    )
+
+    # Its own sheet beats PyDM's whatever the selectors: the static colours go under "*" and the
+    # alarm colours under selectors that outrank it. Bare declarations next to them would void the sheet.
+    assert last_style_sheet(label.to_xml()) == (
+        "* { background-color: rgba(187, 187, 187, 255); color: rgba(0, 0, 0, 255); } "
+        f"PyDMLabel{ALARM_SELECTORS[0]} {{ color: #EBEB00; }} "
+        f"PyDMLabel{ALARM_SELECTORS[1]} {{ color: #FF0000; }} "
+        f"PyDMLabel{ALARM_SELECTORS[2]} {{ color: #EB00EB; }} "
+        f"PyDMLabel{ALARM_SELECTORS[3]} {{ color: #FFFFFF; }}"
+    )
+
+
+def test_pydmlineedit_alarm_content_colours_its_text():
+    style = last_style_sheet(PyDMLineEdit(foreground_color=RGBA(0, 0, 0), alarm_sensitive_content=True).to_xml())
+
+    assert style.startswith("* { color: rgba(0, 0, 0, 255);background-color: none; } ")
+    assert f"PyDMLineEdit{ALARM_SELECTORS[1]} {{ color: #FF0000; }}" in style
+
+
+def test_pydmpushbutton_alarm_content_colours_its_face_in_every_style_sheet():
+    button = PyDMPushButton(
+        name="activeButtonClass1",
+        foreground_color=RGBA(0, 0, 0),
+        on_color=RGBA(187, 187, 187),
+        off_color=RGBA(187, 187, 187),
+    )
+    button.alarm_sensitive_content = True
+    sheets = [get_property_value(prop) for prop in button.to_xml().findall("property[@name='styleSheet']")]
+
+    # The .ui loader applies them in order, so each must carry the alarm colours.
+    assert sheets
+    for sheet in sheets:
+        assert sheet.startswith("* { ")
+        assert f"PyDMPushButton{ALARM_SELECTORS[1]} {{ background-color: #FF0000; }}" in sheet
+    assert sheets[-1].startswith("* { color: rgba(0, 0, 0, 255); background-color: rgba(187, 187, 187, 255); } ")
+
+
+def test_drawing_alarm_content_adds_no_style_sheet_rules():
+    # PyDM's own stylesheet colours the brush (qproperty-brush); the ellipse's sheet doesn't touch it.
+    ellipse = PyDMDrawingEllipse(foreground_color=RGBA(0, 0, 0), alarm_sensitive_content=True)
+    sheets = [get_property_value(prop) for prop in ellipse.to_xml().findall("property[@name='styleSheet']")]
+
+    assert "color: rgba(0, 0, 0, 255);background-color: none;" in sheets
+    assert not [sheet for sheet in sheets if "alarmSeverity" in sheet]
+
+
+def test_alarmable_draws_no_alarm_border_by_default():
+    properties = {prop.get("name"): get_property_value(prop) for prop in PyDMDrawingRectangle().generate_properties()}
+
+    assert properties["alarmSensitiveContent"] == "false"
+    assert properties["alarmSensitiveBorder"] == "false"
