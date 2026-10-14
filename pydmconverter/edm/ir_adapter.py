@@ -32,9 +32,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from pydmconverter.edm.edm_qt import (
-    EDM_PRIMARY_CHANNEL_ORDER,
-    EDM_READBACK_CHANNEL_ORDER,
+    EDM_DATA_PV_ATTRS,
     EDM_TO_QT_PROP,
+    channel_roles,
     resolve_qt_class,
 )
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
@@ -231,9 +231,9 @@ def color_info_to_hex(color_info: dict[str, Any] | None, color_data: dict[str, A
 
 # Classes whose registry definition maps a readback channel (readbackChannel ->
 # pv-button's readbackPV). Elsewhere a second data channel has nowhere to land
-# and is dropped with a warning. Menu buttons pair controlPv with an
-# indicatorPv readback exactly like plain buttons (batch-2: cbxfel camera rows).
-_READBACK_CLASSES = {"activebuttonclass", "activemessagebuttonclass", "activemenubuttonclass"}
+# and is dropped with a warning. Buttons and menu buttons pair controlPv with an
+# indicatorPv readback; message buttons have none (EDM_CHANNEL_ROLES).
+_READBACK_CLASSES = {"activebuttonclass", "activemenubuttonclass"}
 
 # EDM alarm-severity palette (green / yellow / red / white-invalid) — what an
 # alarm-sensitive EDM part shows instead of its configured static color. Used
@@ -444,32 +444,33 @@ def _alarm_rules(
 #
 # A rule colour index is dynamic: EDM calls colorInfoClass::evalRule(index, v)
 # with a PV value v and paints the first condition's colour that holds (else
-# the rule's static colour = its first result colour). Which PV supplies v is
-# per class (EDM baselib/pvFactory sources, the evalRule call sites):
-#   rectangle/circle/arc/line, xText, xRegText: alarmPv (line/fill, fg/bg)
-#   xTextDsp(:noedit): colorPv (fg and bg)
-#   Textupdate/RegTextupdate: fg from colorPv, else the controlPv; the fill
-#     colour's helper is never fed a value, so it is evalRule(index, 0) — static
-#   Button/MessageButton: colorPv (on, off, fg); MenuButton/UpDown/Ramp: colorPv (bg, fg)
-#   relatedDisplay: colorPv (fg, bg)
+# the rule's static colour = its first result colour). The PV that supplies v
+# is the class's colour PV (edm_qt.EDM_CHANNEL_ROLES); the colours it drives
+# are per class (EDM baselib/pvFactory sources, the evalRule call sites):
+#   rectangle/circle/arc/line: line, fill; xText, xRegText: fg, bg
+#   xTextDsp(:noedit): fg and bg
+#   Textupdate/RegTextupdate: fg; the fill colour's helper is never fed a
+#     value, so it is evalRule(index, 0) — static
+#   Button/MessageButton: on, off, fg; MenuButton/UpDown/Ramp: bg, fg
+#   relatedDisplay: fg, bg
 # Everything else never evaluates rules and shows the static colour.
-_RULE_COLOR_DRIVERS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+_RULE_COLOR_ATTRS: dict[str, tuple[str, ...]] = {
     **{
-        name: (("alarmPv",), ("lineColor", "fillColor"))
+        name: ("lineColor", "fillColor")
         for name in ("activerectangleclass", "activecircleclass", "activearcclass", "activelineclass")
     },
-    "activextextclass": (("alarmPv",), ("fgColor", "bgColor")),
-    "activexregtextclass": (("alarmPv",), ("fgColor", "bgColor")),
-    "activextextdspclass": (("colorPv",), ("fgColor", "bgColor")),
-    "activextextdspclassnoedit": (("colorPv",), ("fgColor", "bgColor")),
-    "textupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
-    "regtextupdateclass": (("colorPv", "controlPv"), ("fgColor",)),
-    "activebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
-    "activemessagebuttonclass": (("colorPv",), ("onColor", "offColor", "fgColor")),
-    "activemenubuttonclass": (("colorPv",), ("bgColor", "fgColor")),
-    "activeupdownbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
-    "activerampbuttonclass": (("colorPv",), ("bgColor", "fgColor")),
-    "relateddisplayclass": (("colorPv",), ("fgColor", "bgColor")),
+    "activextextclass": ("fgColor", "bgColor"),
+    "activexregtextclass": ("fgColor", "bgColor"),
+    "activextextdspclass": ("fgColor", "bgColor"),
+    "activextextdspclassnoedit": ("fgColor", "bgColor"),
+    "textupdateclass": ("fgColor",),
+    "regtextupdateclass": ("fgColor",),
+    "activebuttonclass": ("onColor", "offColor", "fgColor"),
+    "activemessagebuttonclass": ("onColor", "offColor", "fgColor"),
+    "activemenubuttonclass": ("bgColor", "fgColor"),
+    "activeupdownbuttonclass": ("bgColor", "fgColor"),
+    "activerampbuttonclass": ("bgColor", "fgColor"),
+    "relateddisplayclass": ("fgColor", "bgColor"),
 }
 # Colour attrs EDM evaluates at a fixed value of 0 (a ColorHelper nobody feeds).
 _RULE_COLOR_AT_ZERO: dict[str, tuple[str, ...]] = {
@@ -638,7 +639,7 @@ def _color_rules(
 
     The static prop already holds the rule's static colour (its first result
     colour, get_color_by_index). A rule is added when the class feeds the
-    colour a PV value (see _RULE_COLOR_DRIVERS) and the widget carries the
+    colour a PV value (see _RULE_COLOR_ATTRS) and the widget carries the
     prop; a colour EDM evaluates at 0 is replaced by that fixed result. When an
     alarm rule already drives the same prop (alarmPv + lineAlarm/fillAlarm/
     fgAlarm/bgAlarm) and the palette keeps the own colour at NO_ALARM, the two
@@ -648,7 +649,8 @@ def _color_rules(
     alarm-sensitive, so the alarm rule stands alone.
     """
     name = obj.name.lower()
-    drivers, driven_attrs = _RULE_COLOR_DRIVERS.get(name, ((), ()))
+    drivers = channel_roles(name).color
+    driven_attrs = _RULE_COLOR_ATTRS.get(name, ())
     if name in ("activextextdspclass", "activextextdspclassnoedit") and (
         obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm")
     ):
@@ -705,27 +707,89 @@ def _color_rules(
 
 
 def _apply_channel_attrs(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> None:
-    """Route the object's data-channel attrs: primary -> ``channel``, readback ->
-    ``readbackChannel`` (registry maps it only where a readback exists, i.e.
-    pv-button). Anything else is dropped loudly — silently keeping the last
-    attr parsed is how buttons ended up writing to their readback PV.
+    """Route the object's PV attrs by its class's roles (edm_qt.EDM_CHANNEL_ROLES):
+    data PV -> ``channel``, readback -> ``readbackChannel`` (registry maps it
+    only where a readback exists, i.e. pv-button). Any other data-PV attr is
+    dropped loudly, also on an object without a data PV (a related display's
+    pv[]) — silently keeping the last attr parsed is how buttons ended up
+    writing to their readback PV. Colour, alarm and null PVs feed rules
+    (_color_rules, _alarm_rules, _null_color_rule).
     """
-    primary = next((attr for attr in EDM_PRIMARY_CHANNEL_ORDER if obj.properties.get(attr)), None)
-    if primary is None:
-        return
-    qt_props["channel"] = _to_channel(obj.properties[primary])
-    readback = next(
-        (attr for attr in EDM_READBACK_CHANNEL_ORDER if attr != primary and obj.properties.get(attr)),
-        None,
-    )
+    roles = channel_roles(obj.name.lower())
+    primary = roles.data_attr(obj.properties)
+    readback = roles.readback_attr(obj.properties)
+    if primary is not None:
+        qt_props["channel"] = _to_channel(obj.properties[primary])
     if readback is not None:
         if obj.name.lower() in _READBACK_CLASSES:
             qt_props["readbackChannel"] = _to_channel(obj.properties[readback])
         else:
             warnings.append(f"EDM {readback} readback dropped ({primary} kept as the channel)")
-    for attr in EDM_PRIMARY_CHANNEL_ORDER:
+    kept = f"{primary} kept as the channel" if primary is not None else "the widget has no channel"
+    for attr in EDM_DATA_PV_ATTRS:
         if attr not in (primary, readback) and obj.properties.get(attr):
-            warnings.append(f"EDM {attr} dropped ({primary} kept as the channel)")
+            warnings.append(f"EDM {attr} dropped ({kept})")
+
+
+# nullCondition -> the condition over [data PV, nullPv] under which EDM draws
+# the text in nullColor (x_text_dsp_obj.cc; "disabled" never does).
+_NULL_CONDITIONS = {"nullEqCtl": "{0} == {1}", "nullEq0": "{1} == 0"}
+
+
+def _null_color_rule(
+    obj: EDMObject,
+    qt_class: str | None,
+    qt_props: dict[str, Any],
+    colors: dict[str, Any] | None,
+    rules: list[RuleSpec],
+    warnings: list[str],
+    *,
+    registry: RegistryClient | None = None,
+) -> list[RuleSpec]:
+    """A text control's nullPv -> a foregroundColor rule.
+
+    EDM (x_text_dsp_obj.cc) draws the text in ``nullColor`` while the
+    nullCondition holds: the controlPv equals the nullPv (nullEqCtl, the
+    default), or the nullPv is 0 (nullEq0). The nullPv itself is never shown.
+    Alarm colours win over the null colour and the null colour wins over a rule
+    colour (pvColor.cc setNull), so with a colour rule on the same prop the null
+    condition goes first in it. With the alarm border on, the text keeps its
+    static colour (see _color_rules).
+    """
+    roles = channel_roles(obj.name.lower())
+    null_pv = obj.properties.get(roles.null) if roles.null else None
+    control = roles.data_attr(obj.properties)
+    condition = _NULL_CONDITIONS.get(str(obj.properties.get("nullCondition") or "nullEqCtl"))
+    if not null_pv or control is None or condition is None:
+        return []
+    if obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm"):
+        return []
+    target = _mapped_color_target(qt_class, "foregroundColor", registry)
+    if target is None:
+        warnings.append(f"EDM {roles.null} null colour dropped (no foreground colour to switch)")
+        return []
+    null_color = edm_color_to_hex(obj.properties.get("nullColor"), colors)
+    merged = next((rule for rule in rules if rule.target_property == target), None)
+    # A rule of its own returns to the static fgColor, its default (which the IR requires).
+    if null_color is None or (merged is None and qt_props.get("foregroundColor") is None):
+        warnings.append(f"EDM {roles.null} null colour dropped (its nullColor or fgColor did not resolve)")
+        return []
+    pvs = [(_to_channel(obj.properties[control]), True), (_to_channel(null_pv), True)]
+    if merged is not None:
+        tokens = [f"{{{index}}}" for index in range(len(merged.pvs), len(merged.pvs) + 2)]
+        merged.pvs = [*merged.pvs, *pvs]
+        merged.conditions = [(condition.format(*tokens), null_color), *merged.conditions]
+        merged.name = f"{merged.name} + null colour"
+        return []
+    return [
+        RuleSpec(
+            target_property=target,
+            name=f"Null colour ({target})",
+            pvs=pvs,
+            conditions=[(condition, null_color)],
+            default=qt_props.get("foregroundColor"),
+        )
+    ]
 
 
 # Per-class fixup: keyed by lowercased EDM class name. Runs after the generic
@@ -828,6 +892,8 @@ _BAR_UNMAPPED_PROPS = (
     "label",
     "maxPv",
     "minPv",
+    # An offset subtracted from the value (bar.cc), not a null colour.
+    "nullPv",
 )
 
 
@@ -1398,6 +1464,7 @@ def _object_to_source(
         # a static index), so _color_rules covers it: no separate warning.
         color_rules = _color_rules(obj, qt_class, qt_props, colors, alarm_rules, warnings, registry=registry)
         rules = alarm_rules + color_rules + _pip_rules(obj)
+        rules += _null_color_rule(obj, qt_class, qt_props, colors, rules, warnings, registry=registry)
         if (
             obj.properties.get("bgAlarm")
             and not _textupdate_bg_unpainted(obj)  # EDM never paints that background: nothing lost
