@@ -811,6 +811,7 @@ def apply_widget_post_processing(
 
     # Multi-slider handling
     if obj.name.lower() == "mmvclass":
+        widget.orientation = mmv_orientation(obj)
         generated_sliders = create_multi_sliders(widget, obj)
         pydm_widgets.extend(generated_sliders)
 
@@ -1246,11 +1247,36 @@ def create_freeze_button(widget: PyDMPushButton):
     )
 
 
+# mmvClass orientation values: ORIENT_HT, ORIENT_VL, ORIENT_HB and ORIENT_VR (mmover.h).
+MMV_ORIENTATIONS = {"0": "horizontal", "1": "vertical", "2": "horizontal", "3": "vertical"}
+
+
+def mmv_orientation(obj: EDMObject) -> Optional[str]:
+    """A multi-mover's direction, "horizontal" or "vertical".
+
+    EDM reads it from the numeric orientation (mmover.cc createFromFile).
+    orientStr is the editor's name for the same choice, used here only when
+    orientation is missing. None leaves the slider horizontal, Qt's default.
+    """
+    orientation = MMV_ORIENTATIONS.get(str(obj.properties.get("orientation", "")).strip())
+    if orientation is not None:
+        return orientation
+    orient_str = str(obj.properties.get("orientStr", "")).lower()
+    if orient_str.startswith("horiz"):
+        return "horizontal"
+    if orient_str.startswith("vert"):
+        return "vertical"
+    return None
+
+
 def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
     """
     Given a ActiveSlider converted from a mmvclass, create stacked sliders to show each slider indicator.
-    Modifies the height and channel of the current slider
+    Modifies the size and channel of the current slider. The sliders share the
+    mover's thickness, so each keeps EDM's full track length: horizontal ones
+    stack top to bottom, vertical ones sit side by side.
     """
+    vertical = widget.orientation == "vertical"
     i = 1
     prevColor = None
     ctrl_attributes = []
@@ -1264,13 +1290,19 @@ def create_multi_sliders(widget: PyDMSlider, object: EDMObject):
         prevColor = currColor
         i += 1
     if ctrl_attributes:
-        widget.height = widget.height // len(ctrl_attributes)
+        if vertical:
+            widget.width = widget.width // len(ctrl_attributes)
+        else:
+            widget.height = widget.height // len(ctrl_attributes)
         widget.channel = ctrl_attributes[0][0]
         widget.indicatorColor = ctrl_attributes[0][1]
         for j in range(1, len(ctrl_attributes)):
             curr_slider = copy.deepcopy(widget)
             curr_slider.name = widget.name + f"_{j}"
-            curr_slider.y = curr_slider.y + curr_slider.height * j
+            if vertical:
+                curr_slider.x = curr_slider.x + curr_slider.width * j
+            else:
+                curr_slider.y = curr_slider.y + curr_slider.height * j
             curr_slider.channel = ctrl_attributes[j][0]
             curr_slider.indicatorColor = ctrl_attributes[j][1]
             logger.info(f"Created multi-slider: {curr_slider.name} based on {widget.name}")
