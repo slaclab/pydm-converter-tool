@@ -1,5 +1,10 @@
+import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import pytest
+
+from pydmconverter.edm.converter import convert
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.ir.emit import to_wire_dict
 from pydmconverter.ir.schema import validate_screen_json
@@ -20,7 +25,8 @@ def test_group_visibility_rule_on_group_node():
     assert rule.id == "r-001"
     assert rule.target_property == "visible"
     assert [pv.name for pv in rule.pvs] == ["${PREFIX}:ENABLE"]
-    assert rule.conditions[0].expression == "{0} != 0"
+    # No visMin/visMax: EDM reads both as 0, the empty range [0, 0).
+    assert rule.conditions[0].expression == "({0} >= 0.0) and ({0} < 0.0)"
     assert rule.conditions[0].value is True
     assert rule.default is False
 
@@ -175,3 +181,85 @@ endObjectProperties
     assert group.type == "group"
     assert group.rules == []
     assert any("visMin '${LO}' depends on a macro" in w for w in group.warnings)
+
+
+# --- A missing visMin or visMax is 0 (EDM's atof() of an empty string) --------
+
+_RECTANGLE = """
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 20
+h 20
+lineColor index 14
+{vis}
+endObjectProperties
+"""
+
+_GROUP = """
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 10
+w 50
+h 50
+beginGroup
+{rectangle}
+endGroup
+
+{vis}
+endObjectProperties
+"""
+
+# The values a live EDM was checked at, and the ones the object showed at.
+_VALUES = (1, 0, 5, -1, 0.5)
+MISSING_LIMITS = [
+    pytest.param([], set(), id="no-limits"),
+    pytest.param(["visInvert"], set(_VALUES), id="no-limits-inverted"),
+    pytest.param(['visMin "1"'], set(), id="only-visMin"),
+    pytest.param(['visMin "1"', "visInvert"], set(_VALUES), id="only-visMin-inverted"),
+    pytest.param(['visMax "1"'], {0, 0.5}, id="only-visMax"),
+    pytest.param(['visMax "1"', "visInvert"], {1, 5, -1}, id="only-visMax-inverted"),
+]
+
+
+def _vis_screen(vis_lines, *, group):
+    vis = "\n".join(['visPv "DEMO:SHOW"', *vis_lines])
+    if group:
+        return _SCREEN + _GROUP.format(rectangle=_RECTANGLE.format(vis=""), vis=vis)
+    return _SCREEN + _RECTANGLE.format(vis=vis)
+
+
+@pytest.mark.parametrize("group", [False, True], ids=["object", "group"])
+@pytest.mark.parametrize(("vis_lines", "shown"), MISSING_LIMITS)
+def test_ir_missing_vis_limit_is_zero(tmp_path, vis_lines, shown, group):
+    path = tmp_path / "vis.edl"
+    path.write_text(_vis_screen(vis_lines, group=group), encoding="utf-8")
+    node = edm_file_to_ir(path).root.children[0]
+    [rule] = node.rules
+    assert rule.target_property == "visible"
+    assert [pv.name for pv in rule.pvs] == ["DEMO:SHOW"]
+    [condition] = rule.conditions
+    assert condition.value is True and rule.default is False
+    assert {value for value in _VALUES if eval(condition.expression.replace("{0}", repr(float(value))))} == shown
+    assert not [w for w in node.warnings if "visMin" in w or "visMax" in w]
+
+
+@pytest.mark.parametrize("group", [False, True], ids=["object", "group"])
+@pytest.mark.parametrize(("vis_lines", "shown"), MISSING_LIMITS)
+def test_ui_missing_vis_limit_is_zero(tmp_path, vis_lines, shown, group):
+    source = tmp_path / "vis.edl"
+    source.write_text(_vis_screen(vis_lines, group=group), encoding="utf-8")
+    convert(str(source), str(tmp_path / "vis.ui"))
+    [rectangle] = [w for w in ET.parse(tmp_path / "vis.ui").iter("widget") if w.get("class") == "PyDMDrawingRectangle"]
+    [rule] = json.loads(rectangle.find("property[@name='rules']/string").text)
+    assert rule["property"] == "Visible"
+    assert [channel["channel"] for channel in rule["channels"]] == ["DEMO:SHOW"]
+    assert {value for value in _VALUES if eval(rule["expression"], {"ch": [value], "float": float})} == shown

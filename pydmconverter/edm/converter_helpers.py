@@ -974,12 +974,13 @@ def traverse_group(
             logger.debug("Skipped pydm_group")
 
             vis_invert = bool(obj.properties.get("visInvert", False))
-            if "visPv" in obj.properties and "visMin" in obj.properties and "visMax" in obj.properties:
-                curr_vispv = [(obj.properties["visPv"], obj.properties["visMin"], obj.properties["visMax"], vis_invert)]
+            if "visPv" in obj.properties:
+                # EDM shows the group while visMin <= value < visMax, reading a missing limit as 0.
+                vis_min = obj.properties.get("visMin", "0")
+                vis_max = obj.properties.get("visMax", "0")
+                curr_vispv = [(obj.properties["visPv"], vis_min, vis_max, vis_invert)]
                 if obj.properties.get(STARTS_VISIBLE):
                     curr_vispv = [curr_vispv[0] + (True,)]
-            elif "visPv" in obj.properties:
-                curr_vispv = [(obj.properties["visPv"], None, None, vis_invert)]
             else:
                 curr_vispv = []
 

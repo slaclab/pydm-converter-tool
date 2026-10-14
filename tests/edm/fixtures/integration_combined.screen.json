@@ -57,7 +57,7 @@
             ],
             "conditions": [
               {
-                "expression": "{0} != 0",
+                "expression": "({0} >= 0.0) and ({0} < 0.0)",
                 "value": true
               }
             ],
