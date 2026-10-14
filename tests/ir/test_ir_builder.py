@@ -145,7 +145,7 @@ def test_valid_macro_name():
 
 
 def test_invalid_macro_names_renamed_consistently():
-    """llrf/rf_mux_alarms references $(6X6FBCKPV): the IR macro pattern rejects a
+    """A reference to $(6X6FBCKPV): the IR macro pattern rejects a
     leading digit, which aborted the whole screen. Declaration, prop references,
     rule PVs, formula bindings and passed-on macro keys all get the same rename."""
     from pydmconverter.ir.source import RuleSpec
@@ -168,7 +168,7 @@ def test_invalid_macro_names_renamed_consistently():
         SourceNode(
             qt_class="PyDMRelatedDisplayButton",
             qt_props={
-                "filenames": ["rf_mux_alarms.edl"],
+                "filenames": ["alarms.edl"],
                 "macros": {"6X6FBCKPV": "FBCK:FB04:LG01:S5USED", "P": "X", '2 "Q': "junk"},
             },
         ),
@@ -459,7 +459,7 @@ def test_literal_dollar_brace_is_neither_declared_nor_renamed():
 
 
 def test_literal_dollar_brace_sharing_a_macro_name_is_warned():
-    """camac/camac_lu_from_epics_detail.edl runs `luCWRestart $\\{LOCA\\} 0` beside
+    """A display runs `luCWRestart $\\{LOCA\\} 0` beside
     $(LOCA) PVs. The runtime has no escape for a literal ${, so LOCA's value
     replaces the shell variable too; the screen says so."""
     from pydmconverter.ir.macros import LITERAL_BRACE as B

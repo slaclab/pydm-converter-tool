@@ -18,16 +18,16 @@ def test_menu_pip_gets_static_file_and_switching_rule():
     screen = _convert("pip_menu.edl")
     pip = screen.root.children[0]
     assert pip.type == "embedded-display"
-    assert pip.props["file"] == "TEMnocentroid.screen.json"
+    assert pip.props["file"] == "no_centroid.screen.json"
     rules = [r for r in pip.rules if r.target_property == "file"]
     assert len(rules) == 1
     rule = rules[0]
     assert rule.pvs[0].name == "${TEMLOCATION}:INAPOSITION"
     assert [(c.expression, c.value) for c in rule.conditions] == [
-        ("{0} == 0", "TEMnocentroid.screen.json"),
-        ("{0} == 1", "TEMcentroid.screen.json"),
+        ("{0} == 0", "no_centroid.screen.json"),
+        ("{0} == 1", "centroid.screen.json"),
     ]
-    assert rule.default == "TEMnocentroid.screen.json"
+    assert rule.default == "no_centroid.screen.json"
 
 
 def test_file_pip_keeps_macro_template():
@@ -36,7 +36,7 @@ def test_file_pip_keeps_macro_template():
     assert pip.type == "embedded-display"
     # ${VAR} form preserved for view-time resolution; extension appended is
     # deferred (macro refs cannot be rewritten by screenRef).
-    assert pip.props["file"] == "mgnt_unit_${DISP}"
+    assert pip.props["file"] == "unit_${DISP}"
     assert not [r for r in pip.rules if r.target_property == "file"]
 
 
@@ -60,7 +60,7 @@ LEFTOVER_MENU = (
 
 
 def test_file_pip_ignores_leftover_menu_entries_and_symbols(tmp_path):
-    # misc/opsKlys_disp_li24.edl: a window switched to "file" keeps its menu
+    # A window switched to "file" keeps its menu
     # entries; EDM (pip.cc) opens the file with the parent's macros only.
     pip = _convert_pip(tmp_path, 'displaySource "file"\nfilePv "$(sector)"\nfile "sector_$(sector)"\n' + LEFTOVER_MENU)
     assert pip.props["file"] == "sector_${sector}"
@@ -75,9 +75,9 @@ def test_file_pip_without_a_file_opens_nothing(tmp_path):
 
 def test_string_pv_pip_opens_its_local_variable_value(tmp_path):
     # No displaySource line is "stringPV" (the enum default EDM leaves out): the
-    # file is the filePv's value, here a LOC string's initial one (misc/tdsEmbd.edl).
-    pip = _convert_pip(tmp_path, 'filePv "LOC\\\\showMe=s:tdsVert"\nfile "unused"\nnumDsps 0\n')
-    assert pip.props["file"] == "tdsVert.screen.json"
+    # file is the filePv's value, here a LOC string's initial one.
+    pip = _convert_pip(tmp_path, 'filePv "LOC\\\\showMe=s:summary"\nfile "unused"\nnumDsps 0\n')
+    assert pip.props["file"] == "summary.screen.json"
     assert not pip.rules
 
 
@@ -88,7 +88,7 @@ def test_string_pv_pip_on_a_channel_opens_nothing(tmp_path):
 
 
 def test_pip_without_display_source_ignores_its_file(tmp_path):
-    pip = _convert_pip(tmp_path, 'file "mgnt_unit_$(DISP)"\nnumDsps 0\n')
+    pip = _convert_pip(tmp_path, 'file "unit_$(DISP)"\nnumDsps 0\n')
     assert "file" not in pip.props
 
 
@@ -147,8 +147,8 @@ def test_menu_window_with_uniform_macros_keeps_its_file_rule(tmp_path):
 
 
 def test_menu_window_on_a_local_variable_splits_per_entry(tmp_path):
-    """Archive/laser-orig/pid_plot_terms.edl: one file, nine entries, each with
-    its own DUR. The merged macros opened every entry with the last DUR."""
+    """One file, several entries, each with its own DUR. The merged macros
+    opened every entry with the last DUR."""
     from pydmconverter.ir.emit import to_wire_dict
     from pydmconverter.ir.schema import validate_screen_json
 
@@ -180,7 +180,7 @@ def test_split_menu_window_keeps_edm_indices(tmp_path):
 
 
 def test_split_menu_entry_without_symbols_gets_only_its_window_id(tmp_path):
-    # laser/profile1.edl: entry 0 (Rectangle) has no symbols line; it got entry 1's ID.
+    # Entry 0 has no symbols line; it got entry 1's ID.
     screen = _menu_screen(tmp_path, "LOC\\\\sel=i:0", [(0, "blank.edl", None), (1, "cam.edl", "ID=$(ID)")])
     blank, cam = screen.root.children
     assert _entry_macros(blank) == {}
@@ -188,7 +188,7 @@ def test_split_menu_entry_without_symbols_gets_only_its_window_id(tmp_path):
 
 
 def test_split_menu_window_declares_a_variable_nothing_gives_a_value(tmp_path):
-    # laser/profile1.edl: LOC\Display is only ever named; unconnected, every display would show.
+    # LOC\Display is only ever named; unconnected, every display would show.
     screen = _menu_screen(tmp_path, "LOC\\\\Display", DURATIONS)
     for display in screen.root.children:
         assert [pv.name for pv in display.rules[0].pvs] == ["loc://Display?type=int&init=0"]
@@ -256,7 +256,7 @@ def test_split_menu_window_keeps_its_visibility_rule(tmp_path):
 
 
 def test_menu_window_on_a_channel_opens_with_the_first_entrys_macros(tmp_path):
-    # xray/gdet_main.edl: a real PV drives the window, so it stays one display
+    # A real PV drives the window, so it stays one display
     # with the file rule; the macros cannot follow it.
     screen = _menu_screen(tmp_path, "GDET:FEE1:1:CONFIG", DURATIONS)
     (pip,) = screen.root.children
@@ -275,7 +275,7 @@ def test_macros_declared_from_rule_pvs_and_action_commands():
 
 
 def test_digit_leading_macro_converts_on_both_sides(tmp_path):
-    """llrf/rf_mux_alarms references $(6X6FBCKPV) and llrf/rf_abstr_debug passes
+    """One screen references $(6X6FBCKPV) and another passes
     6X6FBCKPV=... to it. The IR rejects the name, so both screens rename it the
     same way instead of the target aborting."""
     from pydmconverter.ir.emit import to_wire_dict
@@ -317,7 +317,7 @@ w 100
 h 20
 numDsps 1
 displayFileName {
-  0 "rf_mux_alarms.edl"
+  0 "alarms.edl"
 }
 symbols {
   0 "MUX_REC=ACCL:LI22:1:PDES,6X6FBCKPV=FBCK:FB04:LG01:S5USED"
@@ -336,9 +336,9 @@ endObjectProperties
 
 
 def test_shell_variables_are_not_declared_as_macros(tmp_path):
-    """EDM expands only $(NAME). und/mc_undh_cam_main.edl runs
-    `for m in \\{1..5\\}; do caput $(CM):CM$\\{m\\}CALIBRATE.PROC 1; done` and
-    facet/evnt_in10_main.edl passes CRATE=$\\{CRATE\\} to pydm: ${m} and ${CRATE}
+    """EDM expands only $(NAME). A command that runs
+    `for m in \\{1..5\\}; do caput $(CM):CM$\\{m\\}CALIBRATE.PROC 1; done` or
+    passes CRATE=$\\{CRATE\\} to pydm: ${m} and ${CRATE}
     are shell variables. Declared with default "", the runtime would blank them."""
     edl = tmp_path / "shell.edl"
     edl.write_text(

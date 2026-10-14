@@ -908,16 +908,15 @@ def test_related_display_opens_each_file_with_its_own_macros(tmp_path, qtbot):
 def test_convert_related_display_pairs_menu_labels_with_filenames_by_index(tmp_path):
     """menuLabel { 1 .. 3 } labels displayFileName 1..3; display 0 keeps EDM's empty label.
 
-    The shape of lerf/mgnt_l1b_main.edl's "EPSC Hardware..." button: compacting
-    the labels handed display 0 the label of display 1, and so on.
+    Compacting the labels handed display 0 the label of display 1, and so on.
     """
     titles, filenames = _related_display_titles_and_filenames(
         tmp_path,
         "displayFileName {\n"
-        + "".join(f'  {i} "mgnt_epsc"\n' for i in range(4))
+        + "".join(f'  {i} "hardware"\n' for i in range(4))
         + '}\nmenuLabel {\n  1 "QCM03"\n  2 "XCM03"\n  3 "YCM03"\n}',
     )
-    assert filenames == ["mgnt_epsc.ui"] * 4
+    assert filenames == ["hardware.ui"] * 4
     assert titles == ["", "QCM03", "XCM03", "YCM03"]
 
 
@@ -1130,7 +1129,7 @@ def test_convert_meter_widget(tmp_path):
 
 @pytest.mark.parametrize("on_label, off_label, buttons", [("Cancel ", "Cancel", 1), ("Open", "Cancel", 2)])
 def test_message_button_off_variant_ignores_label_padding(tmp_path, on_label, off_label, buttons):
-    """Labels that differ only in padding (xray/vac_iso_valve.edl) get no separate off button."""
+    """Labels that differ only in padding get no separate off button."""
     edm_content = textwrap.dedent(f"""
         4 0 1
         beginScreenProperties
@@ -1169,7 +1168,7 @@ def test_message_button_off_variant_ignores_label_padding(tmp_path, on_label, of
 
 
 def test_convert_warns_when_a_shell_variable_shares_a_macro_name(tmp_path, caplog):
-    r"""camac/camac_lu_from_epics_detail.edl: $\{LOCA\} (a shell variable) next to the
+    r"""$\{LOCA\} (a shell variable) next to the
     $(LOCA) macro. Both read as ${LOCA}, which PyDM substitutes."""
     source = tmp_path / "shell.edl"
     source.write_text(

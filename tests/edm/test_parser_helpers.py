@@ -303,7 +303,7 @@ def test_reformat_calc_expression():
 @pytest.mark.parametrize(
     "epics, python",
     [
-        # bcs/config/calc.list: ternaries inside parentheses
+        # Ternaries inside parentheses
         ("A=1?3:(A=2?5:0)", "(3 if A==1 else (5 if A==2 else 0))"),
         ("A=1?4:(A=2?3:(A=3?2:0))", "(4 if A==1 else (3 if A==2 else (2 if A==3 else 0)))"),
         ("(A?1:2)+1", "(1 if A else 2)+1"),
@@ -794,8 +794,8 @@ def test_default_invalid(monkeypatch, clear_env):
     "value, expected",
     [
         # EDM's own form: absolute directories joined with ":".
-        ("/usr/local/lcls/display:/usr/local/lcls/pps", ["/usr/local/lcls/display", "/usr/local/lcls/pps"]),
-        ("lcls:pps", ["lcls", "pps"]),
+        ("/opt/edm/display:/opt/edm/shared", ["/opt/edm/display", "/opt/edm/shared"]),
+        ("display:shared", ["display", "shared"]),
         (".", ["."]),
         ("", []),
         ("::/a::", ["/a"]),

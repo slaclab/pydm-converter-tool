@@ -107,7 +107,7 @@ def test_edm_canvas_is_exactly_declared_size(tmp_path):
 
 
 def test_edm_screen_height_macro_sized_from_content(tmp_path):
-    """Corpus: event/evnt_header_template has ``h $(DISP_HEIGHT)``; it used to abort."""
+    """A display with ``h $(DISP_HEIGHT)`` used to abort."""
     edl = tmp_path / "tmpl.edl"
     edl.write_text(
         "4 0 0\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 581\ny 305\nw 684\nh $(DISP_HEIGHT)\n"

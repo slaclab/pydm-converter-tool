@@ -58,14 +58,14 @@ def test_bare_number_lines_are_text_not_indices():
 
 
 def test_value_continued_onto_the_next_line_joins_its_entry():
-    """und/asynOctet.edl: each label's closing quote sits on the next line."""
+    """Each label's closing quote sits on the next line."""
     labels = _props('menuLabel {\n  0 "Record parameters\n"\n  1 "Serial port\n"\n}')["menuLabel"]
     assert list(labels) == ["Record parameters", "Serial port"]  # was the raw lines and ""s
     assert labels.indices == [0, 1]
 
 
 def test_repeated_index_replaces_the_earlier_entry():
-    """laser/pid_plot_terms.edl writes index 1 twice; EDM's array read keeps the last."""
+    """A display that writes index 1 twice: EDM's array read keeps the last."""
     labels = _props('menuLabel {\n  0 "LAST_N"\n  1 "1MIN"\n  1 "10MIN"\n  2 "30MIN"\n}')["menuLabel"]
     assert list(labels) == ["LAST_N", "10MIN", "30MIN"]
     assert labels.indices == [0, 1, 2]
@@ -191,7 +191,7 @@ def test_symbol_state_ranges_follow_state_indices(tmp_path):
 
 
 def test_plot_traces_pair_by_index_in_the_ui_output():
-    """mps/mps_byk.edl: trace 0 has no xPv, so xPv starts at 1 (it was paired with trace 0)."""
+    """Trace 0 has no xPv, so xPv starts at 1 (it was paired with trace 0)."""
     props = _props(
         'yPv {\n  0 "Y0"\n  1 "Y1"\n  3 "Y3"\n}\nxPv {\n  1 "X1"\n}\nplotColor {\n  0 index 0\n  1 index 1\n}'
     )

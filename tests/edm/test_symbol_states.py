@@ -135,7 +135,7 @@ def _shows(rules, value):
     "ranges",
     [
         [(0, 1), (1, 2)],
-        # State 0 only ever shows as the fallback, as in lcls/pps_dog_main.edl.
+        # State 0 only ever shows as the fallback.
         [(1, 1), (0, 1)],
         # Three states but two groups: EDM still matches state 2 and draws nothing.
         [(0, 1), (1, 2), (2, 3)],

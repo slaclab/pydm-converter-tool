@@ -109,7 +109,7 @@ def test_edm_atof_prefix_semantics():
 
 
 def test_hex_vis_limits_evaluate_like_edm(tmp_path):
-    """Corpus: llrf/rf_gunRFTripShow_emb used hex limits; float() used to crash the screen."""
+    """Hex limits: float() used to crash the screen."""
     node = _convert_text(tmp_path, _vis_object("0x80000000", "0x80008001")).root.children[0]
     [rule] = [r for r in node.rules if r.target_property == "visible"]
     assert rule.conditions[0].expression == "({0} >= 2147483648.0) and ({0} < 2147516417.0)"
@@ -125,7 +125,7 @@ def test_non_numeric_literal_vis_limit_is_zero(tmp_path):
 
 
 def test_macro_vis_limits_drop_rule_with_warning(tmp_path):
-    """Corpus: misc/opsKlys_minipiop names PVs in visMin/visMax ("$(device):...:BVLT.LOW").
+    """PVs named in visMin/visMax ("$(device):...:BVLT.LOW").
 
     The value depends on the caller's macros, so no rule is emitted — the screen
     converts instead of aborting, and the node says why.

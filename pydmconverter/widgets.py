@@ -39,9 +39,9 @@ def edm_to_ui_filename(file_string: str) -> str:
     A name that is already a ".ui" file is returned unchanged. Otherwise any
     legacy macro suffix ("name.edl;P=...") is dropped at the first ";", a
     trailing ".edl" is stripped, and ".ui" is appended. EDM appends ".edl" to a
-    name that lacks the suffix, so "GigE_controls" and "GigE_controls.edl" both
-    become "GigE_controls.ui". Dots anywhere else stay part of the name, so
-    "GigE_v1.2" becomes "GigE_v1.2.ui" and "screen.edl.bak" becomes
+    name that lacks the suffix, so "camera_controls" and "camera_controls.edl" both
+    become "camera_controls.ui". Dots anywhere else stay part of the name, so
+    "cam_v1.2" becomes "cam_v1.2.ui" and "screen.edl.bak" becomes
     "screen.edl.bak.ui".
     """
     if file_string.endswith(".ui"):

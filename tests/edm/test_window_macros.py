@@ -118,7 +118,7 @@ def test_every_use_of_a_window_variable_names_it_the_same(out):
         # ...one a choice button switches (stacked displays with visibility rules)...
         embedded(["c.edl", "d.edl"], 250, source="menu", file_pv=r"LOC\\$(!W)v=e:0,C,D"),
         choice(r"LOC\\$(!W)v"),
-        # ...and one a message button switches (stacked displays, llrf/rf_srf_cavity_main.edl).
+        # ...and one a message button switches (stacked displays).
         embedded(["e.edl", "f.edl"], 400, source="menu", file_pv=r"LOC\\$(!W)m=i:0"),
         message_button(r"LOC\\$(!W)m", "1"),
     )
@@ -130,7 +130,7 @@ def test_every_use_of_a_window_variable_names_it_the_same(out):
 
 
 def test_two_menu_windows_on_one_window_variable_both_switch(out):
-    # As in event/trig_linac_sector.edl: pairing the first window must leave the
+    # Pairing the first window must leave the
     # second still naming the variable its users name.
     ui = convert_screen(
         out,
@@ -355,8 +355,8 @@ def test_menu_mux_labels_name_the_window_macro(out, labels):
 
 @pytest.fixture
 def parent_and_child_on_a_macro_variable(out):
-    """misc/histViewer.edl and the emb-hist-viewer.edl it embeds: both name the
-    variable LOC\\$(SIG)_View, which EDM expands to one variable per signal."""
+    """A parent and the child it embeds both name the variable LOC\\$(SIG)_View,
+    which EDM expands to one variable per signal."""
     convert_screen(out, "child", text_control(r"LOC\\$(SIG)_View=0"))
     return convert_screen(
         out,
@@ -564,8 +564,7 @@ def canopy_substitute(text, macros):
 def test_ir_screens_embedded_in_two_embedded_copies_keep_their_own_variables(out):
     from pydmconverter.ir.emit import to_wire_dict
 
-    # The parent embeds the child twice, and each child copy embeds the grandchild
-    # (as cryo_cryoplant_io_diags does with cryo_cryoplant_io_diags_db_embed).
+    # The parent embeds the child twice, and each child copy embeds the grandchild.
     # In EDM each of the five is a window with its own $(!W).
     screens = {
         "grand": [text_control(r"LOC\\$(!W)x=i:0")],

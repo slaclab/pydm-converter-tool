@@ -445,12 +445,12 @@ def test_pydmrelateddisplay_button_list_macros():
 def test_edm_to_ui_filename():
     """EDM display names map to .ui names without eating unrelated dots."""
     # EDM appends ".edl" to a bare name, so both forms converge.
-    assert edm_to_ui_filename("GigE_controls") == "GigE_controls.ui"
-    assert edm_to_ui_filename("GigE_controls.edl") == "GigE_controls.ui"
+    assert edm_to_ui_filename("camera_controls") == "camera_controls.ui"
+    assert edm_to_ui_filename("camera_controls.edl") == "camera_controls.ui"
     # A legacy "name.edl;P=..." macro suffix is dropped.
     assert edm_to_ui_filename("a.edl;P=1") == "a.ui"
     # A version dot is part of the name, not an extension.
-    assert edm_to_ui_filename("GigE_v1.2") == "GigE_v1.2.ui"
+    assert edm_to_ui_filename("cam_v1.2") == "cam_v1.2.ui"
     # ".edl" only counts as an extension when it is the actual suffix.
     assert edm_to_ui_filename("screen.edl.bak") == "screen.edl.bak.ui"
     assert edm_to_ui_filename("sub.edl_v2/screen") == "sub.edl_v2/screen.ui"
@@ -461,7 +461,7 @@ def test_edm_to_ui_filename():
 def test_pydmrelateddisplay_button_filenames_converted():
     """displayFileName entries are converted via edm_to_ui_filename, not split on the last dot."""
     widget = PyDMRelatedDisplayButton()
-    widget.displayFileName = ["GigE_v1.2", "a.edl;P=1"]
+    widget.displayFileName = ["cam_v1.2", "a.edl;P=1"]
 
     properties: List[ET.Element] = widget.generate_properties()
 
@@ -470,7 +470,7 @@ def test_pydmrelateddisplay_button_filenames_converted():
     stringlist = filenames_prop.find("stringlist")
     assert stringlist is not None
     strings = [s.text for s in stringlist.findall("string")]
-    assert strings == ["GigE_v1.2.ui", "a.ui"]
+    assert strings == ["cam_v1.2.ui", "a.ui"]
 
 
 # --- Tests for Qt mnemonic (&) escaping ---

@@ -286,7 +286,7 @@ def test_screen_size_macro_or_missing_does_not_abort(tmp_path):
 
 
 def test_screen_size_accepts_indented_line(tmp_path):
-    """EDM's tag reader skips leading whitespace (llrf/cleanup/oneMBBOBits: ``  w 236``)."""
+    """EDM's tag reader skips leading whitespace (``  w 236``)."""
     test_file = tmp_path / "indented.edl"
     test_file.write_text("beginScreenProperties\nx 0\ny 0\n  w 236\nh 485\nendScreenProperties\n")
     parser = EDMFileParser(test_file, tmp_path / "indented.ui")
@@ -334,19 +334,19 @@ def test_get_size_properties():
             {"command": ['pydm -m "DEV=WIGG:LTUS:724" file.ui &']},
         ),
         ('label "some \\"quoted\\" text"', {"label": 'some "quoted" text'}),
-        # xray/ims_aux.edl: escaped backslashes and a value ending in escaped quotes
+        # Escaped backslashes and a value ending in escaped quotes
         (
             "\n".join(
                 ["command {", r'  0 "gnome-terminal -e \"bash -c \\\"/reg/pmgrUtils.sh dmapply $(MOTOR)\\\"\""', "}"]
             ),
             {"command": [r'gnome-terminal -e "bash -c \"/reg/pmgrUtils.sh dmapply $(MOTOR)\""']},
         ),
-        # Archive/lcls-old/mgnt_undh_sec1.edl: a value starting and ending with an escaped quote
+        # A value starting and ending with an escaped quote
         (
             "\n".join(["symbols {", r'  0 "\"U=USEG:UNDH:1850,crat=CRAT:UNDH:UC18\" "', "}"]),
             {"symbols": ['"U=USEG:UNDH:1850,crat=CRAT:UNDH:UC18" ']},
         ),
-        # misc/dbs_llrf.edl: a label starting with an escaped quote
+        # A label starting with an escaped quote
         (
             "\n".join(
                 ["commandLabel {", r'  0 "\"Recovering L3 Phase\" Wiki Article"', '  1 "6x6 Help EDM Panel"', "}"]
@@ -357,15 +357,14 @@ def test_get_size_properties():
         (r'buttonLabel "Y1(X)', {"buttonLabel": "Y1(X)"}),
         # a quoted brace is a value, not the start of a block
         (r'foo "\{"' + "\nbar baz", {"foo": "{", "bar": "baz"}),
-        # llrf/scllrfPRCBits.edl: a tab before the opening quote
+        # A tab before the opening quote
         ('value {\n\t   "bit 8"\n}', {"value": ["bit 8"]}),
         # spaces inside the quotes are kept, as EDM keeps them
         ('value {\n  "Currently: "\n  "  indented"\n}', {"value": ["Currently: ", "  indented"]}),
         ('label "       L1S Phase"', {"label": "       L1S Phase"}),
         ('buttonLabel "   IOC:BSY0:MG01..."', {"buttonLabel": "   IOC:BSY0:MG01..."}),
         ('title "  "', {"title": "  "}),
-        # except around a PV name, which an IOC would not resolve (event/mpgPatternDiags.edl,
-        # llrf/gun_interlocks.edl); an all-space PV is no PV
+        # except around a PV name, which an IOC would not resolve; an all-space PV is no PV
         ('controlPv "IOC:${LOCA}:${UNIT}:PATTERND-2.N  "', {"controlPv": "IOC:${LOCA}:${UNIT}:PATTERND-2.N"}),
         (
             'colorPv " GUN:GUNB:100:PRC:INLK_STATUS_MSBITS_R.BF"',
@@ -491,7 +490,7 @@ def test_parser_knows_whether_it_read_a_literal_dollar_brace(tmp_path):
 @pytest.mark.parametrize(
     "pv, expected",
     [
-        # misc/histViewer.edl: EDM expands $(SIG) and keeps the backslash, so this
+        # EDM expands $(SIG) and keeps the backslash, so this
         # is a LOC variable named after the macro's value (pv_factory.cc).
         (r"LOC\\$(SIG)_View=0", "loc://${SIG}_View?type=int&init=0"),
         (r"LOC\\$(SIG)_View==0", "loc://${SIG}_View?type=int&init=0"),
