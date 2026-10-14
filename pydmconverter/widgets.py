@@ -1951,7 +1951,15 @@ class PyDMSlider(Alarmable):
         properties: List[ET.Element] = super().generate_properties()
 
         if self.orientation is not None:
-            properties.append(Enum("orientation", f"Qt::{self.orientation.capitalize()}").to_xml())
+            orientation = str(self.orientation).capitalize()
+            if orientation in ("Horizontal", "Vertical"):
+                properties.append(Enum("orientation", f"Qt::{orientation}").to_xml())
+            else:
+                # uic stops loading the whole screen at an unknown Qt enum, so
+                # leave the slider horizontal. EDM's plain slider ignores the tag.
+                logging.warning(
+                    f"Slider {self.name}: orientation {self.orientation!r} is not a Qt orientation; using horizontal"
+                )
         if self.limitsFromDb is not None:
             properties.append(Bool("userDefinedLimits", not self.limitsFromDb).to_xml())
         if not self.showLimitLabels:
