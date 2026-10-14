@@ -47,7 +47,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_edm_macros,
     loc_str_init,
 )
-from pydmconverter.edm.menumux import generate_menumux_file, initial_state, menu_item_count, menu_items, menu_macros
+from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
 from pydmconverter.exceptions import AttributeConversionError
@@ -1071,7 +1071,10 @@ def convert_edm_to_pydm_widgets(
     Returns
     -------
     Tuple[List, set]
-        A tuple of (pydm_widgets, used_classes).
+        A tuple of (pydm_widgets, used_classes). The screen's menu muxes and the
+        loc:// declarations their menu screen shares with the .ui are left on the
+        parser (``menu_mux_buttons``, ``menu_loc_declarations``) for convert() to
+        write once the .ui is written.
     """
     from pydmconverter.sites import get_skip_widgets
 
@@ -1104,8 +1107,8 @@ def convert_edm_to_pydm_widgets(
 
     pydm_widgets = handle_button_polygon_overlaps(pydm_widgets)
 
-    if menu_mux_buttons:
-        generate_menumux_file(menu_mux_buttons, parser.output_file_path, loc_declarations(parser.ui))
+    parser.menu_mux_buttons = menu_mux_buttons
+    parser.menu_loc_declarations = loc_declarations(parser.ui) if menu_mux_buttons else {}
     return pydm_widgets, used_classes
 
 
