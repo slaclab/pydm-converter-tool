@@ -161,8 +161,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "fillColor": "brushColor",
     "autoSize": "autoSize",
     "lineColor": "penColor",
-    # Graphics attributes
-    "lineWidth": "line_width",
+    # Graphics attributes (lineWidth: apply_widget_post_processing)
     "lineStyle": "penStyle",
     "radius": "radius",
     "color": "color",
@@ -359,6 +358,16 @@ def transform_nested_widget(
     child_height = child_edm_height * scale
 
     return int(relative_x), int(relative_y), int(child_width), int(child_height)
+
+
+EDM_CLOSED_DRAWINGS = ("activerectangleclass", "activecircleclass", "activearcclass")
+
+
+def edm_line_width(obj: EDMObject) -> int:
+    """The width EDM draws a rectangle, circle or arc outline with: its lineWidth, 1 by
+    default (rectangle_obj.cc, circle_obj.cc, arc_obj.cc). Width 0 is X11's thinnest
+    line, which is also one pixel wide."""
+    return max(1, int(obj.properties.get("lineWidth", 1)))
 
 
 def _has_fill_properties(obj: EDMObject) -> tuple:
@@ -906,6 +915,20 @@ def apply_widget_post_processing(
             widget.height = min_dim
         else:
             widget.height = int(widget.height) + pad
+
+    # Rectangle, circle and arc outlines. EDM centres the pen on the object's rect
+    # (XDrawRectangle, XDrawArc); PyDM insets the shape by the pen width
+    # (PyDMDrawing.get_bounds), so the widget grows by the pen on every side to put the
+    # shape back on EDM's rect. The width is always written: PyDM's construction-time
+    # polish otherwise leaves the 2 px of its alarm-border stylesheet rule.
+    if obj.name.lower() in EDM_CLOSED_DRAWINGS:
+        pen = edm_line_width(obj)
+        widget.penWidth = pen
+        # With no pen style written PyDM draws no outline and insets nothing.
+        if widget.penColor is not None or widget.penStyle is not None:
+            x, y, width, height = _compute_geometry(obj, parent_pydm_group, container_height, scale, offset_x, offset_y)
+            widget.x, widget.y = int(x) - pen, int(y) - pen
+            widget.width, widget.height = int(width) + 2 * pen, int(height) + 2 * pen
 
     # Text widget padding — Qt renders fonts slightly wider than EDM,
     # so add a small width buffer to prevent text clipping and button text wrapping.

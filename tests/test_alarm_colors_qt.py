@@ -74,8 +74,10 @@ def screen(qtbot, pydm_style, tmp_path):
     top = uic.loadUi(str(tmp_path / "screen.ui"))
     qtbot.addWidget(top)
     top.resize(300, 370)
-    rows = {row: name for name, (row, *_) in OBJECTS.items()}
-    widgets = {rows[w.geometry().y()]: w for w in top.findChildren(PyDMWidget) if w.geometry().y() in rows}
+    # By the middle of each 30 px row: a drawing's widget reaches past its rect by its pen.
+    rows = {row + 14: name for name, (row, *_) in OBJECTS.items()}
+    middle = {w: w.geometry().center().y() for w in top.findChildren(PyDMWidget)}
+    widgets = {rows[y]: w for w, y in middle.items() if y in rows}
     assert widgets.keys() == OBJECTS.keys()
     return widgets, top
 
