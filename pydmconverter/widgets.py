@@ -339,7 +339,7 @@ class PyDMDrawingRectangle(Alarmable, Drawable, Hidable):
 
 
 @dataclass
-class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
+class PyDMDrawingEllipse(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingEllipse represents a drawable ellipse that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -352,9 +352,11 @@ class PyDMDrawingEllipse(Alarmable, Drawable, Hidable, StyleSheetObject):
         A class variable tracking the number of PyDMDrawingEllipse instances.
     """
 
+    transparent_when_filled: ClassVar[bool] = True
+
 
 @dataclass
-class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
+class PyDMDrawingArc(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingArc represents a drawable ellipse that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -364,6 +366,7 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
 
     startAngle: Optional[float] = None
     spanAngle: Optional[int] = 180
+    transparent_when_filled: ClassVar[bool] = True
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -385,7 +388,7 @@ class PyDMDrawingArc(Alarmable, Drawable, Hidable, StyleSheetObject):
 
 
 @dataclass
-class PyDMDrawingPie(Alarmable, Drawable, Hidable, StyleSheetObject):
+class PyDMDrawingPie(Alarmable, Drawable, Hidable):
     """
     PyDMDrawingPie represents a filled pie/wedge shape that supports XML serialization,
     alarm functionality, and can be hidden.
@@ -395,6 +398,7 @@ class PyDMDrawingPie(Alarmable, Drawable, Hidable, StyleSheetObject):
 
     startAngle: Optional[float] = None
     spanAngle: Optional[int] = 180
+    transparent_when_filled: ClassVar[bool] = True
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1076,6 +1080,7 @@ class PyDMDrawingLine(Legible, Drawable, Alarmable):
     flip_mid_point_arrow: Optional[bool] = None
     arrows: Optional[str] = None
     penColor: Optional[RGBA] = None
+    transparent_when_filled: ClassVar[bool] = True
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1107,7 +1112,6 @@ class PyDMDrawingLine(Legible, Drawable, Alarmable):
             properties.append(Bool("arrowStartPoint", True).to_xml())
         if self.arrows is not None and (self.arrows == "both" or self.arrows == "from"):
             properties.append(Bool("arrowEndPoint", True).to_xml())
-        properties.append(TransparentBackground().to_xml())
         return properties
 
 
@@ -1173,6 +1177,7 @@ class PyDMDrawingIrregularPolygon(Alarmable, Drawable, Hidable):
     """
 
     points: Optional[List[str]] = None
+    transparent_when_filled: ClassVar[bool] = True
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1184,13 +1189,6 @@ class PyDMDrawingIrregularPolygon(Alarmable, Drawable, Hidable):
             A list of XML elements representing the PyDMDrawingIrregularPolygon properties.
         """
         properties: List[ET.Element] = super().generate_properties()
-
-        # Always add transparent background for widget itself (not the polygon fill)
-        # This ensures the rectangular widget background doesn't obstruct other widgets
-        # The polygon shape will still be filled via the brush property
-        from pydmconverter.widgets_helpers import TransparentBackground
-
-        properties.append(TransparentBackground().to_xml())
 
         if self.points is not None:
             points_prop = ET.Element("property", attrib={"name": "points", "stdset": "0"})

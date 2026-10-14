@@ -178,7 +178,7 @@ _DEFAULT_ROLES = ChannelRoles()
 # EDM class (lowercased) -> its alarm flags -> the PyDM property each one turns
 # on. alarmSensitiveContent colours the text, a push button's face or a
 # drawing's fill; alarmSensitiveBorder frames the widget, or recolours a
-# drawing's line (PyDM also draws that line 2 px wide). A flag not listed
+# drawing's line (at its own width: Drawable.style_sheet). A flag not listed
 # never colours the .ui widget, and is dropped with a warning
 # (EDM_ALARM_FLAGS). The .ui target reads this table
 # (converter_helpers.apply_alarm_flags); the IR's alarm rules colour each part

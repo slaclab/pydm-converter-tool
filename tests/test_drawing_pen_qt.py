@@ -1,9 +1,9 @@
 """Render converted rectangles, circles and arcs in PyDM, under PyDM's own stylesheet: each outline is
-drawn with EDM's lineWidth, on the pixels EDM draws it on.
+drawn with EDM's lineWidth, on the pixels EDM draws it on, in or out of alarm.
 
 X draws a pen of width w centred on coordinate c over the pixels ceil(c - w/2) .. ceil(c + w/2) - 1
 (EDM's XDrawRectangle and XDrawArc). PyDM antialiases, so an odd width straddles half pixels; even
-widths land on whole ones."""
+widths land on whole ones. EDM's lineAlarm only recolours the line (rectangle_obj.cc, line_obj.cc)."""
 
 import math
 import re
@@ -18,6 +18,7 @@ from pydmconverter.edm.converter import convert
 
 LINE = "lineColor rgb 0 0 65535\nfillColor rgb 48059 48059 48059"
 FILLED = f"{LINE}\nfill"
+ALARM = 'alarmPv "X:ALARM"\nlineAlarm'
 # name: (EDM class, properties, x, y, w, h, pen width in PyDM)
 OBJECTS = {
     "default": ("activeRectangleClass", LINE, 10, 10, 60, 30, 1),
@@ -38,9 +39,22 @@ OBJECTS = {
         30,
         2,
     ),
-    # PyDM's alarm border is 2 px whatever the .ui says: its stylesheet sets the pen width at every polish.
-    "line_alarm": ("activeRectangleClass", f'{LINE}\nlineWidth 4\nalarmPv "X:ALARM"\nlineAlarm', 10, 150, 60, 30, 2),
+    # PyDM's stylesheet sets an alarm-sensitive border's pen to 2 px at every polish; the drawing's own
+    # stylesheet keeps EDM's width.
+    "line_alarm": ("activeRectangleClass", f"{LINE}\nlineWidth 4\n{ALARM}", 10, 150, 60, 30, 4),
+    "fill_alarm": ("activeRectangleClass", f"{FILLED}\nlineWidth 2\n{ALARM}", 250, 150, 60, 30, 2),
+    "polyline_alarm": (
+        "activeLineClass",
+        f"lineColor rgb 0 0 65535\nlineWidth 4\n{ALARM}\nnumPoints 2\nxPoints {{\n  330\n  390\n}}\n"
+        "yPoints {\n  170\n  170\n}",
+        330,
+        170,
+        60,
+        0,
+        4,
+    ),
 }
+ALARMED = ["line_alarm", "fill_alarm", "polyline_alarm"]
 
 
 def screen_edl() -> str:
@@ -66,6 +80,14 @@ def pydm_style(qapp):
     qapp.setStyleSheet(previous)
 
 
+def render(top) -> QImage:
+    image = QImage(top.size(), QImage.Format_ARGB32)
+    image.setDevicePixelRatio(1)
+    image.fill(QColor("white"))
+    top.render(image)
+    return image
+
+
 @pytest.fixture
 def screen(qtbot, pydm_style, tmp_path):
     """The converted screen shown in PyDM: its drawings by name, and the window drawn into an image."""
@@ -81,17 +103,14 @@ def screen(qtbot, pydm_style, tmp_path):
     top.resize(420, 200)
     top.show()
     qtbot.waitExposed(top)
-    image = QImage(top.size(), QImage.Format_ARGB32)
-    image.setDevicePixelRatio(1)
-    image.fill(QColor("white"))
-    top.render(image)
     drawings = {}
     for widget in top.findChildren(PyDMDrawing):
         g = widget.geometry()
         (name,) = [n for n, (*_, x, y, w, h, _) in OBJECTS.items() if g.contains(x + w // 2, y + h // 2)]
         drawings[name] = widget
     assert drawings.keys() == OBJECTS.keys()
-    return drawings, image
+    # Yielded, so the window and its drawings live until the test is done.
+    yield drawings, render(top)
 
 
 def x_pixels(c: int, width: int) -> list:
@@ -99,13 +118,23 @@ def x_pixels(c: int, width: int) -> list:
     return list(range(math.ceil(c - width / 2), math.ceil(c + width / 2)))
 
 
-def blue_columns(image: QImage, row: int, around: int) -> list:
-    """The columns near ``around`` in the given row that the blue line colours (also half covered)."""
-    return [x for x in range(around - 6, around + 7) if image.pixelColor(x, row).red() < 160]
+def blue(colour: QColor) -> bool:
+    """The line colour (also half covered)."""
+    return colour.red() < 160
 
 
-def blue_rows(image: QImage, column: int, around: int) -> list:
-    return [y for y in range(around - 6, around + 7) if image.pixelColor(column, y).red() < 160]
+def red(colour: QColor) -> bool:
+    """PyDM's MAJOR alarm colour."""
+    return colour.red() > 200 and colour.blue() < 100
+
+
+def line_columns(image: QImage, row: int, around: int, line=blue) -> list:
+    """The columns near ``around`` in the given row that the line colours."""
+    return [x for x in range(around - 6, around + 7) if line(image.pixelColor(x, row))]
+
+
+def line_rows(image: QImage, column: int, around: int, line=blue) -> list:
+    return [y for y in range(around - 6, around + 7) if line(image.pixelColor(column, y))]
 
 
 def test_pen_is_edm_line_width(screen):
@@ -114,25 +143,25 @@ def test_pen_is_edm_line_width(screen):
     assert {name: drawings[name].penWidth for name in OBJECTS} == {name: obj[-1] for name, obj in OBJECTS.items()}
 
 
-@pytest.mark.parametrize("name", ["two", "four", "circle", "round", "arc"])
+@pytest.mark.parametrize("name", ["two", "four", "circle", "round", "arc", "line_alarm", "fill_alarm"])
 def test_even_pen_draws_on_edm_pixels(screen, name):
     _, image = screen
-    _, _, x, y, w, h, pen = OBJECTS[name]
+    edm_class, _, x, y, w, h, pen = OBJECTS[name]
     middle = y + h // 2
 
-    assert blue_columns(image, middle, x) == x_pixels(x, pen)
+    assert line_columns(image, middle, x) == x_pixels(x, pen)
     if name != "arc":
-        assert blue_columns(image, middle, x + w) == x_pixels(x + w, pen)
-    if name in ("two", "four"):
-        assert blue_rows(image, x + w // 2, y) == x_pixels(y, pen)
-        assert blue_rows(image, x + w // 2, y + h) == x_pixels(y + h, pen)
+        assert line_columns(image, middle, x + w) == x_pixels(x + w, pen)
+    if edm_class == "activeRectangleClass":
+        assert line_rows(image, x + w // 2, y) == x_pixels(y, pen)
+        assert line_rows(image, x + w // 2, y + h) == x_pixels(y + h, pen)
 
 
 def test_rectangle_with_no_height_is_a_line(screen):
     _, image = screen
     _, _, x, y, w, _, pen = OBJECTS["flat"]
 
-    assert blue_rows(image, x + w // 2, y) == x_pixels(y, pen)
+    assert line_rows(image, x + w // 2, y) == x_pixels(y, pen)
 
 
 @pytest.mark.parametrize("name", ["default", "zero", "filled"])
@@ -142,5 +171,26 @@ def test_odd_pen_straddles_edm_pixels(screen, name):
     _, _, x, y, w, h, pen = OBJECTS[name]
     middle = y + h // 2
 
-    assert blue_columns(image, middle, x) == [x_pixels(x, pen)[0] - 1, *x_pixels(x, pen)]
-    assert blue_columns(image, middle, x + w) == [x_pixels(x + w, pen)[0] - 1, *x_pixels(x + w, pen)]
+    assert line_columns(image, middle, x) == [x_pixels(x, pen)[0] - 1, *x_pixels(x, pen)]
+    assert line_columns(image, middle, x + w) == [x_pixels(x + w, pen)[0] - 1, *x_pixels(x + w, pen)]
+
+
+def test_alarm_recolours_the_line_at_edm_width(screen):
+    """Each severity change re-polishes the drawing under PyDM's stylesheet; the line changes colour only."""
+    drawings, before = screen
+    top = drawings["line_alarm"].window()
+    _, _, px, py, pw, _, _ = OBJECTS["polyline_alarm"]
+    polyline_rows = line_rows(before, px + pw // 2, py)
+
+    for severity, line in ((2, red), (0, blue)):
+        for name in ALARMED:
+            drawings[name].alarm_severity_changed(severity)
+        image = render(top)
+
+        assert {name: drawings[name].penWidth for name in ALARMED} == {name: OBJECTS[name][-1] for name in ALARMED}
+        for name in ("line_alarm", "fill_alarm"):
+            _, _, x, y, w, h, pen = OBJECTS[name]
+            assert line_columns(image, y + h // 2, x, line) == x_pixels(x, pen)
+            assert line_rows(image, x + w // 2, y + h, line) == x_pixels(y + h, pen)
+        assert line_rows(image, px + pw // 2, py, line) == polyline_rows
+    assert len(polyline_rows) == OBJECTS["polyline_alarm"][-1]
