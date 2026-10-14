@@ -36,6 +36,7 @@ from pydmconverter.edm.edm_qt import (
     EDM_TO_QT_PROP,
     XY_GRAPH_UNMAPPED_PVS,
     channel_roles,
+    names_the_channel,
     resolve_qt_class,
 )
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
@@ -232,9 +233,9 @@ def color_info_to_hex(color_info: dict[str, Any] | None, color_data: dict[str, A
 
 # Classes whose registry definition maps a readback channel (readbackChannel ->
 # pv-button's readbackPV). Elsewhere a second data channel has nowhere to land
-# and is dropped with a warning. Buttons and menu buttons pair controlPv with an
-# indicatorPv readback; message buttons have none (EDM_CHANNEL_ROLES).
-_READBACK_CLASSES = {"activebuttonclass", "activemenubuttonclass"}
+# and is dropped with a warning: menu and choice buttons show their indicatorPv
+# (EDM_CHANNEL_ROLES), but their combo box and radio group have no readback.
+_READBACK_CLASSES = {"activebuttonclass"}
 
 # EDM alarm-severity palette (green / yellow / red / white-invalid) — what an
 # alarm-sensitive EDM part shows instead of its configured static color. Used
@@ -707,6 +708,43 @@ def _color_rules(
     return rules
 
 
+# Classes whose widget can lack the colour props EDM paints them in. The builder
+# drops a prop the widget's registry entry doesn't map without a word, so the
+# adapter says so (_dropped_colors).
+_COLOR_CHECKED_CLASSES = {"activemenubuttonclass"}
+
+
+def _dropped_colors(
+    obj: EDMObject,
+    qt_class: str | None,
+    qt_props: dict[str, Any],
+    colors: dict[str, Any] | None,
+    color_rules: list[RuleSpec],
+    *,
+    registry: RegistryClient | None = None,
+) -> list[str]:
+    """Warnings for the object's colours that its widget has no prop for.
+
+    A colour PV that drives only those colours' rules, none of the
+    ``color_rules`` kept, goes with them (it is never shown, see
+    EDM_CHANNEL_ROLES).
+    """
+    warnings = []
+    dropped_rules = False
+    driven_attrs = _RULE_COLOR_ATTRS.get(obj.name.lower(), ())
+    for edm_attr, value in obj.properties.items():
+        qt_prop = EDM_TO_QT_PROP.get(edm_attr)
+        if qt_prop not in _COLOR_PROPS or qt_prop not in qt_props:
+            continue
+        if _mapped_color_target(qt_class, qt_prop, registry) is None:
+            warnings.append(f"EDM {edm_attr} dropped (the widget has no {qt_prop})")
+            dropped_rules = dropped_rules or (edm_attr in driven_attrs and _color_rule(colors, value) is not None)
+    color_pv = channel_roles(obj.name.lower()).color_attr(obj.properties)
+    if color_pv and dropped_rules and not color_rules:
+        warnings.append(f"EDM {color_pv} dropped (it picks only rule colours the widget has no prop for)")
+    return warnings
+
+
 def _apply_channel_attrs(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> None:
     """Route the object's PV attrs by its class's roles (edm_qt.EDM_CHANNEL_ROLES):
     data PV -> ``channel``, readback -> ``readbackChannel`` (registry maps it
@@ -724,7 +762,8 @@ def _apply_channel_attrs(obj: EDMObject, qt_props: dict[str, Any], warnings: lis
     if readback is not None:
         if obj.name.lower() in _READBACK_CLASSES:
             qt_props["readbackChannel"] = _to_channel(obj.properties[readback])
-        else:
+        elif not names_the_channel(obj.properties[readback], obj.properties[primary]):
+            # A readback naming the data PV itself loses nothing.
             warnings.append(f"EDM {readback} readback dropped ({primary} kept as the channel)")
     kept = f"{primary} kept as the channel" if primary is not None else "the widget has no channel"
     for attr in EDM_DATA_PV_ATTRS:
@@ -1299,18 +1338,6 @@ def _fixup_choice_button(obj: EDMObject, qt_props: dict[str, Any], warnings: lis
     return None
 
 
-def _fixup_menu_button(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
-    """activeMenuButtonClass fixup: the button face shows the CURRENT choice
-    (EDM renders the enum string of its PV), so the web button uses pvState
-    labeling; without an explicit indicatorPv the control channel doubles as
-    the state source.
-    """
-    qt_props["labelType"] = "pvState"
-    if "readbackChannel" not in qt_props and qt_props.get("channel"):
-        qt_props["readbackChannel"] = qt_props["channel"]
-    return None
-
-
 def _fixup_meter(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """activeMeterClass fixup: warn when labelType isn't the literal-text default.
 
@@ -1417,7 +1444,6 @@ _CLASS_FIXUPS.update(
         "activemessagebuttonclass": _fixup_state_button,
         "activebuttonclass": _fixup_state_button,
         "activechoicebuttonclass": _fixup_choice_button,
-        "activemenubuttonclass": _fixup_menu_button,
         "xygraphclass": _fixup_xy_graph,
         "activepipclass": _fixup_pip,
         "relateddisplayclass": _fixup_related_display,
@@ -1425,7 +1451,8 @@ _CLASS_FIXUPS.update(
         "activextextdspclassnoedit": _fixup_text_control,
         "textupdateclass": _fixup_textupdate,
         "regtextupdateclass": _fixup_textupdate,
-        # activepngclass, activeradiobuttonclass: no fixup needed; global renames suffice.
+        # activepngclass, activeradiobuttonclass, activemenubuttonclass: no fixup needed;
+        # global renames suffice.
     }
 )
 
@@ -1471,6 +1498,8 @@ def _object_to_source(
         # colorPv only ever feeds colors.list rule colours (evalRule is a no-op on
         # a static index), so _color_rules covers it: no separate warning.
         color_rules = _color_rules(obj, qt_class, qt_props, colors, alarm_rules, warnings, registry=registry)
+        if obj.name.lower() in _COLOR_CHECKED_CLASSES:
+            warnings.extend(_dropped_colors(obj, qt_class, qt_props, colors, color_rules, registry=registry))
         rules = alarm_rules + color_rules + _pip_rules(obj)
         rules += _null_color_rule(obj, qt_class, qt_props, colors, rules, warnings, registry=registry)
         if (

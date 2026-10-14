@@ -421,7 +421,10 @@ def test_every_rule_on_a_variable_shows_its_widget(out, qtbot):
 
     name = unique()
     ui = convert_screen(out, rectangle(rf"LOC\\{name}=i:1", 10), rectangle(rf"LOC\\{name}=i:1", 100))
-    first, second = by_x(open_screen(qtbot, ui).findChildren(PyDMDrawingRectangle))
+    # Hold the screen: qtbot keeps only a weak reference, and a garbage collection
+    # would delete it and its widgets.
+    screen = open_screen(qtbot, ui)
+    first, second = by_x(screen.findChildren(PyDMDrawingRectangle))
     qtbot.waitUntil(first.isVisible, timeout=3000)
     qtbot.wait(200)
     # The second rule joined the variable last: PyDM never evaluated it.

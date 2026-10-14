@@ -535,8 +535,6 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
             properties.append(Str("password", self.password).to_xml())
         if self.protected_password is not None:
             properties.append(Str("protectedPassword", self.protected_password).to_xml())
-        if isinstance(self.name, str) and self.name.startswith("activeMenuButtonClass"):
-            properties.append(Str("text", "Menu").to_xml())
 
         return properties
 
@@ -639,14 +637,11 @@ class PyDMPushButton(PyDMPushButtonBase):
             or self.background_color is not None
             or self.flat is True
             or (
-                isinstance(self.name, str)
-                and (
-                    self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass")
-                )  # TODO: Eventually remove this whole stylesheet property
-            )
+                isinstance(self.name, str) and self.name.startswith("activeMessageButtonClass")
+            )  # TODO: Eventually remove this whole stylesheet property
         ):
             styles: Dict[str, any] = {}
-            if self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"):
+            if self.name.startswith("activeMessageButtonClass"):
                 styles["border"] = "1px solid black"
             if self.foreground_color is not None:
                 styles["color"] = self.foreground_color
