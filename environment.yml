@@ -2,8 +2,8 @@ name: pydm-converter-tool-dev
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
-  - pydm
+  - python=3.10
+  - pydm>=1.29
   - pandas
   - pytest
   - pytest-qt

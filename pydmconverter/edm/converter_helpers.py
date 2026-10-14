@@ -50,6 +50,7 @@ from pydmconverter.edm.parser_helpers import (
 from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
+from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, channel_roles
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -145,15 +146,8 @@ EDM_TO_PYDM_ATTRIBUTES = {
     "enabled": "enabled",
     "precision": "precision",
     "showUnits": "show_units",
-    "alarmPv": "channel",
-    "controlPv": "channel",
-    "indicatorPv": "channel",
-    "filePv": "channel",
+    # PV tags that name a widget's channel are routed by apply_channel_roles.
     "visPv": "visPv",
-    "colorPv": "channel",
-    "readPv": "channel",
-    "nullPv": "channel",
-    "pv": "channel",
     "visInvert": "visInvert",
     "value": "text",
     "fill": "brushFill",
@@ -561,7 +555,8 @@ def resolve_widget_type(obj: EDMObject):
         return None
 
     if name == "activechoicebuttonclass" and TAB_PAGES not in obj.properties:
-        channel = search_for_edm_attr(obj, "channel")
+        attr = channel_attr(obj)
+        channel = obj.properties[attr] if attr else None
         if not channel:
             logger.warning(f"Could not find channel in object: {obj.name}")
         else:
@@ -570,6 +565,57 @@ def resolve_widget_type(obj: EDMObject):
             obj.properties["hide_on_disconnect_channel"] = channel
 
     return widget_type
+
+
+def channel_attr(obj: EDMObject) -> Optional[str]:
+    """The tag of the PV the object's widget binds as its channel, or None.
+
+    That is the class's data PV (edm_qt.EDM_CHANNEL_ROLES). PyDM colours a
+    widget for alarms only from its own channel, so a class that shows no PV
+    (drawings, static text) binds its alarmPv instead.
+    """
+    roles = channel_roles(obj.name.lower())
+    attr = roles.data_attr(obj.properties)
+    if attr is None and roles.alarm and obj.properties.get(roles.alarm):
+        attr = roles.alarm
+    return attr
+
+
+def apply_channel_roles(widget, obj: EDMObject) -> None:
+    """Bind the widget's channel to the PV channel_attr names, and warn about
+    each of the object's other PVs, which a .ui has no place for: a PyDM
+    widget reads and writes its one channel, with no readback and no colour
+    rules (drawings aside, which the converter doesn't write yet).
+    """
+    roles = channel_roles(obj.name.lower())
+    props = obj.properties
+    attr = channel_attr(obj)
+    if attr is not None:
+        widget.channel = props[attr]
+        if attr == roles.alarm and isinstance(widget, PyDMLabel):
+            # The label keeps its text and only takes the alarm PV's severity.
+            widget.display_label_text = True
+
+    readback = roles.readback_attr(props)
+    if readback is not None:
+        logger.warning(
+            f"{obj.name}: {readback} {props[readback]} is a readback, which PyDM widgets lack; "
+            f"the widget shows and writes {attr} {props[attr]}"
+        )
+    elif attr is not None and attr == roles.readback:
+        logger.warning(f"{obj.name}: {attr} {props[attr]} is its only PV; PyDM writes it, which EDM never does")
+    color = roles.color_attr(props)
+    if color is not None and color != attr:
+        logger.warning(f"{obj.name}: {color} {props[color]} picks rule colours, which the .ui doesn't carry")
+    condition = props.get("nullCondition") or "nullEqCtl"
+    if roles.null and props.get(roles.null) and condition != "disabled":
+        logger.warning(
+            f"{obj.name}: {roles.null} {props[roles.null]} switches the text to nullColor ({condition}), "
+            "which the .ui doesn't carry"
+        )
+    for other in EDM_DATA_PV_ATTRS:
+        if other not in (attr, readback) and props.get(other):
+            logger.warning(f"{obj.name}: {other} {props[other]} has no place in the .ui; dropped")
 
 
 def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
@@ -1023,6 +1069,8 @@ def traverse_group(
                     logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
                 except Exception as e:
                     raise AttributeConversionError(edm_attr, value, widget.name, cause=e) from e
+            # Before post-processing: on/off button variants copy the channel and key their rules on it.
+            apply_channel_roles(widget, obj)
 
             # 4. Post-processing (geometry, button variants, dimension padding, etc.)
             apply_widget_post_processing(
@@ -1930,13 +1978,6 @@ def log_unsupported_widget(widget_type, file_path="unsupported_widgets.txt"):
     if widget_type.lower() not in existing_widgets:
         with open(file_path, "a") as file:
             file.write(widget_type.lower() + "\n")
-
-
-def search_for_edm_attr(obj: EDMObject, target_attr: str):
-    for edm_attr, value in obj.properties.items():
-        pydm_attr = EDM_TO_PYDM_ATTRIBUTES.get(edm_attr)
-        if pydm_attr == target_attr:
-            return value
 
 
 def get_string_value(value: list) -> str:

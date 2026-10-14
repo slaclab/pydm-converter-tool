@@ -230,11 +230,16 @@ class PyDMLabel(QLabel, Alarmable):
     precision_from_pv : Optional[bool]
         If True, the numerical precision is determined from the process variable.
         If None, no such property is added.
+    display_label_text : Optional[bool]
+        If True, the label keeps its own text instead of showing the channel's
+        value; the channel only colours it for alarms (PyDM >= 1.29).
+        If None, no such property is added.
     count : ClassVar[int]
         A class variable tracking the number of PyDMLabel instances.
     """
 
     precision_from_pv: Optional[bool] = None
+    display_label_text: Optional[bool] = None
     autoSize: bool = False
 
     def __post_init__(self):
@@ -262,6 +267,8 @@ class PyDMLabel(QLabel, Alarmable):
         properties: List[ET.Element] = super().generate_properties()
         if self.precision_from_pv is not None:
             properties.append(Bool("precisionFromPV", self.precision_from_pv).to_xml())
+        if self.display_label_text is not None:
+            properties.append(Bool("displayLabelText", self.display_label_text).to_xml())
         if self.autoSize:
             properties.append(Bool("autoSize", True).to_xml())
         return properties
