@@ -50,7 +50,7 @@ from pydmconverter.edm.parser_helpers import (
 from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
-from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, channel_roles
+from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, XY_GRAPH_UNMAPPED_PVS, channel_roles
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -616,6 +616,11 @@ def apply_channel_roles(widget, obj: EDMObject) -> None:
     for other in EDM_DATA_PV_ATTRS:
         if other not in (attr, readback) and props.get(other):
             logger.warning(f"{obj.name}: {other} {props[other]} has no place in the .ui; dropped")
+    if obj.name.lower() in ("xygraphclass", "mzxygraphclass"):
+        for tag, effect in XY_GRAPH_UNMAPPED_PVS.items():
+            pvs = [pv for _, pv in block_items(props.get(tag)) if pv.strip()]
+            if pvs:
+                logger.warning(f"{obj.name}: {tag} {', '.join(pvs)} ({effect}) has no place in the .ui; dropped")
 
 
 def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
