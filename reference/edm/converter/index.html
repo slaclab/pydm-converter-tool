@@ -1042,9 +1042,7 @@ min_height : int
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">177</span>
 <span class="normal">178</span>
 <span class="normal">179</span>
 <span class="normal">180</span>
@@ -1077,7 +1075,9 @@ min_height : int
 <span class="normal">207</span>
 <span class="normal">208</span>
 <span class="normal">209</span>
-<span class="normal">210</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_extent</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">min_width</span><span class="p">,</span> <span class="n">min_height</span><span class="p">):</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_extent</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">min_width</span><span class="p">,</span> <span class="n">min_height</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the (width, height) a layout-less container needs to cover its child widgets.</span>
 
 <span class="sd">    Without an explicit geometry, Qt calls adjustSize() on such a container when it is first</span>
@@ -1141,8 +1141,7 @@ omitted.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 58</span>
-<span class="normal"> 59</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 59</span>
 <span class="normal"> 60</span>
 <span class="normal"> 61</span>
 <span class="normal"> 62</span>
@@ -1216,7 +1215,9 @@ omitted.</p>
 <span class="normal">130</span>
 <span class="normal">131</span>
 <span class="normal">132</span>
-<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span>
     <span class="n">input_path</span><span class="p">,</span>
     <span class="n">output_path</span><span class="p">,</span>
     <span class="n">scrollable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -1279,6 +1280,7 @@ omitted.</p>
         <span class="n">style_sheet_elem</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;background-color: </span><span class="si">{</span><span class="n">bg_color</span><span class="si">}</span><span class="s2">;&quot;</span>
 
     <span class="n">central_widget</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">widget_elements</span><span class="p">)</span>
+    <span class="n">start_rules_at_loc_inits</span><span class="p">(</span><span class="n">ui_element</span><span class="p">)</span>
 
     <span class="n">customwidgets_el</span> <span class="o">=</span> <span class="n">build_customwidgets_element</span><span class="p">(</span><span class="n">used_classes</span><span class="p">)</span>
     <span class="n">ui_element</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">customwidgets_el</span><span class="p">)</span>
