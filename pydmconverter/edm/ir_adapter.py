@@ -32,6 +32,7 @@ from typing import Any, Callable
 
 from pydmconverter.edm.edm_qt import (
     EDM_DATA_PV_ATTRS,
+    EDM_TEXT_VALUE_CLASSES,
     EDM_TO_QT_PROP,
     XY_GRAPH_UNMAPPED_PVS,
     channel_roles,
@@ -1443,6 +1444,8 @@ def _object_to_source(
         for edm_attr, value in obj.properties.items():
             qt_prop = EDM_TO_QT_PROP.get(edm_attr)
             if qt_prop is None or edm_attr in fixup_owned:
+                continue
+            if edm_attr == "value" and obj.name.lower() not in EDM_TEXT_VALUE_CLASSES:
                 continue
             if qt_prop in _COLOR_PROPS:
                 if qt_prop == "backgroundColor" and use_display_bg:

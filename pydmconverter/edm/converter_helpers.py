@@ -51,7 +51,7 @@ from pydmconverter.edm.parser_helpers import (
 from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
-from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, XY_GRAPH_UNMAPPED_PVS, channel_roles
+from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, EDM_TEXT_VALUE_CLASSES, XY_GRAPH_UNMAPPED_PVS, channel_roles
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -150,7 +150,7 @@ EDM_TO_PYDM_ATTRIBUTES = {
     # PV tags that name a widget's channel are routed by apply_channel_roles.
     "visPv": "visPv",
     "visInvert": "visInvert",
-    "value": "text",
+    "value": "text",  # static text only (EDM_TEXT_VALUE_CLASSES)
     "fill": "brushFill",
     "fillColor": "brushColor",
     "autoSize": "autoSize",
@@ -253,6 +253,10 @@ TAB_PAGES = "_tab_pages"
 
 # Group property: its visibility rule starts true rather than false.
 STARTS_VISIBLE = "_starts_visible"
+
+# Related display property: it took an overlapping static text as its label
+# (set by should_delete_overlapping).
+LABEL_FROM_TEXT = "_label_from_text"
 
 LOC_NAME_PATTERN = re.compile(r"loc://([^?&\s\"',]+)")
 
@@ -709,6 +713,8 @@ def convert_attribute_value(edm_attr, value, widget, obj, color_list_dict):
             logger.warning(f"Could not convert color {value}, skipping")
             return None
     elif edm_attr == "value":
+        if obj.name.lower() not in EDM_TEXT_VALUE_CLASSES:
+            return None
         value = get_string_value(value)
     elif edm_attr in COLOR_ATTRIBUTES:
         value = convert_color_property_to_qcolor(value, color_data=color_list_dict)
@@ -1214,10 +1220,12 @@ def should_delete_overlapping(
                 and widget.height == curr_obj.height
             )
             or (percentage_overlapping != 100 and calculate_widget_overlap(curr_obj, widget) > percentage_overlapping)
-            and "value" not in widget.properties
+            and LABEL_FROM_TEXT not in widget.properties
             and "value" in curr_obj.properties
         ):
-            widget.properties["value"] = curr_obj.properties["value"]
+            # The text becomes the button's label.
+            widget.properties["buttonLabel"] = get_string_value(curr_obj.properties["value"])
+            widget.properties[LABEL_FROM_TEXT] = True
             return True
     return False
 
