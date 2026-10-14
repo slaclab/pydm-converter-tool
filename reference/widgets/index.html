@@ -9341,7 +9341,15 @@ count : ClassVar[int]
 <span class="normal">1963</span>
 <span class="normal">1964</span>
 <span class="normal">1965</span>
-<span class="normal">1966</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PyDMSlider</span><span class="p">(</span><span class="n">Alarmable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a PyDM slider widget for adjusting values interactively.</span>
@@ -9371,7 +9379,15 @@ count : ClassVar[int]
         <span class="n">properties</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">]</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">generate_properties</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Enum</span><span class="p">(</span><span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Qt::</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+            <span class="n">orientation</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">orientation</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Horizontal&quot;</span><span class="p">,</span> <span class="s2">&quot;Vertical&quot;</span><span class="p">):</span>
+                <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Enum</span><span class="p">(</span><span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Qt::</span><span class="si">{</span><span class="n">orientation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># uic stops loading the whole screen at an unknown Qt enum, so</span>
+                <span class="c1"># leave the slider horizontal. EDM&#39;s plain slider ignores the tag.</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Slider </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: orientation </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="si">!r}</span><span class="s2"> is not a Qt orientation; using horizontal&quot;</span>
+                <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limitsFromDb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;userDefinedLimits&quot;</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">limitsFromDb</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">showLimitLabels</span><span class="p">:</span>
@@ -9442,7 +9458,15 @@ count : ClassVar[int]
 <span class="normal">1963</span>
 <span class="normal">1964</span>
 <span class="normal">1965</span>
-<span class="normal">1966</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generates a list of XML elements representing the slider&#39;s properties.</span>
 
@@ -9454,7 +9478,15 @@ count : ClassVar[int]
     <span class="n">properties</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">]</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">generate_properties</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Enum</span><span class="p">(</span><span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Qt::</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+        <span class="n">orientation</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">orientation</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Horizontal&quot;</span><span class="p">,</span> <span class="s2">&quot;Vertical&quot;</span><span class="p">):</span>
+            <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Enum</span><span class="p">(</span><span class="s2">&quot;orientation&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Qt::</span><span class="si">{</span><span class="n">orientation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># uic stops loading the whole screen at an unknown Qt enum, so</span>
+            <span class="c1"># leave the slider horizontal. EDM&#39;s plain slider ignores the tag.</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Slider </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: orientation </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation</span><span class="si">!r}</span><span class="s2"> is not a Qt orientation; using horizontal&quot;</span>
+            <span class="p">)</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limitsFromDb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bool</span><span class="p">(</span><span class="s2">&quot;userDefinedLimits&quot;</span><span class="p">,</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">limitsFromDb</span><span class="p">)</span><span class="o">.</span><span class="n">to_xml</span><span class="p">())</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">showLimitLabels</span><span class="p">:</span>
