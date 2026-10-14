@@ -932,7 +932,9 @@ def apply_widget_post_processing(
         generated_sliders = create_multi_sliders(widget, obj)
         pydm_widgets.extend(generated_sliders)
 
-    # Drawing shape dimension padding
+    # Drawing shape dimension padding. PyDM draws the points offset by the pen
+    # (PyDMDrawing.get_bounds) and the stroke reaches pen/2 past them, so each axis needs
+    # span + 1.5 * pen; geom_and_local_points sized the widget span + pen, so add a pen.
     if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
         pad = widget.penWidth or 1
 
@@ -941,16 +943,8 @@ def apply_widget_post_processing(
             pad = pad + alarm_border_pad
 
         min_dim = max(pad * 2, 3)
-
-        if widget.width < min_dim:
-            widget.width = min_dim
-        else:
-            widget.width = int(widget.width) + pad
-
-        if widget.height < min_dim:
-            widget.height = min_dim
-        else:
-            widget.height = int(widget.height) + pad
+        widget.width = max(int(widget.width) + pad, min_dim)
+        widget.height = max(int(widget.height) + pad, min_dim)
 
     # Rectangle, circle and arc outlines. EDM centres the pen on the object's rect
     # (XDrawRectangle, XDrawArc); PyDM insets the shape by the pen width
