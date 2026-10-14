@@ -173,6 +173,56 @@ EDM_CHANNEL_ROLES: dict[str, ChannelRoles] = {
 }
 _DEFAULT_ROLES = ChannelRoles()
 
+# EDM class (lowercased) -> its alarm flags -> the PyDM property each one turns
+# on. alarmSensitiveContent colours the text, a push button's face or a
+# drawing's fill; alarmSensitiveBorder frames the widget, or recolours a
+# drawing's line (PyDM also draws that line 2 px wide). A flag not listed
+# never colours the .ui widget, and is dropped with a warning
+# (EDM_ALARM_FLAGS). The .ui target reads this table
+# (converter_helpers.apply_alarm_flags); the IR's alarm rules colour each part
+# themselves (ir_adapter._alarm_rules).
+_TEXT_ALARMS = {"fgAlarm": "alarmSensitiveContent"}
+# A Textupdate's lineAlarm draws its border in the alarm colour (textupdate.cc).
+_TEXTUPDATE_ALARMS = {**_TEXT_ALARMS, "lineAlarm": "alarmSensitiveBorder"}
+# EDM colours a button's label (fgAlarm) or face (bgAlarm: menu_button.cc,
+# choice_button.cc); PyDM colours the face for either.
+_BUTTON_ALARMS = {"fgAlarm": "alarmSensitiveContent", "bgAlarm": "alarmSensitiveContent"}
+_DRAWING_ALARMS = {"fillAlarm": "alarmSensitiveContent", "lineAlarm": "alarmSensitiveBorder"}
+EDM_ALARM_PROPS: dict[str, dict[str, str]] = {
+    "activextextclass": _TEXT_ALARMS,
+    "activexregtextclass": _TEXT_ALARMS,
+    "activextextdspclass": _TEXT_ALARMS,
+    "activextextdspclassnoedit": _TEXT_ALARMS,
+    "textupdateclass": _TEXTUPDATE_ALARMS,
+    "regtextupdateclass": _TEXTUPDATE_ALARMS,
+    "multilinetextupdateclass": _TEXT_ALARMS,
+    "textentryclass": _TEXT_ALARMS,
+    "multilinetextentryclass": _TEXT_ALARMS,
+    "activebuttonclass": _BUTTON_ALARMS,
+    "activemenubuttonclass": _BUTTON_ALARMS,
+    "activechoicebuttonclass": _BUTTON_ALARMS,
+    "activerectangleclass": _DRAWING_ALARMS,
+    "activecircleclass": _DRAWING_ALARMS,
+    "activearcclass": _DRAWING_ALARMS,
+    "activelineclass": _DRAWING_ALARMS,
+}
+# Text controls whose useAlarmBorder turns fgAlarm into an alarm-coloured
+# border around text in its static colour (x_text_dsp_obj.cc).
+EDM_ALARM_BORDER_CLASSES = frozenset({"activextextdspclass", "activextextdspclassnoedit"})
+# The alarm flags EDM objects carry: those above, a slider's controlAlarm and
+# indicatorAlarm (slider.cc), a bar's indicatorAlarm (bar.cc), a meter's
+# scaleAlarm and caseAlarm (meter.cc).
+EDM_ALARM_FLAGS = (
+    "fgAlarm",
+    "bgAlarm",
+    "lineAlarm",
+    "fillAlarm",
+    "controlAlarm",
+    "indicatorAlarm",
+    "scaleAlarm",
+    "caseAlarm",
+)
+
 # Tags that are a data PV on some class. An object carrying one its class does
 # not read (a related display's pv[]) drops it.
 EDM_DATA_PV_ATTRS = ("controlPv", "readPv", "indicatorPv", "pv", "filePv", "ctrl1Pv")
