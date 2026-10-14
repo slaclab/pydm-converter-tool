@@ -184,29 +184,30 @@ VERTICAL = "numPoints 2\nxPoints {\n  20\n  20\n}\nyPoints {\n  20\n  50\n}"
         pytest.param(
             f"{LINE}\nlineWidth 2\n{FILL}\nclosePolygon\n{POLYGON}",
             "PyDMDrawingIrregularPolygon",
-            (20, 20, 54, 34),
+            (18, 18, 54, 34),
             id="polygon",
         ),
         # The alarm pen keeps EDM's width, so the polygon needs no more room under alarm.
         pytest.param(
             f'{LINE}\nlineWidth 2\n{FILL}\nclosePolygon\n{POLYGON}\nalarmPv "X:STAT"\nlineAlarm',
             "PyDMDrawingIrregularPolygon",
-            (20, 20, 54, 34),
+            (18, 18, 54, 34),
             id="lineAlarm polygon",
         ),
         # The stroke reaches past 2 * pen when the span is over half the pen.
         pytest.param(
             f"{LINE}\nlineWidth 6\n{FILL}\nclosePolygon\n{SMALL_POLYGON}",
             "PyDMDrawingIrregularPolygon",
-            (20, 20, 16, 16),
+            (14, 14, 16, 16),
             id="span under the pen",
         ),
-        pytest.param(f"{LINE}\n{VERTICAL}", "PyDMDrawingPolyline", (20, 20, 3, 32), id="no width"),
+        pytest.param(f"{LINE}\n{VERTICAL}", "PyDMDrawingPolyline", (19, 19, 3, 32), id="no width"),
     ],
 )
 def test_line_drawing_widget_holds_its_stroke(tmp_path, body, widget_class, rect):
     """PyDM draws a line's points offset by the pen (PyDMDrawing.get_bounds) and the stroke reaches
-    pen / 2 past them, so the widget is the points' span plus twice the pen, and at least 3 px."""
+    pen / 2 past them, so the widget starts a pen before the points and is their span plus twice the
+    pen, and at least 3 px."""
     widget = convert_object(tmp_path, "activeLineClass", body)
 
     assert widget.get("class") == widget_class

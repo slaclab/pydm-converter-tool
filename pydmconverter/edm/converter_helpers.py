@@ -850,8 +850,12 @@ def apply_widget_post_processing(
                     widget.brushFill = True
                     logger.info("Setting default white fill color for IrregularPolygon (no fillColor specified)")
 
-            widget.x = int(geom["x"] + offset_x)
-            widget.y = int(geom["y"] + offset_y)
+            # PyDM draws the points offset by the pen (PyDMDrawing.get_bounds), so the widget
+            # moves back by the pen to put them on EDM's points. A 0 width pen has no border
+            # in PyDM and no offset.
+            border = pen if pen > 0 else 0
+            widget.x = int(geom["x"] + offset_x) - border
+            widget.y = int(geom["y"] + offset_y) - border
             widget.width = int(geom["width"])
             widget.height = int(geom["height"])
     elif not (
@@ -933,8 +937,9 @@ def apply_widget_post_processing(
         pydm_widgets.extend(generated_sliders)
 
     # Drawing shape dimension padding. PyDM draws the points offset by the pen
-    # (PyDMDrawing.get_bounds) and the stroke reaches pen/2 past them, so each axis needs
-    # span + 1.5 * pen; geom_and_local_points sized the widget span + pen, so add a pen.
+    # (PyDMDrawing.get_bounds; the widget starts a pen before the first point) and the
+    # stroke reaches pen/2 past the last, so each axis needs span + 1.5 * pen;
+    # geom_and_local_points sized the widget span + pen, so add a pen.
     # Under alarm the pen keeps its width (Drawable.style_sheet), so no more is needed.
     if isinstance(widget, (PyDMDrawingLine, PyDMDrawingPolyline, PyDMDrawingIrregularPolygon)):
         pad = widget.penWidth or 1

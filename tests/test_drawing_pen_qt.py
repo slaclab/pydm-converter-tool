@@ -1,6 +1,6 @@
-"""Render converted rectangles, circles and arcs in PyDM, under PyDM's own stylesheet: each outline is
-drawn with EDM's lineWidth, on the pixels EDM draws it on, in or out of alarm. A lineAlarm polygon's
-widget holds its whole stroke, in or out of alarm.
+"""Render converted rectangles, circles, arcs and lines in PyDM, under PyDM's own stylesheet: each
+outline is drawn with EDM's lineWidth, on the pixels EDM draws it on, in or out of alarm. A lineAlarm
+polygon's widget holds its whole stroke, in or out of alarm.
 
 X draws a pen of width w centred on coordinate c over the pixels ceil(c - w/2) .. ceil(c + w/2) - 1
 (EDM's XDrawRectangle and XDrawArc). PyDM antialiases, so an odd width straddles half pixels; even
@@ -131,8 +131,8 @@ def blue(colour: QColor) -> bool:
 
 
 def red(colour: QColor) -> bool:
-    """PyDM's MAJOR alarm colour."""
-    return colour.red() > 200 and colour.blue() < 100
+    """PyDM's MAJOR alarm colour (also half covered)."""
+    return colour.red() > 200 and colour.green() < 160 and colour.blue() < 160
 
 
 def line_columns(image: QImage, row: int, around: int, line=blue) -> list:
@@ -200,7 +200,7 @@ def test_alarm_recolours_the_line_at_edm_width(screen):
             assert line_columns(image, y + h // 2, x, line) == x_pixels(x, pen)
             assert line_rows(image, x + w // 2, y + h, line) == x_pixels(y + h, pen)
         assert line_rows(image, px + pw // 2, py, line) == polyline_rows
-    assert len(polyline_rows) == OBJECTS["polyline_alarm"][-1]
+    assert polyline_rows == x_pixels(py, OBJECTS["polyline_alarm"][-1])
 
 
 # Closed, filled lines under lineAlarm, which PyDM draws as irregular polygons: points and pen.
@@ -255,3 +255,83 @@ def test_alarm_polygon_widget_holds_its_whole_stroke(qtbot, pydm_style, tmp_path
         assert images[-1] == unclipped()
         assert sorted(polygon.penWidth for polygon in polygons) == sorted(pen for _, pen in POLYGONS.values())
     assert images[0] != images[1]
+
+
+# activeLineClass drawings, one 40 x 30 box per pen (EDM's lineWidth; None writes none, which is 1):
+# open ones are polylines with a top and a right edge, closed and filled ones irregular polygons.
+# name: (kind, x, y, lineWidth)
+BOX_W, BOX_H = 40, 30
+LINE_PENS = (None, 0, 1, 2, 3, 4, 5)
+LINES = {
+    **{f"polyline {pen}": ("polyline", 10 + 60 * i, 20, pen) for i, pen in enumerate(LINE_PENS)},
+    **{f"polygon {pen}": ("polygon", 10 + 60 * i, 80, pen) for i, pen in enumerate(LINE_PENS)},
+    # Arrowheads grow the widget by their size on every side.
+    "arrows 2": ("arrows", 30, 150, 2),
+    "arrows 3": ("arrows", 130, 150, 3),
+}
+
+
+def lines_edl() -> str:
+    edl = (
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 430\nh 210\n"
+        "bgColor rgb 65535 65535 65535\nendScreenProperties\n"
+    )
+    for kind, x, y, pen in LINES.values():
+        points = [(x, y), (x + BOX_W, y), (x + BOX_W, y + BOX_H)]
+        properties = LINE
+        if kind == "polygon":
+            points += [(x, y + BOX_H), (x, y)]
+            properties = f"{FILLED}\nclosePolygon"
+        elif kind == "arrows":
+            properties = f'{LINE}\narrows "both"'
+        if pen is not None:
+            properties += f"\nlineWidth {pen}"
+        xs, ys = zip(*points)
+        x_block = "".join(f"  {i} {x}\n" for i, x in enumerate(xs))
+        y_block = "".join(f"  {i} {y}\n" for i, y in enumerate(ys))
+        edl += (
+            f"object activeLineClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 1\n"
+            f"x {min(xs)}\ny {min(ys)}\nw {max(xs) - min(xs)}\nh {max(ys) - min(ys)}\n"
+            f"{properties}\n{ALARM}\nnumPoints {len(xs)}\n"
+            f"xPoints {{\n{x_block}}}\nyPoints {{\n{y_block}}}\nendObjectProperties\n"
+        )
+    return edl
+
+
+def line_pixels(c: int, pen, first: bool = False) -> list:
+    """The pixels PyDM covers drawing an EDM line edge at c: X's, and for an odd width the half
+    covered pixel before them. Width 0 is X's thin line, on pixel c; PyDM draws it with a 1 px
+    cosmetic pen and no border, so the widget starts at the first point and clips that half pixel
+    off the first (top or left) edge."""
+    if pen and pen % 2 == 0:
+        return x_pixels(c, pen)
+    pixels = x_pixels(c, pen or 1)
+    return pixels if pen == 0 and first else [pixels[0] - 1, *pixels]
+
+
+def test_line_edges_draw_on_edm_pixels(qtbot, pydm_style, tmp_path):
+    """PyDM draws a polyline's or polygon's points a pen width in from its widget's corner; the
+    widget starts that far before EDM's points. Alarm recolours the line in place."""
+    top = show_converted(qtbot, tmp_path, lines_edl(), 430, 210)
+    drawings = top.findChildren(PyDMDrawing)
+    assert sorted(type(drawing).__name__ for drawing in drawings) == sorted(
+        "PyDMDrawingIrregularPolygon" if kind == "polygon" else "PyDMDrawingPolyline" for kind, *_ in LINES.values()
+    )
+
+    for severity, line in ((0, blue), (2, red)):
+        for drawing in drawings:
+            drawing.alarm_severity_changed(severity)
+        image = render(top)
+        found, expected = {}, {}
+        for name, (kind, x, y, pen) in LINES.items():
+            # (edge, first): a polyline's top and right edges, a polygon's four.
+            rows = [(y, True), (y + BOX_H, False)] if kind == "polygon" else [(y, True)]
+            columns = [(x, True), (x + BOX_W, False)] if kind == "polygon" else [(x + BOX_W, False)]
+            for row, first in rows:
+                found[name, "row", row] = line_rows(image, x + BOX_W // 2, row, line)
+                expected[name, "row", row] = line_pixels(row, pen, first)
+            for column, first in columns:
+                found[name, "column", column] = line_columns(image, y + BOX_H // 2, column, line)
+                expected[name, "column", column] = line_pixels(column, pen, first)
+
+        assert found == expected
