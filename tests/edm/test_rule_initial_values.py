@@ -116,6 +116,13 @@ def test_choice_button_starts_shown(out):
     assert rule_starts(ui, "PyDMEnumButton") == [["true"]]
 
 
+def test_choice_button_on_a_variable_whose_init_is_a_macro_starts_shown(out):
+    # Only PyDM knows the value, but the hide-on-disconnect rule only asks
+    # whether there is one (#227).
+    ui = convert_screen(out, choice(r"LOC\\a=e:$(START),A,B"))
+    assert rule_starts(ui, "PyDMEnumButton") == [["true"]]
+
+
 @pytest.mark.parametrize(
     "vis_pv",
     [
@@ -303,6 +310,56 @@ def test_enable_rule_and_hide_on_disconnect_rule():
     assert starts(ui) == [["true", "false"]]
 
 
+@pytest.mark.parametrize(
+    "address",
+    [
+        "loc://x?type=int&init=${X}",
+        "loc://x?type=int&init=__UNIQUE__",
+        "loc://x?type=array&init=[1]",
+        # PyDM can't convert it, sends no value, and the rule keeps its start.
+        "loc://x?type=int&init=1.5",
+    ],
+)
+def test_value_only_pydm_knows_is_not_none(address):
+    ui = ui_with((address, json.dumps([rule("(ch[0] is not None)", "loc://x"), rule("(ch[0] is None)", "loc://x")])))
+    start_rules_at_loc_inits(ui)
+    assert starts(ui) == [["true", "false"]]
+
+
+@pytest.mark.parametrize("init, start", [("1", "true"), ("0", "false")])
+def test_value_only_pydm_knows_with_a_known_one(init, start):
+    ui = ui_with(
+        (f"loc://x?type=int&init={init}", None),
+        ("loc://y?type=int&init=${Y}", json.dumps([rule("(ch[0]==1) and (ch[1] is not None)", "loc://x", "loc://y")])),
+    )
+    start_rules_at_loc_inits(ui)
+    assert starts(ui) == [[start]]
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "(ch[0] is not None) and (ch[0]==1)",
+        "(ch[0] is not None) and (float(ch[0]) >= 1.0)",
+        "(ch[0] is not False)",
+        "(ch[0] is not None is not None)",
+        "(ch[0])",
+    ],
+)
+def test_value_only_pydm_knows_used_otherwise_is_left_alone(expression):
+    ui = ui_with(("loc://x?type=int&init=${X}", json.dumps([rule(expression, "loc://x")])))
+    start_rules_at_loc_inits(ui)
+    assert starts(ui) == [["?"]]
+
+
+@pytest.mark.parametrize("channel", ["loc://x", "ca://PV"])
+def test_test_against_none_of_an_unconfigured_variable_or_a_pv_is_left_alone(channel):
+    # A bare loc:// address configures nothing, and a PV can disconnect.
+    ui = ui_with((None, json.dumps([rule("(ch[0] is not None)", channel)])))
+    start_rules_at_loc_inits(ui)
+    assert starts(ui) == [["?"]]
+
+
 def test_rule_on_another_property_or_without_channels_is_left_alone():
     # Only Visible and Enable take "true" or "false"; a rule with no channels
     # reads no variable.
@@ -383,6 +440,35 @@ def test_choice_button_after_a_rectangle_shows(out, qtbot):
     qtbot.waitUntil(rect.isVisible, timeout=3000)
     qtbot.wait(200)
     assert button.isVisible()
+
+
+@pytest.mark.parametrize(
+    "macros, value",
+    [
+        ({"START": "1"}, 1),
+        # PyDM can't convert the init: the variable gets its states but no value.
+        ({}, None),
+        ({"START": "x"}, None),
+    ],
+)
+def test_choice_button_on_a_variable_whose_init_is_a_macro_shows(out, qtbot, macros, value):
+    pytest.importorskip("pydm")
+    from pydm.data_plugins import plugin_for_address
+    from pydm.display import load_file
+    from pydm.widgets import PyDMEnumButton
+
+    name = unique()
+    ui = convert_screen(out, choice(rf"LOC\\{name}=e:$(START),A,B"))
+    screen = load_file(str(ui), macros=macros, target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    button = screen.findChild(PyDMEnumButton)
+    connections = plugin_for_address("loc://x").connections
+    qtbot.waitUntil(lambda: name in connections and connections[name].connected, timeout=3000)
+    qtbot.wait(200)
+    assert button.isVisible()
+    assert list(button.enum_strings) == ["A", "B"]
+    assert button.value == value
 
 
 def test_rules_show_their_widgets_after_back_and_forward(out, qtbot):
