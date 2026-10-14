@@ -2542,12 +2542,12 @@ display_roots : str | Sequence[str], optional
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1842</span>
-<span class="normal">1843</span>
-<span class="normal">1844</span>
-<span class="normal">1845</span>
-<span class="normal">1846</span>
-<span class="normal">1847</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1910</span>
+<span class="normal">1911</span>
+<span class="normal">1912</span>
+<span class="normal">1913</span>
+<span class="normal">1914</span>
+<span class="normal">1915</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert_pointsize</span><span class="p">(</span><span class="n">pixel_size</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">96</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert the edm pizelsize to pydm pointsize (multiply by 0.75)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3086,11 +3086,11 @@ Otherwise returns PyDMDrawingArc.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1808</span>
-<span class="normal">1809</span>
-<span class="normal">1810</span>
-<span class="normal">1811</span>
-<span class="normal">1812</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1876</span>
+<span class="normal">1877</span>
+<span class="normal">1878</span>
+<span class="normal">1879</span>
+<span class="normal">1880</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_string_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Takes in a value string and joins each element into a string separated by a new line</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3329,7 +3329,12 @@ user of the variable keep working.</p>
 <p>A menu mux whose controlPv names the variable writes it too: the generated
 menu mux screen writes the chosen item's index there. The menu becomes part
 of that separate .py rather than a widget in the .ui, so it is never a tab
-bar, and its window always becomes the switched displays.</p>
+bar, and its window always becomes the switched displays. So does a window
+whose message buttons write display indices to the variable
+(_index_writers).</p>
+<p>A window whose filePv is a real PV switches on the PV's value the same way:
+it becomes the switched displays, all hidden until the PV's first value, as
+EDM opens nothing until then (pip.cc).</p>
 <p>skip_widgets is the site's set of EDM classes to drop; pairing rewrites both
 widgets together, so a site dropping either one leaves the tree untouched.</p>
 
@@ -3411,7 +3416,26 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 <span class="normal">1663</span>
 <span class="normal">1664</span>
 <span class="normal">1665</span>
-<span class="normal">1666</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1666</span>
+<span class="normal">1667</span>
+<span class="normal">1668</span>
+<span class="normal">1669</span>
+<span class="normal">1670</span>
+<span class="normal">1671</span>
+<span class="normal">1672</span>
+<span class="normal">1673</span>
+<span class="normal">1674</span>
+<span class="normal">1675</span>
+<span class="normal">1676</span>
+<span class="normal">1677</span>
+<span class="normal">1678</span>
+<span class="normal">1679</span>
+<span class="normal">1680</span>
+<span class="normal">1681</span>
+<span class="normal">1682</span>
+<span class="normal">1683</span>
+<span class="normal">1684</span>
+<span class="normal">1685</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pair_menu_pips</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">EDMGroup</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">,</span> <span class="n">skip_widgets</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert each menu embedded window that a choice button or a menu mux drives.</span>
 
@@ -3427,7 +3451,13 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
 <span class="sd">    A menu mux whose controlPv names the variable writes it too: the generated</span>
 <span class="sd">    menu mux screen writes the chosen item&#39;s index there. The menu becomes part</span>
 <span class="sd">    of that separate .py rather than a widget in the .ui, so it is never a tab</span>
-<span class="sd">    bar, and its window always becomes the switched displays.</span>
+<span class="sd">    bar, and its window always becomes the switched displays. So does a window</span>
+<span class="sd">    whose message buttons write display indices to the variable</span>
+<span class="sd">    (_index_writers).</span>
+
+<span class="sd">    A window whose filePv is a real PV switches on the PV&#39;s value the same way:</span>
+<span class="sd">    it becomes the switched displays, all hidden until the PV&#39;s first value, as</span>
+<span class="sd">    EDM opens nothing until then (pip.cc).</span>
 
 <span class="sd">    skip_widgets is the site&#39;s set of EDM classes to drop; pairing rewrites both</span>
 <span class="sd">    widgets together, so a site dropping either one leaves the tree untouched.</span>
@@ -3436,8 +3466,9 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Skipping menu embedded window pairing (site rule)&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
-    <span class="c1"># A site dropping menu muxes leaves their variables unwritten.</span>
+    <span class="c1"># A site dropping menu muxes or message buttons leaves their variables unwritten.</span>
     <span class="n">writes_menus</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">skip_widgets</span> <span class="ow">or</span> <span class="s2">&quot;menumuxclass&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip_widgets</span>
+    <span class="n">writes_buttons</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">skip_widgets</span> <span class="ow">or</span> <span class="s2">&quot;activemessagebuttonclass&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">skip_widgets</span>
 
     <span class="n">objects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_walk_objects</span><span class="p">(</span><span class="n">root</span><span class="p">))</span>
     <span class="c1"># objects holds a reference to every walked object, so keying by id is safe.</span>
@@ -3450,7 +3481,11 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
         <span class="c1"># (EDM index, file): the variable&#39;s value v shows displayFileName[v], and a</span>
         <span class="c1"># file may skip indices or start at 1.</span>
         <span class="n">files</span> <span class="o">=</span> <span class="n">block_items</span><span class="p">(</span><span class="n">pip</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;displayFileName&quot;</span><span class="p">))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">files</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_names_a_pv</span><span class="p">(</span><span class="n">file_pv</span><span class="p">):</span>
+                <span class="n">_stack_pip_displays</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">file_pv</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">files</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">continue</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">users</span> <span class="o">=</span> <span class="p">[(</span><span class="n">obj</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">objects</span> <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">pip</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">loc_names</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)]]</span>
@@ -3460,7 +3495,8 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">EDMObject</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;activechoicebuttonclass&quot;</span>
         <span class="p">]</span>
         <span class="n">menus</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">users</span> <span class="k">if</span> <span class="n">_menu_writes</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">)]</span> <span class="k">if</span> <span class="n">writes_menus</span> <span class="k">else</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">menus</span><span class="p">:</span>
+        <span class="n">writers</span> <span class="o">=</span> <span class="n">_index_writers</span><span class="p">(</span><span class="n">users</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="n">index</span> <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">files</span><span class="p">])</span> <span class="k">if</span> <span class="n">writes_buttons</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">menus</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">writers</span><span class="p">:</span>
             <span class="k">continue</span>
 
         <span class="c1"># The richest reference defines the variable: most enum strings, then any config at all.</span>
@@ -3483,10 +3519,17 @@ widgets together, so a site dropping either one leaves the tree untouched.</p>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">definition</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">?type=int&amp;init=</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">&quot;</span>
 
+        <span class="k">if</span> <span class="n">_loc_init</span><span class="p">(</span><span class="n">definition</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># A window whose variable starts at -1 writes 0 on its first value</span>
+            <span class="c1"># rather than popping its menu up (pip.cc), so it opens on entry 0.</span>
+            <span class="n">definition</span> <span class="o">=</span> <span class="n">definition</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;init=-1&quot;</span><span class="p">,</span> <span class="s2">&quot;init=0&quot;</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">choices</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">users</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">_fits_tab_bar</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="o">*</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
             <span class="n">_absorb_pip_into_tabs</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">files</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">color_list_dict</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">_stack_pip_displays</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">users</span><span class="p">)</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">_starting_index</span><span class="p">(</span><span class="n">_loc_init</span><span class="p">(</span><span class="n">definition</span><span class="p">),</span> <span class="p">[</span><span class="n">index</span> <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">files</span><span class="p">])</span>
+            <span class="n">_stack_pip_displays</span><span class="p">(</span><span class="n">pip</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+            <span class="n">_hand_over_definition</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">writers</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3511,31 +3554,31 @@ This is just an example parser—adjust as needed.</p>
 
             <details class="quote">
               <summary>Source code in <code>pydmconverter/edm/converter_helpers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1815</span>
-<span class="normal">1816</span>
-<span class="normal">1817</span>
-<span class="normal">1818</span>
-<span class="normal">1819</span>
-<span class="normal">1820</span>
-<span class="normal">1821</span>
-<span class="normal">1822</span>
-<span class="normal">1823</span>
-<span class="normal">1824</span>
-<span class="normal">1825</span>
-<span class="normal">1826</span>
-<span class="normal">1827</span>
-<span class="normal">1828</span>
-<span class="normal">1829</span>
-<span class="normal">1830</span>
-<span class="normal">1831</span>
-<span class="normal">1832</span>
-<span class="normal">1833</span>
-<span class="normal">1834</span>
-<span class="normal">1835</span>
-<span class="normal">1836</span>
-<span class="normal">1837</span>
-<span class="normal">1838</span>
-<span class="normal">1839</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1883</span>
+<span class="normal">1884</span>
+<span class="normal">1885</span>
+<span class="normal">1886</span>
+<span class="normal">1887</span>
+<span class="normal">1888</span>
+<span class="normal">1889</span>
+<span class="normal">1890</span>
+<span class="normal">1891</span>
+<span class="normal">1892</span>
+<span class="normal">1893</span>
+<span class="normal">1894</span>
+<span class="normal">1895</span>
+<span class="normal">1896</span>
+<span class="normal">1897</span>
+<span class="normal">1898</span>
+<span class="normal">1899</span>
+<span class="normal">1900</span>
+<span class="normal">1901</span>
+<span class="normal">1902</span>
+<span class="normal">1903</span>
+<span class="normal">1904</span>
+<span class="normal">1905</span>
+<span class="normal">1906</span>
+<span class="normal">1907</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_font_string</span><span class="p">(</span><span class="n">font_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse an EDM font string like &#39;helvetica-bold-r-12.0&#39;</span>
 <span class="sd">    into a dictionary for a PyDM widget.</span>
