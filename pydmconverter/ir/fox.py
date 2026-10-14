@@ -15,6 +15,7 @@ seam Fox uses, reused from the converter side.
 from __future__ import annotations
 
 import re
+from urllib.parse import unquote
 
 from pydmconverter.ir.macros import normalize_macro_syntax
 
@@ -67,7 +68,10 @@ def parse_calc_url(url: str) -> tuple[str, dict[str, str]] | None:
     """Parse a ``calc://`` URL into ``(fox_expression, bindings)``, or None.
 
     The query is split manually (not via ``parse_qs``) so a ``+`` in ``expr`` stays an
-    operator rather than decoding to a space.
+    operator rather than decoding to a space. Each value is then percent-decoded
+    (``unquote``, not ``unquote_plus``), as PyDM's calc plugin reads it: the parser
+    escapes ``%`` and ``&`` in the expression and in each argument, e.g. a nested
+    ``loc://`` address.
     """
     if not isinstance(url, str) or not url.startswith("calc://") or "?" not in url:
         return None
@@ -78,6 +82,7 @@ def parse_calc_url(url: str) -> tuple[str, dict[str, str]] | None:
         if "=" not in pair:
             continue
         key, value = pair.split("=", 1)
+        value = unquote(value)
         if key == "expr":
             expression = value
         else:
