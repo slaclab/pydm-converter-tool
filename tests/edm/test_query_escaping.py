@@ -174,9 +174,9 @@ def widget_on(screen, cls, prefix):
 
 
 def test_enum_variable_with_ampersand_is_set_up_in_pydm(out, qtbot):
-    """misc/L3_vernier_dither: parse_qs used to cut the enum strings at "&", PyDM's
-    local plugin raised SyntaxError reading them and never set the variable up,
-    so every widget on it stayed hidden."""
+    """parse_qs used to cut the enum strings at "&", PyDM's local plugin raised
+    SyntaxError reading them and never set the variable up, so every widget on it
+    stayed hidden."""
     pytest.importorskip("pydm")
     from pydm.widgets import PyDMDrawingRectangle, PyDMEnumButton
 
@@ -192,6 +192,8 @@ def test_enum_variable_with_ampersand_is_set_up_in_pydm(out, qtbot):
 
     qtbot.waitUntil(lambda: getattr(connection("loc://qsDitherMode"), "value", None) == 0, timeout=3000)
     qtbot.waitUntil(lambda: button.isVisible() and first.isVisible(), timeout=3000)
+    # The button's rule starts at its initial value, so it shows before its labels arrive.
+    qtbot.waitUntil(lambda: button.enum_strings is not None, timeout=3000)
     assert button.enum_strings == ("Min/Max", "Ampl & Offset")
     assert second.isHidden()
 
