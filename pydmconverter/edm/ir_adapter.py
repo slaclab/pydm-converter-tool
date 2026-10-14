@@ -34,6 +34,7 @@ from typing import Any, Callable
 from pydmconverter.edm.edm_qt import (
     EDM_DATA_PV_ATTRS,
     EDM_TO_QT_PROP,
+    XY_GRAPH_UNMAPPED_PVS,
     channel_roles,
     resolve_qt_class,
 )
@@ -1035,6 +1036,7 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     Each EDM yPv becomes one curve JSON string ({"y_channel": ...}); the registry
     transform parses them. A parallel xPv entry rides along as ``x_channel``
     (waveform-vs-waveform traces; the plot renders time-series when absent).
+    The graph's other PVs (XY_GRAPH_UNMAPPED_PVS) are dropped with a warning.
     """
     y_pvs = [(index, pv) for index, pv in block_items(obj.properties.get("yPv")) if pv]
     x_pvs = _by_index(obj.properties.get("xPv"))  # trace i plots yPv[i] against xPv[i]
@@ -1049,6 +1051,10 @@ def _fixup_xy_graph(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str
     title = obj.properties.get("graphTitle")
     if title:
         qt_props["title"] = normalize_macro_syntax(str(title))
+    for tag, effect in XY_GRAPH_UNMAPPED_PVS.items():
+        pvs = [normalize_macro_syntax(pv) for _, pv in block_items(obj.properties.get(tag)) if pv.strip()]
+        if pvs:
+            warnings.append(f"EDM xyGraph {tag} not mapped ({effect}): {', '.join(pvs)}")
     return None
 
 

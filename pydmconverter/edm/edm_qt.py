@@ -177,6 +177,15 @@ _DEFAULT_ROLES = ChannelRoles()
 # not read (a related display's pv[]) drops it.
 EDM_DATA_PV_ATTRS = ("controlPv", "readPv", "indicatorPv", "pv", "filePv", "ctrl1Pv")
 
+# xyGraph PVs besides its traces' xPv/yPv, which neither target carries, and
+# what each does (xygraph.cc). nPv is one per trace.
+XY_GRAPH_UNMAPPED_PVS = {
+    "nPv": "how many points each trace plots",
+    "traceCtlPv": "a bitmask that hides traces",
+    "resetPv": "clears the plot",
+    "triggerPv": "when trigger-mode traces update",
+}
+
 
 def channel_roles(name_lower: str) -> ChannelRoles:
     """The PV roles of an EDM class (lowercased name)."""
