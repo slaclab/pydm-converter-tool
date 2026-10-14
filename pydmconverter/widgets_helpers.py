@@ -1740,14 +1740,15 @@ class Controllable(Tangible):
                 )
 
         if self.visPv is not None:
+            # EDM shows the widget while visMin <= value < visMax, reading a missing limit as 0.
             self.rules.append(
                 RuleArguments(
                     "Visible",
                     self.visPv,
                     False,
                     not self.visInvert if self.visInvert is not None else True,
-                    self.visMin,
-                    self.visMax,
+                    self.visMin if self.visMin is not None else "0",
+                    self.visMax if self.visMax is not None else "0",
                 )
             )
 

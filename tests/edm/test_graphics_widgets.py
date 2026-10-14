@@ -169,7 +169,8 @@ def test_group_materializes_as_group_node():
     rule = group.rules[0]
     assert rule.target_property == "visible"
     assert [pv.name for pv in rule.pvs] == ["${P}:SHOW"]
-    assert rule.conditions[0].expression == "{0} != 0"
+    # No visMin/visMax: EDM reads both as 0, the empty range [0, 0).
+    assert rule.conditions[0].expression == "({0} >= 0.0) and ({0} < 0.0)"
     assert rule.default is False
 
 

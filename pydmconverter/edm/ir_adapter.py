@@ -62,9 +62,8 @@ from pydmconverter.ir.transforms import screen_ref
 logger = logging.getLogger(__name__)
 
 # An EDM visibility spec: (visPv, visMin, visMax, visInvert). visMin/visMax are
-# numbers (EDM atof semantics, see _vis_limit), or None when the EDM object only
-# declares visPv (visible-when-nonzero).
-VisTuple = tuple[str, "float | None", "float | None", bool]
+# numbers (EDM atof semantics, see _vis_limit); a missing one is 0.
+VisTuple = tuple[str, float, float, bool]
 
 # A SourceNode geometry tuple: absolute (x, y, width, height).
 Geometry = tuple[Number, Number, Number, Number]
@@ -1598,11 +1597,13 @@ def _vis_limit(attr: str, value: Any, warnings: list[str]) -> float | None:
     """One EDM ``visMin``/``visMax`` string -> the number EDM compares against.
 
     EDM stores both as strings and evaluates them with ``atof()`` after macro
-    substitution, so a non-numeric value (a PV name, "MAJOR") counts as 0 and a
-    numeric prefix ("1`", "0x80") counts as that number. A value that *starts*
-    with a macro depends on the caller's substitution and cannot be evaluated at
-    convert time: ``None`` (the caller drops that visibility rule).
+    substitution, so a missing or non-numeric value (a PV name, "MAJOR") counts
+    as 0 and a numeric prefix ("1`", "0x80") counts as that number. A value that
+    *starts* with a macro depends on the caller's substitution and cannot be
+    evaluated at convert time: ``None`` (the caller drops that visibility rule).
     """
+    if value is None:
+        return 0.0
     if isinstance(value, bool):
         text = ""  # a bare "visMin" line (no value) parses as True
     elif isinstance(value, (int, float)):
@@ -1646,24 +1647,22 @@ def _vis_tuple(properties: dict[str, Any], warnings: list[str] | None = None) ->
         vis_pv = vis_pv[0] if vis_pv else ""
     vis_pv = normalize_macro_syntax(str(vis_pv))
     invert = bool(properties.get("visInvert", False))
-    vis_min = properties.get("visMin")
-    vis_max = properties.get("visMax")
-    if vis_min is not None and vis_max is not None:
-        low = _vis_limit("visMin", vis_min, warnings)
-        high = _vis_limit("visMax", vis_max, warnings) if low is not None else None
-        if low is None or high is None:
-            return None
-        return (vis_pv, low, high, invert)
-    return (vis_pv, None, None, invert)
+    # A missing limit is 0, so a visPv without limits never shows ([0, 0) holds
+    # no value), or always with visInvert.
+    low = _vis_limit("visMin", properties.get("visMin"), warnings)
+    high = _vis_limit("visMax", properties.get("visMax"), warnings) if low is not None else None
+    if low is None or high is None:
+        return None
+    return (vis_pv, low, high, invert)
 
 
 def _visibility_rule_spec(vis_tuples: list[VisTuple]) -> RuleSpec:
     """Combine EDM visibility tuples (own + inherited group vis) into one ``visible`` rule.
 
-    EDM is visible when, for every tuple, ``visMin <= value < visMax`` (or ``value != 0``
-    when no range; the limits are already numbers, see :func:`_vis_limit`), with
-    ``visInvert`` flipping that tuple. Multiple tuples AND together
-    (PyDM semantics). The single condition is true exactly when the widget is visible.
+    EDM is visible when, for every tuple, ``visMin <= value < visMax`` (the limits
+    are already numbers, see :func:`_vis_limit`), with ``visInvert`` flipping that
+    tuple. Multiple tuples AND together (PyDM semantics). The single condition is
+    true exactly when the widget is visible.
     """
     pv_index: dict[str, int] = {}
     pvs: list[tuple[str, bool]] = []
@@ -1673,10 +1672,7 @@ def _visibility_rule_spec(vis_tuples: list[VisTuple]) -> RuleSpec:
             pv_index[vis_pv] = len(pvs)
             pvs.append((vis_pv, True))
         index = pv_index[vis_pv]
-        if vis_min is not None and vis_max is not None:
-            base = f"({{{index}}} >= {float(vis_min)}) and ({{{index}}} < {float(vis_max)})"
-        else:
-            base = f"{{{index}}} != 0"
+        base = f"({{{index}}} >= {float(vis_min)}) and ({{{index}}} < {float(vis_max)})"
         parts.append(f"not ({base})" if invert else base)
     return RuleSpec(
         target_property="visible",

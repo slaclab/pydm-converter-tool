@@ -1301,5 +1301,9 @@ def test_rule_order_does_not_depend_on_hash_seed(tmp_path):
 
     (visible,) = [r for r in rules_by_seed["1"] if r["property"] == "Visible"]
     assert [c["channel"] for c in visible["channels"]] == ["${P}:OUTER", "${P}:INNER", "${P}:OWN"]
-    assert visible["expression"] == "(ch[0]==1) and (ch[1]!=1) and (float(ch[2]) >= 1.0 and float(ch[2]) < 2.0)"
+    # The groups have no visMin/visMax, which EDM reads as 0: the empty range [0, 0).
+    assert visible["expression"] == (
+        "(float(ch[0]) >= 0.0 and float(ch[0]) < 0.0) and (float(ch[1]) < 0.0 or float(ch[1]) >= 0.0)"
+        " and (float(ch[2]) >= 1.0 and float(ch[2]) < 2.0)"
+    )
     assert all(rules == rules_by_seed["1"] for rules in rules_by_seed.values())
