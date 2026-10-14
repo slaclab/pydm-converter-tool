@@ -5352,7 +5352,7 @@ search_paths : str | os.PathLike | Sequence[str | os.PathLike], optional
     <div class="doc doc-contents ">
 
         <p>Split an EDM path list such as <code>EDMDATAFILES</code> into its directories.</p>
-<p>EDM separates directories with <code>:</code>, as in <code>/usr/local/lcls/display:/usr/local/lcls/pps</code>.
+<p>EDM separates directories with <code>:</code>, as in <code>/opt/edm/display:/opt/edm/shared</code>.
 <code>;</code> separates them too, and a Windows drive (a single letter before <code>:\</code> or <code>:/</code>,
 as in <code>C:\edm</code>) stays one entry. Empty entries are dropped.</p>
 <p>As in EDM, a leading <code>=</code> (its mark for the default directory) is not part of the
@@ -5400,7 +5400,7 @@ local files only.</p>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Split an EDM path list such as ``EDMDATAFILES`` into its directories.</span>
 
-<span class="sd">    EDM separates directories with ``:``, as in ``/usr/local/lcls/display:/usr/local/lcls/pps``.</span>
+<span class="sd">    EDM separates directories with ``:``, as in ``/opt/edm/display:/opt/edm/shared``.</span>
 <span class="sd">    ``;`` separates them too, and a Windows drive (a single letter before ``:\\`` or ``:/``,</span>
 <span class="sd">    as in ``C:\\edm``) stays one entry. Empty entries are dropped.</span>
 

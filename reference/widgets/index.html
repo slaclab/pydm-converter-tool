@@ -12736,9 +12736,9 @@ children : List[Alarmable]
 <p>A name that is already a ".ui" file is returned unchanged. Otherwise any
 legacy macro suffix ("name.edl;P=...") is dropped at the first ";", a
 trailing ".edl" is stripped, and ".ui" is appended. EDM appends ".edl" to a
-name that lacks the suffix, so "GigE_controls" and "GigE_controls.edl" both
-become "GigE_controls.ui". Dots anywhere else stay part of the name, so
-"GigE_v1.2" becomes "GigE_v1.2.ui" and "screen.edl.bak" becomes
+name that lacks the suffix, so "camera_controls" and "camera_controls.edl" both
+become "camera_controls.ui". Dots anywhere else stay part of the name, so
+"cam_v1.2" becomes "cam_v1.2.ui" and "screen.edl.bak" becomes
 "screen.edl.bak.ui".</p>
 
 
@@ -12768,9 +12768,9 @@ become "GigE_controls.ui". Dots anywhere else stay part of the name, so
 <span class="sd">    A name that is already a &quot;.ui&quot; file is returned unchanged. Otherwise any</span>
 <span class="sd">    legacy macro suffix (&quot;name.edl;P=...&quot;) is dropped at the first &quot;;&quot;, a</span>
 <span class="sd">    trailing &quot;.edl&quot; is stripped, and &quot;.ui&quot; is appended. EDM appends &quot;.edl&quot; to a</span>
-<span class="sd">    name that lacks the suffix, so &quot;GigE_controls&quot; and &quot;GigE_controls.edl&quot; both</span>
-<span class="sd">    become &quot;GigE_controls.ui&quot;. Dots anywhere else stay part of the name, so</span>
-<span class="sd">    &quot;GigE_v1.2&quot; becomes &quot;GigE_v1.2.ui&quot; and &quot;screen.edl.bak&quot; becomes</span>
+<span class="sd">    name that lacks the suffix, so &quot;camera_controls&quot; and &quot;camera_controls.edl&quot; both</span>
+<span class="sd">    become &quot;camera_controls.ui&quot;. Dots anywhere else stay part of the name, so</span>
+<span class="sd">    &quot;cam_v1.2&quot; becomes &quot;cam_v1.2.ui&quot; and &quot;screen.edl.bak&quot; becomes</span>
 <span class="sd">    &quot;screen.edl.bak.ui&quot;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">file_string</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.ui&quot;</span><span class="p">):</span>
