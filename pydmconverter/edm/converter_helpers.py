@@ -1441,11 +1441,36 @@ def _rule_nodes_allowed(tree: ast.AST) -> bool:
     return True
 
 
+def _tests_only_for_none(tree: ast.AST, indices: set) -> bool:
+    """Whether a parsed rule expression reads ch[i], for each i in indices, only
+    to test it against None, as the hide-on-disconnect rule does (ch[i] is not None)."""
+    tested = {
+        id(node.left)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], (ast.Is, ast.IsNot))
+        and isinstance(node.comparators[0], ast.Constant)
+        and node.comparators[0].value is None
+    }
+    return all(
+        id(node) in tested for node in ast.walk(tree) if isinstance(node, ast.Subscript) and node.slice.value in indices
+    )
+
+
 def _rule_start(rule: dict, declared: dict) -> Optional[str]:
     """A Visible or Enable rule's value, "true" or "false", while the loc://
     variables it reads hold their initial values. None when that is not known
-    here: another rule, a channel that is not a declared loc:// variable, or an
+    here: another rule, a channel that is not a declared loc:// variable, a
+    value only PyDM knows used for more than a test against None, or an
     expression MultiRule does not write.
+
+    A variable whose value only PyDM knows (see _loc_variable) is still not
+    None to the rule. PyDM's local plugin never sends a None value
+    (local_plugin.py send_new_value), and when it can't convert the init it
+    sends nothing, and the rule shows its initial value. So the
+    hide-on-disconnect rule of a choice button on a variable whose init is a
+    macro starts true, and the button shows whatever the macro is, as in EDM.
 
     The expression is evaluated as PyDM's rules engine does (rules.py
     calculate_expression), but only once every node of it passes
@@ -1454,16 +1479,20 @@ def _rule_start(rule: dict, declared: dict) -> Optional[str]:
     if rule.get("property") not in ("Visible", "Enable") or not rule.get("channels"):
         return None
     values = []
-    for channel in rule["channels"]:
+    unknown = set()
+    for index, channel in enumerate(rule["channels"]):
         name, _ = _loc_variable(channel.get("channel"))
-        value = declared.get(name, UNKNOWN_VALUE)
-        # PyDM substitutes an enum string for the value unless use_enum is false.
-        if value is UNKNOWN_VALUE or channel.get("use_enum", True):
+        if name not in declared:
             return None
-        values.append(value)
+        # PyDM substitutes an enum string for the value unless use_enum is false.
+        if channel.get("use_enum", True):
+            return None
+        if declared[name] is UNKNOWN_VALUE:
+            unknown.add(index)
+        values.append(declared[name])
     try:
         tree = ast.parse(rule.get("expression", ""), mode="eval")
-        if not _rule_nodes_allowed(tree):
+        if not _rule_nodes_allowed(tree) or not _tests_only_for_none(tree, unknown):
             return None
         result = eval(compile(tree, "<rule>", "eval"), {"__builtins__": {}}, {"ch": values, "float": float})
     except Exception:
