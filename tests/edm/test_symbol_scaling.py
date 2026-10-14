@@ -478,5 +478,6 @@ def test_ui_widgets_have_the_scaled_geometry(tmp_path, monkeypatch):
         rect = widget.find("./property[@name='geometry']/rect")
         if rect is not None:
             geometry[widget.get("class")] = tuple(int(rect.find(k).text) for k in ("x", "y", "width", "height"))
-    assert geometry["PyDMDrawingRectangle"] == (50, 60, 48, 36)
-    assert geometry["PyDMDrawingEllipse"] == (50, 60, 48, 36)
+    # The drawings reach past the scaled rect by their 1 px pen.
+    assert geometry["PyDMDrawingRectangle"] == (49, 59, 50, 38)
+    assert geometry["PyDMDrawingEllipse"] == (49, 59, 50, 38)
