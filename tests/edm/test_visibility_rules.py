@@ -102,16 +102,16 @@ def _convert_text(tmp_path, body: str):
 
 
 def test_edm_atof_prefix_semantics():
-    from pydmconverter.edm.ir_adapter import _edm_atof
+    from pydmconverter.edm.parser_helpers import edm_atof
 
-    assert _edm_atof("3") == 3.0
-    assert _edm_atof("1`") == 1.0  # numeric prefix wins, trailing junk ignored
-    assert _edm_atof("0x80000000") == 2147483648.0  # glibc strtod reads hex
-    assert _edm_atof("-0x10") == -16.0
-    assert _edm_atof(" 2.5e1abc") == 25.0
-    assert _edm_atof("MAJOR") == 0.0
-    assert _edm_atof("KLYS:LI20:21:BVLT.LOW") == 0.0
-    assert _edm_atof("") == 0.0
+    assert edm_atof("3") == 3.0
+    assert edm_atof("1`") == 1.0  # numeric prefix wins, trailing junk ignored
+    assert edm_atof("0x80000000") == 2147483648.0  # glibc strtod reads hex
+    assert edm_atof("-0x10") == -16.0
+    assert edm_atof(" 2.5e1abc") == 25.0
+    assert edm_atof("MAJOR") == 0.0
+    assert edm_atof("DEMO:DEV:LIMIT.LOW") == 0.0  # a PV name
+    assert edm_atof("") == 0.0
 
 
 def test_hex_vis_limits_evaluate_like_edm(tmp_path):
@@ -263,3 +263,81 @@ def test_ui_missing_vis_limit_is_zero(tmp_path, vis_lines, shown, group):
     assert rule["property"] == "Visible"
     assert [channel["channel"] for channel in rule["channels"]] == ["DEMO:SHOW"]
     assert {value for value in _VALUES if eval(rule["expression"], {"ch": [value], "float": float})} == shown
+
+
+# --- The .ui reads visMin/visMax with atof() too, as the IR does ----------------
+
+
+def _edl(tmp_path, text: str) -> Path:
+    path = tmp_path / "vis.edl"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _ui_visible_rules(source: Path) -> list[dict]:
+    """The Visible rules of the rectangle in the .ui converted from ``source``."""
+    output = source.with_suffix(".ui")
+    convert(str(source), str(output))
+    [rectangle] = [w for w in ET.parse(output).iter("widget") if w.get("class") == "PyDMDrawingRectangle"]
+    rules = rectangle.find("property[@name='rules']/string")
+    return [rule for rule in json.loads(rules.text) if rule["property"] == "Visible"] if rules is not None else []
+
+
+def test_ui_hex_vis_limits_evaluate_like_edm(tmp_path, caplog):
+    [rule] = _ui_visible_rules(_edl(tmp_path, _SCREEN + _vis_object("0x80000000", "0x80008001")))
+    assert rule["expression"] == "(float(ch[0]) >= 2147483648.0 and float(ch[0]) < 2147516417.0)"
+    assert "evaluated as 2147483648" in caplog.text
+
+
+def test_ui_non_numeric_literal_vis_limit_is_zero(tmp_path, caplog):
+    """A literal non-number ("MAJOR") is 0 for that limit alone, not an empty range."""
+    [rule] = _ui_visible_rules(_edl(tmp_path, _SCREEN + _vis_object("MAJOR", "2")))
+    assert rule["expression"] == "(float(ch[0]) >= 0.0 and float(ch[0]) < 2.0)"
+    assert "visMin 'MAJOR' is not a plain number; evaluated as 0" in caplog.text
+
+
+@pytest.mark.parametrize("group", [False, True], ids=["object", "group"])
+@pytest.mark.parametrize(
+    ("vis_lines", "warning"),
+    [
+        pytest.param(
+            ['visMin "$(DEV):LOW"', 'visMax "$(DEV):HIGH"', "visInvert"],
+            "visMin '${DEV}:LOW' depends on a macro",
+            id="macro",
+        ),
+        pytest.param(['visMin "$(LO)"', 'visMax "5"'], "visMin '${LO}' depends on a macro", id="macro-visMin"),
+        pytest.param(['visMin "0"', 'visMax "inf"'], "visMax 'inf' is not a finite number", id="infinite"),
+    ],
+)
+def test_ui_unevaluable_vis_limit_drops_rule_with_warning(tmp_path, caplog, vis_lines, warning, group):
+    """A limit only PyDM's macros could give a value has no atof() there, so no rule, as in the IR."""
+    source = _edl(tmp_path, _vis_screen(vis_lines, group=group))
+    assert _ui_visible_rules(source) == []
+    assert warning in caplog.text
+    assert edm_file_to_ir(source).root.children[0].rules == []
+
+
+# Limits EDM reads with atof(), and the values (of _ATOF_VALUES) the object shows at.
+_ATOF_VALUES = (-1, 0, 0.5, 1, 1.5, 2, 25, 26, 65535, 65536)
+ATOF_LIMITS = [
+    pytest.param(['visMin "1`"', 'visMax "2"'], {1, 1.5}, id="numeric-prefix"),
+    pytest.param(['visMin " 1`"', 'visMax "2"'], {1, 1.5}, id="leading-space"),
+    pytest.param(['visMin "2.5e1abc"', 'visMax "26"'], {25}, id="exponent-prefix"),
+    pytest.param(['visMin "0xFFFF"', 'visMax "0x10000"'], {65535}, id="hex"),
+    pytest.param(['visMin "MAJOR"', 'visMax "2"'], {0, 0.5, 1, 1.5}, id="non-numeric"),
+    pytest.param(
+        ['visMin "MAJOR"', 'visMax "2"', "visInvert"], {-1, 2, 25, 26, 65535, 65536}, id="non-numeric-inverted"
+    ),
+    pytest.param(["visMin", 'visMax "2"'], {0, 0.5, 1, 1.5}, id="bare-visMin"),
+]
+
+
+@pytest.mark.parametrize("group", [False, True], ids=["object", "group"])
+@pytest.mark.parametrize(("vis_lines", "shown"), ATOF_LIMITS)
+def test_both_targets_read_vis_limits_with_atof(tmp_path, vis_lines, shown, group):
+    source = _edl(tmp_path, _vis_screen(vis_lines, group=group))
+    [ui_rule] = _ui_visible_rules(source)
+    assert {value for value in _ATOF_VALUES if eval(ui_rule["expression"], {"ch": [value], "float": float})} == shown
+    [ir_rule] = edm_file_to_ir(source).root.children[0].rules
+    [condition] = ir_rule.conditions
+    assert {value for value in _ATOF_VALUES if eval(condition.expression.replace("{0}", repr(float(value))))} == shown

@@ -1,4 +1,5 @@
 import hashlib
+import math
 import os
 import re
 import logging
@@ -1586,3 +1587,75 @@ def parse_edm_macros(macro_string: str) -> dict:
             logger.warning(f"Invalid macro pair format: '{pair}' in macro string: '{macro_string}'")
 
     return macro_dict
+
+
+# The leading number C's strtod() accepts (what EDM's atof() reads): hex first,
+# since the decimal pattern would otherwise stop at the "0" of "0x...".
+_HEX_PREFIX_RE = re.compile(r"[+-]?0[xX](?:[0-9a-fA-F]+\.?[0-9a-fA-F]*|\.[0-9a-fA-F]+)(?:[pP][+-]?\d+)?")
+_DEC_PREFIX_RE = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+_SPECIAL_PREFIX_RE = re.compile(r"[+-]?(?:inf(?:inity)?|nan)", re.IGNORECASE)
+
+
+def edm_atof(text: str) -> float:
+    """C ``atof()`` semantics: the longest numeric prefix (decimal, hex, inf/nan), else 0.0."""
+    text = text.lstrip()
+    hex_match = _HEX_PREFIX_RE.match(text)
+    if hex_match:
+        token = hex_match.group(0)
+        sign = -1.0 if token.startswith("-") else 1.0
+        return sign * float.fromhex(token.lstrip("+-"))
+    match = _DEC_PREFIX_RE.match(text) or _SPECIAL_PREFIX_RE.match(text)
+    return float(match.group(0)) if match else 0.0
+
+
+def vis_limit(attr: str, value: Any, warnings: list[str]) -> float | None:
+    """One EDM ``visMin``/``visMax`` string -> the number EDM compares against.
+
+    EDM stores both as strings and evaluates them with ``atof()`` after macro
+    substitution, so a missing or non-numeric value (a PV name, "MAJOR") counts
+    as 0 and a numeric prefix ("1`", "0x80") counts as that number. A value that
+    *starts* with a macro depends on the caller's substitution and cannot be
+    evaluated at convert time: ``None`` (the caller drops that visibility rule).
+    """
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):
+        text = ""  # a bare "visMin" line (no value) parses as True
+    elif isinstance(value, (int, float)):
+        return float(value)
+    else:
+        text = str(value)
+    if text.lstrip().startswith(("${", "$(")):
+        warnings.append(
+            f"EDM {attr} '{text}' depends on a macro and cannot be evaluated at convert time; "
+            "visibility rule dropped (widget always shown)"
+        )
+        return None
+    number = edm_atof(text)
+    if not math.isfinite(number):
+        warnings.append(f"EDM {attr} '{text}' is not a finite number; visibility rule dropped (widget always shown)")
+        return None
+    try:
+        exact = float(text)
+    except ValueError:
+        exact = None
+    if exact != number:
+        shown = int(number) if number.is_integer() else number
+        warnings.append(f"EDM {attr} '{text}' is not a plain number; evaluated as {shown} (EDM atof semantics)")
+    return number
+
+
+def vis_range(properties: Dict[str, Any], warnings: List[str]) -> tuple[float, float] | None:
+    """An EDM object's ``(visMin, visMax)`` as the numbers EDM compares against (see
+    :func:`vis_limit`), or None when a limit cannot be evaluated at convert time:
+    the caller drops the visibility rule, and ``warnings`` says why.
+
+    EDM shows the object while ``visMin <= value < visMax``. A missing limit is 0,
+    so a visPv without limits never shows ([0, 0) holds no value), or always with
+    visInvert.
+    """
+    low = vis_limit("visMin", properties.get("visMin"), warnings)
+    high = vis_limit("visMax", properties.get("visMax"), warnings) if low is not None else None
+    if low is None or high is None:
+        return None
+    return low, high

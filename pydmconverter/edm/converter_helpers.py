@@ -46,6 +46,7 @@ from pydmconverter.edm.parser_helpers import (
     parse_colors_list,
     parse_edm_macros,
     loc_str_init,
+    vis_range,
 )
 from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
@@ -581,6 +582,24 @@ def channel_attr(obj: EDMObject) -> Optional[str]:
     return attr
 
 
+def object_vis_range(name: str, properties: dict) -> Optional[Tuple[float, float]]:
+    """The (visMin, visMax) an EDM object or group shows between, read with
+    EDM's atof() as the IR reads them (parser_helpers.vis_range).
+
+    None when a limit can't be evaluated here, such as one that starts with a
+    macro: the caller drops the visibility rule, so the widget always shows, as
+    in the IR, and a warning says why. PyDM would substitute the macro when it
+    loads the screen, but only as text in the rule expression, which has no
+    atof(): a limit that names a PV would not parse, and the widget would stay
+    hidden.
+    """
+    warnings: List[str] = []
+    limits = vis_range(properties, warnings)
+    for warning in warnings:
+        logger.warning(f"{name}: {warning}")
+    return limits
+
+
 def apply_channel_roles(widget, obj: EDMObject) -> None:
     """Bind the widget's channel to the PV channel_attr names, and warn about
     each of the object's other PVs, which a .ui has no place for: a PyDM
@@ -974,11 +993,12 @@ def traverse_group(
             logger.debug("Skipped pydm_group")
 
             vis_invert = bool(obj.properties.get("visInvert", False))
+            limits = None
             if "visPv" in obj.properties:
-                # EDM shows the group while visMin <= value < visMax, reading a missing limit as 0.
-                vis_min = obj.properties.get("visMin", "0")
-                vis_max = obj.properties.get("visMax", "0")
-                curr_vispv = [(obj.properties["visPv"], vis_min, vis_max, vis_invert)]
+                limits = object_vis_range(f"Group at ({obj.x}, {obj.y})", obj.properties)
+            if limits is not None:
+                # EDM shows the group while visMin <= value < visMax.
+                curr_vispv = [(obj.properties["visPv"], *limits, vis_invert)]
                 if obj.properties.get(STARTS_VISIBLE):
                     curr_vispv = [curr_vispv[0] + (True,)]
             else:
@@ -1070,6 +1090,13 @@ def traverse_group(
                     logger.info(f"Set {pydm_attr} to {value} for {widget.name}")
                 except Exception as e:
                     raise AttributeConversionError(edm_attr, value, widget.name, cause=e) from e
+            # The visibility range as EDM reads visMin/visMax; a limit it can't read here drops the rule.
+            if getattr(widget, "visPv", None) is not None:
+                limits = object_vis_range(obj.name, obj.properties)
+                if limits is None:
+                    widget.visPv = None
+                else:
+                    widget.visMin, widget.visMax = limits
             # Before post-processing: on/off button variants copy the channel and key their rules on it.
             apply_channel_roles(widget, obj)
 
