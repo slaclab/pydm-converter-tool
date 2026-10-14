@@ -2669,6 +2669,11 @@ arg_list : List[str]
 <p>Enum ('e') is mapped to int for simplicity in this conversion.</p>
 <p>A value with no recognized type prefix (e.g. "CMOS:LI20:3490") becomes a
 str PV holding the whole text, whereas EDM drops its first two characters.</p>
+<p>Other attributes without a ":" are read as EDM's setAttributes
+(loc_pv_factory.cc) reads them: the first character is the type and the
+next one is skipped, so "LOC\x=intPv=Show" is an int holding 0. A bare
+number stays an int ("LOC\x=0"); attributes starting with no type EDM
+knows give a bare "loc://<name>" that declares nothing.</p>
 <h4 id="edm.parser_helpers.loc_conversion--parameters">Parameters</h4>
 <p>edm_string : str
     EDM local PV string to be converted. Expected format is:
@@ -2853,6 +2858,12 @@ str PV holding the whole text, whereas EDM drops its first two characters.</p>
 <span class="sd">    A value with no recognized type prefix (e.g. &quot;CMOS:LI20:3490&quot;) becomes a</span>
 <span class="sd">    str PV holding the whole text, whereas EDM drops its first two characters.</span>
 
+<span class="sd">    Other attributes without a &quot;:&quot; are read as EDM&#39;s setAttributes</span>
+<span class="sd">    (loc_pv_factory.cc) reads them: the first character is the type and the</span>
+<span class="sd">    next one is skipped, so &quot;LOC\\x=intPv=Show&quot; is an int holding 0. A bare</span>
+<span class="sd">    number stays an int (&quot;LOC\\x=0&quot;); attributes starting with no type EDM</span>
+<span class="sd">    knows give a bare &quot;loc://&lt;name&gt;&quot; that declares nothing.</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    edm_string : str</span>
@@ -2886,30 +2897,16 @@ str PV holding the whole text, whereas EDM drops its first two characters.</p>
         <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="s2">&quot;int&quot;</span><span class="p">,</span>  <span class="c1"># mapping enum to int</span>
     <span class="p">}</span>
 
-    <span class="n">edm_type_keywords</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;intpv&quot;</span><span class="p">:</span> <span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="s2">&quot;doublepv&quot;</span><span class="p">:</span> <span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="s2">&quot;stringpv&quot;</span><span class="p">:</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;enumpv&quot;</span><span class="p">:</span> <span class="s2">&quot;e&quot;</span><span class="p">}</span>
-
     <span class="k">try</span><span class="p">:</span>
         <span class="n">name</span><span class="p">,</span> <span class="n">type_and_value</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">type_and_value</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>  <span class="c1"># for edgecases with ==</span>
+        <span class="c1"># EDM reads the attributes up to the next &quot;=&quot; or &quot;~&quot;, skipping repeated</span>
+        <span class="c1"># separators as in LOC\name==0 (strtok_r in loc_pv_factory.cc create).</span>
+        <span class="n">type_and_value</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[=~]&quot;</span><span class="p">,</span> <span class="n">type_and_value</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;=~&quot;</span><span class="p">),</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="c1"># raise ValueError(&quot;Invalid EDM format: Missing &#39;=&#39; separator&quot;)</span>
-
-    <span class="c1"># Handle EDM type keyword format: LOC\$(!W)intPv=&lt;name&gt; or LOC\$(!W)intPv=intPv=&lt;name&gt;</span>
-    <span class="n">name_suffix</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;)&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;)&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="k">else</span> <span class="n">name</span>
-    <span class="k">if</span> <span class="n">name_suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">edm_type_keywords</span><span class="p">:</span>
-        <span class="n">macro_prefix</span> <span class="o">=</span> <span class="n">name</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_suffix</span><span class="p">)]</span> <span class="k">if</span> <span class="s2">&quot;)&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
-        <span class="n">type_char</span> <span class="o">=</span> <span class="n">edm_type_keywords</span><span class="p">[</span><span class="n">name_suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
-        <span class="c1"># Strip redundant type keyword prefix from value (e.g., intPv=ShowChannels -&gt; ShowChannels)</span>
-        <span class="k">if</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">type_and_value</span><span class="p">:</span>
-            <span class="n">prefix_part</span><span class="p">,</span> <span class="n">actual_name</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">prefix_part</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">edm_type_keywords</span><span class="p">:</span>
-                <span class="n">type_and_value</span> <span class="o">=</span> <span class="n">actual_name</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">macro_prefix</span> <span class="o">+</span> <span class="n">type_and_value</span>
-        <span class="n">pydm_type</span> <span class="o">=</span> <span class="n">type_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">type_char</span><span class="p">,</span> <span class="s2">&quot;int&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">?type=</span><span class="si">{</span><span class="n">pydm_type</span><span class="si">}</span><span class="s2">&amp;init=0&quot;</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">type_char</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
@@ -2920,9 +2917,6 @@ str PV holding the whole text, whereas EDM drops its first two characters.</p>
             <span class="p">):</span>  <span class="c1"># ex. type_and_value=i,10</span>
                 <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
                 <span class="n">type_char</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="n">type_and_value</span> <span class="ow">in</span> <span class="n">type_mapping</span><span class="p">:</span>  <span class="c1"># value is one of the mapped characters</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-                <span class="n">type_char</span> <span class="o">=</span> <span class="n">type_and_value</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">int</span><span class="p">(</span><span class="n">type_and_value</span><span class="p">)</span>  <span class="c1"># testing if this is a proper int</span>
                 <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span>
@@ -2945,13 +2939,24 @@ str PV holding the whole text, whereas EDM drops its first two characters.</p>
                 <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span>
                 <span class="n">type_char</span> <span class="o">=</span> <span class="s2">&quot;d&quot;</span>
             <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="c1"># EDM falls back to a string PV with an empty value when the</span>
-                <span class="c1"># initialization is unparseable, so mirror that behavior here.</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Unparseable local PV initialization &#39;</span><span class="si">{</span><span class="n">type_and_value</span><span class="si">}</span><span class="s2">&#39; for &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;, defaulting to an empty string&quot;</span>
-                <span class="p">)</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-                <span class="n">type_char</span> <span class="o">=</span> <span class="s2">&quot;s&quot;</span>
+                <span class="k">if</span> <span class="n">type_and_value</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">type_mapping</span><span class="p">:</span>
+                    <span class="c1"># No type EDM knows either, as in LOC\$(!W)intPv=ShowChannels.</span>
+                    <span class="c1"># EDM ignores the attributes of all but a variable&#39;s first</span>
+                    <span class="c1"># declaration, so name the variable without declaring it: an</span>
+                    <span class="c1"># empty string declared here could win over the real one.</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unparseable local PV attributes &#39;</span><span class="si">{</span><span class="n">type_and_value</span><span class="si">}</span><span class="s2">&#39; for &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;, not declaring it&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;loc://</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="c1"># The first character is the type and the next one is skipped,</span>
+                <span class="c1"># as in EDM&#39;s setAttributes; an int, double or enum value is read</span>
+                <span class="c1"># with atol/atof, so LOC\name=intPv is an int holding 0.</span>
+                <span class="c1"># A lone type character reads the same way: LOC\name=d is a</span>
+                <span class="c1"># double holding 0, not a blank init PyDM never configures.</span>
+                <span class="n">type_char</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">type_and_value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">type_and_value</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+                <span class="k">if</span> <span class="n">type_char</span> <span class="o">!=</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span>
+                    <span class="n">head</span><span class="p">,</span> <span class="n">sep</span><span class="p">,</span> <span class="n">states</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">type_char</span> <span class="o">==</span> <span class="s2">&quot;e&quot;</span> <span class="k">else</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">number_pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?&quot;</span> <span class="k">if</span> <span class="n">type_char</span> <span class="o">==</span> <span class="s2">&quot;d&quot;</span> <span class="k">else</span> <span class="sa">r</span><span class="s2">&quot;\s*[+-]?\d+&quot;</span>
+                    <span class="n">number</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">number_pattern</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="p">(</span><span class="n">number</span><span class="o">.</span><span class="n">group</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">number</span> <span class="k">else</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">states</span>
 
     <span class="n">edm_type</span> <span class="o">=</span> <span class="n">type_char</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">edm_type</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
