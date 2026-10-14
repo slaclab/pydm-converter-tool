@@ -5,6 +5,7 @@ inside structured props (action commands, rule PVs)."""
 from pathlib import Path
 
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
+from pydmconverter.edm.window_macros import ROOT_MACRO, WINDOW_MACRO
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -64,7 +65,7 @@ def test_file_pip_ignores_leftover_menu_entries_and_symbols(tmp_path):
     pip = _convert_pip(tmp_path, 'displaySource "file"\nfilePv "$(sector)"\nfile "sector_$(sector)"\n' + LEFTOVER_MENU)
     assert pip.props["file"] == "sector_${sector}"
     # Only its own window id ($(!W)), none of the menu entries' symbols.
-    assert list(pip.props["macros"]) == ["EDM_W", "EDM_W_ROOT"]
+    assert _entry_macros(pip) == {}
 
 
 def test_file_pip_without_a_file_opens_nothing(tmp_path):
@@ -123,6 +124,16 @@ def _shape(rule):
     return [(c.expression, c.value) for c in rule.conditions], rule.default
 
 
+def _entry_macros(display):
+    """An embedded display's macros without its window id ($(!W)), which every
+    embedded display that opens a file gets (see window_macros)."""
+    macros = dict(display.props["macros"])
+    window_id = macros.pop(WINDOW_MACRO)
+    assert window_id.startswith("${" + ROOT_MACRO + "}")
+    assert macros.pop(ROOT_MACRO) == window_id
+    return macros
+
+
 DURATIONS = [(0, "plot.edl", "DUR=LAST_N"), (1, "plot.edl", "DUR=1MIN"), (2, "other.edl", "DUR=WEEK")]
 
 
@@ -131,7 +142,7 @@ def test_menu_window_with_uniform_macros_keeps_its_file_rule(tmp_path):
     screen = _menu_screen(tmp_path, "LOC\\\\sel=i:1", entries)
     (pip,) = screen.root.children
     assert pip.props["file"] == "a.screen.json"
-    assert pip.props["macros"] == {"P": "X"}
+    assert _entry_macros(pip) == {"P": "X"}
     assert [r.target_property for r in pip.rules] == ["file"]
 
 
@@ -145,7 +156,9 @@ def test_menu_window_on_a_local_variable_splits_per_entry(tmp_path):
     displays = screen.root.children
     assert [d.type for d in displays] == ["embedded-display"] * 3
     assert [d.props["file"] for d in displays] == ["plot.screen.json", "plot.screen.json", "other.screen.json"]
-    assert [d.props["macros"] for d in displays] == [{"DUR": "LAST_N"}, {"DUR": "1MIN"}, {"DUR": "WEEK"}]
+    assert [_entry_macros(d) for d in displays] == [{"DUR": "LAST_N"}, {"DUR": "1MIN"}, {"DUR": "WEEK"}]
+    # Each entry is a window of its own, so its local variables are its own too.
+    assert len({d.props["macros"][WINDOW_MACRO] for d in displays}) == 3
     assert [d.geometry for d in displays] == [displays[0].geometry] * 3
     rules = [d.rules for d in displays]
     assert all(len(r) == 1 and r[0].target_property == "visible" for r in rules)
@@ -163,15 +176,15 @@ def test_split_menu_window_keeps_edm_indices(tmp_path):
     first, second = screen.root.children
     assert _shape(first.rules[0]) == ([("{0} == 3", False)], True)
     assert _shape(second.rules[0]) == ([("{0} == 3", True)], False)
-    assert (first.props["macros"], second.props["macros"]) == ({"P": "A"}, {"P": "B"})
+    assert (_entry_macros(first), _entry_macros(second)) == ({"P": "A"}, {"P": "B"})
 
 
-def test_split_menu_entry_without_symbols_gets_no_macros(tmp_path):
+def test_split_menu_entry_without_symbols_gets_only_its_window_id(tmp_path):
     # laser/profile1.edl: entry 0 (Rectangle) has no symbols line; it got entry 1's ID.
     screen = _menu_screen(tmp_path, "LOC\\\\sel=i:0", [(0, "blank.edl", None), (1, "cam.edl", "ID=$(ID)")])
     blank, cam = screen.root.children
-    assert "macros" not in blank.props
-    assert cam.props["macros"] == {"ID": "${ID}"}
+    assert _entry_macros(blank) == {}
+    assert _entry_macros(cam) == {"ID": "${ID}"}
 
 
 def test_split_menu_window_declares_a_variable_nothing_gives_a_value(tmp_path):
@@ -248,7 +261,7 @@ def test_menu_window_on_a_channel_opens_with_the_first_entrys_macros(tmp_path):
     screen = _menu_screen(tmp_path, "GDET:FEE1:1:CONFIG", DURATIONS)
     (pip,) = screen.root.children
     assert pip.props["file"] == "plot.screen.json"
-    assert pip.props["macros"] == {"DUR": "LAST_N"}
+    assert _entry_macros(pip) == {"DUR": "LAST_N"}
     assert [r.target_property for r in pip.rules] == ["file"]
     assert any("different symbols" in w and "first entry" in w for w in pip.warnings)
 
