@@ -27,7 +27,7 @@ h 400
 endScreenProperties
 """
 
-# misc/L3_vernier_dither.edl's dither mode: an enum state with "&" in it.
+# A dither mode: an enum state with "&" in it.
 DITHER = r"LOC\\qsDitherMode=e:0,Min/Max,Ampl & Offset"
 # Every character parse_qs reads specially, and the URL delimiters "#" and "?".
 TEXT = "a+b%41&c#d?e"
@@ -115,9 +115,9 @@ def test_calc_over_local_variables_keeps_their_initial_values():
 @pytest.mark.parametrize(
     "edm_pv, expression",
     [
-        # misc/facetMapCud: EPICS bitwise AND.
+        # EPICS bitwise AND.
         (r"CALC\\\{(A&4)=4\}(X:STAT)", "(A&4)==4"),
-        # misc/clock: "%32" is not read as an escaped "2".
+        # "%32" is not read as an escaped "2".
         (r"CALC\\\{A%32\}(X:STAT)", "A%32"),
         (r"CALC\\\{A+1\}(X:STAT)", "A+1"),
     ],
@@ -212,7 +212,7 @@ def test_string_value_round_trips_in_pydm(out, qtbot):
 
 
 def test_calc_over_local_variables_computes_in_pydm(out, qtbot):
-    """misc/ePowerCalc: each argument was given a ca:// prefix and cut at "&", so
+    """Each argument was given a ca:// prefix and cut at "&", so
     the calc never had a value."""
     pytest.importorskip("pydm")
     from pydm.widgets import PyDMLineEdit

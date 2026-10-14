@@ -5,7 +5,7 @@ import pytest
 
 from pydmconverter.edm.parser_helpers import parse_calc_list, translate_calc_pv_to_pydm
 
-# bypass_txt as bcs/config/calc.list defines it: 1 -> 3, 2 -> 5, anything else -> 0.
+# A named calc, bypass_txt: 1 -> 3, 2 -> 5, anything else -> 0.
 CALC_LIST = "CALC1\nbypass_txt\nA=1?3:(A=2?5:0)\n"
 
 

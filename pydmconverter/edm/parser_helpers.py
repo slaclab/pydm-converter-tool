@@ -42,7 +42,7 @@ def split_edm_path_list(value: str) -> List[str]:
     """
     Split an EDM path list such as ``EDMDATAFILES`` into its directories.
 
-    EDM separates directories with ``:``, as in ``/usr/local/lcls/display:/usr/local/lcls/pps``.
+    EDM separates directories with ``:``, as in ``/opt/edm/display:/opt/edm/shared``.
     ``;`` separates them too, and a Windows drive (a single letter before ``:\\`` or ``:/``,
     as in ``C:\\edm``) stays one entry. Empty entries are dropped.
 

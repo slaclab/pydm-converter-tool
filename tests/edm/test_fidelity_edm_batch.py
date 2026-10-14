@@ -35,7 +35,7 @@ def test_state_button_notes_differing_labels_and_keeps_resting():
 
 
 def test_state_button_labels_differing_only_in_padding_match():
-    # xray/vac_iso_valve.edl: onLabel "Cancel " / offLabel "Cancel"
+    # onLabel "Cancel " / offLabel "Cancel"
     qt_props = {}
     warnings = []
     obj = _obj("activeMessageButtonClass", {"onLabel": "Cancel ", "offLabel": "Cancel"})

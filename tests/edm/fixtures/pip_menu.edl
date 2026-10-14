@@ -39,8 +39,8 @@ displaySource "menu"
 filePv "$(TEMLOCATION):INAPOSITION"
 numDsps 2
 displayFileName {
-  0 "TEMnocentroid"
-  1 "TEMcentroid"
+  0 "no_centroid"
+  1 "centroid"
 }
 menuLabel {
   0 "Not in position"
@@ -64,7 +64,7 @@ bgColor index 3
 topShadowColor index 3
 botShadowColor index 3
 displaySource "file"
-file "mgnt_unit_$(DISP)"
+file "unit_$(DISP)"
 sizeOfs 5
 numDsps 0
 noScroll
