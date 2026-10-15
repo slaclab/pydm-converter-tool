@@ -1,5 +1,6 @@
 """Render converted rectangles, circles and arcs in PyDM, under PyDM's own stylesheet: each outline is
-drawn with EDM's lineWidth, on the pixels EDM draws it on, in or out of alarm.
+drawn with EDM's lineWidth, on the pixels EDM draws it on, in or out of alarm. A lineAlarm polygon's
+widget holds its whole stroke, in or out of alarm.
 
 X draws a pen of width w centred on coordinate c over the pixels ceil(c - w/2) .. ceil(c + w/2) - 1
 (EDM's XDrawRectangle and XDrawArc). PyDM antialiases, so an odd width straddles half pixels; even
@@ -88,10 +89,9 @@ def render(top) -> QImage:
     return image
 
 
-@pytest.fixture
-def screen(qtbot, pydm_style, tmp_path):
-    """The converted screen shown in PyDM: its drawings by name, and the window drawn into an image."""
-    (tmp_path / "screen.edl").write_text(screen_edl())
+def show_converted(qtbot, tmp_path, edl: str, width: int, height: int):
+    """The .edl converted and shown in PyDM."""
+    (tmp_path / "screen.edl").write_text(edl)
     convert(str(tmp_path / "screen.edl"), str(tmp_path / "screen.ui"))
     ui = (tmp_path / "screen.ui").read_text()
     # A local PV instead of CA, and no hide-on-disconnect rules.
@@ -100,9 +100,16 @@ def screen(qtbot, pydm_style, tmp_path):
     (tmp_path / "screen.ui").write_text(ui)
     top = uic.loadUi(str(tmp_path / "screen.ui"))
     qtbot.addWidget(top)
-    top.resize(420, 200)
+    top.resize(width, height)
     top.show()
     qtbot.waitExposed(top)
+    return top
+
+
+@pytest.fixture
+def screen(qtbot, pydm_style, tmp_path):
+    """The converted screen shown in PyDM: its drawings by name, and the window drawn into an image."""
+    top = show_converted(qtbot, tmp_path, screen_edl(), 420, 200)
     drawings = {}
     for widget in top.findChildren(PyDMDrawing):
         g = widget.geometry()
@@ -194,3 +201,57 @@ def test_alarm_recolours_the_line_at_edm_width(screen):
             assert line_rows(image, x + w // 2, y + h, line) == x_pixels(y + h, pen)
         assert line_rows(image, px + pw // 2, py, line) == polyline_rows
     assert len(polyline_rows) == OBJECTS["polyline_alarm"][-1]
+
+
+# Closed, filled lines under lineAlarm, which PyDM draws as irregular polygons: points and pen.
+POLYGONS = {
+    "triangle": ([(10, 10), (70, 10), (40, 50)], 2),
+    "flat": ([(90, 10), (150, 10), (120, 11)], 2),
+    "small": ([(170, 10), (174, 10), (172, 14)], 6),
+    "wide pen": ([(200, 10), (212, 10), (206, 22)], 6),
+}
+
+
+def polygon_edl() -> str:
+    edl = (
+        "4 0 1\nbeginScreenProperties\nmajor 4\nminor 0\nrelease 1\nx 0\ny 0\nw 240\nh 60\n"
+        "bgColor rgb 65535 65535 65535\nendScreenProperties\n"
+    )
+    for points, pen in POLYGONS.values():
+        xs, ys = zip(*points, points[0])
+        x_block = "".join(f"  {x}\n" for x in xs)
+        y_block = "".join(f"  {y}\n" for y in ys)
+        edl += (
+            f"object activeLineClass\nbeginObjectProperties\nmajor 4\nminor 0\nrelease 1\n"
+            f"x {min(xs)}\ny {min(ys)}\nw {max(xs) - min(xs)}\nh {max(ys) - min(ys)}\n"
+            f"{FILLED}\nclosePolygon\nlineWidth {pen}\n{ALARM}\nnumPoints {len(xs)}\n"
+            f"xPoints {{\n{x_block}}}\nyPoints {{\n{y_block}}}\nendObjectProperties\n"
+        )
+    return edl
+
+
+def test_alarm_polygon_widget_holds_its_whole_stroke(qtbot, pydm_style, tmp_path):
+    """PyDM draws a polygon's points at the same place whatever its widget's size, so growing every
+    widget shows any stroke the widget clips. None is clipped, in or out of alarm."""
+    top = show_converted(qtbot, tmp_path, polygon_edl(), 240, 60)
+    polygons = top.findChildren(PyDMDrawing)
+    assert {type(polygon).__name__ for polygon in polygons} == {"PyDMDrawingIrregularPolygon"}
+    assert len(polygons) == len(POLYGONS)
+
+    def unclipped() -> QImage:
+        for polygon in polygons:
+            polygon.resize(polygon.width() + 20, polygon.height() + 20)
+        image = render(top)
+        for polygon in polygons:
+            polygon.resize(polygon.width() - 20, polygon.height() - 20)
+        return image
+
+    images = []
+    for severity in (0, 2):
+        for polygon in polygons:
+            polygon.alarm_severity_changed(severity)
+        images.append(render(top))
+
+        assert images[-1] == unclipped()
+        assert sorted(polygon.penWidth for polygon in polygons) == sorted(pen for _, pen in POLYGONS.values())
+    assert images[0] != images[1]
