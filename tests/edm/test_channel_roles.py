@@ -71,7 +71,7 @@ def _rule_channels(widget, rule_property):
     [
         pytest.param(TEXT_COLOR, "PyDMLabel", "DEMO:VALUE", id="text control + colorPv"),
         pytest.param(CHOICE, "PyDMEnumButton", "DEMO:SETPOINT", id="choice button + indicatorPv"),
-        pytest.param(MENU, "PyDMPushButton", "DEMO:MENU_SET", id="menu button + indicatorPv"),
+        pytest.param(MENU, "PyDMEnumComboBox", "DEMO:MENU_SET", id="menu button + indicatorPv"),
         pytest.param(SLIDER, "PyDMSlider", "DEMO:SLIDER_SET", id="slider + indicatorPv"),
         pytest.param(NULL_DEFAULT, "PyDMLabel", "DEMO:NULL_CTL", id="text control + nullPv"),
         pytest.param(STATIC_TEXT, "PyDMLabel", "DEMO:STATUS", id="static text + alarmPv"),
@@ -152,7 +152,7 @@ def test_ui_warns_about_each_pv_it_drops(ui, caplog):
         pytest.param(TEXT_COLOR, "pv-label", "DEMO:VALUE", None, id="text control + colorPv"),
         pytest.param(CHOICE, "pv-radio-group", "DEMO:SETPOINT", None, id="choice button + indicatorPv"),
         pytest.param(BUTTON, "pv-button", "DEMO:BTN_SET", "DEMO:BTN_RBV", id="button + indicatorPv"),
-        pytest.param(MENU, "pv-button", "DEMO:MENU_SET", "DEMO:MENU_RBV", id="menu button + indicatorPv"),
+        pytest.param(MENU, "pv-enum-combobox", "DEMO:MENU_SET", None, id="menu button + indicatorPv"),
         pytest.param(SLIDER, "pv-slider", "DEMO:SLIDER_SET", None, id="slider + indicatorPv"),
         pytest.param(NULL_DEFAULT, "pv-label", "DEMO:NULL_CTL", None, id="text control + nullPv"),
         pytest.param(STATIC_TEXT, "text-label", None, None, id="static text + alarmPv"),
@@ -169,7 +169,7 @@ def test_ir_pv_is_the_data_pv(ir, row, node_type, pv, readback):
     assert node["props"].get("readbackPV") == readback
 
 
-@pytest.mark.parametrize("row", [CHOICE, SLIDER])
+@pytest.mark.parametrize("row", [CHOICE, MENU, SLIDER])
 def test_ir_readback_without_a_home_is_dropped_loudly(ir, row):
     assert ir[row]["warnings"] == ["EDM indicatorPv readback dropped (controlPv kept as the channel)"]
 

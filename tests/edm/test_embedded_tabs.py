@@ -927,6 +927,19 @@ def test_message_button_window_starting_at_minus_one_opens_on_entry_zero(tmp_pat
     assert prop(top_level(root)[-1], "channel") == "loc://ebwM?type=int&init=0"
 
 
+VIEW = r"LOC\\view=e:1,Beam,Laser"
+
+
+def test_menu_button_on_the_variable_switches_stacked_displays(tmp_path):
+    # The menu button's combo box writes the index of the state chosen.
+    root = convert_objects(tmp_path, pip(VIEW, ["a.edl", "b.edl"]), menu_button(r"LOC\\view"))
+    assert switched_displays(root) == [("a.ui", "loc://view", False), ("b.ui", "loc://view", True)]
+    # The combo box may connect first; PyDM's local plugin takes the variable's
+    # enum strings from the first channel.
+    (menu,) = [w for w in top_level(root) if w.get("class") == "PyDMEnumComboBox"]
+    assert prop(menu, "channel") == "loc://view?type=int&init=1&enum_string=['Beam', 'Laser']"
+
+
 SEL = r"LOC\\sel=i:0"
 
 
@@ -957,8 +970,11 @@ SEL = r"LOC\\sel=i:0"
             ],
             id="release-writes-minus-one",
         ),
-        # The converted menu button writes nothing.
-        pytest.param([pip(SEL, ["a.edl", "b.edl"]), menu_button(SEL)], id="menu-button"),
+        # A menu button only showing the variable never writes it.
+        pytest.param(
+            [pip(SEL, ["a.edl", "b.edl"]), with_lines(menu_button(r"LOC\\other=i:0"), f'indicatorPv "{SEL}"')],
+            id="menu-button-showing-it",
+        ),
         # Nothing in the file writes its macro-named LOC variable.
         pytest.param([pip(r"LOC\\$(SIG)_View=0", ["a.edl", "b.edl"])], id="macro-named-loc-nothing-writes"),
         # A named calculation missing from calc.list stays untranslated.
@@ -985,6 +1001,19 @@ def test_site_skipping_message_buttons_leaves_their_window_alone(tmp_path):
 
     assert [obj.name.lower() for obj in parser.ui.objects] == ["activepipclass", "activemessagebuttonclass"]
     assert parser.ui.objects[1].properties["controlPv"] == "loc://sel"
+
+
+def test_site_skipping_menu_buttons_leaves_their_window_alone(tmp_path):
+    from pydmconverter.edm.converter_helpers import pair_menu_pips
+
+    source = tmp_path / "screen.edl"
+    source.write_text(HEADER + pip(VIEW, ["a.edl", "b.edl"]) + menu_button(r"LOC\\view"))
+    parser = EDMFileParser(str(source), str(tmp_path / "screen.ui"))
+
+    pair_menu_pips(parser.ui, {}, skip_widgets={"activemenubuttonclass"})
+
+    assert [obj.name.lower() for obj in parser.ui.objects] == ["activepipclass", "activemenubuttonclass"]
+    assert parser.ui.objects[1].properties["controlPv"] == "loc://view"
 
 
 @pytest.mark.parametrize(
@@ -1073,3 +1102,20 @@ def test_message_button_window_starting_at_minus_one_shows_entry_zero_in_pydm(tm
     qtbot.waitUntil(lambda: visible_indices(displays) == [0], timeout=3000)
     buttons["1"].sendValue()
     qtbot.waitUntil(lambda: visible_indices(displays) == [1], timeout=3000)
+
+
+def test_menu_button_switches_displays_in_pydm(tmp_path, qtbot):
+    from pydm.display import load_file
+    from pydm.widgets import PyDMEnumComboBox
+
+    convert_objects(tmp_path, pip(VIEW, ["a.edl", "b.edl"]), menu_button(r"LOC\\view"))
+    screen = load_file(str(tmp_path / "screen.ui"), target=None)
+    qtbot.addWidget(screen)
+    screen.show()
+    (menu,) = screen.findChildren(PyDMEnumComboBox)
+    displays = screen.findChildren(QtEmbeddedDisplay)
+
+    qtbot.waitUntil(lambda: menu.currentText() == "Laser" and visible_indices(displays) == [1], timeout=3000)
+    assert [menu.itemText(index) for index in range(menu.count())] == ["Beam", "Laser"]
+    menu.activated[int].emit(0)  # the user chooses "Beam"
+    qtbot.waitUntil(lambda: visible_indices(displays) == [0], timeout=3000)

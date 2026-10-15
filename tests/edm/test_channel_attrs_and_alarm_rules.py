@@ -2,6 +2,8 @@
 (controlPv/indicatorPv split instead of last-wins funneling), alarmPv-driven
 alarm-color rules, and closed/filled activeLineClass -> polygon."""
 
+import pytest
+
 from pydmconverter.edm.edm_qt import has_pv, resolve_qt_class
 from pydmconverter.edm.ir_adapter import (
     _alarm_rules,
@@ -40,16 +42,16 @@ def test_two_channel_button_keeps_control_as_channel_and_maps_readback():
     assert warnings == []
 
 
-def test_menu_button_maps_indicator_to_readback():
+def test_menu_button_control_wins_and_indicator_drop_is_loud():
+    """The menu button's combo box has no readback (#233)."""
     qt_props, warnings = {}, []
     obj = _obj(
         "activeMenuButtonClass",
         {"controlPv": "CAMR:X:Acquire", "indicatorPv": "CAMR:X:DetectorState_RBV"},
     )
     _apply_channel_attrs(obj, qt_props, warnings)
-    assert qt_props["channel"] == "CAMR:X:Acquire"
-    assert qt_props["readbackChannel"] == "CAMR:X:DetectorState_RBV"
-    assert warnings == []
+    assert qt_props == {"channel": "CAMR:X:Acquire"}
+    assert warnings == ["EDM indicatorPv readback dropped (controlPv kept as the channel)"]
 
 
 def test_choice_button_control_wins_and_indicator_drop_is_loud():
@@ -62,6 +64,34 @@ def test_choice_button_control_wins_and_indicator_drop_is_loud():
     assert qt_props["channel"] == "X:SET"
     assert "readbackChannel" not in qt_props
     assert any("indicatorPv readback dropped" in w for w in warnings)
+
+
+LOC_DECLARED = "loc://mode?type=int&init=0&enum_string=['Off', 'On']"
+
+
+@pytest.mark.parametrize("name", ["activeChoiceButtonClass", "activeMenuButtonClass", "activeSliderClass"])
+@pytest.mark.parametrize(
+    "control, indicator",
+    [
+        pytest.param("X:SET", "X:SET", id="same-pv"),
+        # EDM names a LOC variable by the text before "=" (loc_pv_factory.cc).
+        pytest.param(LOC_DECLARED, "loc://mode", id="loc-variable-by-name"),
+    ],
+)
+def test_readback_naming_the_control_pv_drops_nothing(name, control, indicator):
+    qt_props, warnings = {}, []
+    _apply_channel_attrs(_obj(name, {"controlPv": control, "indicatorPv": indicator}), qt_props, warnings)
+    assert qt_props == {"channel": control}
+    assert warnings == []
+
+
+def test_readback_declaring_the_control_variable_is_dropped_loudly():
+    """The declaration goes with the readback: the channel names the variable bare."""
+    qt_props, warnings = {}, []
+    obj = _obj("activeMenuButtonClass", {"controlPv": "loc://mode", "indicatorPv": LOC_DECLARED})
+    _apply_channel_attrs(obj, qt_props, warnings)
+    assert qt_props == {"channel": "loc://mode"}
+    assert warnings == ["EDM indicatorPv readback dropped (controlPv kept as the channel)"]
 
 
 def test_alarm_pv_never_becomes_the_channel():

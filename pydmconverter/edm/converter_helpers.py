@@ -26,6 +26,7 @@ from pydmconverter.widgets import (
     PyDMEmbeddedDisplay,
     QPushButton,
     PyDMEnumButton,
+    PyDMEnumComboBox,
     QTabWidget,
     QWidget,
     QTableWidget,
@@ -51,7 +52,13 @@ from pydmconverter.edm.parser_helpers import (
 from pydmconverter.edm.menumux import initial_state, menu_item_count, menu_items, menu_macros
 from pydmconverter.edm.display_roots import map_display_roots, resolve_display_roots
 from pydmconverter.edm.window_macros import WINDOW_MARKER
-from pydmconverter.edm.edm_qt import EDM_DATA_PV_ATTRS, EDM_TEXT_VALUE_CLASSES, XY_GRAPH_UNMAPPED_PVS, channel_roles
+from pydmconverter.edm.edm_qt import (
+    EDM_DATA_PV_ATTRS,
+    EDM_TEXT_VALUE_CLASSES,
+    XY_GRAPH_UNMAPPED_PVS,
+    channel_roles,
+    names_the_channel,
+)
 from pydmconverter.exceptions import AttributeConversionError
 import ast
 import logging
@@ -84,9 +91,9 @@ EDM_TO_PYDM_WIDGETS = {  # missing PyDMFrame,  QComboBox
     # "radio_box": PyDMRadioButtonGroup,
     "related_display_button": PyDMRelatedDisplayButton,
     "shell_command": PyDMShellCommand,
-    # "activemessagebuttonclass": PyDMEnumComboBox,  # and more: activeMenuButtonClass, activeButtonClass
     # "": PyDMEnumButton
-    "activemenubuttonclass": PyDMPushButton,  # "activemenubuttonclass": PyDMEnumComboBox,
+    # EDM's menu button pops up its PV's states to choose from (menu_button.cc).
+    "activemenubuttonclass": PyDMEnumComboBox,
     "activemessagebuttonclass": PyDMPushButton,
     "activextextdspclass": PyDMLineEdit,
     "activepipclass": PyDMEmbeddedDisplay,
@@ -621,10 +628,12 @@ def apply_channel_roles(widget, obj: EDMObject) -> None:
 
     readback = roles.readback_attr(props)
     if readback is not None:
-        logger.warning(
-            f"{obj.name}: {readback} {props[readback]} is a readback, which PyDM widgets lack; "
-            f"the widget shows and writes {attr} {props[attr]}"
-        )
+        # A readback naming the channel's PV itself loses nothing.
+        if not names_the_channel(props[readback], props[attr]):
+            logger.warning(
+                f"{obj.name}: {readback} {props[readback]} is a readback, which PyDM widgets lack; "
+                f"the widget shows and writes {attr} {props[attr]}"
+            )
     elif attr is not None and attr == roles.readback:
         logger.warning(f"{obj.name}: {attr} {props[attr]} is its only PV; PyDM writes it, which EDM never does")
     color = roles.color_attr(props)
@@ -1760,8 +1769,8 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
     menu mux screen writes the chosen item's index there. The menu becomes part
     of that separate .py rather than a widget in the .ui, so it is never a tab
     bar, and its window always becomes the switched displays. So does a window
-    whose message buttons write display indices to the variable
-    (_index_writers).
+    whose menu buttons write the variable (a combo box of its enum strings), or
+    whose message buttons write display indices to it (_index_writers).
 
     A window whose filePv is a real PV switches on the PV's value the same way:
     it becomes the switched displays, all hidden until the PV's first value, as
@@ -1774,8 +1783,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         logger.info("Skipping menu embedded window pairing (site rule)")
         return
 
-    # A site dropping menu muxes or message buttons leaves their variables unwritten.
+    # A site dropping menu muxes or buttons leaves their variables unwritten.
     writes_menus = not skip_widgets or "menumuxclass" not in skip_widgets
+    writes_menu_buttons = not skip_widgets or "activemenubuttonclass" not in skip_widgets
     writes_buttons = not skip_widgets or "activemessagebuttonclass" not in skip_widgets
 
     objects = list(_walk_objects(root))
@@ -1803,8 +1813,9 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
             if isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         ]
         menus = [obj for obj, _ in users if _menu_writes(obj, name)] if writes_menus else []
+        menu_buttons = [obj for obj, _ in users if _menu_button_writes(obj, name)] if writes_menu_buttons else []
         writers = _index_writers(users, name, [index for index, _ in files]) if writes_buttons else []
-        if not choices and not menus and not writers:
+        if not choices and not menus and not menu_buttons and not writers:
             continue
 
         # The richest reference defines the variable: most enum strings, then any config at all.
@@ -1837,7 +1848,7 @@ def pair_menu_pips(root: EDMGroup, color_list_dict, skip_widgets: set = None) ->
         else:
             start = _starting_index(_loc_init(definition), [index for index, _ in files])
             _stack_pip_displays(pip, parent, f"loc://{name}", files, start)
-            _hand_over_definition(name, definition, users, writers)
+            _hand_over_definition(name, definition, users, menu_buttons + writers)
 
 
 def _controls(obj, name: str) -> bool:
@@ -1851,6 +1862,12 @@ def _menu_writes(obj, name: str) -> bool:
     """A menu mux whose controlPv is the variable: the generated menu mux screen
     writes the chosen item's index to it (menumux.control_pv)."""
     return isinstance(obj, EDMObject) and obj.name.lower() == "menumuxclass" and _controls(obj, name)
+
+
+def _menu_button_writes(obj, name: str) -> bool:
+    """A menu button whose controlPv is the variable: its combo box writes the
+    chosen state's index to it."""
+    return isinstance(obj, EDMObject) and obj.name.lower() == "activemenubuttonclass" and _controls(obj, name)
 
 
 def _as_int(value) -> Optional[int]:
@@ -1996,8 +2013,9 @@ def _hand_over_definition(name, definition, users, writers) -> None:
     strings from the first channel that connects and ignores later ones. The
     window carried the full definition; hand it to the choice buttons (which
     need the enum strings for their states), to the menu muxes (whose screen
-    declares the variable from controlPv when the .ui does not), to the index
-    writing message buttons, and to every other configured use."""
+    declares the variable from controlPv when the .ui does not), to the writers
+    (menu buttons, whose combo boxes need the enum strings too, and index
+    writing message buttons), and to every other configured use."""
     for obj, _ in users:
         is_choice = isinstance(obj, EDMObject) and obj.name.lower() == "activechoicebuttonclass"
         is_writer = is_choice or _menu_writes(obj, name) or any(obj is writer for writer in writers)

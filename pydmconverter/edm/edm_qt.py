@@ -31,7 +31,9 @@ EDM_TO_QT_CLASS: dict[str, str] = {
     "textentryclass": "PyDMLineEdit",
     "activebuttonclass": "PyDMPushButton",
     "activemessagebuttonclass": "PyDMPushButton",
-    "activemenubuttonclass": "PyDMPushButton",
+    # EDM's menu button shows its PV's state and pops up a list of the states to
+    # write (menu_button.cc): an enum combo box.
+    "activemenubuttonclass": "PyDMEnumComboBox",
     "activemotifsliderclass": "PyDMSlider",
     "activesliderclass": "PyDMSlider",
     "activetriumfsliderclass": "PyDMSlider",
@@ -196,6 +198,26 @@ def channel_roles(name_lower: str) -> ChannelRoles:
 # related display writes value[i] to pv[i] when it opens a display
 # (related_display.cc), and a stray value on a drawing or group shows nothing.
 EDM_TEXT_VALUE_CLASSES = frozenset({"activextextclass", "activexregtextclass"})
+
+
+def names_the_channel(readback: Any, channel: Any) -> bool:
+    """True when a readback names the channel's own PV and adds nothing to it,
+    so dropping it loses nothing.
+
+    EDM names a LOC variable by the text before "=" (loc_pv_factory.cc), so a
+    bare ``loc://x`` is the variable the channel ``loc://x?type=...`` declares.
+    A readback declaring the variable carries what the channel lacks.
+    """
+    if readback == channel:
+        return True
+    return (
+        isinstance(readback, str)
+        and isinstance(channel, str)
+        and readback.startswith("loc://")
+        and "?" not in readback
+        and channel.split("?", 1)[0] == readback
+    )
+
 
 # EDM attribute name -> Qt prop name (the key the registry's qtPropMap consumes).
 # Channel attrs are absent on purpose: the adapter routes them itself.

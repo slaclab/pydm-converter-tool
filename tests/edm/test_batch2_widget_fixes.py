@@ -1,5 +1,5 @@
 """Batch-2 regressions: EDM font sizes reach the IR, choice buttons render as
-radio sets, menu buttons show their current choice, and state colors map."""
+radio sets, menu buttons choose from their states, and state colors map."""
 
 from pydmconverter.edm.edm_qt import EDM_TO_QT_CLASS
 from pydmconverter.edm.ir_adapter import (
@@ -42,14 +42,13 @@ def test_choice_button_is_a_radio_set_with_aspect_orientation():
     assert qt_props["orientation"] == "vertical"
 
 
-def test_menu_button_face_shows_current_choice():
+def test_menu_button_is_an_enum_combo_box():
+    """The combo box shows the current state and writes the one chosen (#233),
+    so it needs no push button's label or readback."""
+    assert EDM_TO_QT_CLASS["activemenubuttonclass"] == "PyDMEnumComboBox"
     node = _object_to_source(_obj("activeMenuButtonClass", {"controlPv": "X:MODE"}))
-    assert node.qt_props["labelType"] == "pvState"
-    # Without an indicatorPv the control channel doubles as the state source.
-    assert node.qt_props["readbackChannel"] == "X:MODE"
-
-    node = _object_to_source(_obj("activeMenuButtonClass", {"controlPv": "X:MODE", "indicatorPv": "X:MODE_RBV"}))
-    assert node.qt_props["readbackChannel"] == "X:MODE_RBV"
+    assert node.qt_props == {"channel": "X:MODE"}
+    assert node.warnings == []
 
 
 def test_state_colors_resolve_to_hex():

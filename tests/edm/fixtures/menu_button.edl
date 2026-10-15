@@ -1,0 +1,99 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 0
+y 0
+w 300
+h 220
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+fgColor index 0
+bgColor index 14
+textColor index 0
+ctlFgColor1 index 25
+ctlFgColor2 index 25
+ctlBgColor1 index 14
+ctlBgColor2 index 14
+topShadowColor index 0
+botShadowColor index 0
+endScreenProperties
+
+# Menu button on its controlPv alone.
+object activeMenuButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 20
+w 120
+h 22
+fgColor index 25
+bgColor index 14
+inconsistentColor index 33
+topShadowColor index 0
+botShadowColor index 0
+controlPv "DEMO:MODE"
+font "helvetica-medium-r-12.0"
+endObjectProperties
+
+# Menu button showing a readback.
+object activeMenuButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 60
+w 120
+h 22
+fgColor index 25
+bgColor index 14
+inconsistentColor index 33
+topShadowColor index 0
+botShadowColor index 0
+controlPv "DEMO:MODE_SET"
+indicatorPv "DEMO:MODE_RBV"
+font "helvetica-medium-r-12.0"
+endObjectProperties
+
+# Menu button with alarm-coloured text, shown only while DEMO:SHOW is 1.
+object activeMenuButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 100
+w 120
+h 22
+fgColor index 25
+fgAlarm
+bgColor index 14
+inconsistentColor index 33
+topShadowColor index 0
+botShadowColor index 0
+controlPv "DEMO:GATED"
+font "helvetica-medium-r-12.0"
+visPv "DEMO:SHOW"
+visMin "1"
+visMax "2"
+endObjectProperties
+
+# Menu button whose indicatorPv is its controlPv.
+object activeMenuButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 20
+y 140
+w 120
+h 22
+controlPv "DEMO:SAME"
+indicatorPv "DEMO:SAME"
+font "helvetica-medium-r-12.0"
+endObjectProperties
