@@ -4,6 +4,8 @@ import xml.etree.ElementTree as etree
 
 from typing import List, Optional
 
+import pytest
+
 from pydmconverter.widgets import (
     PyDMFrame,
     PyDMLabel,
@@ -21,6 +23,7 @@ from pydmconverter.widgets import (
     PyDMEnumButton,
     PyDMDrawingLine,
     PyDMDrawingPolyline,
+    PyDMDrawingIrregularPolygon,
     PyDMWaveformPlot,
     PyDMAnalogIndicator,
     PyDMEmbeddedDisplay,
@@ -904,13 +907,43 @@ def test_pydmpushbutton_alarm_content_colours_its_face_in_every_style_sheet():
     assert sheets[-1].startswith("* { color: rgba(0, 0, 0, 255); background-color: rgba(187, 187, 187, 255); } ")
 
 
+def style_sheets(widget) -> List[str]:
+    return [get_property_value(prop) for prop in widget.to_xml().findall("property[@name='styleSheet']")]
+
+
 def test_drawing_alarm_content_adds_no_style_sheet_rules():
     # PyDM's own stylesheet colours the brush (qproperty-brush); the ellipse's sheet doesn't touch it.
-    ellipse = PyDMDrawingEllipse(foreground_color=RGBA(0, 0, 0), alarm_sensitive_content=True)
-    sheets = [get_property_value(prop) for prop in ellipse.to_xml().findall("property[@name='styleSheet']")]
+    ellipse = PyDMDrawingEllipse(alarm_sensitive_content=True)
 
-    assert "color: rgba(0, 0, 0, 255);background-color: none;" in sheets
-    assert not [sheet for sheet in sheets if "alarmSeverity" in sheet]
+    assert style_sheets(ellipse) == ["background-color: transparent;"]
+
+
+@pytest.mark.parametrize(
+    "widget, sheet",
+    [
+        (PyDMDrawingRectangle(penWidth=4), "background-color: transparent;"),
+        (
+            PyDMDrawingRectangle(penWidth=4, alarm_sensitive_border=True),
+            "background-color: transparent; qproperty-penWidth: 4;",
+        ),
+        (PyDMDrawingRectangle(penWidth=3, brushFill=True, alarm_sensitive_border=True), "qproperty-penWidth: 3;"),
+        (
+            PyDMDrawingPolyline(penWidth=3, alarm_sensitive_border=True),
+            "background-color: transparent; qproperty-penWidth: 3;",
+        ),
+        # A filled shape that doesn't cover its widget leaves the widgets under the rest of it showing.
+        (
+            PyDMDrawingEllipse(penWidth=2, brushFill=True, alarm_sensitive_border=True),
+            "background-color: transparent; qproperty-penWidth: 2;",
+        ),
+        (PyDMDrawingPolyline(penWidth=1, arrows="both"), "background-color: transparent;"),
+        (PyDMDrawingIrregularPolygon(penWidth=2, brushFill=True), "background-color: transparent;"),
+    ],
+)
+def test_drawing_writes_one_style_sheet_with_its_alarm_pen_width(widget, sheet):
+    """PyDM's stylesheet sets an alarm-sensitive border's pen to 2 px at every polish; only the drawing's own
+    stylesheet, applied after it, keeps EDM's width."""
+    assert style_sheets(widget) == [sheet]
 
 
 def test_alarmable_draws_no_alarm_border_by_default():

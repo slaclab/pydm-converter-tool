@@ -1927,6 +1927,30 @@ class Drawable(Tangible):
     # PyDM's stylesheet colours an alarm-sensitive drawing's brush itself
     # (qproperty-brush), which the drawing's own stylesheet never sets.
     alarm_content_style: ClassVar[Optional[str]] = None
+    # Whether the widget stays transparent around a filled shape. Without its own
+    # background-color it paints the screen's (the Form's stylesheet sets it for every
+    # widget on the screen), which would hide the widgets under an ellipse's corners or
+    # a line's or polygon's bounding box.
+    transparent_when_filled: ClassVar[bool] = False
+
+    def style_sheet(self) -> str:
+        """The widget's own stylesheet, empty for none.
+
+        PyDM's stylesheet gives a drawing with an alarm-sensitive border a 2 px pen
+        (PyDMDrawing[alarmSensitiveBorder="true"] { qproperty-penWidth: 2; }) at every
+        polish, after the .ui has set penWidth, while EDM's lineAlarm only recolours the
+        line. The widget's own stylesheet applies after the application's, so the width
+        is written there too. The cost: a penWidth set later in Designer's property
+        editor is overridden at runtime until the declaration is removed from the
+        styleSheet. PyDM's rule overrides it anyway while the border is alarm
+        sensitive, so only those drawings carry it.
+        """
+        declarations = []
+        if self.brushFill is None or self.transparent_when_filled:
+            declarations.append("background-color: transparent;")
+        if self.penWidth is not None and getattr(self, "alarm_sensitive_border", False):
+            declarations.append(f"qproperty-penWidth: {self.penWidth};")
+        return " ".join(declarations)
 
     def generate_properties(self) -> List[etree.Element]:
         """
@@ -1946,8 +1970,9 @@ class Drawable(Tangible):
             properties.append(PenWidth(width=self.penWidth).to_xml())
         if self.brushColor is not None:
             properties.append(Brush(*self.brushColor, fill=self.brushFill).to_xml())
-        if self.brushFill is None:
-            properties.append(TransparentBackground().to_xml())
+        style_sheet = self.style_sheet()
+        if style_sheet:
+            properties.append(Text("styleSheet", style_sheet).to_xml())
         if self.rotation is not None:
             properties.append(Rotation("rotation", self.rotation).to_xml())
         return properties

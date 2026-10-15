@@ -117,3 +117,58 @@ def test_bar_rectangle_keeps_its_rect(tmp_path, edm_class):
     assert widget.get("class") == "PyDMDrawingRectangle"
     assert pen_width(widget) is None
     assert geometry(widget) == (20, 20, 50, 30)
+
+
+POINTS = "numPoints 3\nxPoints {\n  20\n  70\n  70\n}\nyPoints {\n  20\n  20\n  50\n}"
+POLYGON = "numPoints 4\nxPoints {\n  20\n  70\n  45\n  20\n}\nyPoints {\n  20\n  20\n  50\n  20\n}"
+
+
+@pytest.mark.parametrize(
+    "edm_class, body, sheet",
+    [
+        pytest.param("activeRectangleClass", f"{LINE}\nlineWidth 4", "background-color: transparent;", id="rectangle"),
+        pytest.param("activeRectangleClass", f"{LINE}\nlineWidth 3\n{FILL}", None, id="filled rectangle"),
+        pytest.param("activeCircleClass", f"{LINE}\nlineWidth 4", "background-color: transparent;", id="circle"),
+        pytest.param(
+            "activeCircleClass", f"{LINE}\nlineWidth 2\n{FILL}", "background-color: transparent;", id="filled circle"
+        ),
+        pytest.param(
+            "activeArcClass",
+            f"{LINE}\nlineWidth 3\nstartAngle 90\ntotalAngle 180",
+            "background-color: transparent;",
+            id="arc",
+        ),
+        pytest.param(
+            "activeArcClass",
+            f'{LINE}\nlineWidth 2\n{FILL}\nfillMode "pie"\nstartAngle 0\ntotalAngle 270',
+            "background-color: transparent;",
+            id="pie",
+        ),
+        pytest.param("activeLineClass", f"{LINE}\nlineWidth 3\n{POINTS}", "background-color: transparent;", id="line"),
+        pytest.param(
+            "activeLineClass",
+            f'{LINE}\nlineWidth 2\narrows "both"\n{POINTS}',
+            "background-color: transparent;",
+            id="arrows",
+        ),
+        pytest.param(
+            "activeLineClass",
+            f"{LINE}\nlineWidth 2\n{FILL}\nclosePolygon\n{POLYGON}",
+            "background-color: transparent;",
+            id="polygon",
+        ),
+    ],
+)
+@pytest.mark.parametrize("line_alarm", [False, True])
+def test_drawing_has_one_style_sheet_with_its_alarm_pen_width(tmp_path, edm_class, body, sheet, line_alarm):
+    """PyDM's stylesheet sets an alarm-sensitive border's pen to 2 px at every polish, while EDM's lineAlarm
+    only recolours the line: the drawing's own stylesheet, applied after PyDM's, keeps EDM's width. uic
+    applies only the last styleSheet property, so there is one."""
+    if line_alarm:
+        body += '\nalarmPv "X:STAT"\nlineAlarm'
+    widget = convert_object(tmp_path, edm_class, body)
+    sheets = [prop.findtext("string") for prop in widget.findall("property[@name='styleSheet']")]
+    pen = f"qproperty-penWidth: {pen_width(widget):g};"
+    expected = [part for part in (sheet, pen if line_alarm else None) if part]
+
+    assert sheets == ([" ".join(expected)] if expected else [])
