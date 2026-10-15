@@ -10,7 +10,12 @@ import re
 logger = logging.getLogger(__name__)
 
 ALARM_CONTENT_DEFAULT = False
-ALARM_BORDER_DEFAULT = True
+ALARM_BORDER_DEFAULT = False
+
+# The colours PyDM's default stylesheet (pydm/default_stylesheet.qss) gives
+# alarm-sensitive content, by alarmSeverity: MINOR, MAJOR, INVALID, DISCONNECTED.
+# NO_ALARM keeps the widget's own colour.
+PYDM_ALARM_COLORS = {1: "#EBEB00", 2: "#FF0000", 3: "#EB00EB", 4: "#FFFFFF"}
 
 # Widget types whose channel is used as the hidden_channel for rules.
 # These widgets need their visibility controlled via PV-based rules.
@@ -1837,6 +1842,28 @@ class StyleSheetObject(Tangible):
     background_color: Optional[RGBA] = None
     useDisplayBg: Optional[bool] = None
     name: Optional[str] = ""
+    # The declaration PyDM's stylesheet sets for alarm-sensitive content: the
+    # text colour, or a button's or combo box's face. None: no declaration.
+    alarm_content_style: ClassVar[Optional[str]] = "color"
+
+    def alarm_content_rules(self) -> Dict[str, Dict[str, Any]]:
+        """PyDM's alarm colours for this widget's content, as selector rules for
+        its own stylesheet; none unless its content is alarm sensitive.
+
+        A widget's own stylesheet beats the application's whatever the
+        selectors, so its static colours would hide the alarm colours of
+        PyDM's stylesheet: the widget carries them itself, under selectors
+        more specific than its static colours' "*".
+        """
+        if self.alarm_content_style is None or not getattr(self, "alarm_sensitive_content", False):
+            return {}
+        widget_class = type(self).__name__
+        return {
+            f'{widget_class}[alarmSensitiveContent="true"][alarmSeverity="{severity}"]': {
+                self.alarm_content_style: color
+            }
+            for severity, color in PYDM_ALARM_COLORS.items()
+        }
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -1859,7 +1886,7 @@ class StyleSheetObject(Tangible):
             styles["color"] = self.foreground_color
         if self.name.startswith("activeMenuButtonClass") or self.name.startswith("activeMessageButtonClass"):
             styles["border"] = "1px solid black"
-        properties.append(StyleSheet(styles).to_xml())
+        properties.append(StyleSheet(styles, self.alarm_content_rules()).to_xml())
 
         return properties
 
@@ -1897,6 +1924,9 @@ class Drawable(Tangible):
     brushColor: Optional[RGBA] = None
     brushFill: Optional[bool] = None
     rotation: Optional[float] = None
+    # PyDM's stylesheet colours an alarm-sensitive drawing's brush itself
+    # (qproperty-brush), which the drawing's own stylesheet never sets.
+    alarm_content_style: ClassVar[Optional[str]] = None
 
     def generate_properties(self) -> List[etree.Element]:
         """

@@ -31,6 +31,8 @@ COLORS = FIXTURES / "colors.list"
 TEXT_COLOR, CHOICE, BUTTON, MENU, SLIDER = 10, 40, 80, 120, 160
 NULL_DEFAULT, NULL_EQ_0, NULL_DISABLED, STATIC_TEXT = 210, 240, 270, 300
 MESSAGE, RELATED, TEXTUPDATE, RECTANGLE, READBACK_ONLY = 330, 370, 410, 440, 470
+# The rectangle's .ui widget reaches past its rect by its 1 px pen.
+RECTANGLE_UI = RECTANGLE - 1
 
 
 @pytest.fixture
@@ -78,7 +80,7 @@ def _rule_channels(widget, rule_property):
         pytest.param(MESSAGE, "PyDMPushButton", "DEMO:MSG", id="message button + colorPv"),
         pytest.param(RELATED, "PyDMRelatedDisplayButton", None, id="related display + colorPv"),
         pytest.param(TEXTUPDATE, "PyDMLabel", "DEMO:TU_VALUE", id="text update + colorPv"),
-        pytest.param(RECTANGLE, "PyDMDrawingRectangle", "DEMO:RECT_STAT", id="rectangle + alarmPv"),
+        pytest.param(RECTANGLE_UI, "PyDMDrawingRectangle", "DEMO:RECT_STAT", id="rectangle + alarmPv"),
         pytest.param(READBACK_ONLY, "PyDMPushButton", "DEMO:IND_ONLY", id="button with only indicatorPv"),
     ],
 )
@@ -109,7 +111,7 @@ def test_ui_static_text_with_alarm_pv_keeps_its_text(ui):
 
 
 def test_ui_drawing_with_alarm_pv_is_not_a_label(ui):
-    (rectangle,) = ui[RECTANGLE]
+    (rectangle,) = ui[RECTANGLE_UI]
     assert _prop(rectangle, "displayLabelText") is None
 
 

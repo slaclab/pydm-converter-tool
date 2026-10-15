@@ -510,6 +510,7 @@ class PyDMPushButtonBase(QPushButton, Alarmable):
     password_protected: Optional[bool] = None
     password: Optional[str] = None
     protected_password: Optional[str] = None
+    alarm_content_style: ClassVar[str] = "background-color"
 
     def generate_properties(self) -> List[ET.Element]:
         """
@@ -656,7 +657,7 @@ class PyDMPushButton(PyDMPushButtonBase):
                 styles["background-color"] = "transparent"
             if self.on_color is not None and self.off_color != self.on_color:
                 logging.warning("on and off colors are different, need to modify code")
-            properties.append(StyleSheet(styles).to_xml())
+            properties.append(StyleSheet(styles, self.alarm_content_rules()).to_xml())
         return properties
 
 
@@ -904,6 +905,7 @@ class PyDMEnumComboBox(QComboBox, Alarmable, StyleSheetObject):
 
     tool_tip: Optional[str] = None
     monitor_disp: Optional[bool] = None
+    alarm_content_style: ClassVar[str] = "background-color"
 
     def generate_properties(self) -> List[ET.Element]:
         """
