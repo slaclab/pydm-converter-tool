@@ -11,7 +11,7 @@ import pytest
 
 from pydmconverter.edm.converter import convert
 from pydmconverter.edm.parser_helpers import loc_conversion, loc_str_init, qs_escape, translate_calc_pv_to_pydm
-from pydmconverter.ir.fox import parse_calc_url
+from pydmconverter.ir.formula import parse_calc_url
 from pydmconverter.react import convert_to_ir
 
 HEADER = """\

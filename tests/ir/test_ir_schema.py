@@ -46,35 +46,35 @@ def test_invalid_ir_is_rejected():
     assert errors, "expected schema validation errors for an incomplete screen"
 
 
-def test_no_dangling_fox_references(sample_screen):
-    """Every fox://X referenced in props resolves to a formulas[] entry named X.
+def test_no_dangling_formula_references(sample_screen):
+    """Every formula://X referenced in props resolves to a formulas[] entry named X.
 
     The editor's validate() rejects dangling refs; the converter never produces one
-    (each fox:// is minted alongside its formula). This guards that invariant.
+    (each formula:// is minted alongside its formula). This guards that invariant.
     """
     wire = to_wire_dict(sample_screen)
     declared = {f["name"] for f in wire.get("formulas", [])}
 
-    def fox_name(value):
-        """The name in a ``fox://<name>`` string, or None if it isn't one."""
-        prefix = "fox://"
+    def formula_name(value):
+        """The name in a ``formula://<name>`` string, or None if it isn't one."""
+        prefix = "formula://"
         if isinstance(value, str) and value.startswith(prefix):
             return value[len(prefix) :]
         return None
 
     def referenced(node):
         for value in node.get("props", {}).values():
-            if (name := fox_name(value)) is not None:
+            if (name := formula_name(value)) is not None:
                 yield name
         for rule in node.get("rules", []):
             for pv in rule.get("pvs", []):
-                if (name := fox_name(pv.get("name"))) is not None:
+                if (name := formula_name(pv.get("name"))) is not None:
                     yield name
         for child in node.get("children", []):
             yield from referenced(child)
 
     dangling = [name for name in referenced(wire["root"]) if name not in declared]
-    assert dangling == [], f"dangling fox:// references: {dangling}"
+    assert dangling == [], f"dangling formula:// references: {dangling}"
 
 
 def test_vendored_schema_is_valid_json():

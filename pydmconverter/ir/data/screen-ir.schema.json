@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://controls.slac.stanford.edu/schemas/screen-ir/1.0/schema.json",
   "title": "Canopy Screen IR",
-  "description": "Canonical Canopy screen Intermediate Representation. Owned by @canopy/screen-ir; mirrors the TypeScript types in src/. This file is the structural subset of the contract; cross-field rules (macro defaults, the Rule union arm, fox:// resolution) are enforced by validate()'s semantic layer.",
+  "description": "Canonical Canopy screen Intermediate Representation. Owned by @canopy/screen-ir; mirrors the TypeScript types in src/. This file is the structural subset of the contract; cross-field rules (macro defaults, the Rule union arm, formula:// resolution) are enforced by validate()'s semantic layer.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "id", "metadata", "macros", "root"],
@@ -60,7 +60,7 @@
       }
     },
     "FormulaDeclaration": {
-      "description": "Screen-level Fox formula, referenced by name via fox://<name>.",
+      "description": "Screen-level formula, referenced by name via formula://<name>.",
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "expression"],
@@ -100,7 +100,7 @@
         "id": { "type": "string" },
         "type": { "type": "string" },
         "props": {
-          "description": "Untagged JSON literals. Open by design: per-widget prop sets are not enumerated here. fox:// references live in designated channel props; resolution is checked in validate().",
+          "description": "Untagged JSON literals. Open by design: per-widget prop sets are not enumerated here. formula:// references live in designated channel props; resolution is checked in validate().",
           "type": "object"
         },
         "geometry": { "$ref": "#/$defs/Geometry" },

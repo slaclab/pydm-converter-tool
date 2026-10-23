@@ -12,7 +12,7 @@ def test_strip_protocol():
     assert apply_transform("stripProtocol", "${PREFIX}:PRESSURE") == "${PREFIX}:PRESSURE"
     # first-class schemes are preserved
     assert apply_transform("stripProtocol", "loc://sel?type=int") == "loc://sel?type=int"
-    assert apply_transform("stripProtocol", "fox://f-001") == "fox://f-001"
+    assert apply_transform("stripProtocol", "formula://f-001") == "formula://f-001"
 
 
 def test_bool_to_from_pv():

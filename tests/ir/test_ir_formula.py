@@ -1,10 +1,10 @@
-from pydmconverter.ir.fox import parse_calc_url, to_fox_expression
+from pydmconverter.ir.formula import parse_calc_url, to_formula_expression
 
 
-def test_to_fox_expression_operators():
-    assert to_fox_expression("A^2") == "A**2"
-    assert to_fox_expression("A#B") == "A!=B"
-    assert to_fox_expression("A**2") == "A**2"  # idempotent
+def test_to_formula_expression_operators():
+    assert to_formula_expression("A^2") == "A**2"
+    assert to_formula_expression("A#B") == "A!=B"
+    assert to_formula_expression("A**2") == "A**2"  # idempotent
 
 
 def test_parse_basic_calc():

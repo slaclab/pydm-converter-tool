@@ -21,7 +21,7 @@ import re
 from dataclasses import replace
 from typing import Any
 
-from pydmconverter.ir.fox import parse_calc_url
+from pydmconverter.ir.formula import parse_calc_url
 from pydmconverter.ir.ids import FormulaPool, IdAllocator
 from pydmconverter.ir.macros import (
     LITERAL_BRACE,
@@ -223,13 +223,13 @@ class IRBuilder:
         return self._hoist_formulas(out)
 
     def _hoist_formulas(self, props: dict[str, Any]) -> dict[str, Any]:
-        """Lower any ``calc://`` channel value to a screen-level Fox formula + ``fox://`` ref."""
+        """Lower any ``calc://`` channel value to a screen-level formula + ``formula://`` ref."""
         for key, value in props.items():
             if isinstance(value, str) and value.startswith("calc://"):
                 parsed = parse_calc_url(value)
                 if parsed:
                     expression, bindings = parsed
-                    props[key] = f"fox://{self.formulas.intern(expression, bindings)}"
+                    props[key] = f"formula://{self.formulas.intern(expression, bindings)}"
         return props
 
     def _unknown_node(self, node: SourceNode) -> WidgetNode:
@@ -252,7 +252,7 @@ class IRBuilder:
 
         Rule PVs that are ``calc://`` URLs (EDM CALC channels driving e.g.
         visibility) are hoisted into screen formulas and referenced as
-        ``fox://<name>`` — the rule compiler inlines those client-side.
+        ``formula://<name>`` — the rule compiler inlines those client-side.
         """
         rules: list[Rule] = []
         for spec in specs:
@@ -269,12 +269,12 @@ class IRBuilder:
         return rules
 
     def _hoist_pv(self, name: str) -> str:
-        """Lower a ``calc://`` PV reference to its ``fox://`` formula ref."""
+        """Lower a ``calc://`` PV reference to its ``formula://`` ref."""
         if isinstance(name, str) and name.startswith("calc://"):
             parsed = parse_calc_url(name)
             if parsed:
                 expression, bindings = parsed
-                return f"fox://{self.formulas.intern(expression, bindings)}"
+                return f"formula://{self.formulas.intern(expression, bindings)}"
         return name
 
     @staticmethod

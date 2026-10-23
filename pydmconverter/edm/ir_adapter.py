@@ -12,7 +12,7 @@ shellCmdClass, activeExitButtonClass, activePngClass, activeMeterClass,
 activeIndicatorClass, activeRadioButtonClass, activeFreezeButtonClass,
 activeRampButtonClass, activeUpdownButtonClass, mmvClass, and
 multiLineTextEntryClass. Rules (visPv) are handled and colors are resolved to
-static hex; calc/Fox formulas and dynamic color (colorPv/bgAlarm) are not yet
+static hex; calc/formula channels and dynamic color (colorPv/bgAlarm) are not yet
 translated. Several classes carry EDM semantics with no Qt/web analog
 (freeze/ramp/updown increment behaviour, shell command execution); those are
 surfaced as node warnings rather than silently dropped. menuMuxClass is
@@ -55,7 +55,7 @@ from pydmconverter.edm.parser_helpers import (
 )
 from pydmconverter.edm.window_macros import ROOT_MACRO, WINDOW_MACRO, embedded_window_id, window_macro
 from pydmconverter.ir.builder import IRBuilder
-from pydmconverter.ir.fox import parse_calc_url
+from pydmconverter.ir.formula import parse_calc_url
 from pydmconverter.ir.macros import LITERAL_BRACE, normalize_macro_syntax
 from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
@@ -361,7 +361,7 @@ def _severity_conditions(conditions: list[tuple[str, str]], count: int) -> list[
 
     Each condition holds for exactly one severity, so checking the highest first
     and asking whether any input has it picks the maximum (first true wins).
-    Fox's ``max`` is numpy's reduction, not a variadic max.
+    the Formula Engine's ``max`` is numpy's reduction, not a variadic max.
     """
     if count <= 1:
         return list(conditions)
