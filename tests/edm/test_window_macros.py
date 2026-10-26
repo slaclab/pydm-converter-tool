@@ -521,7 +521,7 @@ def test_ir_names_every_window_variable_by_the_window_macro(tmp_path):
     (formula,) = wire["formulas"]
     (binding,) = formula["bindings"].values()
     assert binding.startswith("loc://${EDM_W}flag?")
-    assert calc["rules"][0]["pvs"][0]["name"] == f"fox://{formula['name']}"
+    assert calc["rules"][0]["pvs"][0]["name"] == f"formula://{formula['name']}"
     # Declared like any other macro: opened on its own, a screen names its
     # variables without a prefix.
     assert {(m["name"], m["default"]) for m in wire["macros"]} >= {("EDM_W", ""), ("EDM_W_ROOT", "")}

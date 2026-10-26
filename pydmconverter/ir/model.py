@@ -16,8 +16,8 @@ Key decisions encoded here:
 * D11 unknown widgets are explicit ``unknown-widget`` nodes carrying ``warnings``.
 * D14 z-order is ``children`` array order.
 * D17 per-node ``meta`` is preserved on round-trip, ignored by the runtime.
-* formulas[] hoists ``calc://`` expressions to screen-level Fox formula
-  declarations, referenced from a channel prop as ``fox://<name>``.
+* formulas[] hoists ``calc://`` expressions to screen-level formula
+  declarations, referenced from a channel prop as ``formula://<name>``.
 """
 
 from __future__ import annotations
@@ -117,11 +117,11 @@ class Rule(IRModel):
 
 
 class FormulaDeclaration(IRModel):
-    """A screen-level Fox formula (converter handoff 6.3).
+    """A screen-level formula (converter handoff 6.3).
 
     Shape-compatible with ``canopy.contracts.formula.FormulaSpec`` plus a
     ``name``. ``calc://`` expressions are hoisted here (deduped) and referenced
-    from a widget channel prop as ``fox://<name>``.
+    from a widget channel prop as ``formula://<name>``.
     """
 
     name: str

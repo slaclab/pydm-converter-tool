@@ -45,10 +45,10 @@ def _formula_key(kind: str, expression: str, bindings: Mapping[str, str]) -> tup
 
 
 class FormulaPool:
-    """Interns Fox formulas so identical ``calc://`` expressions share one decl.
+    """Interns formulas so identical ``calc://`` expressions share one decl.
 
     A calc used by N widgets becomes a single screen-level declaration; every
-    widget references it by the same ``fox://<name>``. Allocation order is
+    widget references it by the same ``formula://<name>``. Allocation order is
     preserved so the emitted ``formulas[]`` is deterministic.
     """
 

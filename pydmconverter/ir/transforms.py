@@ -62,7 +62,7 @@ def _camel_to_kebab(value: str) -> str:
 
 def strip_protocol(value: Any) -> Any:
     """Drop a ``ca://`` / ``pva://`` scheme from a channel; leave ``${MACRO}``,
-    ``loc://``, ``calc://``, ``fox://`` untouched."""
+    ``loc://``, ``calc://``, ``formula://`` untouched."""
     if not isinstance(value, str):
         return value
     for prefix in _PROTOCOLS:

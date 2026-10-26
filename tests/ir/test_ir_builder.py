@@ -239,11 +239,11 @@ def test_rules_get_ids_and_contribute_macros():
     assert [m.name for m in screen.macros] == ["SECTOR"]
 
 
-def test_calc_channel_hoisted_to_fox_formula():
-    """A calc:// channel lowers to a screen-level formula + fox:// reference."""
+def test_calc_channel_hoisted_to_formula():
+    """A calc:// channel lowers to a screen-level formula + formula:// reference."""
     node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "calc://c?A=channel://${P}:V&B=ca://X&expr=A+B"})
     screen = _screen([node])
-    assert screen.root.children[0].props["pv"] == "fox://f-001"
+    assert screen.root.children[0].props["pv"] == "formula://f-001"
     assert len(screen.formulas) == 1
     formula = screen.formulas[0]
     assert formula.name == "f-001"
@@ -259,7 +259,7 @@ def test_identical_calcs_share_one_formula():
     ]
     screen = _screen(nodes)
     pvs = [c.props["pv"] for c in screen.root.children]
-    assert pvs == ["fox://f-001", "fox://f-001"]  # deduped
+    assert pvs == ["formula://f-001", "formula://f-001"]  # deduped
     assert len(screen.formulas) == 1
 
 

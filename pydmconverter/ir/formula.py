@@ -1,15 +1,16 @@
-"""Lower PyDM ``calc://`` channels to Canopy Fox formulas.
+"""Lower PyDM ``calc://`` channels to Canopy Formula Engine formulas.
 
 The EDM parser rewrites EDM ``CALC\\`` PVs into PyDM ``calc://`` URLs of the form
 ``calc://<id>?A=channel://pv1&B=ca://pv2&expr=A+B`` (the EPICS operators ``^``/``#``
-are already converted to ``**``/``!=``). This module parses that URL back into a Fox
-``(expression, bindings)`` pair: the expression in Fox grammar (asteval/numexpr) and
-``bindings`` mapping each variable to its PV name. Numeric-literal args are inlined
-into the expression rather than bound (Fox binds variables to PVs, not constants).
+are already converted to ``**``/``!=``). This module parses that URL back into a
+Formula Engine ``(expression, bindings)`` pair: the expression in Formula Engine grammar
+(asteval/numexpr) and ``bindings`` mapping each variable to its PV name. Numeric-literal
+args are inlined into the expression rather than bound (the Formula Engine binds variables
+to PVs, not constants).
 
 The builder hoists each distinct calc into the screen-level ``formulas[]`` (deduped)
-and references it from the channel prop as ``fox://<name>`` — the same value-sourcing
-seam Fox uses, reused from the converter side.
+and references it from the channel prop as ``formula://<name>`` — the same value-sourcing
+seam the Formula Engine uses, reused from the converter side.
 """
 
 from __future__ import annotations
@@ -22,11 +23,11 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 _CHANNEL_PREFIXES = ("channel://", "ca://", "pva://")
 _NUMERIC = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)$")
 
-# EPICS CALC function names -> Fox namespace names (Canopy
-# src/canopy/fox/language/namespace.py). EPICS SQR is square ROOT; LOG is
+# EPICS CALC function names -> Formula Engine namespace names (Canopy
+# src/canopy/formula_engine/language/namespace.py). EPICS SQR is square ROOT; LOG is
 # log10 and LOGE/LN the natural log. Unknown names pass through and surface
-# via Fox validation instead of being guessed at.
-_CALC_TO_FOX_FUNCTIONS = {
+# via Formula Engine validation instead of being guessed at.
+_CALC_TO_FORMULA_FUNCTIONS = {
     "MAX": "max",
     "MIN": "min",
     "ABS": "abs",
@@ -46,15 +47,15 @@ _CALC_TO_FOX_FUNCTIONS = {
     "ATAN": "atan",
     "ATAN2": "atan2",
 }
-_CALC_FUNCTION_RE = re.compile(r"\b(" + "|".join(_CALC_TO_FOX_FUNCTIONS) + r")\s*\(")
+_CALC_FUNCTION_RE = re.compile(r"\b(" + "|".join(_CALC_TO_FORMULA_FUNCTIONS) + r")\s*\(")
 
 
-def to_fox_expression(expression: str) -> str:
-    """Convert EPICS calc operators/functions to Fox/Python. Idempotent (the
+def to_formula_expression(expression: str) -> str:
+    """Convert EPICS calc operators/functions to Formula Engine/Python. Idempotent (the
     parser already applies the operator conversions; function names are only
     rewritten as call sites, so single-letter variables are never touched)."""
     expression = expression.replace("^", "**").replace("#", "!=")
-    return _CALC_FUNCTION_RE.sub(lambda m: _CALC_TO_FOX_FUNCTIONS[m.group(1)] + "(", expression)
+    return _CALC_FUNCTION_RE.sub(lambda m: _CALC_TO_FORMULA_FUNCTIONS[m.group(1)] + "(", expression)
 
 
 def _strip_channel(value: str) -> str:
@@ -65,7 +66,7 @@ def _strip_channel(value: str) -> str:
 
 
 def parse_calc_url(url: str) -> tuple[str, dict[str, str]] | None:
-    """Parse a ``calc://`` URL into ``(fox_expression, bindings)``, or None.
+    """Parse a ``calc://`` URL into ``(formula_expression, bindings)``, or None.
 
     The query is split manually (not via ``parse_qs``) so a ``+`` in ``expr`` stays an
     operator rather than decoding to a space. Each value is then percent-decoded
@@ -88,7 +89,7 @@ def parse_calc_url(url: str) -> tuple[str, dict[str, str]] | None:
         else:
             raw_args[key] = value
 
-    expression = to_fox_expression(expression)
+    expression = to_formula_expression(expression)
     bindings: dict[str, str] = {}
     for var, value in raw_args.items():
         if _NUMERIC.match(value):
