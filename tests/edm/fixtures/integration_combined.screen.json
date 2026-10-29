@@ -184,7 +184,7 @@
           "label": "Utilities",
           "actions": [
             {
-              "type": "shell_command",
+              "type": "execute",
               "command": "xterm -e top"
             }
           ]
