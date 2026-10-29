@@ -616,3 +616,24 @@ def test_shell_command_only_names_default_to_themselves(tmp_path):
     assert shell.props["command"] == "echo ${HOME} ${P}"
     assert not shell.warnings and not screen.root.warnings
     validate_screen_json(to_wire_dict(screen))
+
+
+def test_shell_command_only_name_keeps_its_default_when_renamed(tmp_path):
+    """${6X} is not a valid IR macro name, so it becomes ${M_6X}; its default must
+    still be the shell's own ${6X}, not "", or the command loses the variable."""
+    ui = tmp_path / "shell.ui"
+    ui.write_text(
+        """<?xml version="1.0"?>
+<ui version="4.0"><class>Form</class>
+<widget class="QWidget" name="Form">
+ <property name="geometry"><rect><x>0</x><y>0</y><width>200</width><height>100</height></rect></property>
+ <widget class="PyDMShellCommand" name="cmd">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>20</height></rect></property>
+  <property name="commands" stdset="0"><stringlist><string>echo ${6X}</string></stringlist></property>
+ </widget>
+</widget></ui>"""
+    )
+    screen = ui_file_to_ir(ui)
+    assert [(m.name, m.default) for m in screen.macros] == [("M_6X", "${6X}")]
+    assert screen.root.children[0].props["command"] == "echo ${M_6X}"
+    assert validate_screen_json(to_wire_dict(screen)) == []
