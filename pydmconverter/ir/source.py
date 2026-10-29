@@ -63,6 +63,11 @@ class SourceNode:
         Original source props, surfaced verbatim on ``unknown-widget`` nodes.
     warnings:
         Convert-time notes to attach to the resulting node (D11).
+    dropped_props:
+        Source prop names the front-end neither mapped nor used, in the
+        front-end's order. The builder copies them onto the IR node's
+        ``dropped_props`` (never emitted) and appends the Qt props it drops
+        itself, so a conversion loss is recorded instead of silent.
     placeholder_reason:
         When set, the builder emits an ``unknown-widget`` placeholder with this
         warning instead of resolving the node (a front-end failed to convert it).
@@ -77,6 +82,7 @@ class SourceNode:
     raw_class: str | None = None
     raw_props: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    dropped_props: list[str] = field(default_factory=list)
     placeholder_reason: str | None = None
 
     @property

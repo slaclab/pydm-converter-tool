@@ -100,6 +100,27 @@ def test_channelless_pydmlabel_keeps_static_text(tmp_path):
     assert "pv" not in label.props
 
 
+def test_unmapped_qt_prop_is_recorded_as_dropped(tmp_path):
+    """A .ui prop the widget's qtPropMap has no entry for is recorded on the node, not emitted."""
+    ui = """<?xml version="1.0"?>
+    <ui version="4.0"><widget class="QWidget" name="screen">
+      <property name="geometry"><rect><x>0</x><y>0</y><width>100</width><height>100</height></rect></property>
+      <widget class="PyDMLineEdit" name="setpoint">
+        <property name="geometry"><rect><x>5</x><y>5</y><width>80</width><height>20</height></rect></property>
+        <property name="toolTip"><string>Setpoint</string></property>
+        <property name="channel" stdset="0"><string>ca://${PREFIX}:SETPOINT</string></property>
+      </widget>
+    </widget></ui>"""
+    path = tmp_path / "tooltip.ui"
+    path.write_text(ui, encoding="utf-8")
+    screen = ui_file_to_ir(path)
+    text_input = screen.root.children[0]
+    assert text_input.type == "pv-text-input"
+    assert text_input.props == {"pv": "${PREFIX}:SETPOINT"}
+    assert text_input.dropped_props == ["toolTip"]
+    assert "toolTip" not in to_json(screen)
+
+
 def test_irregular_polygon_maps_to_polygon_with_points(tmp_path):
     """A PyDMDrawingIrregularPolygon becomes a `polygon` node (not unknown-widget),
     carrying its vertices as structured {x, y} points."""
