@@ -1,0 +1,2 @@
+# The root .gitignore ignores *.json; the vendored colour schemes are tracked assets.
+!schemes/*.json

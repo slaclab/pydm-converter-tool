@@ -3,9 +3,9 @@ from pydmconverter.ir.schema import SCHEMA_PATH, load_schema, validate_screen_js
 
 
 def test_vendored_schema_is_the_canonical_contract():
-    """The schema we validate against is the *vendored* @canopy/screen-ir contract.
+    """The schema we validate against is the *vendored* canopy-spec Screen IR contract.
 
-    @canopy/screen-ir owns the contract; this converter is a consumer. The vendored
+    canopy-spec owns the contract; this converter is a consumer. The vendored
     file is the editor's canonical schema (discriminated Rule union, open
     ScreenSource, sealed objects), NOT a schema this repo generates from its own
     models. These markers catch an accidental revert to a self-minted schema.
@@ -13,7 +13,7 @@ def test_vendored_schema_is_the_canonical_contract():
     assert SCHEMA_PATH.is_file(), f"missing vendored schema at {SCHEMA_PATH}"
     schema = load_schema()
     # Owned-upstream provenance and structural markers unique to the canonical file.
-    assert "Owned by @canopy/screen-ir" in schema["description"]
+    assert "owned by canopy-spec" in schema["description"]
     rule = schema["$defs"]["Rule"]
     assert "oneOf" in rule, "vendored Rule must be the discriminated union (conditional | formula arm)"
     # The vendored schema seals top-level objects; the model-generated one does not.
