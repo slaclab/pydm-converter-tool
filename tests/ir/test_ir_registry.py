@@ -153,3 +153,14 @@ def test_qwidget_does_not_map_to_group():
     reg = VendoredRegistry()
     assert reg.by_id("group").qt_class is None
     assert reg.by_qt_class("QWidget").id != "group"
+
+
+def test_xy_plot_resolves_by_id_and_qt_class():
+    """The dedicated xy-plot widget owns PyDMScatterPlot in both lookup directions."""
+    reg = VendoredRegistry()
+    by_id = reg.by_id("xy-plot")
+    assert by_id is not None
+    assert by_id.qt_class == "PyDMScatterPlot"
+    by_class = reg.by_qt_class("PyDMScatterPlot")
+    assert by_class is not None
+    assert by_class.id == "xy-plot"

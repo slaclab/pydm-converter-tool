@@ -83,6 +83,121 @@ def test_convert_folder(tmp_path):
     assert (tmp_path / "out" / "nested" / "b.screen.json").is_file()
 
 
+BOB_FIXTURES = Path(__file__).parent / "bob" / "fixtures"
+BOB_FIXTURE = BOB_FIXTURES / "defaults.bob"
+
+
+def _assert_valid(ir):
+    from pydmconverter.ir.emit import to_wire_dict
+    from pydmconverter.ir.schema import validate_screen_json
+
+    assert validate_screen_json(to_wire_dict(ir)) == []
+
+
+def test_convert_bytes_bob_inline_display():
+    ir = react.convert_bytes(b"<display><name>t</name></display>", kind="bob")
+    assert ir.metadata.source.type == "bob-converter"
+    assert ir.id == "screen"
+    _assert_valid(ir)
+
+
+def test_convert_bytes_bob_fixture_matches_adapter():
+    from pydmconverter.bob.ir_adapter import bob_file_to_ir
+
+    data = BOB_FIXTURE.read_bytes()
+    ir = react.convert_bytes(data, kind="bob")
+    _assert_valid(ir)
+    assert ir.root == bob_file_to_ir(BOB_FIXTURE).root
+    assert ir == react.convert_bytes(data, kind="bob")  # deterministic
+
+
+def test_convert_bytes_bob_passes_color_def_path():
+    from pydmconverter.bob.ir_adapter import bob_file_to_ir
+
+    source = BOB_FIXTURES / "color_def.bob"
+    color_def = BOB_FIXTURES / "color.def"
+    ir = react.convert_bytes(source.read_bytes(), kind="bob", color_def_path=color_def)
+    assert ir.root == bob_file_to_ir(source, color_def_path=color_def).root
+    _assert_valid(ir)
+
+
+def test_convert_bytes_bad_kind_message_lists_bob():
+    with pytest.raises(ValueError, match="kind") as info:
+        react.convert_bytes(b"<display/>", kind="opi")
+    assert "bob" in str(info.value)
+
+
+def test_convert_to_ir_dispatches_bob():
+    ir = react.convert_to_ir(BOB_FIXTURE)
+    assert ir.metadata.source.type == "bob-converter"
+    assert ir.id == "defaults"
+    assert ".bob" in react.SUPPORTED_SUFFIXES
+
+
+def test_convert_file_bob(tmp_path):
+    out = react.convert_file(BOB_FIXTURE, tmp_path / "x", override=True)
+    assert out.name == "x.screen.json"
+    assert json.loads(out.read_text(encoding="utf-8"))["kind"] == "screen"
+
+
+def test_convert_folder_includes_bob(tmp_path):
+    src = tmp_path / "in"
+    src.mkdir()
+    (src / "a.bob").write_bytes(BOB_FIXTURE.read_bytes())
+    found, failed = react.convert_folder(src, tmp_path / "out", override=True)
+    assert (found, failed) == (1, [])
+    assert (tmp_path / "out" / "a.screen.json").is_file()
+
+
+# -- scheme keyword ------------------------------------------------------------------------------------------------
+
+_NAMED_BG = (
+    b'<display version="2.0.0"><name>t</name><background_color>'
+    b'<color name="Display_Background" red="255" green="255" blue="255"/></background_color></display>'
+)
+
+
+def test_convert_bytes_bob_passes_scheme(tmp_path):
+    from pydmconverter.bob.ir_adapter import bob_file_to_ir
+    from pydmconverter.scheme import load_scheme
+
+    scheme = load_scheme(None)
+    source = tmp_path / "screen.bob"
+    source.write_bytes(_NAMED_BG)
+    ir = react.convert_bytes(_NAMED_BG, kind="bob", scheme=scheme)
+    assert ir.schema_version == "1.1"
+    assert ir.root == bob_file_to_ir(source, scheme=scheme).root
+    _assert_valid(ir)
+
+
+def test_convert_bytes_edl_and_ui_accept_scheme():
+    from pydmconverter.scheme import load_scheme
+
+    scheme = load_scheme(None)
+    assert react.convert_bytes(EDM_FIXTURE.read_bytes(), kind="edl", scheme=scheme) == react.convert_bytes(
+        EDM_FIXTURE.read_bytes(), kind="edl"
+    )
+    assert react.convert_bytes(UI_FIXTURE.read_bytes(), kind="ui", scheme=scheme) == react.convert_bytes(
+        UI_FIXTURE.read_bytes(), kind="ui"
+    )
+
+
+def test_convert_file_and_folder_pass_scheme(tmp_path):
+    from pydmconverter.scheme import load_scheme
+
+    scheme = load_scheme(None)
+    src = tmp_path / "in"
+    src.mkdir()
+    (src / "a.bob").write_bytes(_NAMED_BG)
+    out = react.convert_file(src / "a.bob", tmp_path / "one", scheme=scheme)
+    assert json.loads(out.read_text(encoding="utf-8"))["schemaVersion"] == "1.1"
+    found, failed = react.convert_folder(src, tmp_path / "out", scheme=scheme)
+    assert (found, failed) == (1, [])
+    assert json.loads((tmp_path / "out" / "a.screen.json").read_text(encoding="utf-8"))["schemaVersion"] == "1.1"
+    found, failed = react.convert_folder(src, tmp_path / "plain")
+    assert json.loads((tmp_path / "plain" / "a.screen.json").read_text(encoding="utf-8"))["schemaVersion"] == "1.0"
+
+
 def test_convert_folder_converts_a_file_named_just_edl(tmp_path):
     """The walk matches names, not Path.suffix (""), so a ".edl" file is found and converted."""
     src = tmp_path / "in"

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Stop</name>
+    <x>0</x>
+    <y>0</y>
+    <text>s</text>
+    <foreground_color>
+      <color name="STOP" red="1" green="1" blue="1"></color>
+    </foreground_color>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Halt</name>
+    <x>0</x>
+    <y>30</y>
+    <text>h</text>
+    <foreground_color>
+      <color name="Halt" red="1" green="1" blue="1"></color>
+    </foreground_color>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Unknown</name>
+    <x>0</x>
+    <y>60</y>
+    <text>u</text>
+    <foreground_color>
+      <color name="Nope" red="9" green="9" blue="9"></color>
+    </foreground_color>
+  </widget>
+</display>

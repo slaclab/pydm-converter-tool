@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="xyplot" version="2.0.0">
+    <name>Scatter plot</name>
+    <x>0</x>
+    <y>0</y>
+    <show_legend>false</show_legend>
+    <x_axis>
+      <title></title>
+      <autoscale>false</autoscale>
+      <log_scale>false</log_scale>
+      <minimum>10.0</minimum>
+      <maximum>-10.0</maximum>
+      <show_grid>true</show_grid>
+      <visible>true</visible>
+    </x_axis>
+    <y_axes>
+      <y_axis>
+        <title></title>
+        <autoscale>false</autoscale>
+        <log_scale>false</log_scale>
+        <minimum>-10.0</minimum>
+        <maximum>10.0</maximum>
+        <show_grid>true</show_grid>
+        <visible>true</visible>
+      </y_axis>
+    </y_axes>
+    <traces>
+      <trace>
+        <name></name>
+        <x_pv>$(X)</x_pv>
+        <y_pv>$(Y)</y_pv>
+        <axis>0</axis>
+        <trace_type>0</trace_type>
+        <color>
+          <color name="MAJOR" red="255" green="0" blue="0">
+          </color>
+        </color>
+        <line_width>1</line_width>
+        <line_style>0</line_style>
+        <point_type>2</point_type>
+        <point_size>7</point_size>
+        <visible>true</visible>
+      </trace>
+    </traces>
+  </widget>
+</display>

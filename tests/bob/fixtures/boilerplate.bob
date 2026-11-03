@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Real PV</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:BEAM</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+from org.csstudio.display.builder.model.persist import WidgetColorService
+sevr = PVUtil.getSeverity(pvs[0])
+colorName = ("OK","MINOR","MAJOR","INVALID","DISCONNECTED")[sevr]
+widget.setPropertyValue("foreground_color", WidgetColorService.getColor(colorName))
+]]></text>
+        <pv_name>SR:BEAM</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Local PV</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://x</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+from org.csstudio.display.builder.model.persist import WidgetColorService
+sevr = PVUtil.getSeverity(pvs[0])
+colorName = ("OK","MINOR","MAJOR","INVALID","DISCONNECTED")[sevr]
+widget.setPropertyValue("foreground_color", WidgetColorService.getColor(colorName))
+]]></text>
+        <pv_name>loc://x</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Sim PV</name>
+    <x>0</x>
+    <y>60</y>
+    <pv_name>sim://sine</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+from org.csstudio.display.builder.model.persist import WidgetColorService
+sevr = PVUtil.getSeverity(pvs[0])
+colorName = ("OK","MINOR","MAJOR","INVALID","DISCONNECTED")[sevr]
+widget.setPropertyValue("foreground_color", WidgetColorService.getColor(colorName))
+]]></text>
+        <pv_name>sim://sine</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Calc PV</name>
+    <x>0</x>
+    <y>90</y>
+    <pv_name>calc://a+b</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+from org.csstudio.display.builder.model.persist import WidgetColorService
+sevr = PVUtil.getSeverity(pvs[0])
+colorName = ("OK","MINOR","MAJOR","INVALID","DISCONNECTED")[sevr]
+widget.setPropertyValue("foreground_color", WidgetColorService.getColor(colorName))
+]]></text>
+        <pv_name>calc://a+b</pv_name>
+      </script>
+    </scripts>
+  </widget>
+</display>

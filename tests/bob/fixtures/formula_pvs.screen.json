@@ -1,0 +1,273 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "formula_pvs",
+  "metadata": {
+    "title": "formula_pvs",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": ""
+    }
+  ],
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "({0}*60)",
+      "bindings": {
+        "0": "SR:X"
+      }
+    },
+    {
+      "name": "f-002",
+      "kind": "scalar",
+      "expression": "abs({0}-{1}) <= 0.25",
+      "bindings": {
+        "0": "SR:A",
+        "1": "SR:B"
+      }
+    },
+    {
+      "name": "f-003",
+      "kind": "scalar",
+      "expression": "{0} and {1}",
+      "bindings": {
+        "0": "${P}A",
+        "1": "${P}B"
+      }
+    },
+    {
+      "name": "f-004",
+      "kind": "scalar",
+      "expression": "{0} + 1",
+      "bindings": {
+        "0": "SR:Q"
+      }
+    },
+    {
+      "name": "f-005",
+      "kind": "scalar",
+      "expression": "{0} > 2",
+      "bindings": {
+        "0": "SR:A"
+      }
+    },
+    {
+      "name": "f-006",
+      "kind": "scalar",
+      "expression": "{0} * 2",
+      "bindings": {
+        "0": "SR:WF"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-led",
+        "props": {
+          "pv": "formula://f-002",
+          "onColor": "#00ff00",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 20,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "pv-led",
+        "props": {
+          "pv": "formula://f-003",
+          "onColor": "#00ff00",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 20,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-005",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-004",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 90,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-006",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "textupdate",
+          "originalProps": {
+            "name": "Concat",
+            "x": "0",
+            "y": "120",
+            "pv_name": "=concat(`SR:S`, \"x\")"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 120,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus formula PV: =concat(`SR:S`, \"x\")"
+        },
+        "warnings": [
+          "Concat: formula PV not lowered: =concat(`SR:S`, \"x\")",
+          "No registry entry for textupdate; rendering placeholder"
+        ]
+      },
+      {
+        "id": "w-007",
+        "type": "rectangle",
+        "props": {
+          "lineColor": "#0000ff",
+          "lineWidth": 3,
+          "fill": true,
+          "fillColor": "#1e90ff"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 150,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "fvis",
+            "targetProperty": "visible",
+            "pvs": [
+              {
+                "name": "formula://f-005",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == 1",
+                "value": false
+              }
+            ],
+            "default": true
+          }
+        ],
+        "meta": {
+          "comment": "Phoebus formula PV: =elementAt(`SR:W`, 0)"
+        },
+        "warnings": [
+          "Rule formula: formula PV not lowered: =elementAt(`SR:W`, 0)",
+          "Rule formula: rule 'fbad' needs the script runtime (tier 2): formula binding =elementAt(`SR:W`, 0)"
+        ]
+      },
+      {
+        "id": "w-008",
+        "type": "xy-plot",
+        "props": {
+          "curves": [
+            {
+              "name": "ok",
+              "y_channel": "formula://f-006",
+              "lineWidth": 1,
+              "lineStyle": 1,
+              "symbol": "none",
+              "symbolSize": 10,
+              "traceType": "line",
+              "yAxisName": "y0"
+            }
+          ],
+          "xAxis": {
+            "name": "x",
+            "label": "X",
+            "minRange": 0,
+            "maxRange": 100,
+            "autoRange": false,
+            "logMode": false,
+            "grid": false,
+            "visible": true
+          },
+          "yAxes": [
+            {
+              "name": "y0",
+              "label": "Y",
+              "minRange": 0,
+              "maxRange": 100,
+              "autoRange": false,
+              "logMode": false,
+              "grid": false,
+              "visible": true
+            }
+          ],
+          "showLegend": true
+        },
+        "geometry": {
+          "x": 0,
+          "y": 180,
+          "width": 400,
+          "height": 300
+        },
+        "meta": {
+          "comment": "Phoebus formula PV: =concat(`SR:WF`)"
+        },
+        "warnings": [
+          "Plot: formula PV not lowered: =concat(`SR:WF`)",
+          "Plot: trace 'bad' needs the script runtime (tier 2): formula binding =concat(`SR:WF`)"
+        ]
+      }
+    ]
+  }
+}

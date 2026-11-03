@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "color_def",
+  "metadata": {
+    "title": "color_def",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "s",
+          "foregroundColor": "#ff0000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "color.def:20: cannot parse color 'Broken' from 'not a colour'",
+          "color.def:21: color 'Dangling' references undefined 'NoSuchColour'"
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "text-label",
+        "props": {
+          "text": "h",
+          "foregroundColor": "#ff0000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "text-label",
+        "props": {
+          "text": "u",
+          "foregroundColor": "#090909"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  },
+  "macros": []
+}

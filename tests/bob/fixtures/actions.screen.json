@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "actions",
+  "metadata": {
+    "title": "actions",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": ""
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://target?type=int&init=3"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "Go",
+          "actions": [
+            {
+              "type": "write_pv",
+              "pvName": "loc://target?type=int&init=3",
+              "value": "1"
+            },
+            {
+              "type": "open_display",
+              "file": "../common/KnobPanel.screen.json",
+              "target": "replace",
+              "macros": {
+                "DEV": "${P}KNOB"
+              }
+            },
+            {
+              "type": "open_display",
+              "file": "tab.screen.json",
+              "target": "tab"
+            },
+            {
+              "type": "open_display",
+              "file": "win.screen.json",
+              "target": "window"
+            },
+            {
+              "type": "open_display",
+              "file": "alone.screen.json",
+              "target": "window"
+            },
+            {
+              "type": "open_display",
+              "file": "replace.screen.json",
+              "target": "replace"
+            },
+            {
+              "type": "open_display",
+              "file": "odd.screen.json",
+              "target": "replace"
+            },
+            {
+              "type": "open_display",
+              "file": "legacy.screen.json",
+              "target": "replace"
+            },
+            {
+              "type": "open_display",
+              "file": "",
+              "target": "replace"
+            },
+            {
+              "type": "execute",
+              "command": "xterm -e caget SR:A",
+              "description": "Shell"
+            },
+            {
+              "type": "execute",
+              "command": "ls",
+              "description": "Shell 2"
+            },
+            {
+              "type": "open_webpage",
+              "url": "https://example.org"
+            },
+            {
+              "type": "close_display"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 30
+        },
+        "meta": {
+          "comment": "Phoebus command: Shell\nxterm -e caget SR:A\n\nPhoebus command: Shell 2\nls\n\nPhoebus execute action: inline\nprint(\"hi\")"
+        },
+        "warnings": [
+          "Buttons: open_display target sideways unknown; using replace",
+          "Buttons: open_display target legacy.opi is a legacy .opi that no converter produces",
+          "Buttons: open_display with no file",
+          "Buttons: shell command carried as execute action; the web runtime does not run shell commands",
+          "Buttons: execute action needs the script runtime (tier 2); carried, not emitted"
+        ]
+      }
+    ]
+  }
+}

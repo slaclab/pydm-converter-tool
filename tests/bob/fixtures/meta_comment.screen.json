@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "meta_comment",
+  "metadata": {
+    "title": "meta_comment",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "m",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script first [EmbeddedPy] pvs=[SR:A]\nimport time\ntime.sleep(1)\nwidget.setPropertyValue('text', 'a')\n\n\nPhoebus script second [EmbeddedPy] pvs=[SR:B]\nwidget.setPropertyValue('visible', False)\n\n\nPhoebus execute action: inline\nprint(\"x\")"
+        },
+        "warnings": [
+          "Carrier: script needs the script runtime (tier 2): time.sleep(1)",
+          "Carrier: script needs the script runtime (tier 2): widget.setPropertyValue('visible', False)",
+          "Carrier: execute action needs the script runtime (tier 2); carried, not emitted"
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "org.csstudio.opibuilder.widgets.Label",
+          "originalProps": {
+            "name": "Legacy",
+            "x": "0",
+            "y": "30",
+            "text": "m"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script first [EmbeddedPy] pvs=[SR:A]\nimport time\ntime.sleep(1)\nwidget.setPropertyValue('text', 'a')\n\n\nPhoebus script second [EmbeddedPy] pvs=[SR:B]\nwidget.setPropertyValue('visible', False)\n\n\nPhoebus execute action: inline\nprint(\"x\")"
+        },
+        "warnings": [
+          "Legacy: script needs the script runtime (tier 2): time.sleep(1)",
+          "Legacy: script needs the script runtime (tier 2): widget.setPropertyValue('visible', False)",
+          "Legacy: execute action needs the script runtime (tier 2); carried, not emitted",
+          "No registry entry for org.csstudio.opibuilder.widgets.Label; rendering placeholder"
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

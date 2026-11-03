@@ -15,6 +15,9 @@
     "onColor": { "to": "onColor" },
     "offColor": { "to": "offColor" },
     "foregroundColor": { "to": "foregroundColor" },
-    "backgroundColor": { "to": "backgroundColor" }
+    "backgroundColor": { "to": "backgroundColor" },
+    "flat": { "to": "transparent" },
+    "onImage": { "to": "onImage" },
+    "offImage": { "to": "offImage" }
   }
 }

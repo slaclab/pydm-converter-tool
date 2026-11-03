@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import sys
 from pydmconverter.edm.converter import convert
+from pydmconverter.scheme import load_scheme
 from pydmconverter.edm.display_roots import DISPLAY_ROOTS_ENV, resolve_display_roots
 from pathlib import Path
 import logging
@@ -41,6 +42,8 @@ def run(
     color_list=None,
     target="pydm",
     out_format="json",
+    color_def=None,
+    scheme=None,
     display_roots=None,
 ):
     if target == "react":
@@ -51,6 +54,8 @@ def run(
             site=site,
             calc_list=calc_list,
             color_list=color_list,
+            color_def=color_def,
+            scheme=scheme,
             display_roots=display_roots,
         )
         return
@@ -103,9 +108,24 @@ def run(
 
 
 def run_react(
-    input_file, output_file, override, site=None, calc_list=None, color_list=None, display_roots=None
+    input_file,
+    output_file,
+    override,
+    site=None,
+    calc_list=None,
+    color_list=None,
+    color_def=None,
+    scheme=None,
+    display_roots=None,
 ) -> None:
-    """Convert .edl/.ui to Canopy Screen IR JSON (the --target react path)."""
+    """Convert .edl/.ui/.bob to Canopy Screen IR JSON (the --target react path).
+
+    ``color_list`` is an EDM ``colors.list`` palette applied to ``.edl`` inputs only. ``color_def`` is a
+    Phoebus ``color.def`` applied to ``.bob`` inputs only. ``scheme`` is a loaded
+    :class:`pydmconverter.scheme.SchemeResult` (or ``None``) passed through to the converter.
+    ``display_roots`` (``.edl`` inputs only) are absolute display directories
+    (see :mod:`pydmconverter.edm.display_roots`).
+    """
     from pydmconverter import react
 
     input_path = Path(input_file)
@@ -118,6 +138,8 @@ def run_react(
             calc_list_path=calc_list,
             color_list_path=color_list,
             site=site,
+            color_def_path=color_def,
+            scheme=scheme,
             display_roots=display_roots,
         )
         print(f"Converted {input_path} -> {out}")
@@ -130,6 +152,8 @@ def run_react(
             calc_list_path=calc_list,
             color_list_path=color_list,
             site=site,
+            color_def_path=color_def,
+            scheme=scheme,
             display_roots=display_roots,
         )
         if found == 0:
@@ -138,6 +162,26 @@ def run_react(
             print(f"{found - len(failed)} files converted from {input_path}")
         if failed:
             print(f"{len(failed)} files failed to convert. Use --override or -o to overwrite existing files.")
+
+
+def load_cli_scheme(path):
+    """Load ``--scheme <file>``; return ``(scheme, failed)``.
+
+    With no path, returns ``(None, False)`` and nothing is loaded, so output is unchanged. Otherwise every
+    ``meta["errors"]`` entry is printed to stderr, and ``failed`` is true when there are errors or the scheme
+    served is not the file's own (``served != id``). A failed scheme still converts with the scheme
+    ``load_scheme`` served (``canopy-default``); the caller turns ``failed`` into a non-zero exit.
+    """
+    if path is None:
+        return None, False
+    scheme = load_scheme(Path(path))
+    meta = scheme.meta
+    for error in meta["errors"]:
+        print(f"scheme {path}: {error['path'] or '<root>'}: {error['message']}", file=sys.stderr)
+    failed = bool(meta["errors"]) or meta["served"] != meta["id"]
+    if failed and not meta["errors"]:
+        print(f"scheme {path}: served {meta['served']!r}, not the file's id {meta['id']!r}", file=sys.stderr)
+    return scheme, failed
 
 
 def run_cli(args: argparse.Namespace) -> None:
@@ -158,6 +202,7 @@ def run_cli(args: argparse.Namespace) -> None:
     site: str = args.site
     calc_list: str = args.calc_list
     color_list: str = args.color_list
+    scheme, scheme_failed = load_cli_scheme(args.scheme)
     run(
         input_file,
         output_file,
@@ -169,8 +214,12 @@ def run_cli(args: argparse.Namespace) -> None:
         color_list=color_list,
         target=args.target,
         out_format=args.format,
+        color_def=args.color_def,
+        scheme=scheme,
         display_roots=args.display_roots,
     )
+    if scheme_failed:
+        sys.exit(1)
 
 
 """
@@ -366,6 +415,19 @@ def main() -> None:
         type=str,
         default=None,
         help="Path to an EDM colors.list palette used to resolve 'index N' colors (overrides EDMCOLORFILE)",
+    )
+    parser.add_argument(
+        "--color-def",
+        type=str,
+        default=None,
+        help="Path to a Phoebus color.def used to resolve named colors in .bob inputs (--target react only)",
+    )
+    parser.add_argument(
+        "--scheme",
+        type=str,
+        default=None,
+        help="Path to a canopy-color-scheme/1 facility scheme; named colors it imports become color roles "
+        "(--target react, .bob inputs). Scheme errors are printed and the exit status is non-zero",
     )
     parser.add_argument(
         "--display-root",

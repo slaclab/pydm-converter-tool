@@ -1,0 +1,11 @@
+{
+  "id": "xy-plot",
+  "qtMapping": { "class": "PyDMScatterPlot", "extends": "BasePlot", "header": "pydm.widgets.scatterplot" },
+  "qtPropMap": {
+    "title": { "to": "title" },
+    "curves": { "to": "curves", "transform": "parseJsonStrings" },
+    "xAxis": { "to": "xAxis" },
+    "yAxes": { "to": "yAxes", "transform": "parseJsonStrings" },
+    "showLegend": { "to": "showLegend" }
+  }
+}

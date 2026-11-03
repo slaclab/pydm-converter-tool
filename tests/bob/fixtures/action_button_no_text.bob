@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="action_button" version="2.0.0">
+    <name>No text</name>
+    <x>0</x>
+    <y>0</y>
+    <actions>
+      <action type="open_display">
+        <file>a.bob</file>
+        <description>Open A</description>
+      </action>
+      <action type="open_display">
+        <file>b.bob</file>
+        <description></description>
+      </action>
+    </actions>
+  </widget>
+  <widget type="action_button" version="2.0.0">
+    <name>Macro text</name>
+    <x>0</x>
+    <y>40</y>
+    <text>$(actions)</text>
+    <actions>
+      <action type="write_pv">
+        <pv_name>SR:X</pv_name>
+        <value>1</value>
+        <description></description>
+      </action>
+    </actions>
+  </widget>
+</display>

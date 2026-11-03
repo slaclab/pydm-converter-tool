@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "declarers_no_reader",
+  "metadata": {
+    "title": "declarers_no_reader",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://flag?type=str&init=on"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "Set 2",
+          "actions": [
+            {
+              "type": "write_pv",
+              "pvName": "loc://flag?type=str&init=on",
+              "value": "2"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 30
+        }
+      }
+    ]
+  },
+  "macros": []
+}

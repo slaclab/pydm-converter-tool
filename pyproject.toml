@@ -42,6 +42,7 @@ pydmconverter = ["launch_gui.sh", "ir/data/*.json", "ir/data/schemes/*.json", "i
 
 [project.scripts]
 pydmconverter = "pydmconverter.__main__:main"
+canopy-scheme = "pydmconverter.scheme_cli:main"
 
 [project.optional-dependencies]
 # PyQt5/PyDM are only needed for the legacy --target pydm (.ui) output, menumux,

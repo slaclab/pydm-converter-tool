@@ -364,6 +364,117 @@ def test_screen_size_expands_to_encompass_children():
     assert (ir2.metadata.size.width, ir2.metadata.size.height) == (710, 500)
 
 
+def test_meta_carried_on_mapped_node():
+    from pydmconverter.ir.model import NodeMeta
+
+    node = SourceNode("PyDMLabel", {"channel": "ca://X"}, geometry=(0, 0, 10, 10), meta=NodeMeta(comment="x"))
+    screen = _screen([node])
+    wire = to_wire_dict(screen)
+    label = wire["root"]["children"][0]
+    assert label["type"] == "pv-label"
+    assert label["meta"] == {"comment": "x"}
+    assert validate_screen_json(wire) == []
+
+
+def test_meta_carried_on_unknown_node():
+    from pydmconverter.ir.model import NodeMeta
+
+    node = SourceNode("NoSuchWidget", {"a": 1}, geometry=(0, 0, 10, 10), meta=NodeMeta(comment="x"))
+    screen = _screen([node])
+    wire = to_wire_dict(screen)
+    unknown = wire["root"]["children"][0]
+    assert unknown["type"] == "unknown-widget"
+    assert unknown["meta"] == {"comment": "x"}
+    assert validate_screen_json(wire) == []
+
+
+def test_meta_none_emits_no_meta_key():
+    mapped = SourceNode("PyDMLabel", {"channel": "ca://X"}, geometry=(0, 0, 10, 10))
+    unknown = SourceNode("NoSuchWidget", {}, geometry=(0, 0, 10, 10))
+    assert mapped.meta is None
+    wire = to_wire_dict(_screen([mapped, unknown]))
+    for child in wire["root"]["children"]:
+        assert "meta" not in child
+    assert validate_screen_json(wire) == []
+
+
+def test_macro_defaults_overlay_referenced_macro():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X", "text": "${D}"})
+    screen = _screen([node], macro_defaults={"P": "SR:"})
+    assert [(m.name, m.default) for m in screen.macros] == [("D", ""), ("P", "SR:")]
+
+
+def test_macro_defaults_append_unreferenced_macro():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"})
+    screen = _screen([node], macro_defaults={"R": "7", "P": "SR:"})
+    assert [(m.name, m.default) for m in screen.macros] == [("P", "SR:"), ("R", "7")]
+
+
+def test_macro_defaults_nested_reference_stored_verbatim():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"})
+    screen = _screen([node], macro_defaults={"P": "${HOST}"})
+    assert [(m.name, m.default) for m in screen.macros] == [("P", "${HOST}")]
+
+
+def test_macro_defaults_none_matches_collection():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"})
+    screen = _screen([node], macro_defaults=None)
+    assert [(m.name, m.default) for m in screen.macros] == [("P", "")]
+
+
+def test_macro_defaults_ignored_when_macros_explicit():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"})
+    screen = _screen([node], macros=[], macro_defaults={"P": "SR:"})
+    assert screen.macros == []
+
+
+def test_macro_defaults_screen_validates():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"}, geometry=(0, 0, 10, 10))
+    screen = _screen([node], macro_defaults={"P": "SR:", "R": "${P}R"})
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_pre_build_intern_numbers_before_calc_hoisting():
+    """Formulas interned before build_screen claim the low f- ids; calc:// hoists follow.
+
+    The bob adapter interns matcher and formula-PV expressions through
+    ``builder.formulas.intern`` before calling ``build_screen``, so the numbering
+    must continue from those rather than restart.
+    """
+    builder = _builder()
+    first = builder.formulas.intern("A>0", {"A": "${P}:STAT"})
+    again = builder.formulas.intern("A>0", {"A": "${P}:STAT"})
+    assert first == "f-001"
+    assert again == first  # identical expression + bindings interns once
+
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "calc://c?A=channel://X&expr=A*2"})
+    screen = builder.build_screen(
+        screen_id="s", title="S", source_type="edl-converter", size=(800, 600), top_level=[node]
+    )
+    assert [f.name for f in screen.formulas] == ["f-001", "f-002"]
+    assert screen.formulas[0].expression == "A>0"
+    assert screen.formulas[0].bindings == {"A": "${P}:STAT"}
+    assert screen.formulas[1].expression == "A*2"
+    assert screen.root.children[0].props["pv"] == "formula://f-002"
+
+
+def test_macro_defaults_skip_unreferenced_invalid_name():
+    """An unreferenced default whose name the IR rejects is dropped with a root warning, not declared."""
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${P}:X"}, geometry=(0, 0, 10, 10))
+    screen = _screen([node], macro_defaults={"A-B": "x", "P": "SR:"})
+    assert [(m.name, m.default) for m in screen.macros] == [("P", "SR:")]
+    assert any("A-B" in w and "dropped" in w for w in screen.root.warnings)
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_macro_defaults_renamed_source_name_is_not_appended():
+    """A default given under a renamed macro's source name lands on the new name only."""
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${6X}:X"}, geometry=(0, 0, 10, 10))
+    screen = _screen([node], macro_defaults={"6X": "SR:"})
+    assert [(m.name, m.default) for m in screen.macros] == [("M_6X", "SR:")]
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
 def test_page_wrapper_does_not_grow_screen():
     """A top-level wrapper exactly covering the declared screen (a .ui centralwidget)
     is not content: only its children decide whether the canvas grows."""
@@ -535,3 +646,50 @@ def test_dropped_props_never_reach_the_wire():
     assert screen.root.children[0].dropped_props == ["notARealQtProp"]
     assert "dropped" not in to_json(screen).lower()
     assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+# --- registry entries for the .bob front-end: xy-plot, button transparency and images --
+
+
+def test_xy_plot_entry_maps_scatter_plot_props():
+    """xy-plot owns PyDMScatterPlot; its prop map renames and JSON-decodes curves/yAxes."""
+    node = SourceNode(
+        qt_class="PyDMScatterPlot",
+        qt_props={
+            "title": "Orbit",
+            "curves": ['{"x_channel": "ca://X", "y_channel": "ca://Y"}'],
+            "yAxes": ['{"name": "Axis 1"}'],
+            "showLegend": True,
+            "notMapped": 1,
+        },
+        geometry=(0, 0, 300, 200),
+    )
+    screen = _screen([node])
+    plot = screen.root.children[0]
+    assert plot.type == "xy-plot"
+    assert plot.props == {
+        "title": "Orbit",
+        "curves": [{"x_channel": "ca://X", "y_channel": "ca://Y"}],
+        "yAxes": [{"name": "Axis 1"}],
+        "showLegend": True,
+    }
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_pv_button_entry_maps_flat_and_images():
+    """pv-button maps flat -> transparent and the on/off images."""
+    node = SourceNode(
+        qt_class="PyDMPushButton",
+        qt_props={"channel": "ca://B", "flat": True, "onImage": "on.png", "offImage": "off.png"},
+        geometry=(0, 0, 80, 30),
+    )
+    built = _screen([node]).root.children[0]
+    assert built.type == "pv-button"
+    assert built.props == {"pv": "B", "transparent": True, "onImage": "on.png", "offImage": "off.png"}
+
+
+def test_regular_button_entry_maps_flat_to_transparent():
+    node = SourceNode(qt_class="QPushButton", qt_props={"text": "Go", "flat": True}, geometry=(0, 0, 80, 30))
+    built = _screen([node]).root.children[0]
+    assert built.type == "regular-button"
+    assert built.props == {"label": "Go", "transparent": True}

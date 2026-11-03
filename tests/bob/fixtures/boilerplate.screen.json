@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "boilerplate",
+  "metadata": {
+    "title": "boilerplate",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "SR:BEAM",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "alarm color",
+            "targetProperty": "foregroundColor",
+            "pvs": [
+              {
+                "name": "SR:BEAM.SEVR",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0}==1",
+                "value": "#ff8000"
+              },
+              {
+                "expression": "{0}==2",
+                "value": "#ff0000"
+              },
+              {
+                "expression": "{0}>=3",
+                "value": "#ff00ff"
+              }
+            ],
+            "default": "#00ff00"
+          }
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://x",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script [EmbeddedPy] pvs=[loc://x]\nfrom org.csstudio.display.builder.runtime.script import PVUtil\nfrom org.csstudio.display.builder.model.persist import WidgetColorService\nsevr = PVUtil.getSeverity(pvs[0])\ncolorName = (\"OK\",\"MINOR\",\"MAJOR\",\"INVALID\",\"DISCONNECTED\")[sevr]\nwidget.setPropertyValue(\"foreground_color\", WidgetColorService.getColor(colorName))\n"
+        },
+        "warnings": [
+          "Local PV: alarm-colour script not lowered: loc://x has no alarm severity channel"
+        ]
+      },
+      {
+        "id": "w-004",
+        "type": "pv-label",
+        "props": {
+          "pv": "sim://sine",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script [EmbeddedPy] pvs=[sim://sine]\nfrom org.csstudio.display.builder.runtime.script import PVUtil\nfrom org.csstudio.display.builder.model.persist import WidgetColorService\nsevr = PVUtil.getSeverity(pvs[0])\ncolorName = (\"OK\",\"MINOR\",\"MAJOR\",\"INVALID\",\"DISCONNECTED\")[sevr]\nwidget.setPropertyValue(\"foreground_color\", WidgetColorService.getColor(colorName))\n"
+        },
+        "warnings": [
+          "Sim PV: alarm-colour script not lowered: sim://sine has no alarm severity channel"
+        ]
+      },
+      {
+        "id": "w-005",
+        "type": "pv-label",
+        "props": {
+          "pv": "calc://a+b",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 90,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script [EmbeddedPy] pvs=[calc://a+b]\nfrom org.csstudio.display.builder.runtime.script import PVUtil\nfrom org.csstudio.display.builder.model.persist import WidgetColorService\nsevr = PVUtil.getSeverity(pvs[0])\ncolorName = (\"OK\",\"MINOR\",\"MAJOR\",\"INVALID\",\"DISCONNECTED\")[sevr]\nwidget.setPropertyValue(\"foreground_color\", WidgetColorService.getColor(colorName))\n"
+        },
+        "warnings": [
+          "Calc PV: alarm-colour script not lowered: calc://a+b has no alarm severity channel"
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

@@ -3,7 +3,7 @@ import json
 import pytest
 
 from pydmconverter.ir.registry import WIDGET_REGISTRY_DIR
-from pydmconverter.ir.transforms import DROP, apply_transform, known_transforms
+from pydmconverter.ir.transforms import DROP, apply_transform, known_transforms, screen_ref
 
 
 def test_strip_protocol():
@@ -156,4 +156,42 @@ def test_screen_ref_rewrites_to_screen_json():
     assert screen_ref("${SCREEN}") == "${SCREEN}"
     assert screen_ref("$(SCREEN)") == "$(SCREEN)"
     # empty list drops
+    assert screen_ref([]) is DROP
+
+
+# --- Phoebus .bob/.opi and MEDM .adl display references (embedded displays, open-display actions) --
+
+
+@pytest.mark.parametrize(
+    ("ref", "expected"),
+    [
+        ("../common/KnobPanel.bob", "../common/KnobPanel.screen.json"),
+        ("foo.OPI", "foo.screen.json"),
+        ("foo.opi", "foo.screen.json"),
+        ("Foo.BOB", "Foo.screen.json"),
+        # a macro default value is a plain filename and is rewritten too
+        ("Mod1EPS.bob", "Mod1EPS.screen.json"),
+        # the existing front-ends, now case-insensitive
+        ("panel.ui", "panel.screen.json"),
+        ("panel.EDL", "panel.screen.json"),
+        ("panel.adl", "panel.screen.json"),
+        ("sub\\dir\\panel.bob", "sub/dir/panel.screen.json"),
+    ],
+)
+def test_screen_ref_rewrites_phoebus_and_medm_extensions(ref, expected):
+    assert screen_ref(ref) == expected
+
+
+@pytest.mark.parametrize("ref", ["${WG_file}", "$(FILE)", "${FILE}", "x.screen.json"])
+def test_screen_ref_leaves_macros_and_converted_names(ref):
+    assert screen_ref(ref) == ref
+
+
+def test_screen_ref_does_not_check_existence(tmp_path):
+    missing = tmp_path / "nope" / "Missing.bob"
+    assert screen_ref(str(missing)) == str(missing)[: -len(".bob")] + ".screen.json"
+
+
+def test_screen_ref_takes_first_of_list_and_drops_empty():
+    assert screen_ref(["a.bob", "b.opi"]) == "a.screen.json"
     assert screen_ref([]) is DROP

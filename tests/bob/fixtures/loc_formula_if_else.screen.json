@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "loc_formula_if_else",
+  "metadata": {
+    "title": "loc_formula_if_else",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "0 if {0} > 0 else 1",
+      "bindings": {
+        "0": "CCD:Paddles:Status"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "led",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-led",
+        "props": {
+          "pv": "formula://f-001",
+          "onColor": "#00ff00",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 20,
+          "height": 20
+        }
+      }
+    ]
+  },
+  "macros": []
+}

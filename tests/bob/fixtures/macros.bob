@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <macros>
+    <P>SR:</P>
+    <R>STATION3-KNOB:</R>
+    <HOSTP>$(HOST)</HOSTP>
+    <EPSFile>Mod1EPS.bob</EPSFile>
+  </macros>
+  <width>300</width>
+  <height>200</height>
+  <background_color>
+    <color red="200" green="200" blue="200"></color>
+  </background_color>
+  <widget type="textupdate" version="2.0.0">
+    <name>Macro PV</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>$(P)$(R)VAL</pv_name>
+  </widget>
+  <widget type="embedded" version="2.0.0">
+    <name>Child</name>
+    <x>0</x>
+    <y>30</y>
+    <file>$(EPSFile)</file>
+  </widget>
+</display>

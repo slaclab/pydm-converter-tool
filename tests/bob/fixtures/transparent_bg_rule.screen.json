@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "transparent_bg_rule",
+  "metadata": {
+    "title": "transparent_bg_rule",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "t",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "Transparent: background_color rule ignored on a transparent widget (Phoebus semantics)"
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "text-label",
+        "props": {
+          "text": "o",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "bg",
+            "targetProperty": "backgroundColor",
+            "pvs": [
+              {
+                "name": "SR:A",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == 1",
+                "value": "#ff0000"
+              }
+            ],
+            "default": "#ffffff"
+          }
+        ]
+      },
+      {
+        "id": "w-004",
+        "type": "text-label",
+        "props": {
+          "text": "b",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-002",
+            "name": "bg",
+            "targetProperty": "backgroundColor",
+            "pvs": [
+              {
+                "name": "SR:A",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == 1",
+                "value": "#ff0000"
+              }
+            ],
+            "default": "#ffffff"
+          }
+        ],
+        "warnings": [
+          "Both rules: unsupported rule target transparent"
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

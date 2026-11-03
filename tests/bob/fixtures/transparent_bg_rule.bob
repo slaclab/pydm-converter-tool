@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Transparent</name>
+    <x>0</x>
+    <y>0</y>
+    <text>t</text>
+    <rules>
+      <rule name="bg" prop_id="background_color" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Opaque</name>
+    <x>0</x>
+    <y>30</y>
+    <text>o</text>
+    <transparent>false</transparent>
+    <rules>
+      <rule name="bg" prop_id="background_color" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Both rules</name>
+    <x>0</x>
+    <y>60</y>
+    <text>b</text>
+    <rules>
+      <rule name="bg" prop_id="background_color" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+      <rule name="tr" prop_id="transparent" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value>false</value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+</display>
