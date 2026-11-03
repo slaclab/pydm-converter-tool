@@ -140,12 +140,20 @@ def test_screen_ref_rewrites_to_screen_json():
     assert screen_ref("Collimator/Widget.ui") == "Collimator/Widget.screen.json"
     # a PyDM Python display (a converted menu-mux screen around menu.ui)
     assert screen_ref("sub/menu.py") == "sub/menu.screen.json"
+    # suffixes match in any case; the stem keeps its case
+    assert screen_ref("panel.EDL") == "panel.screen.json"
+    assert screen_ref("Sub/Panel.UI") == "Sub/Panel.screen.json"
+    assert screen_ref("menu.PY") == "menu.screen.json"
+    # Windows separators -> "/"
+    assert screen_ref("sub\\Panel.Edl") == "sub/Panel.screen.json"
     # filenames stringlist -> first, rewritten
     assert screen_ref(["a.ui", "b.ui"]) == "a.screen.json"
     # extensionless PyDM related-display target -> append
     assert screen_ref("collimator") == "collimator.screen.json"
     # already-converted / macro refs left sensible
     assert screen_ref("x.screen.json") == "x.screen.json"
+    assert screen_ref("x.SCREEN.JSON") == "x.SCREEN.JSON"
     assert screen_ref("${SCREEN}") == "${SCREEN}"
+    assert screen_ref("$(SCREEN)") == "$(SCREEN)"
     # empty list drops
     assert screen_ref([]) is DROP
