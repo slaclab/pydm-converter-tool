@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:canopy:color-scheme:1",
+  "title": "Canopy Color Scheme",
+  "description": "canopy-color-scheme/1: a facility color scheme layered on canopy-default. Roles merge per role and per mode; an import value of null deletes an inherited mapping. Colors are canonicalised and import targets resolved when the scheme is flattened, not by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "extends": { "const": "canopy-default" },
+    "roles": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/Name" },
+      "additionalProperties": { "$ref": "#/$defs/RoleValue" }
+    },
+    "import": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phoebus": { "$ref": "#/$defs/ImportMap" },
+        "edm": { "$ref": "#/$defs/ImportMap" }
+      }
+    }
+  },
+  "$defs": {
+    "Name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "Hex": { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+    "Alias": {
+      "description": "A reference to another role: '@' followed by a 1-64 character role name.",
+      "type": "string",
+      "pattern": "^@.{1,64}$"
+    },
+    "Color": { "anyOf": [{ "$ref": "#/$defs/Hex" }, { "$ref": "#/$defs/Alias" }] },
+    "RoleValue": {
+      "description": "One color for both modes, or a per-mode object whose omitted modes are inherited.",
+      "anyOf": [
+        { "$ref": "#/$defs/Color" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "light": { "$ref": "#/$defs/Color" },
+            "dark": { "$ref": "#/$defs/Color" },
+            "phoebus": {
+              "description": "The Phoebus color this role restyles: on import the role is emitted iff the screen color equals this value.",
+              "$ref": "#/$defs/Hex"
+            }
+          }
+        }
+      ]
+    },
+    "ImportMap": {
+      "description": "Maps a source color name to a role name, or to a slot object choosing the role per source property; null deletes an inherited mapping.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/Name" },
+      "additionalProperties": {
+        "anyOf": [{ "$ref": "#/$defs/Name" }, { "type": "null" }, { "$ref": "#/$defs/SlotImport" }]
+      }
+    },
+    "SlotImport": {
+      "description": "A slot-aware import: 'role' is the default role; every other key is a source property name (e.g. background_color) mapped to the role used for that property.",
+      "type": "object",
+      "required": ["role"],
+      "properties": { "role": { "$ref": "#/$defs/Name" } },
+      "propertyNames": { "$ref": "#/$defs/Name" },
+      "additionalProperties": { "$ref": "#/$defs/Name" }
+    }
+  }
+}

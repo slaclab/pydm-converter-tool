@@ -36,7 +36,7 @@ dynamic = ["version"]
 include = ["pydmconverter", "pydmconverter.*", "app", "app.*"]
 
 [tool.setuptools.package-data]
-pydmconverter = ["launch_gui.sh", "ir/data/*.json", "ir/data/widget-registry/*.json"]
+pydmconverter = ["launch_gui.sh", "ir/data/*.json", "ir/data/schemes/*.json", "ir/data/widget-registry/*.json"]
 
 [tool.setuptools_scm]
 

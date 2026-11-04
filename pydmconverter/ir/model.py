@@ -32,7 +32,7 @@ from pydmconverter.ir.base import IRModel
 # ints in the JSON while scaled/computed values may be floats.
 Number = Union[int, float]
 
-SchemaVersion = Literal["1.0"]
+SchemaVersion = Literal["1.0", "1.1"]
 ScreenKind = Literal["screen", "template"]
 FormulaKind = Literal["scalar", "timeseries", "waveform"]
 

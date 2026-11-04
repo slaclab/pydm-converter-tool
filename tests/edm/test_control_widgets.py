@@ -17,7 +17,7 @@ def _convert(name: str):
 # ---------------------------------------------------------------------------
 
 
-def test_noedit_textdsp_exponential_format_and_display_bg_suppresses_background():
+def test_noedit_textdsp_exponential_format_and_display_bg_is_transparent():
     label = _convert("textdsp.edl").root.children[0]
     assert label.type == "pv-label"
     assert label.props["pv"] == "${P}:VAL"
@@ -25,7 +25,9 @@ def test_noedit_textdsp_exponential_format_and_display_bg_suppresses_background(
     assert label.props["precision"] == 3
     assert label.props["showUnits"] is True
     assert label.props["foregroundColor"] == "#ffff00"
-    assert "backgroundColor" not in label.props
+    # useDisplayBg: EDM paints no box (the bgColor it writes is not used); said explicitly,
+    # so a viewer does not draw its own readback field under the EDM foreground.
+    assert label.props["backgroundColor"] == "#00000000"
 
 
 def test_noedit_textdsp_decimal_format_normalizes_to_default():
