@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "macros",
+  "metadata": {
+    "title": "macros",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 408,
+      "height": 338
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": "SR:"
+    },
+    {
+      "name": "R",
+      "default": "STATION3-KNOB:"
+    },
+    {
+      "name": "HOSTP",
+      "default": "${HOST}"
+    },
+    {
+      "name": "EPSFile",
+      "default": "Mod1EPS.screen.json"
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 408,
+      "height": 338,
+      "backgroundColor": "#c8c8c8"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 408,
+      "height": 338
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}${R}VAL",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "embedded-display",
+        "props": {},
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 400,
+          "height": 300
+        },
+        "warnings": [
+          "Child: file '$(EPSFile)' is not a file path; dropped"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="action_button" version="3.0.0">
+    <name>Clear</name>
+    <x>0</x>
+    <y>0</y>
+    <text>Go</text>
+    <pv_name>SR:GO</pv_name>
+    <transparent>true</transparent>
+    <actions>
+      <action type="write_pv">
+        <pv_name>$(pv_name)</pv_name>
+        <value>1</value>
+        <description>Write own</description>
+      </action>
+    </actions>
+  </widget>
+  <widget type="action_button" version="3.0.0">
+    <name>Solid</name>
+    <x>0</x>
+    <y>40</y>
+    <text>Go</text>
+    <pv_name>SR:GO</pv_name>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>ClearBool</name>
+    <x>0</x>
+    <y>80</y>
+    <pv_name>SR:B0</pv_name>
+    <transparent>true</transparent>
+    <on_image>$(IMG)/on.png</on_image>
+    <off_image>${IMG}/off.png</off_image>
+  </widget>
+</display>

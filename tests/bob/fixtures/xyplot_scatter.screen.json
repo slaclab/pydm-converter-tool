@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "xyplot_scatter",
+  "metadata": {
+    "title": "xyplot_scatter",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "macros": [
+    {
+      "name": "X",
+      "default": ""
+    },
+    {
+      "name": "Y",
+      "default": ""
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "xy-plot",
+        "props": {
+          "curves": [
+            {
+              "name": "",
+              "x_channel": "${X}",
+              "y_channel": "${Y}",
+              "color": "#ff0000",
+              "lineWidth": 1,
+              "lineStyle": 1,
+              "symbol": "circle",
+              "symbolSize": 7,
+              "traceType": "none",
+              "yAxisName": "y0"
+            }
+          ],
+          "xAxis": {
+            "name": "x",
+            "label": "",
+            "minRange": 10,
+            "maxRange": -10,
+            "autoRange": false,
+            "logMode": false,
+            "grid": true,
+            "visible": true
+          },
+          "yAxes": [
+            {
+              "name": "y0",
+              "label": "",
+              "minRange": -10,
+              "maxRange": 10,
+              "autoRange": false,
+              "logMode": false,
+              "grid": true,
+              "visible": true
+            }
+          ],
+          "showLegend": false
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "height": 300
+        }
+      }
+    ]
+  }
+}

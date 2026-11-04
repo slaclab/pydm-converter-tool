@@ -10,6 +10,24 @@ For more information and a how to guide on PyDM Converter see [the project's web
 
 </p>
 
+## Phoebus .bob and color schemes (`--target react`)
+
+The `--target react` path (the Canopy Screen IR pipeline) accepts Phoebus Display Builder `.bob` files beside EDM
+`.edl` and Qt Designer `.ui`; `convert_to_ir`/`convert_file`/`convert_folder` dispatch on the `.bob` suffix and
+`convert_bytes(data, kind="bob")` takes uploads. Anything the IR cannot express becomes a warning on its node
+(unlowered scripts keep their source in `meta.comment`); only malformed XML raises (`BobParseError`). See
+[`pydmconverter/bob/README.md`](pydmconverter/bob/README.md) for the module layout and the tier vocabulary.
+
+- `--color-def PATH`: a Phoebus `color.def` whose named colors overlay the built-in palette (`.bob` inputs only).
+- `--scheme PATH`: a `canopy-color-scheme/1` facility scheme layered on the vendored `canopy-default`. Named colors
+  the scheme imports (`import.phoebus` for `.bob`, `import.edm` for `.edl`) become `{"$role", "fallback"}` color
+  roles when the role's light value equals the color written today, so output only changes where a viewer can
+  re-theme it. Text and the color under it are then paired: both roles or both literal wherever mixing them would
+  hide the text in a dark theme (a `pair:` note names each change). A screen carrying a role is stamped `schemaVersion: "1.1"`; role-free output is unchanged. Scheme
+  errors are printed and the exit status is non-zero.
+- `canopy-scheme check | survey | from-colordef`: validate a scheme, count the named colors a `.bob` tree uses and
+  what each becomes under a scheme, and seed a scheme from a `color.def`.
+
 ## Contributing to PyDM Converter
 
 Thank you for your interest in contributing to **PyDM Converter**! Your contributions help make the project better for everyone. Below are the guidelines to ensure a smooth and efficient collaboration.

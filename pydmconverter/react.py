@@ -1,4 +1,4 @@
-"""React/Canopy target entry point: dispatch ``.edl``/``.ui`` -> Screen IR JSON.
+"""React/Canopy target entry point: dispatch ``.edl``/``.ui``/``.bob`` -> Screen IR JSON.
 
 This is the ``--target react`` half of the converter. It picks the front-end adapter
 by file suffix and writes ``*.screen.json``. The legacy ``--target pydm`` path
@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Literal
 
+from pydmconverter.bob.ir_adapter import bob_file_to_ir
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.edm.parser_helpers import SearchPaths
 from pydmconverter.ir.emit import to_wire_dict, write_screen_json
@@ -26,7 +27,7 @@ from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 logger = logging.getLogger(__name__)
 
-_ADAPTERS = {".edl": edm_file_to_ir, ".ui": ui_file_to_ir}
+_ADAPTERS = {".edl": edm_file_to_ir, ".ui": ui_file_to_ir, ".bob": bob_file_to_ir}
 SUPPORTED_SUFFIXES = tuple(_ADAPTERS)
 
 
@@ -37,27 +38,31 @@ def convert_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    color_def_path: str | Path | None = None,
     scheme: SchemeResult | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
     display_roots: SearchPaths = None,
 ) -> ScreenIR:
-    """Parse an ``.edl`` or ``.ui`` file into a Screen IR, dispatching by suffix.
+    """Parse an ``.edl``, ``.ui`` or ``.bob`` file into a Screen IR, dispatching by suffix.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it is located via (in order)
     the ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
-    ``scheme`` (``.edl`` inputs) is a flattened colour scheme whose imported names
-    (``import.edm``) become colour roles. The result is stamped ``schema_version`` ``"1.1"`` iff it carries a
+    ``color_def_path`` (``.bob`` inputs only) names a Phoebus ``color.def`` whose entries
+    overlay the built-in named colours; when omitted only the built-in names resolve.
+    ``scheme`` (``.edl`` and ``.bob`` inputs) is a flattened colour scheme whose imported names
+    (``import.edm`` / ``import.phoebus``) become colour roles. The result is stamped ``schema_version`` ``"1.1"`` iff it carries a
     role (:func:`pydmconverter.scheme.stamp_schema_version`); it is never validated here.
 
     ``search_paths`` (``.edl`` inputs only) are extra directories (a single directory
     or a sequence) searched, like ``EDMDATAFILES``, for symbol files and ``calc.list``.
     ``confine_file_refs`` is for untrusted input: file names taken from it (``.edl``
-    symbol files, a ``.ui`` PyDMTemplateRepeater's ``dataSource``/``templateFilename``)
-    are read only from inside the file's own directory or, for ``.edl``,
-    ``search_paths``, never ``EDMDATAFILES`` (see :func:`convert_bytes`,
-    :func:`edm_file_to_ir` and :func:`ui_file_to_ir`).
+    symbol files, a ``.ui`` PyDMTemplateRepeater's ``dataSource``/``templateFilename``,
+    a ``.bob`` script or execute-action ``file``) are read only from inside the file's
+    own directory or, for ``.edl``, ``search_paths``, never ``EDMDATAFILES`` (see
+    :func:`convert_bytes`, :func:`edm_file_to_ir`, :func:`ui_file_to_ir` and
+    :func:`bob_file_to_ir`).
 
     ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
@@ -80,6 +85,14 @@ def convert_to_ir(
             scheme=scheme,
             display_roots=display_roots,
         )
+    elif suffix == ".bob":
+        ir = bob_file_to_ir(
+            input_path,
+            registry=registry,
+            color_def_path=color_def_path,
+            scheme=scheme,
+            confine_file_refs=confine_file_refs,
+        )
     else:
         ir = ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
     # Stamp here, the one point every entry point flows through, so callers that take the ScreenIR (not the
@@ -91,18 +104,19 @@ def convert_to_ir(
 def convert_bytes(
     data: bytes,
     *,
-    kind: Literal["edl", "ui"],
+    kind: Literal["edl", "ui", "bob"],
     registry: RegistryClient | None = None,
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    color_def_path: str | Path | None = None,
     scheme: SchemeResult | None = None,
     filename: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = True,
     display_roots: SearchPaths = None,
 ) -> ScreenIR:
-    """Parse raw ``.edl``/``.ui`` bytes into a Screen IR, keyed on ``kind``.
+    """Parse raw ``.edl``/``.ui``/``.bob`` bytes into a Screen IR, keyed on ``kind``.
 
     For HTTP callers (the Screen Builder uploads screens as bytes, a browser cannot
     hand the backend a server path), so callers need not spill uploads to disk. The
@@ -138,20 +152,25 @@ def convert_bytes(
     - ``kind="ui"``: a PyDMTemplateRepeater's ``dataSource`` and ``templateFilename``
       must resolve inside the staged file's directory, which holds only the upload,
       so in practice the repeater becomes a placeholder with a warning.
+    - ``kind="bob"``: a ``<script file=...>`` or execute-action script ``file`` is read
+      only if it resolves inside the staged file's directory; any other name is carried
+      as its path, never read, with a warning on its node.
 
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``color_def_path`` (``kind="bob"`` only) names a Phoebus ``color.def`` whose entries
+    overlay the built-in named colours; when omitted only the built-in names resolve.
     ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``kind="edl"`` only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
     omitted they come from the ``PYDMCONVERTER_DISPLAY_ROOTS`` env var.
     """
-    if kind not in ("edl", "ui"):
-        raise ValueError(f"convert_bytes kind must be 'edl' or 'ui', not {kind!r}")
-    # A fixed basename in a private temp dir -> a deterministic screen id (not a
-    # random temp stem), and conversion of identical bytes is byte-stable.
+    if kind not in ("edl", "ui", "bob"):
+        raise ValueError(f"convert_bytes kind must be 'edl', 'ui' or 'bob', not {kind!r}")
+    # Fixed basename in a private temp dir -> a deterministic screen id (not a random
+    # temp stem), and conversion of identical bytes is byte-stable.
     tmp_dir = Path(tempfile.mkdtemp(prefix="pydmconv-"))
     try:
         staged = tmp_dir / _staged_name(filename, kind)
@@ -171,6 +190,7 @@ def convert_bytes(
             color_list_path=color_list_path,
             calc_list_path=calc_list_path,
             site=site,
+            color_def_path=color_def_path,
             scheme=scheme,
             search_paths=search_paths,
             confine_file_refs=confine_file_refs,
@@ -208,14 +228,17 @@ def convert_file(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    color_def_path: str | Path | None = None,
     scheme: SchemeResult | None = None,
     display_roots: SearchPaths = None,
 ) -> Path:
-    """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
+    """Convert one ``.edl``/``.ui``/``.bob`` file to ``*.screen.json``; return the output path.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``color_def_path`` (``.bob`` inputs only) names a Phoebus ``color.def`` whose entries
+    overlay the built-in named colours; when omitted only the built-in names resolve.
     ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
@@ -233,6 +256,7 @@ def convert_file(
             color_list_path=color_list_path,
             calc_list_path=calc_list_path,
             site=site,
+            color_def_path=color_def_path,
             scheme=scheme,
             display_roots=display_roots,
         ),
@@ -249,16 +273,19 @@ def convert_folder(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    color_def_path: str | Path | None = None,
     scheme: SchemeResult | None = None,
     display_roots: SearchPaths = None,
 ) -> tuple[int, list[str]]:
-    """Recursively convert every ``.edl``/``.ui`` under ``input_dir``.
+    """Recursively convert every ``.edl``/``.ui``/``.bob`` under ``input_dir``.
 
     Returns ``(files_found, files_failed)``.
 
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``color_def_path`` (``.bob`` inputs only) names a Phoebus ``color.def`` whose entries
+    overlay the built-in named colours; when omitted only the built-in names resolve.
     ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
@@ -288,6 +315,7 @@ def convert_folder(
                     color_list_path=color_list_path,
                     calc_list_path=calc_list_path,
                     site=site,
+                    color_def_path=color_def_path,
                     scheme=scheme,
                     display_roots=display_roots,
                 ),

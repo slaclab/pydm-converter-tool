@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Call</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>=(pv("SR:X")*60)</pv_name>
+  </widget>
+  <widget type="led" version="2.0.0">
+    <name>Abs</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>=abs(`SR:A`-`SR:B`) &lt;= 0.25</pv_name>
+  </widget>
+  <widget type="led" version="2.0.0">
+    <name>And</name>
+    <x>0</x>
+    <y>60</y>
+    <pv_name>=`$(P)A`&amp;&amp;`$(P)B`</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Quoted</name>
+    <x>0</x>
+    <y>90</y>
+    <pv_name>='SR:Q' + 1</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Concat</name>
+    <x>0</x>
+    <y>120</y>
+    <pv_name>=concat(`SR:S`, "x")</pv_name>
+  </widget>
+  <widget type="rectangle" version="2.0.0">
+    <name>Rule formula</name>
+    <x>0</x>
+    <y>150</y>
+    <rules>
+      <rule name="fvis" prop_id="visible" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value>false</value>
+        </exp>
+        <pv_name>=`SR:A` &gt; 2</pv_name>
+      </rule>
+      <rule name="fbad" prop_id="visible" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value>false</value>
+        </exp>
+        <pv_name>=elementAt(`SR:W`, 0)</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="xyplot" version="2.0.0">
+    <name>Plot</name>
+    <x>0</x>
+    <y>180</y>
+    <traces>
+      <trace>
+        <name>ok</name>
+        <x_pv></x_pv>
+        <y_pv>=`SR:WF` * 2</y_pv>
+      </trace>
+      <trace>
+        <name>bad</name>
+        <y_pv>=concat(`SR:WF`)</y_pv>
+      </trace>
+    </traces>
+  </widget>
+</display>

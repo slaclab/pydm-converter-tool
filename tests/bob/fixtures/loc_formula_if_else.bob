@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Writer</name>
+    <x>0</x>
+    <y>0</y>
+    <text>led</text>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+status = PVUtil.getLong(pvs[0])
+if status > 0:
+    pvs[1].write(0)
+else:
+    pvs[1].write(1)
+]]></text>
+        <pv_name>CCD:Paddles:Status</pv_name>
+        <pv_name>loc://led</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="led" version="2.0.0">
+    <name>LED</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://led</pv_name>
+  </widget>
+</display>

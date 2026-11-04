@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "bool_button_modes",
+  "metadata": {
+    "title": "bool_button_modes",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-button",
+        "props": {
+          "pv": "SR:B0",
+          "readbackPV": "SR:B0",
+          "onLabel": "On",
+          "offLabel": "Off",
+          "buttonType": "toggle",
+          "onColor": "#3cff3c",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-button",
+        "props": {
+          "pv": "SR:B1",
+          "readbackPV": "SR:B1",
+          "pressValue": 1,
+          "releaseValue": 0,
+          "onLabel": "On",
+          "offLabel": "Off",
+          "buttonType": "push",
+          "onColor": "#3cff3c",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 40,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "pv-button",
+        "props": {
+          "pv": "SR:B2",
+          "readbackPV": "SR:B2",
+          "pressValue": 0,
+          "releaseValue": 1,
+          "onLabel": "Open",
+          "offLabel": "Off",
+          "buttonType": "push",
+          "onColor": "#3cff3c",
+          "offColor": "#ff0000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 80,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-005",
+        "type": "pv-button",
+        "props": {
+          "pv": "SR:B3",
+          "readbackPV": "SR:B3",
+          "onLabel": "On",
+          "offLabel": "Off",
+          "buttonType": "toggle",
+          "onColor": "#3cff3c",
+          "offColor": "#3c643c",
+          "onImage": "on.png",
+          "offImage": "off.png"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 120,
+          "width": 100,
+          "height": 30
+        }
+      }
+    ]
+  },
+  "macros": []
+}
