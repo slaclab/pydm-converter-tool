@@ -118,6 +118,7 @@ _XY_TRACE_REF = re.compile(r"\$\(traces\[(\d+)\]\.(x_pv|y_pv|name)\)")
 _SHAPE_TYPES = frozenset({"rectangle", "ellipse", "polygon"})
 _BUTTON_TYPES = frozenset({"action_button", "bool_button"})
 _POINT_TYPES = frozenset({"polygon", "polyline"})
+_PRECISION_TYPES = frozenset({"textupdate", "textentry"})
 # Kinds for props the rule-target table does not name.
 _EXTRA_KINDS = {"show_units": "bool", "numBits": "number", "startBit": "number"}
 # Phoebus FormatOption ordinal (or name) -> pv-label ``format`` vocabulary.
@@ -407,6 +408,7 @@ class _WidgetLowering:
         self._alignment(props)
         self._transparent(props)
         self._format(props)
+        self._precision()
         if wtype in _POINT_TYPES:
             self._points(props)
         if "horizontal" in props and qt_prop_for(wtype, "horizontal"):
@@ -470,6 +472,21 @@ class _WidgetLowering:
         if "format" not in props or qt_prop_for(self.widget.type, "format") is None:
             return
         self.qt_props["displayFormat"] = _FORMAT.get(prop_text(props["format"]).strip().upper(), "default")
+
+    def _precision(self) -> None:
+        """Phoebus ``precision`` -1 means "use the PV"; 0 and up is the widget's own.
+
+        An own precision is written with ``precisionFromPV: false``, since an IR
+        ``precision`` alone means the PV's precision wins."""
+        if self.widget.type not in _PRECISION_TYPES or "precision" not in self.qt_props:
+            return
+        value = self.qt_props["precision"]
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return
+        if value >= 0:
+            self.qt_props["precisionFromPV"] = False
+        else:
+            del self.qt_props["precision"]
 
     def _points(self, props: dict[str, Any]) -> None:
         pts = points(props.get("points"))

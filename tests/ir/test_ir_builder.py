@@ -63,12 +63,13 @@ def test_pv_label_alignment_maps_to_align():
     assert label.props == {"text": "Horizontal Motors", "align": "center"}
 
 
-def test_bool_to_from_pv_true_and_false():
-    true_node = SourceNode(qt_class="PyDMLabel", qt_props={"precisionFromPV": True})
-    assert _screen([true_node]).root.children[0].props == {"precision": "fromPV"}
-    # False defers to explicit precision -> the mapped prop is dropped
-    false_node = SourceNode(qt_class="PyDMLabel", qt_props={"precisionFromPV": False})
-    assert _screen([false_node]).root.children[0].props == {}
+def test_precision_from_pv_is_written_only_when_false():
+    """precisionFromPV: false makes the authored precision binding; true is the default and never written."""
+    for qt_class in ("PyDMLabel", "PyDMLineEdit"):
+        false_node = SourceNode(qt_class=qt_class, qt_props={"precision": 3, "precisionFromPV": False})
+        assert _screen([false_node]).root.children[0].props == {"precision": 3, "precisionFromPV": False}
+        true_node = SourceNode(qt_class=qt_class, qt_props={"precision": 3, "precisionFromPV": True})
+        assert _screen([true_node]).root.children[0].props == {"precision": 3}
 
 
 def test_slider_orientation_transform():
