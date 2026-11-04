@@ -4,6 +4,8 @@
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
     "writeOnPress": { "to": "writeOnEnter" },
+    "precision": { "to": "precision" },
+    "precisionFromPV": { "to": "precisionFromPV", "transform": "falseOnly" },
     "placeholderText": { "to": "placeholder" },
     "alarmSensitiveContent": { "to": "alarmSensitive" },
     "fontSize": { "to": "fontSize" }

@@ -38,7 +38,8 @@ def test_static_text_maps_to_text_label():
 def test_text_input_channel_becomes_pv():
     text_input = _convert().root.children[1]
     assert text_input.type == "pv-text-input"
-    assert text_input.props == {"pv": "${PREFIX}:SETPOINT"}
+    # precision 3 without limitsFromDb is the widget's own (x_text_dsp_obj.cc)
+    assert text_input.props == {"pv": "${PREFIX}:SETPOINT", "precision": 3, "precisionFromPV": False}
 
 
 def test_button_maps_label_and_press_value():

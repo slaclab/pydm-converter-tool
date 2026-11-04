@@ -15,13 +15,13 @@ def test_strip_protocol():
     assert apply_transform("stripProtocol", "formula://f-001") == "formula://f-001"
 
 
-def test_bool_to_from_pv():
-    assert apply_transform("boolToFromPV", True) == "fromPV"
-    assert apply_transform("boolToFromPV", "true") == "fromPV"
-    assert apply_transform("boolToFromPV", 1) == "fromPV"
-    # False defers to the explicit precision prop -> drop
-    assert apply_transform("boolToFromPV", False) is DROP
-    assert apply_transform("boolToFromPV", "false") is DROP
+def test_false_only():
+    assert apply_transform("falseOnly", False) is False
+    assert apply_transform("falseOnly", "false") is False
+    assert apply_transform("falseOnly", 0) is False
+    # True restates the default (the PV's precision) -> drop
+    assert apply_transform("falseOnly", True) is DROP
+    assert apply_transform("falseOnly", "true") is DROP
 
 
 def test_parse_points():

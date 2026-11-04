@@ -40,7 +40,12 @@ def sample_screen() -> ScreenIR:
                 WidgetNode(
                     id="w-002",
                     type="pv-label",
-                    props={"pv": "${PREFIX}:PRESSURE", "precision": "fromPV", "alarmSensitive": True},
+                    props={
+                        "pv": "${PREFIX}:PRESSURE",
+                        "precision": 2,
+                        "precisionFromPV": False,
+                        "alarmSensitive": True,
+                    },
                     geometry=Geometry(x=10, y=20, width=200, height=30),
                     rules=[
                         Rule(

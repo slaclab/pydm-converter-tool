@@ -8,7 +8,7 @@ on an unknown name and the ``test_transforms_cover_registry`` test asserts full
 coverage.
 
 A transform may return :data:`DROP` to signal "omit this prop" (e.g.
-``boolToFromPV(False)`` defers to the explicit ``precision`` prop). The IR builder
+``falseOnly(True)`` leaves the default, PV precision, unsaid). The IR builder
 skips any mapped prop whose transformed value is ``DROP``.
 """
 
@@ -71,9 +71,12 @@ def strip_protocol(value: Any) -> Any:
     return value
 
 
-def bool_to_from_pv(value: Any) -> Any:
-    """``True`` -> ``"fromPV"``; ``False`` -> :data:`DROP` (use explicit precision)."""
-    return "fromPV" if _as_bool(value) else DROP
+def false_only(value: Any) -> Any:
+    """``False`` -> ``False``; ``True`` -> :data:`DROP`.
+
+    ``precisionFromPV: false`` says the authored ``precision`` is binding. An absent
+    flag already means "use the PV", so ``True`` is never written."""
+    return DROP if _as_bool(value) else False
 
 
 def qt_orientation(value: Any) -> Any:
@@ -233,7 +236,7 @@ def parse_points(value: Any) -> Any:
 
 TRANSFORMS: dict[str, Callable[[Any], Any]] = {
     "stripProtocol": strip_protocol,
-    "boolToFromPV": bool_to_from_pv,
+    "falseOnly": false_only,
     "qtOrientation": qt_orientation,
     "qtAlignment": qt_alignment,
     "qtFrameShape": qt_frame_shape,
