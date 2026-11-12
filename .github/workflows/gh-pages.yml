@@ -1,4 +1,4 @@
-# This workflow will publish a new version of the documentation to the gh-pages branch
+# This workflow builds the documentation and publishes it to GitHub Pages.
 
 name: Publish Documentation
 
@@ -8,34 +8,13 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  docs:
     if: ${{ github.repository == 'slaclab/pydm-converter-tool' }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ['3.10']
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
-        with:
-          miniforge-version: latest
-          use-mamba: true
-          python-version: ${{ matrix.python-version }}
-          channels: conda-forge
-          activate-environment: pydm-converter-tool-dev
-          environment-file: environment.yml
-
-      - name: Build Docs
-        shell: bash -l {0}
-        run: |
-          mkdocs build
-
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site/
+    uses: slaclab/swapps-ci-helpers/.github/workflows/docs.yml@afaac9fd67e0b31c887a48c19d9a6b219ea72a8f
+    with:
+      docs-tool: mkdocs
