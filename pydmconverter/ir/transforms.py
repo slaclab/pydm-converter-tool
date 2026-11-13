@@ -137,19 +137,21 @@ def screen_ref(value: Any) -> Any:
 
     Rewrites only the extension, preserving the directory: subdirs share
     basenames (``Collimator/Widget`` vs ``Heater/Widget``), so a basename-only
-    ref would collide. Takes the first of a ``filenames`` stringlist; leaves
-    already-``.screen.json`` and macro-only/empty refs alone.
+    ref would collide. Suffixes match case-insensitively (``Panel.EDL``) and
+    the rest of the ref keeps its case. Takes the first of a ``filenames``
+    stringlist; leaves already-``.screen.json`` and macro-only/empty refs alone.
     """
     if isinstance(value, (list, tuple)):
         value = value[0] if value else DROP
     if value is DROP or not isinstance(value, str) or not value.strip():
         return DROP if value is DROP else value
     ref = value.strip().replace("\\", "/")
-    if ref.endswith(".screen.json"):
+    lowered = ref.lower()
+    if lowered.endswith(".screen.json"):
         return ref
     # X.py is a PyDM Python display, e.g. a converted menu-mux screen around X.ui.
     for ext in (".ui", ".edl", ".py"):
-        if ref.endswith(ext):
+        if lowered.endswith(ext):
             return ref[: -len(ext)] + ".screen.json"
     # Extensionless targets get the extension appended; macro refs can't be
     # rewritten, so leave them.

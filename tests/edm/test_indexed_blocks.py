@@ -171,8 +171,8 @@ def test_shell_command_labels_pair_by_index():
     qt_props = {}
     _fixup_shell_cmd(_obj("shellCmdClass", props), qt_props, [])
     assert qt_props["actions"] == [
-        {"type": "shell_command", "command": "echo a"},
-        {"type": "shell_command", "command": "echo b", "label": "B"},
+        {"type": "execute", "command": "echo a"},
+        {"type": "execute", "command": "echo b", "description": "B"},
     ]
 
 

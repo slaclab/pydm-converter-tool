@@ -965,6 +965,9 @@ def _by_index(value: Any) -> dict[int, str]:
 def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -> Geometry | None:
     """shellCmdClass fixup: command/commandLabel brace blocks -> qt_props["actions"].
 
+    Each command becomes an ``execute{command, description?}`` action (the Screen
+    Builder action shape); the EDM ``commandLabel`` entry becomes ``description``.
+
     (buttonLabel -> text -> label is already handled globally.)
     """
     commands = block_items(obj.properties.get("command"))
@@ -974,9 +977,9 @@ def _fixup_shell_cmd(obj: EDMObject, qt_props: dict[str, Any], warnings: list[st
 
     actions: list[dict[str, Any]] = []
     for index, command in commands:
-        action: dict[str, Any] = {"type": "shell_command", "command": normalize_macro_syntax(command)}
+        action: dict[str, Any] = {"type": "execute", "command": normalize_macro_syntax(command)}
         if index in labels:
-            action["label"] = normalize_macro_syntax(labels[index])
+            action["description"] = normalize_macro_syntax(labels[index])
         actions.append(action)
 
     qt_props["actions"] = actions
