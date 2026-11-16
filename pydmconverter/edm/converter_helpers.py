@@ -483,7 +483,7 @@ def get_arc_widget_type(obj: EDMObject) -> type:
         return PyDMDrawingArc
 
 
-def widgets_overlap(widget1, widget2) -> bool:
+def widgets_overlap(widget1, widget2, widget2_inset: float = 0) -> bool:
     """
     Check if two widgets overlap based on their geometry (x, y, width, height).
 
@@ -491,6 +491,8 @@ def widgets_overlap(widget1, widget2) -> bool:
     ----------
     widget1, widget2 : PyDM widget instances
         Widgets with x, y, width, height attributes
+    widget2_inset : float, optional
+        Amount to inset widget2's bounding box on each side before checking overlap.
 
     Returns
     -------
@@ -500,8 +502,8 @@ def widgets_overlap(widget1, widget2) -> bool:
     x1, y1 = widget1.x, widget1.y
     w1, h1 = widget1.width, widget1.height
 
-    x2, y2 = widget2.x, widget2.y
-    w2, h2 = widget2.width, widget2.height
+    x2, y2 = widget2.x + widget2_inset, widget2.y + widget2_inset
+    w2, h2 = max(0, widget2.width - 2 * widget2_inset), max(0, widget2.height - 2 * widget2_inset)
 
     if x1 + w1 <= x2 or x2 + w2 <= x1:
         return False
@@ -536,7 +538,11 @@ def handle_button_polygon_overlaps(pydm_widgets):
 
     for btn_idx, button in buttons:
         for poly_idx, polygon in polygons:
-            if widgets_overlap(button, polygon):
+            # PyDM's polygon widget bounds include the pen offset, but the visible
+            # stroke reaches only half the pen width past the EDM points. Ignore the
+            # extra half-pen on each side so adjacent buttons are not treated as overlays.
+            pen_inset = max(0, polygon.penWidth or 0) / 2
+            if widgets_overlap(button, polygon, widget2_inset=pen_inset):
                 logger.info(f"Detected overlap: {button.name} overlaps with {polygon.name}")
                 button.flat = True
 
