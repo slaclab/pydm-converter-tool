@@ -6,4 +6,4 @@ on:
 
 jobs:
   lint:
-    uses: slaclab/swapps-ci-helpers/.github/workflows/python-pre-commit.yml@afaac9fd67e0b31c887a48c19d9a6b219ea72a8f
+    uses: slaclab/swapps-ci-helpers/.github/workflows/python-pre-commit.yml@9bd3f16145f87d30ed28c044c8e51121529840e0
