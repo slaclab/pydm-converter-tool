@@ -151,6 +151,13 @@ class WidgetNode(IRModel):
     # field (D12), so the few screen-level notes the builder emits (off-canvas
     # widgets, undeclared screen size, renamed macros) ride on the root canvas.
     warnings: list[str] = Field(default_factory=list)
+    # Props the conversion discarded, a diagnostic that is excluded from every dump
+    # (never on the wire or in a golden). First the source prop names the front-end
+    # recorded (SourceNode.dropped_props), in its order; then the Qt props the
+    # builder dropped because the widget's registry entry has no qtPropMap entry
+    # for them. A loss the front-end also explains in ``warnings`` may appear in
+    # both: warnings are prose for people, this is the machine-readable list.
+    dropped_props: list[str] = Field(default_factory=list, exclude=True)
 
 
 class ScreenIR(IRModel):

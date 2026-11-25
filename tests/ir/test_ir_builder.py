@@ -502,3 +502,36 @@ def test_literal_dollar_brace_sharing_a_macro_name_is_warned():
         "Literal ${NAME} text (not a macro in the source, e.g. a shell variable) shares its name with a macro, "
         "so the runtime substitutes the macro's value into it: LOCA"
     ]
+
+
+def test_builder_records_unmapped_qt_props():
+    """A Qt prop with no qtPropMap entry is dropped by the builder, and recorded after the front-end's drops."""
+    node = SourceNode(
+        qt_class="PyDMLabel",
+        qt_props={"channel": "ca://PV:A", "notARealQtProp": 1, "sourceOnlyKey": 2},
+        geometry=(0, 0, 10, 10),
+        dropped_props=["sourceOnlyKey"],
+    )
+    screen = _screen([node], source_type="ui-converter")
+    (label,) = screen.root.children
+    assert label.dropped_props == ["sourceOnlyKey", "notARealQtProp"]
+
+
+def test_unknown_widget_carries_only_the_front_end_drops():
+    """An unknown-widget keeps every prop in originalProps, so the builder drops none of its own."""
+    node = SourceNode(
+        qt_class="NoSuchWidget",
+        qt_props={"notARealQtProp": 1},
+        dropped_props=["sourceOnlyKey"],
+    )
+    (widget,) = _screen([node]).root.children
+    assert widget.type == "unknown-widget"
+    assert widget.dropped_props == ["sourceOnlyKey"]
+
+
+def test_dropped_props_never_reach_the_wire():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "ca://PV:A", "notARealQtProp": 1})
+    screen = _screen([node])
+    assert screen.root.children[0].dropped_props == ["notARealQtProp"]
+    assert "dropped" not in to_json(screen).lower()
+    assert validate_screen_json(to_wire_dict(screen)) == []

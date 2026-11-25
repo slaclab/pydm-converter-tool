@@ -26,9 +26,10 @@ from __future__ import annotations
 import json
 import logging
 import re
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from pydmconverter.edm.edm_qt import (
     EDM_DATA_PV_ATTRS,
@@ -399,7 +400,7 @@ def _alarm_rules(
     A CALC alarmPv tracks the highest severity of its PV arguments, and a LOC one
     (or a calc with no PV argument) stays NO_ALARM: its rule has no PVs and no
     conditions, only the NO_ALARM colour (:func:`_severity_channels`), which
-    :func:`_object_to_source` makes the static colour unless a colour rule joins it.
+    :func:`_convert_object` makes the static colour unless a colour rule joins it.
     """
     alarm_pv = obj.properties.get("alarmPv")
     if isinstance(alarm_pv, list):
@@ -660,6 +661,9 @@ def _color_rules(
         # static colour, never re-evaluated) when the alarm border is on.
         driven_attrs = tuple(attr for attr in driven_attrs if attr != "fgColor")
     at_zero = _RULE_COLOR_AT_ZERO.get(name, ())
+    # Resolved up front: the colour PV belongs to the colour model even when no
+    # colour on this object is a rule (EDM then ignores it), so it is no dropped prop.
+    driver = _driver_channel(obj, drivers)
     rules: list[RuleSpec] = []
     notes: list[str] = []
     for edm_attr, value in obj.properties.items():
@@ -675,7 +679,7 @@ def _color_rules(
             if fixed is not None:
                 qt_props[qt_prop] = fixed
             continue
-        channel = _driver_channel(obj, drivers) if edm_attr in driven_attrs else None
+        channel = driver if edm_attr in driven_attrs else None
         # No channel: EDM shows the static colour. No target: the widget drops
         # this colour prop altogether (the static colour too).
         target = _mapped_color_target(qt_class, qt_prop, registry) if channel else None
@@ -709,8 +713,9 @@ def _color_rules(
 
 
 # Classes whose widget can lack the colour props EDM paints them in. The builder
-# drops a prop the widget's registry entry doesn't map without a word, so the
-# adapter says so (_dropped_colors).
+# records a prop the widget's registry entry doesn't map in the node's
+# dropped_props; for these classes the adapter also says so in a warning
+# (_dropped_colors).
 _COLOR_CHECKED_CLASSES = {"activemenubuttonclass"}
 
 
@@ -800,6 +805,8 @@ def _null_color_rule(
     null_pv = obj.properties.get(roles.null) if roles.null else None
     control = roles.data_attr(obj.properties)
     condition = _NULL_CONDITIONS.get(str(obj.properties.get("nullCondition") or "nullEqCtl"))
+    # Read even when unused: with no nullPv or a disabled condition EDM never shows it, so it is no loss.
+    obj.properties.get("nullColor")
     if not null_pv or control is None or condition is None:
         return []
     if obj.properties.get("useAlarmBorder") and obj.properties.get("fgAlarm"):
@@ -833,7 +840,7 @@ def _null_color_rule(
 
 
 # Per-class fixup: keyed by lowercased EDM class name. Runs after the generic
-# prop loop (and color/dynamic-flag handling) in ``_object_to_source``. May
+# prop loop (and color/dynamic-flag handling) in ``_convert_object``. May
 # mutate ``qt_props``/``warnings`` in place and may return a geometry override
 # (bbox derived from raw properties) to replace the object's header geometry.
 _CLASS_FIXUPS: dict[str, Callable[[EDMObject, dict[str, Any], list[str]], Geometry | None]] = {}
@@ -900,7 +907,10 @@ def _fixup_line(obj: EDMObject, qt_props: dict[str, Any], warnings: list[str]) -
     qt_props["arrowStartPoint"] = arrows in ("from", "both")
     qt_props["arrowEndPoint"] = arrows in ("to", "both")
 
-    if obj.properties.get("fill") or obj.properties.get("closePolygon"):
+    # Read both keys (no short-circuit): each one decides the closed shape, so
+    # neither is a dropped prop when the other is also set.
+    fill, close_polygon = obj.properties.get("fill"), obj.properties.get("closePolygon")
+    if fill or close_polygon:
         qt_props["closePolygon"] = True
 
     return geometry_override
@@ -1460,9 +1470,82 @@ _CLASS_FIXUPS.update(
 )
 
 
+class _ReadTrackingProps(dict):
+    """A dict that remembers which keys were looked up (``get``, ``[]``, ``in``).
+
+    Iteration (``items()``, ``dict(...)``) is not a read: the generic mapping loop
+    walks every key, and only :data:`EDM_TO_QT_PROP` decides whether it is used.
+    """
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        super().__init__(data)
+        self.read: set[str] = set()
+
+    def __getitem__(self, key: str) -> Any:
+        self.read.add(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        self.read.add(key)
+        return super().get(key, default)
+
+    def __contains__(self, key: object) -> bool:
+        self.read.add(key)  # type: ignore[arg-type]
+        return super().__contains__(key)
+
+
+@contextmanager
+def _tracking_reads(obj: EDMObject) -> Iterator[_ReadTrackingProps]:
+    """Swap ``obj.properties`` for a read-tracking view for the duration of the block.
+
+    Re-entrant: an already-tracked object keeps its tracker, so an outer scope sees
+    the reads of every nested call. The original dict is always restored.
+    """
+    if isinstance(obj.properties, _ReadTrackingProps):
+        yield obj.properties
+        return
+    original = obj.properties
+    tracked = _ReadTrackingProps(original)
+    obj.properties = tracked
+    try:
+        yield tracked
+    finally:
+        obj.properties = original
+
+
+# Keys that carry no display meaning of their own, so they are never recorded as
+# dropped: array counts, which size the arrays read with them (block_items), and
+# isSymbol and symbolChannel, which are not in the file at all: the parser stamps
+# them on every leaf of a symbol (add_symbol_properties), and the symbol's own
+# controlPvs and state ranges are what the state rule reads.
+_STRUCTURAL_EDM_KEYS = frozenset({"numDsps", "numPvs", "numCmds", "numPoints", "isSymbol", "symbolChannel"})
+
+
 def _object_to_source(
     obj: EDMObject, colors: dict[str, Any] | None = None, *, registry: RegistryClient | None = None
 ) -> SourceNode:
+    """Normalize one EDM object, recording the props it drops in ``dropped_props``.
+
+    Every ``obj.properties`` lookup during the call (class resolution, channel
+    attrs, alarm/pip/colour rules, class fixups) is tracked; a key that is not in
+    :data:`EDM_TO_QT_PROP`, never read and not structural
+    (:data:`_STRUCTURAL_EDM_KEYS`) is a loss. An EDM object with no Qt class
+    records nothing: its unknown-widget keeps every raw prop. A caller that reads
+    further keys (visibility) enters :func:`_tracking_reads` around this call so
+    those reads count too.
+    """
+    with _tracking_reads(obj) as tracked:
+        node = _convert_object(obj, colors, registry=registry)
+        if node.qt_class is not None:
+            node.dropped_props = [
+                key
+                for key in tracked
+                if key not in EDM_TO_QT_PROP and key not in tracked.read and key not in _STRUCTURAL_EDM_KEYS
+            ]
+    return node
+
+
+def _convert_object(obj: EDMObject, colors: dict[str, Any] | None, *, registry: RegistryClient | None) -> SourceNode:
     qt_class = resolve_qt_class(obj.name.lower(), obj.properties)
     qt_props: dict[str, Any] = {}
     warnings: list[str] = []
@@ -1752,8 +1835,12 @@ def edm_group_to_source_nodes(
             if obj.name.lower() in skip_classes:
                 continue
             try:
-                node = _object_to_source(obj, colors, registry=registry)
-                own_vis = _vis_tuple(obj.properties, node.warnings)
+                with _tracking_reads(obj):
+                    # Visibility is read first so its keys count as used by the node.
+                    vis_warnings: list[str] = []
+                    own_vis = _vis_tuple(obj.properties, vis_warnings)
+                    node = _object_to_source(obj, colors, registry=registry)
+                node.warnings.extend(vis_warnings)
                 if own_vis is not None:
                     # Append: the node may already carry alarm-color rules.
                     node.rules.append(_visibility_rule_spec([own_vis]))
