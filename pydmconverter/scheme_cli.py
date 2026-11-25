@@ -1,7 +1,8 @@
-"""``canopy-scheme``: check a color scheme file, and survey the named colors a panel corpus uses.
+"""``pydmconverter-scheme``: check a color scheme file, and survey the named colors a panel corpus uses.
 
 ``check <file>`` flattens the scheme the way the converter does and prints every validation error and every role
-that has no dark value; it exits 1 when there is any.
+that has no dark value; it exits 1 when there is any. It is moving to Canopy with the scheme flattener itself
+(Canopy owns the scheme contract); it keeps working here until then.
 
 ``survey <dir>... [--scheme <file>] [--corpus-root <dir>] [--exclude <glob>]... [--deployed-prefix <path>]`` counts
 the ``<color>`` elements of the ``.bob`` files under the directories, per ``(name, slot, saved RGB)``, and says what
@@ -175,6 +176,7 @@ def survey(
 
 
 def check(path: Path, out) -> int:
+    """Validate a scheme file. Moving to Canopy with the flattener; still works here for now."""
     result = load_scheme(path)
     errors = result.meta["errors"]
     no_dark = sorted(
@@ -315,9 +317,9 @@ def from_colordef(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="canopy-scheme", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="pydmconverter-scheme", description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    p_check = sub.add_parser("check", help="validate a scheme file")
+    p_check = sub.add_parser("check", help="validate a scheme file (moving to Canopy; still works here for now)")
     p_check.add_argument("file", type=Path)
     p_survey = sub.add_parser("survey", help="count the named colors a corpus uses")
     p_survey.add_argument("dirs", nargs="+", type=Path)
@@ -345,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     scheme = load_scheme(args.scheme) if args.scheme is not None else None
     if scheme is not None and scheme.meta["errors"]:
-        print(f"{args.scheme}: scheme has errors; run 'canopy-scheme check'", file=sys.stderr)
+        print(f"{args.scheme}: scheme has errors; run 'pydmconverter-scheme check'", file=sys.stderr)
         return 1
     survey(
         args.dirs,
