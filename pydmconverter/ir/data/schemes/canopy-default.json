@@ -1,0 +1,128 @@
+{
+  "id": "canopy-default",
+  "roles": {
+    "Transparent": {
+      "light": "#ffffff00",
+      "dark": "#16161600"
+    },
+    "OK": {
+      "light": "#24a148",
+      "dark": "#42be65"
+    },
+    "MINOR": {
+      "light": "#f1c21b",
+      "dark": "#f1c21b"
+    },
+    "MAJOR": {
+      "light": "#da1e28",
+      "dark": "#ff8389"
+    },
+    "INVALID": {
+      "light": "#a56eff",
+      "dark": "#be95ff"
+    },
+    "DISCONNECTED": {
+      "light": "#6f6f6f",
+      "dark": "#8d8d8d"
+    },
+    "Text": {
+      "light": "#161616",
+      "dark": "#f4f4f4"
+    },
+    "ActiveText": {
+      "light": "#0f62fe",
+      "dark": "#78a9ff"
+    },
+    "Background": {
+      "light": "#ffffff",
+      "dark": "#161616"
+    },
+    "Read_Background": {
+      "light": "#f4f4f4",
+      "dark": "#262626"
+    },
+    "Write_Background": {
+      "light": "#edf5ff",
+      "dark": "#001d6c"
+    },
+    "Button_Background": {
+      "light": "#e0e0e0",
+      "dark": "#6a6a6a"
+    },
+    "Grid": {
+      "light": "#c6c6c6",
+      "dark": "#757575"
+    },
+    "Grid_Fill": {
+      "light": "#c6c6c6",
+      "dark": "#2e2e2e"
+    },
+    "Display_Background": {
+      "light": "#ffffff",
+      "dark": "#161616"
+    },
+    "On": {
+      "light": "#24a148",
+      "dark": "#42be65"
+    },
+    "Off": {
+      "light": "#0e6027",
+      "dark": "#044317"
+    },
+    "Header_Background": {
+      "light": "#393939",
+      "dark": "#525252"
+    },
+    "Header_ForeGround": {
+      "light": "#ffffff",
+      "dark": "#f4f4f4"
+    },
+    "Attention": {
+      "light": "#ff832b",
+      "dark": "#ff832b"
+    },
+    "STOP": {
+      "light": "#da1e28",
+      "dark": "#ff8389"
+    }
+  },
+  "import": {
+    "phoebus": {
+      "Transparent": "Transparent",
+      "OK": "OK",
+      "MINOR": "MINOR",
+      "MAJOR": "MAJOR",
+      "INVALID": "INVALID",
+      "DISCONNECTED": "DISCONNECTED",
+      "Text": "Text",
+      "ActiveText": "ActiveText",
+      "Background": "Background",
+      "Read_Background": "Read_Background",
+      "Write_Background": "Write_Background",
+      "Button_Background": "Button_Background",
+      "Grid": {
+        "role": "Grid",
+        "background_color": "Grid_Fill"
+      },
+      "Display_Background": "Display_Background",
+      "On": "On",
+      "Off": "Off",
+      "Header_Background": "Header_Background",
+      "Header_ForeGround": "Header_ForeGround",
+      "Attention": "Attention",
+      "STOP": "STOP"
+    },
+    "edm": {
+      "Disconn/Invalid": "DISCONNECTED",
+      "GLOBAL canvas": "Display_Background",
+      "GLOBAL title": "Header_Background",
+      "Monitor: NORMAL": "OK",
+      "Monitor: MAJOR": "MAJOR",
+      "Mon: MAJOR/unack": "MAJOR",
+      "Monitor: MINOR": "MINOR",
+      "Mon: MINOR/unack": "MINOR",
+      "Exit/Quit/Kill": "STOP",
+      "invisible": "Transparent"
+    }
+  }
+}

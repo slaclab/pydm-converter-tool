@@ -19,8 +19,9 @@ from typing import Literal
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.edm.parser_helpers import SearchPaths
 from pydmconverter.ir.emit import write_screen_json
-from pydmconverter.ir.model import ScreenIR
+from pydmconverter.ir.model import ScreenIR, WidgetNode
 from pydmconverter.ir.registry import RegistryClient
+from pydmconverter.scheme import SchemeResult, contains_color_role
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ def convert_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    scheme: SchemeResult | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
     display_roots: SearchPaths = None,
@@ -45,6 +47,9 @@ def convert_to_ir(
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it is located via (in order)
     the ``EDMCOLORFILE`` env var, ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``scheme`` (``.edl`` inputs) is a flattened colour scheme whose imported names
+    (``import.edm``) become colour roles. The result is stamped ``schema_version`` ``"1.1"`` iff it carries a
+    role (:func:`pydmconverter.scheme.stamp_schema_version`); it is never validated here.
 
     ``search_paths`` (``.edl`` inputs only) are extra directories (a single directory
     or a sequence) searched, like ``EDMDATAFILES``, for symbol files and ``calc.list``.
@@ -64,7 +69,7 @@ def convert_to_ir(
     if adapter is None:
         raise ValueError(f"--target react supports {', '.join(SUPPORTED_SUFFIXES)} inputs, not {suffix!r}")
     if suffix == ".edl":
-        return edm_file_to_ir(
+        ir = edm_file_to_ir(
             input_path,
             registry=registry,
             color_list_path=color_list_path,
@@ -72,9 +77,35 @@ def convert_to_ir(
             site=site,
             search_paths=search_paths,
             confine_file_refs=confine_file_refs,
+            scheme=scheme,
             display_roots=display_roots,
         )
-    return ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
+    else:
+        ir = ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
+    # Stamp here, the one point every entry point flows through, so callers that take the ScreenIR (not the
+    # written JSON) see the right version. Role-free screens keep "1.0" and are byte-identical to before.
+    ir.schema_version = "1.1" if _has_color_role(ir) else "1.0"
+    return ir
+
+
+def _has_color_role(ir: ScreenIR) -> bool:
+    """Whether the screen carries a well-formed ``ColorRole``: what :func:`pydmconverter.scheme.stamp_schema_version`
+    decides on the wire doc, read off the model instead, so stamping does not serialise the screen a second time.
+
+    A role can sit only in a widget's ``props`` (at any depth), in a rule's condition values or in a rule's
+    ``default``: every other field of the model is typed as a string, a number or a model of those, so this walk
+    sees everything the wire doc would show.
+    """
+
+    def walk(node: WidgetNode) -> bool:
+        if contains_color_role(node.props):
+            return True
+        for rule in node.rules:
+            if contains_color_role(rule.default) or any(contains_color_role(c.value) for c in rule.conditions):
+                return True
+        return any(walk(child) for child in node.children)
+
+    return walk(ir.root)
 
 
 def convert_bytes(
@@ -85,6 +116,7 @@ def convert_bytes(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    scheme: SchemeResult | None = None,
     filename: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = True,
@@ -130,6 +162,7 @@ def convert_bytes(
     ``color_list_path`` (``kind="edl"`` only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``kind="edl"`` only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
@@ -158,6 +191,7 @@ def convert_bytes(
             color_list_path=color_list_path,
             calc_list_path=calc_list_path,
             site=site,
+            scheme=scheme,
             search_paths=search_paths,
             confine_file_refs=confine_file_refs,
             display_roots=display_roots,
@@ -194,6 +228,7 @@ def convert_file(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    scheme: SchemeResult | None = None,
     display_roots: SearchPaths = None,
 ) -> Path:
     """Convert one ``.edl``/``.ui`` file to ``*.screen.json``; return the output path.
@@ -201,6 +236,7 @@ def convert_file(
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
@@ -217,6 +253,7 @@ def convert_file(
             color_list_path=color_list_path,
             calc_list_path=calc_list_path,
             site=site,
+            scheme=scheme,
             display_roots=display_roots,
         ),
         out,
@@ -232,6 +269,7 @@ def convert_folder(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    scheme: SchemeResult | None = None,
     display_roots: SearchPaths = None,
 ) -> tuple[int, list[str]]:
     """Recursively convert every ``.edl``/``.ui`` under ``input_dir``.
@@ -241,6 +279,7 @@ def convert_folder(
     ``color_list_path`` (``.edl`` inputs only) points at an EDM ``colors.list`` palette
     used to resolve "index N" color props; when omitted it falls back to the
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
+    ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
 
     ``display_roots`` (``.edl`` inputs only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
@@ -269,6 +308,7 @@ def convert_folder(
                     color_list_path=color_list_path,
                     calc_list_path=calc_list_path,
                     site=site,
+                    scheme=scheme,
                     display_roots=display_roots,
                 ),
                 out,

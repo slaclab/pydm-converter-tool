@@ -1,0 +1,4 @@
+# The vendored Canopy contracts under pydmconverter/ir/data are pinned by sha256
+# (tests/ir/test_vendored_data.py, tests/test_scheme.py) and must check out byte
+# for byte on every platform, including Windows runners with core.autocrlf=true.
+pydmconverter/ir/data/** text eol=lf

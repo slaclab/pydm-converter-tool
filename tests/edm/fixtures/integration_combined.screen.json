@@ -166,6 +166,7 @@
         "props": {
           "pv": "${P}:VAL",
           "precision": 2,
+          "showUnits": false,
           "format": "default",
           "foregroundColor": "#ffff00",
           "backgroundColor": "#000000"

@@ -29,8 +29,10 @@ import re
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import TYPE_CHECKING, Any, Callable, Iterator
 
+from pydmconverter.colors import RGBA, ColorContext, ColorValue, named_color, rgba_to_hex
+from pydmconverter.pairing import NamedColor, pair_text_colors
 from pydmconverter.edm.edm_qt import (
     EDM_DATA_PV_ATTRS,
     EDM_TEXT_VALUE_CLASSES,
@@ -62,6 +64,9 @@ from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
+
+if TYPE_CHECKING:
+    from pydmconverter.scheme import SchemeResult
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +235,63 @@ def color_info_to_hex(color_info: dict[str, Any] | None, color_data: dict[str, A
         blue = min(255, max(0, int(blue * scale)))
 
     return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def edm_color_name(value: Any, color_data: dict[str, Any] | None) -> str | None:
+    """The ``colors.list`` name of an ``"index N"`` colour, or ``None``.
+
+    ``"rgb ..."`` literals, unknown indices and a missing palette have no name.
+    """
+    if not isinstance(value, str):
+        return None
+    match = re.fullmatch(r"index\s+(\d+)", value.strip())
+    if match is None:
+        return None
+    entry = ((color_data or {}).get("static") or {}).get(int(match.group(1)))
+    name = entry.get("name") if isinstance(entry, dict) else None
+    return name if isinstance(name, str) and name else None
+
+
+def edm_color_value(
+    value: Any, color_data: dict[str, Any] | None, slot: str, color: ColorContext | None
+) -> ColorValue | None:
+    """The IR value of an EDM colour prop: :func:`edm_color_to_hex`, or a scheme role.
+
+    With a :class:`ColorContext` (``import_kind="edm"``), a palette name the scheme imports
+    becomes ``{"$role", "fallback"}`` under the parity rule of
+    :func:`~pydmconverter.colors.named_color`; the fallback is the hex written without a
+    scheme. ``slot`` is the EDM attribute, named in parity notes. ``None`` when unresolvable.
+    """
+    hex_color = edm_color_to_hex(value, color_data)
+    if hex_color is None or color is None:
+        return hex_color
+    return named_color(edm_color_name(value, color_data), _hex_rgba(hex_color), slot, color)
+
+
+def _hex_rgba(hex_color: str) -> RGBA:
+    """``"#rrggbb"`` (what :func:`edm_color_to_hex` returns) -> opaque ``(r, g, b, 255)``."""
+    return (int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16), 255)
+
+
+def edm_named_color(value: Any, color_data: dict[str, Any] | None, slot: str) -> NamedColor | None:
+    """``(palette name, RGBA, slot)`` of an ``"index N"`` colour prop, or ``None`` for an unnamed or unresolvable one.
+
+    What the text/ground pairing (:func:`~pydmconverter.pairing.pair_text_colors`) is told about a
+    colour prop: the name, the RGBA and the slot that :func:`edm_color_value` gave :func:`named_color`,
+    so a literal the parity rule kept can still become its role beside a role ground, and the
+    parity note it recorded is the one waived.
+    """
+    name = edm_color_name(value, color_data)
+    hex_color = edm_color_to_hex(value, color_data) if name is not None else None
+    if hex_color is None:
+        return None
+    return name, _hex_rgba(hex_color), slot
+
+
+def _holds_color(value: Any, rgb: RGBA) -> bool:
+    """Whether a prop still carries the colour ``rgb``: as the literal hex, or as a role with that fallback."""
+    literal = rgba_to_hex(rgb)
+    return value == literal or (isinstance(value, dict) and value.get("fallback") == literal)
 
 
 # Classes whose registry definition maps a readback channel (readbackChannel ->
@@ -1522,7 +1584,12 @@ _STRUCTURAL_EDM_KEYS = frozenset({"numDsps", "numPvs", "numCmds", "numPoints", "
 
 
 def _object_to_source(
-    obj: EDMObject, colors: dict[str, Any] | None = None, *, registry: RegistryClient | None = None
+    obj: EDMObject,
+    colors: dict[str, Any] | None = None,
+    color: ColorContext | None = None,
+    *,
+    registry: RegistryClient | None = None,
+    named_props: dict[int, dict[str, NamedColor]] | None = None,
 ) -> SourceNode:
     """Normalize one EDM object, recording the props it drops in ``dropped_props``.
 
@@ -1532,10 +1599,11 @@ def _object_to_source(
     (:data:`_STRUCTURAL_EDM_KEYS`) is a loss. An EDM object with no Qt class
     records nothing: its unknown-widget keeps every raw prop. A caller that reads
     further keys (visibility) enters :func:`_tracking_reads` around this call so
-    those reads count too.
+    those reads count too. ``named_props`` is :func:`edm_group_to_source_nodes`'s record of
+    named colours, filled for this node when given.
     """
     with _tracking_reads(obj) as tracked:
-        node = _convert_object(obj, colors, registry=registry)
+        node = _convert_object(obj, colors, color, registry=registry, named_props=named_props)
         if node.qt_class is not None:
             node.dropped_props = [
                 key
@@ -1545,9 +1613,17 @@ def _object_to_source(
     return node
 
 
-def _convert_object(obj: EDMObject, colors: dict[str, Any] | None, *, registry: RegistryClient | None) -> SourceNode:
+def _convert_object(
+    obj: EDMObject,
+    colors: dict[str, Any] | None,
+    color: ColorContext | None = None,
+    *,
+    registry: RegistryClient | None,
+    named_props: dict[int, dict[str, NamedColor]] | None = None,
+) -> SourceNode:
     qt_class = resolve_qt_class(obj.name.lower(), obj.properties)
     qt_props: dict[str, Any] = {}
+    named_colors: dict[str, NamedColor] = {}
     warnings: list[str] = []
     rules: list[RuleSpec] = []
     geometry: Geometry = (obj.x, obj.y, obj.width, obj.height)
@@ -1565,11 +1641,15 @@ def _convert_object(obj: EDMObject, colors: dict[str, Any] | None, *, registry: 
                     # EDM writes bgColor even when the object uses the display
                     # background; emitting it would paint a spurious background.
                     continue
-                hex_color = edm_color_to_hex(value, colors)
+                hex_color = edm_color_value(value, colors, edm_attr, color)
                 if hex_color is None:
                     warnings.append(f"EDM color '{value}' for {edm_attr} could not be resolved; prop dropped")
                     continue
                 qt_props[qt_prop] = hex_color
+                if color is not None and named_props is not None:
+                    named = edm_named_color(value, colors, edm_attr)
+                    if named is not None:
+                        named_colors[qt_prop] = named
                 continue
             coerced = _coerce(qt_prop, value)
             if qt_prop in _FONT_PROPS and coerced is None:
@@ -1605,7 +1685,11 @@ def _convert_object(obj: EDMObject, colors: dict[str, Any] | None, *, registry: 
             override = fixup(obj, qt_props, warnings)
             if override is not None:
                 geometry = override
-    return SourceNode(
+        if qt_class == "PyDMLabel" and "showUnits" not in obj.properties:
+            # EDM prints a readback's units only when the object sets showUnits
+            # (Textupdate has no units at all); the IR's default shows them.
+            qt_props["showUnits"] = False
+    node = SourceNode(
         qt_class=qt_class,
         qt_props=qt_props,
         geometry=geometry,
@@ -1614,6 +1698,13 @@ def _convert_object(obj: EDMObject, colors: dict[str, Any] | None, *, registry: 
         raw_props=dict(obj.properties),
         warnings=warnings,
     )
+    if named_props is not None:
+        # Only the props that still hold that colour: a rule collapse or a class fixup above may have
+        # replaced or popped one since it was resolved.
+        still = {prop: named for prop, named in named_colors.items() if _holds_color(qt_props.get(prop), named[1])}
+        if still:
+            named_props[id(node)] = still
+    return node
 
 
 def _name_windows(nodes: list[SourceNode], screen_name: str) -> None:
@@ -1753,8 +1844,10 @@ def edm_group_to_source_nodes(
     *,
     colors: dict[str, Any] | None = None,
     skip_classes: frozenset[str] = frozenset(),
+    color: ColorContext | None = None,
     registry: RegistryClient | None = None,
     loc_definitions: dict[str, str] | None = None,
+    named_props: dict[int, dict[str, NamedColor]] | None = None,
 ) -> list[SourceNode]:
     """Materialize an EDM group tree into a list of widget SourceNodes.
 
@@ -1767,10 +1860,14 @@ def edm_group_to_source_nodes(
     itself and hides the whole subtree — no inheritance onto individual descendants.
 
     ``colors`` is the parsed ``colors.list`` palette (see :func:`edm_file_to_ir`), used
-    to resolve "index N" color props to hex. ``registry`` is the one the IR builder
-    will use (default: the vendored registry); colour rules target the IR props it
-    maps the colour props to. ``loc_definitions`` (:func:`_loc_definitions`) is
-    found from ``group`` when not given; nested groups get the top level's.
+    to resolve "index N" color props to hex. ``color`` (a scheme's :class:`ColorContext`)
+    turns imported palette names into roles; see :func:`edm_color_value`. ``registry``
+    is the one the IR builder will use (default: the vendored registry); colour rules
+    target the IR props it maps the colour props to. ``loc_definitions`` (:func:`_loc_definitions`) is
+    found from ``group`` when not given; nested groups get the top level's. ``named_props``, when
+    given, is filled with ``id(node) -> {qt prop: (palette name, RGBA, EDM attribute)}`` for every
+    colour prop that came from a palette name (:func:`edm_named_color`), for the text/ground
+    pairing in :func:`edm_file_to_ir`.
 
     Errors are isolated per object: an object whose conversion raises becomes an
     ``unknown-widget`` placeholder carrying the failure as its warning, and a group
@@ -1790,7 +1887,13 @@ def edm_group_to_source_nodes(
                 raw_class="activeGroupClass",
                 raw_props=dict(obj.properties),
                 children=edm_group_to_source_nodes(
-                    obj, colors=colors, skip_classes=skip_classes, registry=registry, loc_definitions=loc_definitions
+                    obj,
+                    colors=colors,
+                    skip_classes=skip_classes,
+                    color=color,
+                    registry=registry,
+                    loc_definitions=loc_definitions,
+                    named_props=named_props,
                 ),
             )
             outside_symbol = obj.properties.get("symbolFileOutsideSearchPaths")
@@ -1834,12 +1937,13 @@ def edm_group_to_source_nodes(
         elif isinstance(obj, EDMObject):
             if obj.name.lower() in skip_classes:
                 continue
+            node: SourceNode | None = None
             try:
                 with _tracking_reads(obj):
                     # Visibility is read first so its keys count as used by the node.
                     vis_warnings: list[str] = []
                     own_vis = _vis_tuple(obj.properties, vis_warnings)
-                    node = _object_to_source(obj, colors, registry=registry)
+                    node = _object_to_source(obj, colors, color, registry=registry, named_props=named_props)
                 node.warnings.extend(vis_warnings)
                 if own_vis is not None:
                     # Append: the node may already carry alarm-color rules.
@@ -1847,14 +1951,18 @@ def edm_group_to_source_nodes(
                 entry_nodes = _menu_entry_nodes(obj, node, loc_definitions)
             except Exception as exc:  # noqa: BLE001 - one bad object must not abort the screen
                 logger.warning("EDM %s failed to convert; emitting a placeholder", obj.name, exc_info=True)
-                node = SourceNode(
-                    qt_class=None,
-                    geometry=(obj.x, obj.y, obj.width, obj.height),
-                    raw_class=obj.name,
-                    raw_props=dict(obj.properties),
-                    placeholder_reason=conversion_failure(obj.name, exc),
-                )
-                entry_nodes = [node]
+                entry_nodes = [
+                    SourceNode(
+                        qt_class=None,
+                        geometry=(obj.x, obj.y, obj.width, obj.height),
+                        raw_class=obj.name,
+                        raw_props=dict(obj.properties),
+                        placeholder_reason=conversion_failure(obj.name, exc),
+                    )
+                ]
+            if named_props is not None and node is not None and not any(n is node for n in entry_nodes):
+                # The node is dropped (a menu pip's entries, a placeholder): its id may be reused by a later one.
+                named_props.pop(id(node), None)
             nodes.extend(entry_nodes)
     return nodes
 
@@ -1866,6 +1974,7 @@ def edm_file_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
+    scheme: SchemeResult | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
     display_roots: SearchPaths = None,
@@ -1885,6 +1994,12 @@ def edm_file_to_ir(
     ``$EDMFILES/calc.list``, then beside ``$EDMCOLORFILE``. Unresolvable named
     calcs stay as warnings. ``site`` applies site skip rules (same vocabulary as
     the PyDM target, e.g. ``"slac"`` drops exit buttons).
+
+    With a flattened colour ``scheme``, ``colors.list`` names the scheme imports
+    (``import.edm``) become roles under the parity rule (:func:`edm_color_value`); text and
+    the ground it sits on are then paired by their palette names
+    (:func:`~pydmconverter.pairing.pair_text_colors`), and the document's ``parity:`` and
+    ``pair:`` notes lead the first node's warnings. ``None`` keeps today's literal hex.
 
     ``display_roots`` are absolute directories (a single directory or a sequence):
     a related display or embedded window naming a display below one gets the
@@ -1922,10 +2037,15 @@ def edm_file_to_ir(
     colors_path = search_color_list(str(color_list_path) if color_list_path else None)
     colors = parse_colors_list(colors_path)
     skip_classes = frozenset(get_skip_widgets(site))
+    color = None if scheme is None else ColorContext.from_scheme(scheme, import_kind="edm")
     map_display_roots(parser.ui, resolve_display_roots(display_roots))
     # One registry for both: colour-rule targets must match the builder's prop map.
     registry = registry or VendoredRegistry()
-    top_level = edm_group_to_source_nodes(parser.ui, colors=colors, skip_classes=skip_classes, registry=registry)
+    # id(node) -> {qt prop: (palette name, RGBA, EDM attribute)}, read by the pairing below.
+    named_props: dict[int, dict[str, NamedColor]] = {}
+    top_level = edm_group_to_source_nodes(
+        parser.ui, colors=colors, skip_classes=skip_classes, color=color, registry=registry, named_props=named_props
+    )
     _name_windows(top_level, path.stem)
     builder = IRBuilder(registry)
     # Screen background: the parser resolves bgColor to an (r, g, b, a) tuple.
@@ -1935,6 +2055,14 @@ def edm_file_to_ir(
         background = "#{:02x}{:02x}{:02x}".format(int(bg.r), int(bg.g), int(bg.b))
     elif isinstance(bg, (tuple, list)) and len(bg) >= 3:
         background = "#{:02x}{:02x}{:02x}".format(int(bg[0]), int(bg[1]), int(bg[2]))
+    # Text and the ground under it become roles together or stay literal together; a
+    # readback that paints no background says so (EDM shows the display through it).
+    background = pair_text_colors(
+        top_level, background, color, lambda node, prop: named_props.get(id(node), {}).get(prop)
+    )
+    # Scheme parity notes are aggregated over the whole document and lead the first node's warnings.
+    if color is not None and top_level:
+        top_level[0].warnings[:0] = color.parity_notes()
     # The EDM window is exactly the declared w x h (objects outside it are clipped,
     # hidden ones parked off-screen on purpose), so the canvas does not grow to fit.
     # Only a dimension the file does not declare is sized from the content.

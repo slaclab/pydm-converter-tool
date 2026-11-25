@@ -1,0 +1,85 @@
+4 0 0
+beginScreenProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 400
+h 200
+font "helvetica-medium-r-12.0"
+ctlFont "helvetica-medium-r-12.0"
+btnFont "helvetica-medium-r-12.0"
+endScreenProperties
+
+# (Mapped name whose role light matches, on a mismatched canvas)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 10
+w 160
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 20
+bgColor index 4
+value {
+  "Mapped"
+}
+endObjectProperties
+
+# (Unmapped name, on the mismatched canvas again)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 40
+w 160
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 0
+bgColor index 4
+value {
+  "Unmapped"
+}
+endObjectProperties
+
+# (Literal rgb colours carry no palette name)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 70
+w 160
+h 18
+font "helvetica-medium-r-12.0"
+fgColor rgb 0 0 65535
+bgColor rgb 65535 65535 65535
+value {
+  "Literal"
+}
+endObjectProperties
+
+# (Mapped name, matching role light)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 100
+w 160
+h 18
+font "helvetica-medium-r-12.0"
+fgColor index 15
+bgColor index 4
+value {
+  "Normal"
+}
+endObjectProperties
