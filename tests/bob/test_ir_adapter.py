@@ -315,6 +315,27 @@ def test_color_def_alias_resolves():
     assert any(w.startswith("color.def:") for w in stop["warnings"])
 
 
+def test_group_macros_apply_to_descendants():
+    """A group's own ``<macros>`` win over the display's for everything under it (fixture ``group_macros``)."""
+    wire = _wire("group_macros")
+    # The display's P is the screen macro; the group's P never becomes one. D is a reference the builder collects.
+    assert wire["macros"] == [{"name": "D", "default": ""}, {"name": "P", "default": "DEV1"}]
+    group, outside = wire["root"]["children"]
+    assert group["props"]["title"] == "Pump DEV2"
+    scoped, sibling, mixed, ruled, button, embedded, nested = group["children"]
+    assert scoped["props"]["pv"] == "DEV2:VAL"
+    assert sibling["props"]["pv"] == "DEV2:Q"  # Q=$(P):Q read the group's P
+    assert mixed["props"]["text"] == "${D} DEV2"  # D is a display/runtime macro and stays
+    assert ruled["rules"][0]["pvs"] == [{"name": "DEV2:STAT", "trigger": True}]
+    assert ruled["rules"][0]["conditions"] == [{"expression": "{0} > 3", "value": False}]
+    assert button["props"]["label"] == "Set DEV2"
+    assert button["props"]["actions"] == [{"type": "write_pv", "pvName": "DEV2:SET", "value": "1"}]
+    # The embedded display gets the group scope under its own macros, as Phoebus hands it on.
+    assert embedded["props"]["macros"] == {"P": "DEV2", "Q": "DEV2:Q", "LIMIT": "3", "D": "${D}", "X": "DEV2"}
+    assert nested["children"][0]["props"]["pv"] == "DEV2:SUB:VAL"
+    assert outside["props"]["pv"] == "${P}:VAL"
+
+
 def test_display_macros_background_and_size():
     wire = _wire("macros")
     assert wire["macros"] == [

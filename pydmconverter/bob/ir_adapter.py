@@ -500,8 +500,11 @@ class _WidgetLowering:
 
     def _embedded(self, props: dict[str, Any]) -> None:
         self._file_prop(props, "file", "filename")
-        if self.widget.macros:
-            self.qt_props["macros"] = {k: normalize_macro_syntax(v) for k, v in self.widget.macros.items()}
+        # Phoebus expands the embedded display with the widget's effective macros: the
+        # group scope, then the widget's own (EmbeddedDisplayRepresentationUtil).
+        macros = {**self.widget.macro_scope, **self.widget.macros}
+        if macros:
+            self.qt_props["macros"] = {k: normalize_macro_syntax(v) for k, v in macros.items()}
 
     def _xyplot(self, props: dict[str, Any]) -> None:
         traces = props.get("traces")

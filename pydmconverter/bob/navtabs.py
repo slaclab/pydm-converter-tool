@@ -52,7 +52,8 @@ def _tab_macros(tab: ET.Element) -> dict[str, str]:
 def navtab_buttons(widget: BobWidget, origin: tuple[Any, Any], warn) -> list[SourceNode]:
     """One ``regular-button`` source node per ``<tab>`` of ``widget``, at absolute ``origin``.
 
-    A tab's action macros are the widget's ``<macros>`` overlaid by the tab's own. A tab
+    A tab's action macros are the group macros in scope at the widget, then the widget's
+    ``<macros>``, then the tab's own (``NavigationTabsWidget.getEffectiveMacros``). A tab
     with no ``<file>`` gets a button without an action and a warning through ``warn``.
     """
     tabs = widget.props.get("tabs")
@@ -78,7 +79,7 @@ def navtab_buttons(widget: BobWidget, origin: tuple[Any, Any], warn) -> list[Sou
                 "file": screen_ref(file),
                 "target": "tab",
             }
-            macros = {**widget.macros, **_tab_macros(tab)}
+            macros = {**widget.macro_scope, **widget.macros, **_tab_macros(tab)}
             if macros:
                 action["macros"] = {key: normalize_macro_syntax(value) for key, value in macros.items()}
             actions.append(action)

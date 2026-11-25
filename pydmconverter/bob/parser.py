@@ -7,8 +7,18 @@ modules. Leaf properties are kept as their text; structured properties (fonts,
 colours, points, ...) are kept as the ``ET.Element`` so later stages can read
 whatever sub-structure they need.
 
-Two things happen here because every consumer needs them done first:
+Three things happen here because every consumer needs them done first:
 
+* Group macros: a ``<group>``'s own ``<macros>`` apply to the group and everything
+  under it (Phoebus ``GroupWidget.expandMacros``): each value is expanded against the
+  enclosing scope, an inner definition wins over an outer one, and every ``$(NAME)`` /
+  ``${NAME}`` of a name in scope is substituted in the descendants' props, names, rule
+  and script PV lists, rule conditions and values, action fields and macros, and in an
+  embedded display's own macro values. The scope itself is kept on each widget
+  (``BobWidget.macro_scope``): Phoebus hands a widget's effective macros on to an
+  embedded display, an opened display and a navigation tab, so the adapter emits the
+  scope under those widgets' own macros. Display ``<macros>`` are *not* in scope: they
+  stay macro references for the runtime, which has the screen's macro defaults.
 * Widget-scope macro: ``$(pv_name)`` / ``${pv_name}`` inside a widget's action
   ``pv_name``/``value`` fields and its rule/script PV lists refers to the
   widget's own ``pv_name`` property, so it is substituted in place.
@@ -23,7 +33,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -64,6 +74,8 @@ def script_file_path(base_dir: Path | None, file: str, *, confine: bool) -> Path
 
 
 _PV_NAME_MACRO_RE = re.compile(r"\$\(pv_name\)|\$\{pv_name\}")
+# One ``$(NAME)`` or ``${NAME}`` reference (no nesting); the name is group 1 or 2.
+_MACRO_REF_RE = re.compile(r"\$\(([^()]*)\)|\$\{([^{}]*)\}")
 
 
 class BobParseError(ValueError):
@@ -114,7 +126,12 @@ class BobWidget:
     rules: list[BobRule] = field(default_factory=list)
     scripts: list[BobScript] = field(default_factory=list)
     actions: list[BobAction] = field(default_factory=list)
+    #: The widget's own ``<macros>``, values expanded in the enclosing scope.
     macros: dict[str, str] = field(default_factory=dict)
+    #: The group macros in force at this widget (for a group, including its own). What
+    #: Phoebus hands on with the widget's effective macros: to an embedded display, an
+    #: opened display or a navigation tab, under the widget's own ``macros``.
+    macro_scope: dict[str, str] = field(default_factory=dict)
     type_id: str | None = None
 
 
@@ -168,7 +185,7 @@ def parse_bob(path_or_bytes: str | Path | bytes, *, confine_file_refs: bool = Fa
     return BobDisplay(
         name=_child_text(root, "name"),
         props=_props(root),
-        widgets=[_widget(w, base_dir, confine_file_refs) for w in root.findall("widget")],
+        widgets=[_widget(w, base_dir, confine_file_refs, {}) for w in root.findall("widget")],
         macros=_macros(root.find("macros")),
         path=path,
     )
@@ -253,28 +270,102 @@ def _script(el: ET.Element, base_dir: Path | None, confine: bool) -> BobScript:
     return BobScript(name=el.get("name", ""), file=file, text=text, pvs=_pvs(el))
 
 
-def _widget(el: ET.Element, base_dir: Path | None, confine: bool) -> BobWidget:
+def _widget(el: ET.Element, base_dir: Path | None, confine: bool, scope: Mapping[str, str]) -> BobWidget:
+    """Parse one ``<widget>``; ``scope`` is the group macros in force around it."""
     type_id = el.get("typeId")
+    wtype = el.get("type") or type_id or ""
     props = _props(el)
     props.setdefault("x", "0")
     props.setdefault("y", "0")
+
+    own_macros = _macros(el.find("macros"))
+    if wtype == "group":
+        # The group's macros apply to the group itself and to everything under it.
+        scope = _group_scope(scope, own_macros)
+        macros = {name: scope[name] for name in own_macros}
+    else:
+        # Any other widget's macros (an embedded display's) are expanded in the scope.
+        macros = {name: _expand(value, scope) for name, value in own_macros.items()}
 
     actions_el = el.find("actions")
     rules_el = el.find("rules")
     scripts_el = el.find("scripts")
     widget = BobWidget(
-        type=el.get("type") or type_id or "",
+        type=wtype,
         name=_child_text(el, "name"),
         props=props,
-        children=[_widget(c, base_dir, confine) for c in el.findall("widget")],
+        children=[_widget(c, base_dir, confine, scope) for c in el.findall("widget")],
         rules=[_rule(r) for r in rules_el.findall("rule")] if rules_el is not None else [],
         scripts=[_script(s, base_dir, confine) for s in scripts_el.findall("script")] if scripts_el is not None else [],
         actions=[_action(a) for a in actions_el.findall("action")] if actions_el is not None else [],
-        macros=_macros(el.find("macros")),
+        macros=macros,
+        macro_scope=dict(scope),
         type_id=type_id,
     )
+    _apply_scope(widget, scope)
     _substitute_pv_name(widget)
     return widget
+
+
+def _expand(text: str, scope: Mapping[str, str]) -> str:
+    """``text`` with every ``$(NAME)``/``${NAME}`` whose name is in ``scope`` replaced, in one pass.
+
+    References to names outside the scope (display macros, runtime macros) are kept.
+    """
+    if not scope or "$" not in text:
+        return text
+
+    def value(match: re.Match) -> str:
+        name = match.group(1) if match.group(1) is not None else match.group(2)
+        replacement = scope.get(name)
+        return match.group(0) if replacement is None else replacement
+
+    return _MACRO_REF_RE.sub(value, text)
+
+
+def _group_scope(scope: Mapping[str, str], own: Mapping[str, str]) -> dict[str, str]:
+    """The scope under a group: ``scope`` with the group's ``own`` macros added.
+
+    Like Phoebus ``Macros.expandValues``, each value is expanded against the enclosing
+    scope plus the group's earlier macros, so ``P=$(P):SUB`` reads the outer ``P`` and a
+    reference to an outer-only name (a display macro) stays for the runtime.
+    """
+    merged = dict(scope)
+    for name, value in own.items():
+        merged[name] = _expand(value, merged)
+    return merged
+
+
+def _apply_scope(widget: BobWidget, scope: Mapping[str, str]) -> None:
+    """Substitute the group macros in ``scope`` throughout ``widget`` (not its children).
+
+    Covers the name, every prop (leaf text, or the text of every element of a structured
+    prop such as a trace's ``y_pv``), rule PVs, conditions and values, script PVs, action
+    fields and action macros. Script bodies are left alone: Phoebus does not expand
+    macros in them either (a script reads ``widget.getEffectiveMacros()`` itself).
+    """
+    if not scope:
+        return
+    widget.name = _expand(widget.name, scope)
+    for key, value in widget.props.items():
+        if isinstance(value, str):
+            widget.props[key] = _expand(value, scope)
+        else:
+            for element in value.iter():
+                if element.text:
+                    element.text = _expand(element.text, scope)
+    for rule in widget.rules:
+        rule.pvs = [(_expand(pv, scope), trig) for pv, trig in rule.pvs]
+        rule.expressions = [(_expand(cond, scope), _expand(value, scope)) for cond, value in rule.expressions]
+    for script in widget.scripts:
+        script.pvs = [(_expand(pv, scope), trig) for pv, trig in script.pvs]
+    for action in widget.actions:
+        action.description = _expand(action.description, scope)
+        for key, value in action.fields.items():
+            if isinstance(value, str):
+                action.fields[key] = _expand(value, scope)
+            elif isinstance(value, dict):
+                action.fields[key] = {name: _expand(text, scope) for name, text in value.items()}
 
 
 def _substitute_pv_name(widget: BobWidget) -> None:

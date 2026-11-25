@@ -37,10 +37,12 @@ warnings:
 - **`parser.py`** — `parse_bob(path_or_bytes) -> BobDisplay`. Turns the `.bob` XML
   into a neutral tree of `BobWidget`/`BobRule`/`BobScript`/`BobAction` dataclasses;
   leaf properties are kept as text, structured properties (fonts, colours, points,
-  ...) as the raw `ET.Element` for later stages to interpret. Also does the two things
-  every consumer needs done first: substituting widget-scope `$(pv_name)`/`${pv_name}`
-  macros in a widget's own action/rule/script PV references, and reading `<script
-  file=...>` script bodies from beside the input file.
+  ...) as the raw `ET.Element` for later stages to interpret. Also does the three things
+  every consumer needs done first: applying a `group`'s own `<macros>` to the group and
+  its descendants (inner definitions win; display macros stay references for the
+  runtime), substituting widget-scope `$(pv_name)`/`${pv_name}` macros in a widget's own
+  action/rule/script PV references, and reading `<script file=...>` script bodies from
+  beside the input file.
 - **`bob_qt.py`** — data only: the six tables described below, translating Phoebus
   vocabulary into the Qt/registry vocabulary.
 - **`coercion.py`** — turns raw parsed values into the plain Python values the IR

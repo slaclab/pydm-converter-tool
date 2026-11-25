@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pydmconverter.bob.actions import ActionContext, action_button_label, lower_actions
-from pydmconverter.bob.parser import BobWidget, parse_bob
+from pydmconverter.bob.parser import BobAction, BobWidget, parse_bob
 
 
 def _widget(actions_xml: str, *, extra: str = "", name: str = "Btn") -> BobWidget:
@@ -122,6 +122,21 @@ def test_jython_execute_is_tier2_carried_and_not_emitted():
 
 
 # --- open_webpage / open_file / close_display --------------------------------------
+
+
+def test_open_display_carries_the_group_scope_under_its_own_macros():
+    """Phoebus opens the display with the source widget's effective macros plus the action's."""
+    widget = BobWidget(
+        type="action_button",
+        name="Btn",
+        actions=[BobAction(type="open_display", fields={"file": "o.bob", "macros": {"Y": "2", "P": "OWN"}})],
+        macro_scope={"P": "DEV2", "Q": "q"},
+    )
+    (entry,) = lower_actions(widget, ActionContext())
+    assert entry["macros"] == {"P": "OWN", "Q": "q", "Y": "2"}
+    widget.actions[0].fields.pop("macros")
+    (entry,) = lower_actions(widget, ActionContext())
+    assert entry["macros"] == {"P": "DEV2", "Q": "q"}
 
 
 def test_open_webpage():
