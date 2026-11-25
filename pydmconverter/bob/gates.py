@@ -57,9 +57,11 @@ MAX_EXPRESSION_CHARS = 2048
 MAX_SCRIPT_CHARS = 256 * 1024
 #: The C stack :func:`parse_python` gives the parser. Python 3.10's parser has no depth
 #: guard: a chain of a few thousand terms overflows a 1 MB main-thread stack (Windows)
-#: and kills the process instead of raising. 256 MB is address space, not memory; it
-#: parses a 130k-term chain (twice what :data:`MAX_SCRIPT_CHARS` allows) with room to spare.
-PARSE_STACK_BYTES = 256 * 1024 * 1024
+#: and kills the process instead of raising. 64 MB is address space, not memory, and
+#: eight times the 8 MB Linux main stack that parses a 60k-term chain (what
+#: :data:`MAX_SCRIPT_CHARS` allows at most). It stays under the 256 MB Windows caps
+#: thread stacks at: ``threading.stack_size`` refuses 256 MB there with ``ValueError``.
+PARSE_STACK_BYTES = 64 * 1024 * 1024
 #: What ``ast.parse`` raises on text it cannot turn into a tree: a syntax error, a null
 #: byte or over-long text (``ValueError``), or an expression nested past the interpreter's
 #: recursion limit (``RecursionError``, historically ``MemoryError``). Every parse of
@@ -67,6 +69,22 @@ PARSE_STACK_BYTES = 256 * 1024 * 1024
 PARSE_ERRORS: tuple[type[BaseException], ...] = (SyntaxError, ValueError, RecursionError, MemoryError)
 
 _PARSE_STACK_LOCK = threading.Lock()
+
+
+def _set_parse_stack() -> int:
+    """Set the stack size for the next thread to :data:`PARSE_STACK_BYTES`, or the largest
+    size at or below it the platform accepts; return the previous setting to restore.
+
+    A platform that refuses every size leaves the default, and the parser then has the
+    same stack it had before, no worse.
+    """
+    size = PARSE_STACK_BYTES
+    while size >= 1024 * 1024:
+        try:
+            return threading.stack_size(size)
+        except ValueError:
+            size //= 2
+    return threading.stack_size()
 
 
 def parse_python(text: str, *, mode: str = "exec") -> ast.AST:
@@ -87,7 +105,7 @@ def parse_python(text: str, *, mode: str = "exec") -> ast.AST:
             outcome.append(exc)
 
     with _PARSE_STACK_LOCK:
-        previous = threading.stack_size(PARSE_STACK_BYTES)
+        previous = _set_parse_stack()
         try:
             worker = threading.Thread(target=run, name="bob-parse", daemon=True)
             worker.start()

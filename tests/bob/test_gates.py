@@ -142,6 +142,19 @@ def test_parse_python_survives_a_deep_chain():
     assert isinstance(tree, ast.Module) and len(tree.body) == 1
 
 
+def test_parse_stack_size_is_accepted_on_this_platform():
+    """``PARSE_STACK_BYTES`` must be a size ``threading.stack_size`` takes here.
+
+    Windows caps thread stacks below 256 MB and refuses larger with ``ValueError``; that
+    is in ``PARSE_ERRORS``, so a refused size would silently fail every parse.
+    """
+    import threading
+
+    previous = threading.stack_size(gates.PARSE_STACK_BYTES)
+    threading.stack_size(previous)
+    assert gates.parse_python("{0} * 2", mode="eval") is not None
+
+
 def test_parse_python_raises_what_the_parser_raises_and_caps_length():
     with pytest.raises(SyntaxError):
         gates.parse_python("x = (")
