@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:canopy:screen-ir:1.1",
   "title": "Canopy Screen IR",
-  "description": "Canonical Canopy screen Intermediate Representation, owned by canopy-spec. This file is the structural part of the contract; the cross-field rules it can't express (macro defaults, formula:// resolution) are the semantic rules in the canopy-spec README.",
+  "description": "Canonical Canopy screen Intermediate Representation, owned by canopy-spec. This file is the structural part of the contract; the cross-field rules it can't express (macro defaults, formula:// resolution, the version a ColorRole needs) are the semantic rules in the canopy-spec README.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "id", "metadata", "macros", "root"],
@@ -100,25 +100,27 @@
         "id": { "type": "string" },
         "type": { "type": "string" },
         "props": {
-          "description": "JSON literals, with a ColorRole legal wherever a color is held, at any depth (for example curves[].color). Open by design: per-widget prop sets are not enumerated here; only props every widget honours are. formula:// references live in designated channel props; the semantic rule formula-ref-unresolved checks that they resolve.",
+          "description": "JSON literals and ColorRoles, at any depth (for example curves[].color); a viewer applies a role where it expects a color. Open by design: per-widget prop sets are not enumerated here; only the props every widget accepts are. formula:// references live in designated channel props; the semantic rule formula-ref-unresolved checks that they resolve.",
           "type": "object",
           "properties": {
             "hoverLabel": {
-              "description": "Text shown centred over the widget while the pointer is on it. Only a widget whose props.actions run on click shows it.",
+              "description": "Text shown inside the widget's box, at hoverLabelPlacement, while the pointer is on it. Only a widget with a non-empty props.actions list shows it.",
               "type": "string"
             },
             "hoverLabelPlacement": {
-              "description": "Where the hoverLabel sits inside the widget's box (default bottom-left).",
-              "enum": ["bottom-left", "bottom-right", "top-left", "top-right", "center"]
+              "description": "Where the hoverLabel sits inside the widget's box, or a macro string that expands to one. Default bottom-left; a viewer uses bottom-left for a value it doesn't recognize.",
+              "anyOf": [
+                { "enum": ["bottom-left", "bottom-right", "top-left", "top-right", "center"] },
+                { "$ref": "#/$defs/MacroString" }
+              ]
             },
             "outlineColor": {
               "description": "A resting outline drawn just inside the widget's box: a CSS color or a ColorRole. A rule targeting outlineColor binds it to live data.",
               "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/ColorRole" }]
             },
             "outlineWidth": {
-              "description": "Width of the resting outline in authored px (default 2; 0 draws none).",
-              "type": "number",
-              "minimum": 0
+              "description": "Width of the resting outline in authored px (default 2; 0 draws none), or a macro string that expands to one.",
+              "anyOf": [{ "type": "number", "minimum": 0 }, { "$ref": "#/$defs/MacroString" }]
             }
           },
           "additionalProperties": { "$ref": "#/$defs/PropertyValue" }
@@ -149,6 +151,11 @@
       }
     },
     "RuleScalar": { "type": ["string", "number", "boolean", "null"] },
+    "MacroString": {
+      "description": "A string holding a macro reference, $(NAME) or ${NAME}, which a viewer expands before using the value. Lets a typed prop take a value from a macro.",
+      "type": "string",
+      "pattern": "\\$[({]"
+    },
     "PropertyValue": {
       "description": "A widget property value: a JSON literal or a ColorRole. An object that carries $role is a ColorRole and must be well-formed; every other object and every array is checked member by member.",
       "if": { "type": "object", "required": ["$role"] },
@@ -159,7 +166,7 @@
       }
     },
     "ColorRole": {
-      "description": "Themeable color reference, legal as a property value and at a rule position: a theme role name with hex fallbacks for light and (optionally) dark themes.",
+      "description": "Themeable color reference, allowed as a property value and at a rule position: a theme role name with hex fallbacks for light and (optionally) dark themes.",
       "type": "object",
       "additionalProperties": false,
       "required": ["$role", "fallback"],
@@ -195,7 +202,10 @@
             "id": { "type": "string" },
             "name": { "type": "string" },
             "targetProperty": { "type": "string" },
-            "default": { "$ref": "#/$defs/RuleScalar" },
+            "default": {
+              "description": "The value before the formula yields one. A formula yields a scalar, so its default is one too; a ColorRole isn't allowed here.",
+              "$ref": "#/$defs/RuleScalar"
+            },
             "formula": { "type": "string" }
           }
         }

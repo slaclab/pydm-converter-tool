@@ -20,10 +20,10 @@ from pydmconverter.bob.ir_adapter import bob_file_to_ir
 from pydmconverter.colors import SchemeLike
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.edm.parser_helpers import SearchPaths
-from pydmconverter.ir.emit import to_wire_dict, write_screen_json
-from pydmconverter.ir.model import ScreenIR
+from pydmconverter.ir.emit import write_screen_json
+from pydmconverter.ir.model import ScreenIR, WidgetNode
 from pydmconverter.ir.registry import RegistryClient
-from pydmconverter.scheme import stamp_schema_version
+from pydmconverter.scheme import contains_color_role
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 logger = logging.getLogger(__name__)
@@ -102,8 +102,28 @@ def convert_to_ir(
         ir = ui_file_to_ir(input_path, registry=registry, confine_file_refs=confine_file_refs)
     # Stamp here, the one point every entry point flows through, so callers that take the ScreenIR (not the
     # written JSON) see the right version. Role-free screens keep "1.0" and are byte-identical to before.
-    ir.schema_version = stamp_schema_version(to_wire_dict(ir))
+    ir.schema_version = "1.1" if _has_color_role(ir) else "1.0"
     return ir
+
+
+def _has_color_role(ir: ScreenIR) -> bool:
+    """Whether the screen carries a well-formed ``ColorRole``: what :func:`pydmconverter.scheme.stamp_schema_version`
+    decides on the wire doc, read off the model instead, so stamping does not serialise the screen a second time.
+
+    A role can sit only in a widget's ``props`` (at any depth), in a rule's condition values or in a rule's
+    ``default``: every other field of the model is typed as a string, a number or a model of those, so this walk
+    sees everything the wire doc would show.
+    """
+
+    def walk(node: WidgetNode) -> bool:
+        if contains_color_role(node.props):
+            return True
+        for rule in node.rules:
+            if contains_color_role(rule.default) or any(contains_color_role(c.value) for c in rule.conditions):
+                return True
+        return any(walk(child) for child in node.children)
+
+    return walk(ir.root)
 
 
 def convert_bytes(

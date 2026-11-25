@@ -2,11 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:canopy:color-scheme:1",
   "title": "Canopy Color Scheme",
-  "description": "canopy-color-scheme/1: a facility color scheme layered on canopy-default. Roles merge per role and per mode; an import value of null deletes an inherited mapping. Colors are canonicalised and import targets resolved when the scheme is flattened, not by this schema.",
+  "description": "canopy-color-scheme/1: a facility color scheme layered on canopy-default. Roles merge per role and per mode; an import value of null deletes an inherited mapping. Aliases, colors and import targets are resolved when the scheme is flattened, not by this schema; the canopy-spec README defines flattening.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id"],
   "properties": {
+    "$schema": { "description": "For editors; readers ignore it.", "type": "string" },
+    "format": {
+      "description": "The format name. Optional: a file without it is read as canopy-color-scheme/1.",
+      "const": "canopy-color-scheme/1"
+    },
     "id": { "type": "string", "minLength": 1 },
     "extends": { "const": "canopy-default" },
     "roles": {
@@ -25,9 +30,13 @@
   },
   "$defs": {
     "Name": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "Hex": { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+    "Hex": {
+      "description": "#rgb, #rrggbb or #rrggbbaa. A scheme is written by hand, so it also takes the short #rgb form, which flattening expands. A ColorRole in a screen takes only #rrggbb and #rrggbbaa.",
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+    },
     "Alias": {
-      "description": "A reference to another role: '@' followed by a 1-64 character role name.",
+      "description": "A reference to another role: '@' followed by a 1-64 character role name. An alias that names no role, or that leads back to itself (including a role aliasing itself), is a flattening error.",
       "type": "string",
       "pattern": "^@.{1,64}$"
     },
