@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <macros>
+    <P>DEV1</P>
+  </macros>
+  <width>400</width>
+  <height>300</height>
+  <widget type="group" version="2.0.0">
+    <name>Pump $(P)</name>
+    <x>10</x>
+    <y>10</y>
+    <width>300</width>
+    <height>200</height>
+    <macros>
+      <P>DEV2</P>
+      <Q>$(P):Q</Q>
+      <LIMIT>3</LIMIT>
+      <D>$(D)</D>
+    </macros>
+  <widget type="textupdate" version="2.0.0">
+    <name>Scoped</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>$(P):VAL</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Sibling ref</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>${Q}</pv_name>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Mixed</name>
+    <x>0</x>
+    <y>60</y>
+    <text>$(D) $(P)</text>
+  </widget>
+  <widget type="rectangle" version="2.0.0">
+    <name>Ruled</name>
+    <x>0</x>
+    <y>90</y>
+    <rules>
+      <rule name="v" prop_id="visible" out_exp="false">
+        <exp bool_exp="pv0 &gt; $(LIMIT)">
+          <value>false</value>
+        </exp>
+        <pv_name>$(P):STAT</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="action_button" version="2.0.0">
+    <name>Set</name>
+    <x>0</x>
+    <y>120</y>
+    <actions>
+      <action type="write_pv">
+        <pv_name>$(P):SET</pv_name>
+        <value>1</value>
+        <description>Set $(P)</description>
+      </action>
+    </actions>
+  </widget>
+  <widget type="embedded" version="2.0.0">
+    <name>Sub</name>
+    <x>0</x>
+    <y>150</y>
+    <file>sub.bob</file>
+    <macros>
+      <X>$(P)</X>
+    </macros>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Nested</name>
+    <x>150</x>
+    <y>0</y>
+    <width>100</width>
+    <height>60</height>
+    <style>3</style>
+    <macros>
+      <P>$(P):SUB</P>
+    </macros>
+  <widget type="textupdate" version="2.0.0">
+    <name>Deep</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>$(P):VAL</pv_name>
+  </widget>
+  </widget>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Outside</name>
+    <x>10</x>
+    <y>250</y>
+    <pv_name>$(P):VAL</pv_name>
+  </widget>
+</display>

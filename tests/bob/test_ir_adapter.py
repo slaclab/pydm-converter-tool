@@ -13,6 +13,7 @@ Regenerate the goldens after an intended output change with::
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -315,6 +316,27 @@ def test_color_def_alias_resolves():
     assert any(w.startswith("color.def:") for w in stop["warnings"])
 
 
+def test_group_macros_apply_to_descendants():
+    """A group's own ``<macros>`` win over the display's for everything under it (fixture ``group_macros``)."""
+    wire = _wire("group_macros")
+    # The display's P is the screen macro; the group's P never becomes one. D is a reference the builder collects.
+    assert wire["macros"] == [{"name": "D", "default": ""}, {"name": "P", "default": "DEV1"}]
+    group, outside = wire["root"]["children"]
+    assert group["props"]["title"] == "Pump DEV2"
+    scoped, sibling, mixed, ruled, button, embedded, nested = group["children"]
+    assert scoped["props"]["pv"] == "DEV2:VAL"
+    assert sibling["props"]["pv"] == "DEV2:Q"  # Q=$(P):Q read the group's P
+    assert mixed["props"]["text"] == "${D} DEV2"  # D is a display/runtime macro and stays
+    assert ruled["rules"][0]["pvs"] == [{"name": "DEV2:STAT", "trigger": True}]
+    assert ruled["rules"][0]["conditions"] == [{"expression": "{0} > 3", "value": False}]
+    assert button["props"]["label"] == "Set DEV2"
+    assert button["props"]["actions"] == [{"type": "write_pv", "pvName": "DEV2:SET", "value": "1"}]
+    # The embedded display gets the group scope under its own macros, as Phoebus hands it on.
+    assert embedded["props"]["macros"] == {"P": "DEV2", "Q": "DEV2:Q", "LIMIT": "3", "D": "${D}", "X": "DEV2"}
+    assert nested["children"][0]["props"]["pv"] == "DEV2:SUB:VAL"
+    assert outside["props"]["pv"] == "${P}:VAL"
+
+
 def test_display_macros_background_and_size():
     wire = _wire("macros")
     assert wire["macros"] == [
@@ -536,6 +558,76 @@ def test_formula_pvs():
             assert not value.startswith("=") and "<V" not in value
 
 
+def test_input_widgets_keep_their_pv():
+    """Fixture ``writer_pvs``: a writer is never retargeted to a read-only formula.
+
+    An input widget typing into a local PV counts as a writer, so the script computing
+    that PV stays tier 2 and reader and writer both keep ``loc://typed``; an input whose
+    ``pv_name`` is itself a formula PV is dropped with a warning, its text carried.
+    """
+    wire = _wire("writer_pvs")
+    declarer, calc, typed, readback, entry, button, formula_readback = wire["root"]["children"]
+    assert declarer["props"]["pv"] == "loc://typed?type=int&init=0"  # the script's initializer, declared once
+    assert typed["type"] == "pv-text-input" and typed["props"]["pv"] == "loc://typed"
+    assert readback["props"]["pv"] == "loc://typed"
+    assert any("has another writer: textentry Typed" in w for w in calc["warnings"])
+    assert entry["type"] == "unknown-widget"
+    assert entry["warnings"][0] == (
+        'Formula entry: textentry writes its pv_name, which is a read-only formula PV: =pv("SR:B") * 2; widget dropped'
+    )
+    assert entry["meta"]["comment"] == 'Phoebus formula PV: =pv("SR:B") * 2'
+    assert button["type"] == "unknown-widget" and "bool_button writes its pv_name" in button["warnings"][0]
+    # Only the readback's formula was interned: the dropped inputs left none behind.
+    assert formula_readback["props"]["pv"] == "formula://f-001"
+    assert [f["name"] for f in wire["formulas"]] == ["f-001"]
+
+
+def test_hidden_widgets_stay_hidden():
+    """Fixture ``hidden``: ``<visible>false</visible>`` becomes the ``props.visible`` carrier.
+
+    The runtime reads ``props.visible`` as the base visibility and ANDs ``visible`` rules
+    onto it, so a widget with a lowered ``visible`` rule carries the static value as the
+    rule default instead (the rule alone decides, as in Phoebus).
+    """
+    hidden, shown, ruled, group, tabs = _children("hidden")
+    assert hidden["props"]["visible"] is False
+    assert "visible" not in shown["props"]
+    assert "visible" not in ruled["props"]
+    assert ruled["rules"][0]["targetProperty"] == "visible" and ruled["rules"][0]["default"] is False
+    assert group["type"] == "group-box" and group["props"]["visible"] is False
+    assert "visible" not in group["children"][0]["props"]  # the parent's visibility hides the child at runtime
+    assert tabs["type"] == "unknown-widget" and tabs["props"]["visible"] is False
+    nodes = list(_walk(_convert("hidden").root))
+    assert not any("visible" in node.dropped_props for node in nodes)
+
+
+def _walk(node):
+    yield node
+    for child in node.children:
+        yield from _walk(child)
+
+
+def test_hidden_holder_of_a_local_pv_initializer_gets_a_declarer():
+    """A hidden widget is never mounted, so its own channel cannot declare the local PV it initialises."""
+    body = (
+        '<widget type="textupdate" version="2.0.0"><name>Holder</name><x>0</x><y>0</y>'
+        "<pv_name>loc://x&lt;VDouble&gt;(5)</pv_name><visible>false</visible></widget>"
+        '<widget type="textupdate" version="2.0.0"><name>Reader</name><x>0</x><y>30</y><pv_name>loc://x</pv_name></widget>'
+        '<widget type="group" version="2.0.0"><name>G</name><x>0</x><y>60</y><width>100</width><height>50</height>'
+        '<visible>false</visible><widget type="textupdate" version="2.0.0"><name>Holder2</name><x>0</x><y>0</y>'
+        "<pv_name>loc://y&lt;VDouble&gt;(7)</pv_name></widget></widget>"
+        '<widget type="textupdate" version="2.0.0"><name>Shown</name><x>0</x><y>120</y>'
+        "<pv_name>loc://z&lt;VDouble&gt;(9)</pv_name></widget>"
+    )
+    data = f'<?xml version="1.0" encoding="UTF-8"?>\n<display version="2.0.0"><name>D</name>{body}</display>'.encode()
+    wire = to_wire_dict(convert_bytes(data, kind="bob"))
+    declarers = [node for node in wire["root"]["children"] if node["geometry"]["width"] == 0]
+    assert [node["props"]["pv"] for node in declarers] == ["loc://x?type=float&init=5", "loc://y?type=float&init=7"]
+    assert all("visible" not in node["props"] for node in declarers)
+    shown = wire["root"]["children"][-1]
+    assert shown["props"]["pv"] == "loc://z?type=float&init=9"  # a visible holder keeps its own initializer
+
+
 def test_local_pv_initializers():
     array, untyped, table, typed = _children("local_pv_initializers")
     assert array["props"]["pv"] == "loc://arr"
@@ -593,6 +685,143 @@ def test_embedded_file_led_by_a_macro_is_dropped():
     embedded = _wire("macros")["root"]["children"][1]
     assert "file" not in embedded["props"]
     assert embedded["warnings"] == ["Child: file '$(EPSFile)' is not a file path; dropped"]
+
+
+# --------------------------------------------------------------------------
+# Robustness: one bad widget, one bad number
+# --------------------------------------------------------------------------
+def _display(body: str) -> bytes:
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<display version="2.0.0"><name>D</name>{body}</display>'.encode()
+
+
+def _label(name: str, y: int = 0, extra: str = "") -> str:
+    return (
+        f'<widget type="label" version="2.0.0"><name>{name}</name><x>0</x><y>{y}</y><text>{name}</text>{extra}</widget>'
+    )
+
+
+def test_one_failing_widget_becomes_a_placeholder(monkeypatch):
+    """A lowering that raises costs that widget (placeholder with the failure), not the screen."""
+    from pydmconverter.bob import ir_adapter
+
+    real = ir_adapter.lower_actions
+
+    def boom(widget, ctx):
+        if widget.name == "Bad":
+            raise RuntimeError("boom")
+        return real(widget, ctx)
+
+    monkeypatch.setattr(ir_adapter, "lower_actions", boom)
+    body = (
+        _label("Before")
+        + (
+            '<widget type="group" version="2.0.0"><name>Bad</name><x>10</x><y>30</y><width>100</width><height>50</height>'
+            + _label("Child")
+            + "</widget>"
+        )
+        + _label("After", 100)
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    before, bad, after = wire["root"]["children"]
+    assert before["type"] == after["type"] == "text-label"
+    assert bad["type"] == "unknown-widget"
+    assert bad["props"]["originalClass"] == "group"
+    assert bad["props"]["originalProps"]["name"] == "Bad"
+    assert bad["geometry"] == {"x": 0, "y": 0, "width": 300, "height": 200}  # the fallback: origin + default size
+    assert bad["warnings"] == ["Conversion of group 'Bad' failed (RuntimeError: boom); rendering placeholder"]
+    assert [child["props"]["text"] for child in bad["children"]] == ["Child"]  # children still lowered
+    assert validate_screen_json(wire) == []
+
+
+def test_over_long_rule_condition_is_declined_not_fatal():
+    """A 60k-term condition used to raise RecursionError out of ast.parse and abort the file.
+
+    The length cap now turns it away first; either way the widget and its siblings convert.
+    """
+    condition = " + ".join(["pv0"] * 60_000) + " > 1"
+    rule = (
+        '<rules><rule name="r" prop_id="visible" out_exp="false">'
+        f'<exp bool_exp="{condition}"><value>false</value></exp><pv_name>SR:A</pv_name></rule></rules>'
+    )
+    body = (
+        _label("Before") + f'<widget type="rectangle" version="2.0.0"><name>Long</name><x>0</x><y>30</y>{rule}</widget>'
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    before, long = wire["root"]["children"]
+    assert before["type"] == "text-label"
+    assert long["type"] == "rectangle" and long.get("rules", []) == []
+    assert long["warnings"] == [
+        f"Long: rule 'r' condition not lowered: {len(condition)} characters, over the 2048-character expression limit"
+    ]
+
+
+def test_script_past_the_parser_recursion_limit_stays_tier_2():
+    text = "x = " + " + ".join(["1"] * 60_000)
+    body = (
+        '<widget type="textupdate" version="2.0.0"><name>S</name><x>0</x><y>0</y><pv_name>SR:A</pv_name>'
+        f'<scripts><script file="EmbeddedPy"><text>{text}</text><pv_name>SR:A</pv_name></script></scripts></widget>'
+    )
+    (node,) = to_wire_dict(convert_bytes(_display(body), kind="bob"))["root"]["children"]
+    assert node["type"] == "pv-label"
+    assert node["warnings"] == [f"S: script needs the script runtime (tier 2): {text[:0]}" + text]
+
+
+def test_non_finite_numbers_fall_back_with_a_warning():
+    """nan/inf parse as floats but are not JSON: geometry, axes and rule arms fall back and warn."""
+    body = (
+        '<widget type="label" version="2.0.0"><name>L</name><x>nan</x><y>0</y><width>inf</width><height>1e999</height>'
+        '<text>a</text><rules><rule name="r" prop_id="width" out_exp="false"><exp bool_exp="pv0 &gt; 1">'
+        "<value>inf</value></exp><pv_name>SR:A</pv_name></rule></rules></widget>"
+        '<widget type="polyline" version="2.0.0"><name>P</name><x>0</x><y>0</y>'
+        '<points><point x="inf" y="1"/><point x="2" y="3"/></points></widget>'
+        '<widget type="group" version="2.0.0"><name>G</name><x>inf</x><y>0</y><width>100</width><height>100</height>'
+        + _label("In")
+        + "</widget>"
+        '<widget type="xyplot" version="2.0.0"><name>X</name><x>0</x><y>0</y>'
+        "<y_axes><y_axis><minimum>-inf</minimum><maximum>nan</maximum></y_axis></y_axes>"
+        "<traces><trace><y_pv>SR:WF</y_pv><line_width>inf</line_width></trace></traces></widget>"
+    )
+    screen = convert_bytes(_display(body), kind="bob")
+    wire = to_wire_dict(screen)
+    json.dumps(wire, allow_nan=False)  # the whole document is strict JSON
+    assert "NaN" not in to_json(screen) and "Infinity" not in to_json(screen)
+    label, line, group, plot = wire["root"]["children"]
+    assert label["geometry"] == {"x": 0, "y": 0, "width": 100, "height": 20}
+    assert label["warnings"] == [
+        "L: width 'inf' is not a finite number; using 100",
+        "L: height '1e999' is not a finite number; using 20",
+        "L: x 'nan' is not a finite number; using 0",
+        "L: cannot coerce 'inf' to number",
+    ]
+    assert line["props"]["points"] == [{"x": 2, "y": 3}]
+    assert group["geometry"]["x"] == 0 and group["warnings"] == ["G: x 'inf' is not a finite number; using 0"]
+    axis = plot["props"]["yAxes"][0]
+    assert (axis["minRange"], axis["maxRange"]) == (0, 100)
+    assert plot["props"]["curves"][0]["lineWidth"] == 1
+    assert set(plot["warnings"]) >= {
+        "X: minimum '-inf' is not a finite number; using 0",
+        "X: maximum 'nan' is not a finite number; using 100",
+        "X: line_width 'inf' is not a finite number; using 1",
+    }
+
+
+def test_non_finite_colour_components_fall_back_without_aborting():
+    body = (
+        '<background_color><color red="inf" green="0" blue="0"/></background_color>'
+        '<widget type="label" version="2.0.0"><name>L</name><x>0</x><y>0</y><text>a</text>'
+        '<foreground_color><color red="nan" green="1e999" blue="0"/></foreground_color></widget>'
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    (label,) = wire["root"]["children"]
+    assert label["props"]["foregroundColor"] == "#000000"
+    assert "L: color without name or red/green/blue, using #000000" in label["warnings"]
+    assert "display: color without name or red/green/blue, using #000000" in label["warnings"]
+
+
+def test_non_finite_display_size_falls_back_with_a_warning():
+    wire = to_wire_dict(convert_bytes(_display("<width>inf</width>" + _label("L")), kind="bob"))
+    assert wire["metadata"]["size"] == {"width": 800, "height": 600}
+    assert wire["root"]["children"][0]["warnings"] == ["display: width 'inf' is not a finite number; using 800"]
 
 
 def _one_widget(body: str) -> dict:

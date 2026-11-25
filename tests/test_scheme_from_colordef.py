@@ -1,4 +1,4 @@
-"""``canopy-scheme from-colordef``: regenerate a scheme's light values from a colour table."""
+"""``pydmconverter-scheme from-colordef``: regenerate a scheme's light values from a colour table."""
 
 from __future__ import annotations
 

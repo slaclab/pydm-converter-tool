@@ -113,3 +113,24 @@ def test_tab_file_that_is_not_a_path_has_no_action():
     assert "actions" not in bad["props"]
     assert good["props"]["actions"][0]["file"] == "good.screen.json"
     assert "Tabs: navigation tab 'Bad' 'javascript:alert(1)' is not a file path; dropped" in node["warnings"]
+
+
+def test_tab_macros_carry_the_group_scope():
+    """Phoebus joins a tab's macros onto the widget's effective macros, group scope included."""
+    bob = b"""<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0"><name>D</name>
+<widget type="group" version="2.0.0"><name>G</name><x>0</x><y>0</y><width>300</width><height>200</height>
+  <macros><SYS>S1</SYS><P>GROUP</P></macros>
+  <widget type="navtabs" version="2.0.0"><name>N</name><x>0</x><y>0</y><macros><W>w</W></macros>
+    <tabs>
+      <tab><name>A</name><file>a.bob</file><macros><P>$(SYS):A</P></macros></tab>
+      <tab><name>B</name><file>b.bob</file></tab>
+    </tabs>
+  </widget>
+</widget>
+</display>"""
+    group = to_wire_dict(convert_bytes(bob, kind="bob"))["root"]["children"][0]
+    (navtabs,) = group["children"]
+    a, b = navtabs["children"]
+    assert a["props"]["actions"][0]["macros"] == {"SYS": "S1", "P": "S1:A", "W": "w"}
+    assert b["props"]["actions"][0]["macros"] == {"SYS": "S1", "P": "GROUP", "W": "w"}

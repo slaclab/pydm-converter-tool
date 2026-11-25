@@ -1,7 +1,8 @@
-"""``canopy-scheme``: check a color scheme file, and survey the named colors a panel corpus uses.
+"""``pydmconverter-scheme``: check a color scheme file, and survey the named colors a panel corpus uses.
 
 ``check <file>`` flattens the scheme the way the converter does and prints every validation error and every role
-that has no dark value; it exits 1 when there is any.
+that has no dark value; it exits 1 when there is any. It is moving to Canopy with the scheme flattener itself
+(Canopy owns the scheme contract); it keeps working here until then.
 
 ``survey <dir>... [--scheme <file>] [--corpus-root <dir>] [--exclude <glob>]... [--deployed-prefix <path>]`` counts
 the ``<color>`` elements of the ``.bob`` files under the directories, per ``(name, slot, saved RGB)``, and says what
@@ -26,7 +27,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 
-from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS, parse_rgba_list
+from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS, parse_color_def
 from pydmconverter.colors import ColorContext, rgba_to_hex
 from pydmconverter.scheme import SchemeResult, canonical_hex, load_scheme
 
@@ -116,7 +117,7 @@ def _file_colors(source: Path) -> dict[Key, int]:
             try:
                 rgb = tuple(int(float(child.get(c, "0"))) for c in ("red", "green", "blue"))
                 alpha = int(float(child.get("alpha", "255")))
-            except ValueError:
+            except (ValueError, OverflowError):  # text, nan / inf
                 continue
             key = (child.get("name") or UNNAMED, parent.tag, (*rgb, alpha))
             counts[key] = counts.get(key, 0) + 1
@@ -175,6 +176,7 @@ def survey(
 
 
 def check(path: Path, out) -> int:
+    """Validate a scheme file. Moving to Canopy with the flattener; still works here for now."""
     result = load_scheme(path)
     errors = result.meta["errors"]
     no_dark = sorted(
@@ -194,44 +196,15 @@ def check(path: Path, out) -> int:
 def parse_color_table(path: Path | None, warnings: list[str]) -> dict[str, str]:
     """A colour table as ``{name: "#hex" | "@Other"}`` in table order: the built-ins, or the entries of ``path``.
 
-    ``color.def`` grammar: ``Name = r, g, b [, a]`` | ``Name = Other`` | ``Name = alias(Other)``, ``#`` comments.
-    Both reference forms keep the reference as a light alias. ``Other`` must be a built-in or defined earlier in the
-    file. Lines that do not parse, or reference an undefined name, are skipped with a warning.
+    The ``color.def`` grammar is :func:`~pydmconverter.bob.coercion.parse_color_def`'s; both reference forms
+    (``Name = Other``, ``Name = alias(Other)``) keep the reference as a light alias. Lines that do not parse, or
+    reference an undefined name, are skipped with a warning prefixed by the file path.
     """
     if path is None:
         return {name: canonical_hex(rgba_to_hex(rgba)) for name, rgba in BUILTIN_NAMED_COLORS.items()}
-    known = set(BUILTIN_NAMED_COLORS)
     table: dict[str, str] = {}
-    text = Path(path).read_text(encoding="utf-8", errors="replace")
-    for lineno, raw in enumerate(text.splitlines(), start=1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        name, sep, value = (s.strip() for s in line.partition("="))
-        if not sep or not name:
-            warnings.append(f"{path}:{lineno}: cannot parse '{line}'")
-            continue
-        ref = None
-        if value.startswith("alias"):
-            rest = value[5:].strip()
-            if not (rest.startswith("(") and rest.endswith(")")):
-                warnings.append(f"{path}:{lineno}: cannot parse color '{name}' from '{value}'")
-                continue
-            ref = rest[1:-1].strip()
-        elif value in known:
-            ref = value
-        if ref is not None:
-            if ref not in known:
-                warnings.append(f"{path}:{lineno}: color '{name}' references undefined '{ref}'")
-                continue
-            table[name] = f"@{ref}"
-        else:
-            rgba = parse_rgba_list(value)
-            if rgba is None:
-                warnings.append(f"{path}:{lineno}: cannot parse color '{name}' from '{value}'")
-                continue
-            table[name] = canonical_hex(rgba_to_hex(rgba))
-        known.add(name)
+    for entry in parse_color_def(path, warnings, label=str(path)):
+        table[entry.name] = f"@{entry.ref}" if entry.ref is not None else canonical_hex(rgba_to_hex(entry.rgba))
     return table
 
 
@@ -315,9 +288,9 @@ def from_colordef(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="canopy-scheme", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="pydmconverter-scheme", description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    p_check = sub.add_parser("check", help="validate a scheme file")
+    p_check = sub.add_parser("check", help="validate a scheme file (moving to Canopy; still works here for now)")
     p_check.add_argument("file", type=Path)
     p_survey = sub.add_parser("survey", help="count the named colors a corpus uses")
     p_survey.add_argument("dirs", nargs="+", type=Path)
@@ -345,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     scheme = load_scheme(args.scheme) if args.scheme is not None else None
     if scheme is not None and scheme.meta["errors"]:
-        print(f"{args.scheme}: scheme has errors; run 'canopy-scheme check'", file=sys.stderr)
+        print(f"{args.scheme}: scheme has errors; run 'pydmconverter-scheme check'", file=sys.stderr)
         return 1
     survey(
         args.dirs,
