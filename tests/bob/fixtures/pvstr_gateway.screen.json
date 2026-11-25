@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "pvstr_gateway",
+  "metadata": {
+    "title": "pvstr_gateway",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "g",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "txt",
+            "targetProperty": "visible",
+            "pvs": [
+              {
+                "name": "SR:STATE",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == \"Open\"",
+                "value": false
+              }
+            ],
+            "default": true
+          }
+        ],
+        "warnings": [
+          "Gateway: rule compares PV text; the Formula Engine delivers enum PVs as indices, verify SR:STATE is a string record"
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "text-label",
+        "props": {
+          "text": "l",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-002",
+            "name": "txt",
+            "targetProperty": "visible",
+            "pvs": [
+              {
+                "name": "loc://state",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == \"Open\"",
+                "value": false
+              }
+            ],
+            "default": true
+          }
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

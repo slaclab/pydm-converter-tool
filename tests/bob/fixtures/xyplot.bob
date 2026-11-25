@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="xyplot" version="2.0.0">
+    <name>BPM plot</name>
+    <x>0</x>
+    <y>0</y>
+    <title>Orbit</title>
+    <traces>
+      <trace>
+        <name>$(BPM) orbit</name>
+        <x_pv>$(BPM_X)</x_pv>
+        <y_pv>$(BPM_Y)</y_pv>
+        <color>
+          <color red="0" green="0" blue="255"></color>
+        </color>
+        <line_width>2</line_width>
+      </trace>
+    </traces>
+    <y_axes>
+      <y_axis>
+        <title>mm</title>
+      </y_axis>
+      <y_axis>
+        <title>$(UNIT)</title>
+      </y_axis>
+    </y_axes>
+  </widget>
+</display>

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "xyplot",
+  "metadata": {
+    "title": "xyplot",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "macros": [
+    {
+      "name": "BPM",
+      "default": ""
+    },
+    {
+      "name": "BPM_X",
+      "default": ""
+    },
+    {
+      "name": "BPM_Y",
+      "default": ""
+    },
+    {
+      "name": "UNIT",
+      "default": ""
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "xy-plot",
+        "props": {
+          "title": "Orbit",
+          "curves": [
+            {
+              "name": "${BPM} orbit",
+              "x_channel": "${BPM_X}",
+              "y_channel": "${BPM_Y}",
+              "color": "#0000ff",
+              "lineWidth": 2,
+              "lineStyle": 1,
+              "symbol": "none",
+              "symbolSize": 10,
+              "traceType": "line",
+              "yAxisName": "y0"
+            }
+          ],
+          "xAxis": {
+            "name": "x",
+            "label": "X",
+            "minRange": 0,
+            "maxRange": 100,
+            "autoRange": false,
+            "logMode": false,
+            "grid": false,
+            "visible": true
+          },
+          "yAxes": [
+            {
+              "name": "y0",
+              "label": "mm",
+              "minRange": 0,
+              "maxRange": 100,
+              "autoRange": false,
+              "logMode": false,
+              "grid": false,
+              "visible": true
+            },
+            {
+              "name": "y1",
+              "label": "${UNIT}",
+              "minRange": 0,
+              "maxRange": 100,
+              "autoRange": false,
+              "logMode": false,
+              "grid": false,
+              "visible": true
+            }
+          ],
+          "showLegend": true
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "height": 300
+        }
+      }
+    ]
+  }
+}

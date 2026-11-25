@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="rectangle" version="2.0.0">
+    <name>Bare rect</name>
+    <x>0</x>
+    <y>0</y>
+    <rules>
+      <rule name="bg" prop_id="background_color" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="polygon" version="2.0.0">
+    <name>Bare polygon</name>
+    <x>0</x>
+    <y>30</y>
+    <points>
+      <point x="0" y="0"></point>
+      <point x="40" y="0"></point>
+      <point x="20" y="30"></point>
+    </points>
+  </widget>
+  <widget type="polyline" version="2.0.0">
+    <name>Arrow line</name>
+    <x>0</x>
+    <y>70</y>
+    <arrows>2</arrows>
+    <points>
+      <point x="0" y="0"></point>
+      <point x="50" y="10"></point>
+    </points>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Bare label</name>
+    <x>0</x>
+    <y>90</y>
+    <text>hi</text>
+  </widget>
+  <widget type="ellipse" version="2.0.0">
+    <name>Bare ellipse</name>
+    <x>0</x>
+    <y>120</y>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Bare textupdate</name>
+    <x>0</x>
+    <y>180</y>
+    <pv_name>SR:T</pv_name>
+  </widget>
+  <widget type="textentry" version="2.0.0">
+    <name>Entry</name>
+    <x>0</x>
+    <y>210</y>
+    <pv_name>SR:E</pv_name>
+    <font>
+      <font family="Liberation Sans" style="BOLD" size="16.0"></font>
+    </font>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Aligned</name>
+    <x>0</x>
+    <y>240</y>
+    <text>c</text>
+    <horizontal_alignment>1</horizontal_alignment>
+    <vertical_alignment>1</vertical_alignment>
+  </widget>
+  <widget type="led" version="2.0.0">
+    <name>LED</name>
+    <x>0</x>
+    <y>270</y>
+    <pv_name>SR:L</pv_name>
+    <line_color><color red="255" green="0" blue="0"></color></line_color>
+  </widget>
+  <widget type="embedded" version="2.0.0">
+    <name>Embed</name>
+    <x>0</x>
+    <y>300</y>
+    <file>embedded/_host.bob</file>
+    <macros>
+      <HOST>$(P)HOST</HOST>
+    </macros>
+  </widget>
+  <widget type="tabs" version="2.0.0">
+    <name>Tabs</name>
+    <x>0</x>
+    <y>620</y>
+  </widget>
+  <widget type="picture" version="2.0.0">
+    <name>Picture</name>
+    <x>0</x>
+    <y>930</y>
+    <file>logo.png</file>
+  </widget>
+</display>

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "loc_formula_intermediate",
+  "metadata": {
+    "title": "loc_formula_intermediate",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "({0} + {1}) / 2",
+      "bindings": {
+        "0": "SR:A",
+        "1": "SR:B"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "calc",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "rectangle",
+        "props": {
+          "lineColor": "#0000ff",
+          "lineWidth": 3,
+          "fill": true,
+          "fillColor": "#1e90ff"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "vis",
+            "targetProperty": "visible",
+            "pvs": [
+              {
+                "name": "formula://f-001",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} > 1",
+                "value": true
+              }
+            ],
+            "default": true
+          }
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

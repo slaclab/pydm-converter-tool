@@ -1,0 +1,200 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "groups",
+  "metadata": {
+    "title": "groups",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "group-box",
+        "props": {
+          "title": "Box"
+        },
+        "geometry": {
+          "x": 100,
+          "y": 100,
+          "width": 200,
+          "height": 150
+        },
+        "children": [
+          {
+            "id": "w-003",
+            "type": "text-label",
+            "props": {
+              "text": "a",
+              "foregroundColor": "#000000"
+            },
+            "geometry": {
+              "x": 128,
+              "y": 128,
+              "width": 100,
+              "height": 20
+            }
+          }
+        ]
+      },
+      {
+        "id": "w-004",
+        "type": "group-box",
+        "props": {
+          "title": "Title"
+        },
+        "geometry": {
+          "x": 320,
+          "y": 100,
+          "width": 200,
+          "height": 150
+        },
+        "children": [
+          {
+            "id": "w-005",
+            "type": "text-label",
+            "props": {
+              "text": "b",
+              "foregroundColor": "#000000"
+            },
+            "geometry": {
+              "x": 331,
+              "y": 125,
+              "width": 100,
+              "height": 20
+            }
+          }
+        ]
+      },
+      {
+        "id": "w-006",
+        "type": "group",
+        "props": {
+          "layoutMode": "absolute"
+        },
+        "geometry": {
+          "x": 100,
+          "y": 300,
+          "width": 200,
+          "height": 150
+        },
+        "children": [
+          {
+            "id": "w-007",
+            "type": "text-label",
+            "props": {
+              "text": "c",
+              "foregroundColor": "#000000"
+            },
+            "geometry": {
+              "x": 111,
+              "y": 311,
+              "width": 100,
+              "height": 20
+            }
+          },
+          {
+            "id": "w-008",
+            "type": "group",
+            "props": {
+              "layoutMode": "absolute"
+            },
+            "geometry": {
+              "x": 121,
+              "y": 321,
+              "width": 200,
+              "height": 150
+            },
+            "children": [
+              {
+                "id": "w-009",
+                "type": "text-label",
+                "props": {
+                  "text": "d",
+                  "foregroundColor": "#000000"
+                },
+                "geometry": {
+                  "x": 126,
+                  "y": 326,
+                  "width": 100,
+                  "height": 20
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "w-010",
+        "type": "group",
+        "props": {
+          "layoutMode": "absolute"
+        },
+        "geometry": {
+          "x": 320,
+          "y": 300,
+          "width": 200,
+          "height": 150
+        },
+        "children": [
+          {
+            "id": "w-011",
+            "type": "rectangle",
+            "props": {
+              "lineColor": "#0000ff",
+              "lineWidth": 3,
+              "fill": true,
+              "fillColor": "#1e90ff"
+            },
+            "geometry": {
+              "x": 320,
+              "y": 300,
+              "width": 100,
+              "height": 20
+            },
+            "rules": [
+              {
+                "id": "r-001",
+                "name": "v",
+                "targetProperty": "visible",
+                "pvs": [
+                  {
+                    "name": "SR:G",
+                    "trigger": true
+                  }
+                ],
+                "conditions": [
+                  {
+                    "expression": "{0} == 0",
+                    "value": false
+                  }
+                ],
+                "default": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

@@ -29,9 +29,9 @@ import re
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterator
+from typing import Any, Callable, Iterator
 
-from pydmconverter.colors import RGBA, ColorContext, ColorValue, named_color, rgba_to_hex
+from pydmconverter.colors import RGBA, ColorContext, ColorValue, SchemeLike, named_color, rgba_to_hex
 from pydmconverter.pairing import NamedColor, pair_text_colors
 from pydmconverter.edm.edm_qt import (
     EDM_DATA_PV_ATTRS,
@@ -64,9 +64,6 @@ from pydmconverter.ir.model import Number, ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
-
-if TYPE_CHECKING:
-    from pydmconverter.scheme import SchemeResult
 
 logger = logging.getLogger(__name__)
 
@@ -1974,7 +1971,7 @@ def edm_file_to_ir(
     color_list_path: str | Path | None = None,
     calc_list_path: str | Path | None = None,
     site: str | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
     display_roots: SearchPaths = None,
@@ -2000,6 +1997,8 @@ def edm_file_to_ir(
     the ground it sits on are then paired by their palette names
     (:func:`~pydmconverter.pairing.pair_text_colors`), and the document's ``parity:`` and
     ``pair:`` notes lead the first node's warnings. ``None`` keeps today's literal hex.
+    ``scheme`` is any :class:`~pydmconverter.colors.SchemeLike` (``.flat``,
+    ``.imports``, ``.sources`` and ``.meta``); Canopy passes its own flattening result.
 
     ``display_roots`` are absolute directories (a single directory or a sequence):
     a related display or embedded window naming a display below one gets the

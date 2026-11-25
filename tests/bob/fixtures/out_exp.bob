@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Literal</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:A</pv_name>
+    <rules>
+      <rule name="lit" prop_id="visible" out_exp="true">
+        <exp bool_exp="pvInt0==0">
+          <expression>false</expression>
+        </exp>
+        <exp bool_exp="pvInt0==1">
+          <expression>true</expression>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Computed</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>SR:B</pv_name>
+    <rules>
+      <rule name="comp" prop_id="visible" out_exp="true">
+        <exp bool_exp="pv0 &gt; 0">
+          <expression>pv0 &gt; 3</expression>
+        </exp>
+        <pv_name>SR:B</pv_name>
+      </rule>
+    </rules>
+  </widget>
+</display>

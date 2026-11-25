@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "loc_formula_alias",
+  "metadata": {
+    "title": "loc_formula_alias",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": ""
+    }
+  ],
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "({0} - {1}) / {0} * 100",
+      "bindings": {
+        "0": "${P}:MEM_MAX",
+        "1": "${P}:MEM_FREE"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:MEM_MAX",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

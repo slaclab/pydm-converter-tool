@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "writer_pvs",
+  "metadata": {
+    "title": "writer_pvs",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "{0} * 2",
+      "bindings": {
+        "0": "SR:B"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://typed?type=int&init=0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "SR:A",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus script [EmbeddedPy] pvs=[SR:A, loc://typed(0)]\nfrom org.csstudio.display.builder.runtime.script import PVUtil\npvs[1].setValue(PVUtil.getDouble(pvs[0]) * 2)\n"
+        },
+        "warnings": [
+          "Calc: script needs the script runtime (tier 2): pvs[1].setValue(PVUtil.getDouble(pvs[0]) * 2) (loc://typed has another writer: textentry Typed)"
+        ]
+      },
+      {
+        "id": "w-004",
+        "type": "pv-text-input",
+        "props": {
+          "pv": "loc://typed"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-005",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://typed",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-006",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "textentry",
+          "originalProps": {
+            "name": "Formula entry",
+            "x": "0",
+            "y": "90",
+            "pv_name": "=pv(\"SR:B\") * 2"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 90,
+          "width": 100,
+          "height": 20
+        },
+        "meta": {
+          "comment": "Phoebus formula PV: =pv(\"SR:B\") * 2"
+        },
+        "warnings": [
+          "Formula entry: textentry writes its pv_name, which is a read-only formula PV: =pv(\"SR:B\") * 2; widget dropped",
+          "No registry entry for textentry; rendering placeholder"
+        ]
+      },
+      {
+        "id": "w-007",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "bool_button",
+          "originalProps": {
+            "name": "Formula button",
+            "x": "0",
+            "y": "120",
+            "pv_name": "=`SR:C` > 1"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 120,
+          "width": 100,
+          "height": 30
+        },
+        "meta": {
+          "comment": "Phoebus formula PV: =`SR:C` > 1"
+        },
+        "warnings": [
+          "Formula button: bool_button writes its pv_name, which is a read-only formula PV: =`SR:C` > 1; widget dropped",
+          "No registry entry for bool_button; rendering placeholder"
+        ]
+      },
+      {
+        "id": "w-008",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 150,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  },
+  "macros": []
+}

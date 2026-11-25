@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Tokens</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:A</pv_name>
+    <rules>
+      <rule name="value" prop_id="foreground_color" out_exp="false">
+        <exp bool_exp="pv0 &gt; 5">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <exp bool_exp="pvInt1 == 2 || pvStr1 == &quot;3&quot;">
+          <value><color red="0" green="255" blue="0"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+        <pv_name>SR:B</pv_name>
+      </rule>
+      <rule name="severity" prop_id="background_color" out_exp="false">
+        <exp bool_exp="pvSev0 == 2">
+          <value><color red="255" green="0" blue="0"></color></value>
+        </exp>
+        <exp bool_exp="pvLegacySev0 == 1">
+          <value><color red="0" green="255" blue="0"></color></value>
+        </exp>
+        <exp bool_exp="true">
+          <value><color red="1" green="2" blue="3"></color></value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+      <rule name="macro" prop_id="visible" out_exp="false">
+        <exp bool_exp="!(pv0 == ${COLOR_CODE})">
+          <value>false</value>
+        </exp>
+        <pv_name>$(P)SR:C</pv_name>
+      </rule>
+      <rule name="badtoken" prop_id="precision" out_exp="false">
+        <exp bool_exp="pv3 == 1">
+          <value>2</value>
+        </exp>
+        <pv_name>SR:A</pv_name>
+      </rule>
+    </rules>
+  </widget>
+</display>

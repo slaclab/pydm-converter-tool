@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "action_button_transparent",
+  "metadata": {
+    "title": "action_button_transparent",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "regular-button",
+        "props": {
+          "label": "Go",
+          "actions": [
+            {
+              "type": "write_pv",
+              "pvName": "SR:GO",
+              "value": "1"
+            }
+          ],
+          "transparent": true
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "Go"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 40,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "pv-button",
+        "props": {
+          "pv": "SR:B0",
+          "readbackPV": "SR:B0",
+          "onLabel": "On",
+          "offLabel": "Off",
+          "buttonType": "toggle",
+          "onColor": "#3cff3c",
+          "offColor": "#3c643c",
+          "transparent": true
+        },
+        "geometry": {
+          "x": 0,
+          "y": 80,
+          "width": 100,
+          "height": 30
+        },
+        "warnings": [
+          "ClearBool: on_image '$(IMG)/on.png' is not a file path; dropped",
+          "ClearBool: off_image '${IMG}/off.png' is not a file path; dropped"
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

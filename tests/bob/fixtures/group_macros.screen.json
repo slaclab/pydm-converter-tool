@@ -1,0 +1,222 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "group_macros",
+  "metadata": {
+    "title": "group_macros",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 436,
+      "height": 486
+    }
+  },
+  "macros": [
+    {
+      "name": "D",
+      "default": ""
+    },
+    {
+      "name": "P",
+      "default": "DEV1"
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 436,
+      "height": 486,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 436,
+      "height": 486
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "group-box",
+        "props": {
+          "title": "Pump DEV2"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 300,
+          "height": 200
+        },
+        "children": [
+          {
+            "id": "w-003",
+            "type": "pv-label",
+            "props": {
+              "pv": "DEV2:VAL",
+              "foregroundColor": "#000000",
+              "backgroundColor": "#f0f0f0"
+            },
+            "geometry": {
+              "x": 28,
+              "y": 28,
+              "width": 100,
+              "height": 20
+            }
+          },
+          {
+            "id": "w-004",
+            "type": "pv-label",
+            "props": {
+              "pv": "DEV2:Q",
+              "foregroundColor": "#000000",
+              "backgroundColor": "#f0f0f0"
+            },
+            "geometry": {
+              "x": 28,
+              "y": 58,
+              "width": 100,
+              "height": 20
+            }
+          },
+          {
+            "id": "w-005",
+            "type": "text-label",
+            "props": {
+              "text": "${D} DEV2",
+              "foregroundColor": "#000000"
+            },
+            "geometry": {
+              "x": 28,
+              "y": 88,
+              "width": 100,
+              "height": 20
+            }
+          },
+          {
+            "id": "w-006",
+            "type": "rectangle",
+            "props": {
+              "lineColor": "#0000ff",
+              "lineWidth": 3,
+              "fill": true,
+              "fillColor": "#1e90ff"
+            },
+            "geometry": {
+              "x": 28,
+              "y": 118,
+              "width": 100,
+              "height": 20
+            },
+            "rules": [
+              {
+                "id": "r-001",
+                "name": "v",
+                "targetProperty": "visible",
+                "pvs": [
+                  {
+                    "name": "DEV2:STAT",
+                    "trigger": true
+                  }
+                ],
+                "conditions": [
+                  {
+                    "expression": "{0} > 3",
+                    "value": false
+                  }
+                ],
+                "default": true
+              }
+            ]
+          },
+          {
+            "id": "w-007",
+            "type": "regular-button",
+            "props": {
+              "label": "Set DEV2",
+              "actions": [
+                {
+                  "type": "write_pv",
+                  "pvName": "DEV2:SET",
+                  "value": "1"
+                }
+              ]
+            },
+            "geometry": {
+              "x": 28,
+              "y": 148,
+              "width": 100,
+              "height": 30
+            }
+          },
+          {
+            "id": "w-008",
+            "type": "embedded-display",
+            "props": {
+              "file": "sub.screen.json",
+              "macros": {
+                "P": "DEV2",
+                "Q": "DEV2:Q",
+                "LIMIT": "3",
+                "D": "${D}",
+                "X": "DEV2"
+              }
+            },
+            "geometry": {
+              "x": 28,
+              "y": 178,
+              "width": 400,
+              "height": 300
+            }
+          },
+          {
+            "id": "w-009",
+            "type": "group",
+            "props": {
+              "layoutMode": "absolute"
+            },
+            "geometry": {
+              "x": 178,
+              "y": 28,
+              "width": 100,
+              "height": 60
+            },
+            "children": [
+              {
+                "id": "w-010",
+                "type": "pv-label",
+                "props": {
+                  "pv": "DEV2:SUB:VAL",
+                  "foregroundColor": "#000000",
+                  "backgroundColor": "#f0f0f0"
+                },
+                "geometry": {
+                  "x": 178,
+                  "y": 28,
+                  "width": 100,
+                  "height": 20
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "w-011",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:VAL",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 250,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

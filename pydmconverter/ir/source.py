@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from pydmconverter.ir.model import Number
+from pydmconverter.ir.model import NodeMeta, Number
 
 
 @dataclass
@@ -63,6 +63,9 @@ class SourceNode:
         Original source props, surfaced verbatim on ``unknown-widget`` nodes.
     warnings:
         Convert-time notes to attach to the resulting node (D11).
+    meta:
+        Source metadata (e.g. an author comment) carried onto the IR node's
+        ``meta`` unchanged, on both the mapped and the ``unknown-widget`` path.
     dropped_props:
         Source prop names the front-end neither mapped nor used, in the
         front-end's order. The builder copies them onto the IR node's
@@ -71,6 +74,11 @@ class SourceNode:
     placeholder_reason:
         When set, the builder emits an ``unknown-widget`` placeholder with this
         warning instead of resolving the node (a front-end failed to convert it).
+    visible:
+        ``False`` for a widget the source hides statically. The builder writes it as
+        the ``props.visible`` carrier the runtime reads as the base visibility (absent
+        means visible), on the mapped and the ``unknown-widget`` path alike. ``None``
+        leaves the prop out.
     """
 
     qt_class: str | None
@@ -82,8 +90,10 @@ class SourceNode:
     raw_class: str | None = None
     raw_props: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    meta: NodeMeta | None = None
     dropped_props: list[str] = field(default_factory=list)
     placeholder_reason: str | None = None
+    visible: bool | None = None
 
     @property
     def original_class(self) -> str | None:

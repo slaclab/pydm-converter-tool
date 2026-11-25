@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="bool_button" version="2.0.0">
+    <name>Bare</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:B0</pv_name>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Push</name>
+    <x>0</x>
+    <y>40</y>
+    <pv_name>SR:B1</pv_name>
+    <mode>1</mode>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Inverted</name>
+    <x>0</x>
+    <y>80</y>
+    <pv_name>SR:B2</pv_name>
+    <mode>2</mode>
+    <on_label>Open</on_label>
+    <off_color><color red="255" green="0" blue="0"></color></off_color>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Images</name>
+    <x>0</x>
+    <y>120</y>
+    <pv_name>SR:B3</pv_name>
+    <on_image>on.png</on_image>
+    <off_image>off.png</off_image>
+  </widget>
+</display>

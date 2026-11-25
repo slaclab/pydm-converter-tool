@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Writer</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:CURRENT</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+pvs[1].setValue(PVUtil.getDouble(pvs[0]) * 2)
+]]></text>
+        <pv_name>SR:CURRENT</pv_name>
+        <pv_name>loc://double&lt;VDouble&gt;(0)</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Reader</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://double</pv_name>
+  </widget>
+</display>

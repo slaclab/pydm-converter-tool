@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Carrier</name>
+    <x>0</x>
+    <y>0</y>
+    <text>m</text>
+    <scripts>
+      <script file="EmbeddedPy" name="first">
+        <text><![CDATA[import time
+time.sleep(1)
+widget.setPropertyValue('text', 'a')
+]]></text>
+        <pv_name>SR:A</pv_name>
+      </script>
+      <script file="EmbeddedPy" name="second">
+        <text><![CDATA[widget.setPropertyValue('visible', False)
+]]></text>
+        <pv_name>SR:B</pv_name>
+      </script>
+    </scripts>
+    <actions>
+      <action type="execute">
+        <script file="EmbeddedPy">
+          <text><![CDATA[print("x")]]></text>
+        </script>
+        <description>Run</description>
+      </action>
+    </actions>
+  </widget>
+  <widget typeId="org.csstudio.opibuilder.widgets.Label" version="1.0.0">
+    <name>Legacy</name>
+    <x>0</x>
+    <y>30</y>
+    <text>m</text>
+    <scripts>
+      <script file="EmbeddedPy" name="first">
+        <text><![CDATA[import time
+time.sleep(1)
+widget.setPropertyValue('text', 'a')
+]]></text>
+        <pv_name>SR:A</pv_name>
+      </script>
+      <script file="EmbeddedPy" name="second">
+        <text><![CDATA[widget.setPropertyValue('visible', False)
+]]></text>
+        <pv_name>SR:B</pv_name>
+      </script>
+    </scripts>
+    <actions>
+      <action type="execute">
+        <script file="EmbeddedPy">
+          <text><![CDATA[print("x")]]></text>
+        </script>
+        <description>Run</description>
+      </action>
+    </actions>
+  </widget>
+</display>

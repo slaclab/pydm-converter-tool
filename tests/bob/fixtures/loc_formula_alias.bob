@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Writer</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>${P}:MEM_MAX</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+maxPV = pvs[0]
+freePV = pvs[1]
+out = pvs[2]
+m = PVUtil.getDouble(maxPV)
+f = PVUtil.getDouble(freePV)
+out.setValue((m - f) / m * 100)
+]]></text>
+        <pv_name>$(P):MEM_MAX</pv_name>
+        <pv_name>$(P):MEM_FREE</pv_name>
+        <pv_name>loc://$(P):MEM_LOAD</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Reader</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://$(P):MEM_LOAD</pv_name>
+  </widget>
+</display>

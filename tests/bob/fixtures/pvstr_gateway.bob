@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Gateway</name>
+    <x>0</x>
+    <y>0</y>
+    <text>g</text>
+    <rules>
+      <rule name="txt" prop_id="visible" out_exp="false">
+        <exp bool_exp="pvStr0 == &quot;Open&quot;">
+          <value>false</value>
+        </exp>
+        <pv_name>SR:STATE</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Local</name>
+    <x>0</x>
+    <y>30</y>
+    <text>l</text>
+    <rules>
+      <rule name="txt" prop_id="visible" out_exp="false">
+        <exp bool_exp="pvStr0 == &quot;Open&quot;">
+          <value>false</value>
+        </exp>
+        <pv_name>loc://state</pv_name>
+      </rule>
+    </rules>
+  </widget>
+</display>

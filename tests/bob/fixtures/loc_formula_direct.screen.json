@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "loc_formula_direct",
+  "metadata": {
+    "title": "loc_formula_direct",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "{0} * 2",
+      "bindings": {
+        "0": "SR:CURRENT"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://double?type=float&init=0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "SR:CURRENT",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  },
+  "macros": []
+}

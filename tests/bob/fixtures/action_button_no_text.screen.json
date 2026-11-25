@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "action_button_no_text",
+  "metadata": {
+    "title": "action_button_no_text",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "regular-button",
+        "props": {
+          "label": "Open A / b.bob",
+          "actions": [
+            {
+              "type": "open_display",
+              "file": "a.screen.json",
+              "target": "replace"
+            },
+            {
+              "type": "open_display",
+              "file": "b.screen.json",
+              "target": "replace"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "SR:X",
+          "actions": [
+            {
+              "type": "write_pv",
+              "pvName": "SR:X",
+              "value": "1"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 0,
+          "y": 40,
+          "width": 100,
+          "height": 30
+        }
+      }
+    ]
+  },
+  "macros": []
+}

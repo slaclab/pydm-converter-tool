@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "typed_no_init_reader",
+  "metadata": {
+    "title": "typed_no_init_reader",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "formulas": [
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "{0} - 1",
+      "bindings": {
+        "0": "SR:MEM"
+      }
+    },
+    {
+      "name": "f-002",
+      "kind": "scalar",
+      "expression": "{0}",
+      "bindings": {
+        "0": "SR:FREE"
+      }
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "w",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "text-label",
+        "props": {
+          "text": "n",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "No reader: formula f-002 has no reader (loc://orphan)"
+        ]
+      }
+    ]
+  },
+  "macros": []
+}

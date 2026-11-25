@@ -106,10 +106,14 @@ class IRBuilder:
         renamed, and is written back as ``${VAR}``. A front-end that wrote no
         marker passes ``literal_braces=False`` to skip that pass.
 
-        ``macro_defaults`` gives some declared macros a default other than ``""``,
-        by the source's macro name. It follows the renaming of macro names the IR
-        rejects, so a default given for ``6X`` lands on ``M_6X``; one given under
-        the new name wins. Values are stored verbatim.
+        ``macro_defaults`` (e.g. a display's ``<macros>`` block) gives some declared
+        macros a default other than ``""``, by the source's macro name. It follows the
+        renaming of macro names the IR rejects, so a default given for ``6X`` lands on
+        ``M_6X``; one given under the new name wins. Values are stored verbatim, even
+        when they contain ``${OTHER}`` (the runtime resolves them). When the macros are
+        collected (``macros`` not supplied), a name it gives that nothing references is
+        appended as a declaration; such a name the IR rejects is skipped with a root
+        warning (no reference to rename, so no caller can pass it).
         """
         width, height = size
         # Allocate the root id before children so the canvas stays w-001.
@@ -159,6 +163,8 @@ class IRBuilder:
                 macro.model_copy(update={"default": defaults[macro.name]}) if macro.name in defaults else macro
                 for macro in declared
             ]
+            if macros is None:
+                declared.extend(self._unreferenced_macro_defaults(root, declared, macro_defaults, renamed))
         literal = self._restore_literal_braces(root) if literal_braces else set()
         shared = sorted(literal & {macro.name for macro in declared})
         if shared:
@@ -200,11 +206,12 @@ class IRBuilder:
         return WidgetNode(
             id=self.ids.widget(),
             type=definition.id,
-            props=self._map_props(node.qt_props, definition),
+            props=self._with_visibility(self._map_props(node.qt_props, definition), node),
             geometry=self._geometry(node.geometry),
             rules=self._build_rules(node.rules),
             children=[self._build_node(child) for child in node.children],
             warnings=list(node.warnings),
+            meta=node.meta,
             dropped_props=self._dropped_props(node, definition),
         )
 
@@ -236,6 +243,18 @@ class IRBuilder:
             out[spec["to"]] = value
         return self._hoist_formulas(out)
 
+    @staticmethod
+    def _with_visibility(props: dict[str, Any], node: SourceNode) -> dict[str, Any]:
+        """``props`` plus the ``visible`` carrier when the source hides the widget.
+
+        ``props.visible`` is not a registry prop: the runtime reads it on every widget
+        as the base visibility (absent is visible) and ANDs its ``visible`` rules onto
+        it, which is also how the Screen Builder stashes a hidden widget on export.
+        """
+        if node.visible is False:
+            props["visible"] = False
+        return props
+
     def _hoist_formulas(self, props: dict[str, Any]) -> dict[str, Any]:
         """Lower any ``calc://`` channel value to a screen-level formula + ``formula://`` ref."""
         for key, value in props.items():
@@ -254,11 +273,14 @@ class IRBuilder:
         return WidgetNode(
             id=self.ids.widget(),
             type=UNKNOWN_WIDGET_TYPE,
-            props={"originalClass": original, "originalProps": node.raw_props or node.qt_props},
+            props=self._with_visibility(
+                {"originalClass": original, "originalProps": node.raw_props or node.qt_props}, node
+            ),
             geometry=self._geometry(node.geometry),
             rules=self._build_rules(node.rules),
             children=[self._build_node(child) for child in node.children],
             warnings=warnings,
+            meta=node.meta,
             dropped_props=list(node.dropped_props),
         )
 
@@ -338,6 +360,30 @@ class IRBuilder:
     def _geometry(geom: tuple[Number, Number, Number, Number]) -> Geometry:
         x, y, width, height = geom
         return Geometry(x=x, y=y, width=width, height=height)
+
+    @staticmethod
+    def _unreferenced_macro_defaults(
+        root: WidgetNode, declared: list[MacroDeclaration], defaults: dict[str, str], renamed: dict[str, str]
+    ) -> list[MacroDeclaration]:
+        """Declarations for the ``defaults`` names nothing references, in ``defaults`` order.
+
+        A name the IR rejects is skipped with a root warning instead of failing validation.
+        """
+        referenced = {macro.name for macro in declared} | set(renamed)
+        appended: list[MacroDeclaration] = []
+        skipped: list[str] = []
+        for name, value in defaults.items():
+            if name in referenced:
+                continue
+            if valid_macro_name(name) != name:
+                skipped.append(name)
+                continue
+            appended.append(MacroDeclaration(name=name, default=value))
+        if skipped:
+            root.warnings.append(
+                f"Macro defaults with names the IR rejects were dropped (nothing references them): {', '.join(skipped)}"
+            )
+        return appended
 
     def _rename_invalid_macros(self, root: WidgetNode) -> tuple[dict[str, str], dict[str, list[str]]]:
         """Rename macros whose names the IR rejects (``${6X6FBCKPV}``), consistently.

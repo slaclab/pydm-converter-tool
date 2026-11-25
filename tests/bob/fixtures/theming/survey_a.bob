@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Survey A</name>
+  <background_color>
+    <color name="Display_Background" red="255" green="255" blue="255"></color>
+  </background_color>
+  <widget type="label" version="2.0.0">
+    <name>One</name>
+    <foreground_color>
+      <color name="Text" red="22" green="22" blue="22"></color>
+    </foreground_color>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Two</name>
+    <foreground_color>
+      <color name="Text" red="0" green="0" blue="0"></color>
+    </foreground_color>
+    <background_color>
+      <color name="Brand_Blue" red="10" green="20" blue="30"></color>
+    </background_color>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Three</name>
+    <foreground_color>
+      <color red="1" green="2" blue="3"></color>
+    </foreground_color>
+  </widget>
+</display>

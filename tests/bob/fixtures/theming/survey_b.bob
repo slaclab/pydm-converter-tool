@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Survey B</name>
+  <widget type="label" version="2.0.0">
+    <name>One</name>
+    <foreground_color>
+      <color name="Text" red="22" green="22" blue="22"></color>
+    </foreground_color>
+  </widget>
+</display>

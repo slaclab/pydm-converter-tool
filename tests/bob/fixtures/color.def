@@ -1,0 +1,21 @@
+# Synthetic color.def fixture (Phoebus examples/color.def grammar):
+#   Name = red, green, blue [, alpha ] | PreviouslyDefinedName | alias(PreviouslyDefinedName)
+
+# Override a built-in
+Background = 250, 250, 250
+
+Header_Background=77,77,77
+Semi = 10, 20, 30, 128
+
+# Copy of a previously defined colour
+STOP = MAJOR
+
+# Redirect to a previously defined colour
+Halt = alias(MAJOR)
+
+On = OK
+Off = 60,100,60
+
+# Broken entries: skipped with a warning
+Broken = not a colour
+Dangling = alias(NoSuchColour)

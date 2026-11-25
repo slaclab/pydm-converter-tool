@@ -131,6 +131,10 @@ def first_of(value: Any) -> Any:
     return value
 
 
+# Display-file suffixes of every front-end (PyDM, EDM, MEDM, Phoebus bob, BOY opi).
+_SCREEN_SOURCE_EXTENSIONS = (".ui", ".edl", ".adl", ".bob", ".opi")
+
+
 def screen_ref(value: Any) -> Any:
     """A PyDM screen reference (``filename``/``filenames``) -> the converted
     ``.screen.json`` artifact.
@@ -150,7 +154,7 @@ def screen_ref(value: Any) -> Any:
     if lowered.endswith(".screen.json"):
         return ref
     # X.py is a PyDM Python display, e.g. a converted menu-mux screen around X.ui.
-    for ext in (".ui", ".edl", ".py"):
+    for ext in (*_SCREEN_SOURCE_EXTENSIONS, ".py"):
         if lowered.endswith(ext):
             return ref[: -len(ext)] + ".screen.json"
     # Extensionless targets get the extension appended; macro refs can't be

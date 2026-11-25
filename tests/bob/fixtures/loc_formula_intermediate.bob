@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Writer</name>
+    <x>0</x>
+    <y>0</y>
+    <text>calc</text>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+a = PVUtil.getDouble(pvs[0])
+b = PVUtil.getLong(pvs[1])
+s = a + b
+half = s / 2
+pvs[2].write(half)
+]]></text>
+        <pv_name>SR:A</pv_name>
+        <pv_name>SR:B</pv_name>
+        <pv_name>loc://half</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Reader</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://half</pv_name>
+  </widget>
+  <widget type="rectangle" version="2.0.0">
+    <name>Rule reader</name>
+    <x>0</x>
+    <y>60</y>
+    <rules>
+      <rule name="vis" prop_id="visible" out_exp="false">
+        <exp bool_exp="pv0 &gt; 1">
+          <value>true</value>
+        </exp>
+        <pv_name>loc://half</pv_name>
+      </rule>
+    </rules>
+  </widget>
+</display>

@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "local_pv_initializers",
+  "metadata": {
+    "title": "local_pv_initializers",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 600,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 600
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://arr",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "Array: local PV type VDoubleArray not supported"
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://arr2",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "Array untyped: array local PV initializer not supported"
+        ]
+      },
+      {
+        "id": "w-004",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://tbl",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 60,
+          "width": 100,
+          "height": 20
+        },
+        "warnings": [
+          "Table: local PV type VTable not supported"
+        ]
+      },
+      {
+        "id": "w-005",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://n?type=float&init=1.5",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 90,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  },
+  "macros": []
+}

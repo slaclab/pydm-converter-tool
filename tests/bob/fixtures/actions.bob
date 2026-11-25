@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="action_button" version="2.0.0">
+    <name>Buttons</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>loc://target&lt;VLong&gt;(3)</pv_name>
+    <text>Go</text>
+    <actions>
+      <action type="write_pv">
+        <pv_name>$(pv_name)</pv_name>
+        <value>1</value>
+        <description>Write own</description>
+      </action>
+      <action type="open_display">
+        <file>../common/KnobPanel.bob</file>
+        <macros>
+          <DEV>$(P)KNOB</DEV>
+        </macros>
+        <description>Default target</description>
+      </action>
+      <action type="open_display">
+        <file>tab.bob</file>
+        <target>tab</target>
+        <description>Tab</description>
+      </action>
+      <action type="open_display">
+        <file>win.bob</file>
+        <target>window</target>
+        <description>Window</description>
+      </action>
+      <action type="open_display">
+        <file>alone.bob</file>
+        <target>standalone</target>
+        <description>Standalone</description>
+      </action>
+      <action type="open_display">
+        <file>replace.bob</file>
+        <target>replace</target>
+        <description>Replace</description>
+      </action>
+      <action type="open_display">
+        <file>odd.bob</file>
+        <target>sideways</target>
+        <description>Odd</description>
+      </action>
+      <action type="open_display">
+        <file>legacy.opi</file>
+        <description>Legacy</description>
+      </action>
+      <action type="open_display">
+        <file></file>
+        <description>Empty</description>
+      </action>
+      <action type="command">
+        <command>xterm -e caget SR:A</command>
+        <description>Shell</description>
+      </action>
+      <action type="command">
+        <command>ls</command>
+        <description>Shell 2</description>
+      </action>
+      <action type="execute">
+        <script file="EmbeddedPy">
+          <text><![CDATA[print("hi")]]></text>
+        </script>
+        <description>Jython</description>
+      </action>
+      <action type="open_webpage">
+        <url>https://example.org</url>
+        <description>Web</description>
+      </action>
+      <action type="close_display">
+        <description>Close</description>
+      </action>
+    </actions>
+  </widget>
+</display>

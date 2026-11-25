@@ -1,0 +1,270 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "defaults",
+  "metadata": {
+    "title": "defaults",
+    "source": {
+      "type": "bob-converter"
+    },
+    "size": {
+      "width": 800,
+      "height": 958
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": ""
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 800,
+      "height": 958,
+      "backgroundColor": "#ffffff"
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 958
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "rectangle",
+        "props": {
+          "lineColor": "#0000ff",
+          "lineWidth": 3,
+          "fill": true,
+          "fillColor": "#1e90ff"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 20
+        },
+        "rules": [
+          {
+            "id": "r-001",
+            "name": "bg",
+            "targetProperty": "fillColor",
+            "pvs": [
+              {
+                "name": "SR:A",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} == 1",
+                "value": "#ff0000"
+              }
+            ],
+            "default": "#1e90ff"
+          }
+        ]
+      },
+      {
+        "id": "w-003",
+        "type": "polygon",
+        "props": {
+          "lineColor": "#0000ff",
+          "lineWidth": 3,
+          "points": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 40,
+              "y": 0
+            },
+            {
+              "x": 20,
+              "y": 30
+            }
+          ],
+          "closed": true,
+          "fill": true,
+          "fillColor": "#3232ff"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 30,
+          "width": 40,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "line",
+        "props": {
+          "lineWidth": 3,
+          "points": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 50,
+              "y": 10
+            }
+          ],
+          "arrowStart": false,
+          "arrowEnd": true
+        },
+        "geometry": {
+          "x": 0,
+          "y": 70,
+          "width": 50,
+          "height": 10
+        }
+      },
+      {
+        "id": "w-005",
+        "type": "text-label",
+        "props": {
+          "text": "hi",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 90,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-006",
+        "type": "ellipse",
+        "props": {
+          "lineColor": "#0000ff",
+          "lineWidth": 3,
+          "fill": true,
+          "fillColor": "#1e90ff"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 120,
+          "width": 100,
+          "height": 50
+        }
+      },
+      {
+        "id": "w-007",
+        "type": "pv-label",
+        "props": {
+          "pv": "SR:T",
+          "foregroundColor": "#000000",
+          "backgroundColor": "#f0f0f0"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 180,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-008",
+        "type": "pv-text-input",
+        "props": {
+          "pv": "SR:E",
+          "fontSize": 16
+        },
+        "geometry": {
+          "x": 0,
+          "y": 210,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-009",
+        "type": "text-label",
+        "props": {
+          "text": "c",
+          "align": "center",
+          "foregroundColor": "#000000"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 240,
+          "width": 100,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-010",
+        "type": "pv-led",
+        "props": {
+          "pv": "SR:L",
+          "onColor": "#00ff00",
+          "offColor": "#3c643c"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 270,
+          "width": 20,
+          "height": 20
+        }
+      },
+      {
+        "id": "w-011",
+        "type": "embedded-display",
+        "props": {
+          "file": "embedded/_host.screen.json",
+          "macros": {
+            "HOST": "${P}HOST"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 300,
+          "width": 400,
+          "height": 300
+        }
+      },
+      {
+        "id": "w-012",
+        "type": "unknown-widget",
+        "props": {
+          "originalClass": "tabs",
+          "originalProps": {
+            "name": "Tabs",
+            "x": "0",
+            "y": "620"
+          }
+        },
+        "geometry": {
+          "x": 0,
+          "y": 620,
+          "width": 400,
+          "height": 300
+        },
+        "warnings": [
+          "Tabs: Phoebus tabs need a registry qtPropMap for tabs[]",
+          "No registry entry for tabs; rendering placeholder"
+        ]
+      },
+      {
+        "id": "w-013",
+        "type": "image-view",
+        "props": {
+          "src": "logo.png"
+        },
+        "geometry": {
+          "x": 0,
+          "y": 930,
+          "width": 100,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

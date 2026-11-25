@@ -1,3 +1,7 @@
+import json
+import sys
+from pathlib import Path
+
 import pytest
 from unittest.mock import patch
 
@@ -283,6 +287,106 @@ class TestRun:
 
         args = mock_convert_folder.call_args[0]
         assert args[2] == ".edl"
+
+
+BOB_FIXTURES = Path(__file__).parent / "bob" / "fixtures"
+
+
+class TestReactTargetBob:
+    """--target react accepts Phoebus .bob inputs."""
+
+    def test_run_react_bob_writes_screen_json(self, tmp_path):
+        src = tmp_path / "x.bob"
+        src.write_bytes((BOB_FIXTURES / "defaults.bob").read_bytes())
+        run(str(src), str(tmp_path / "x"), target="react", override=True)
+        out = tmp_path / "x.screen.json"
+        assert out.is_file()
+        assert json.loads(out.read_text(encoding="utf-8"))["kind"] == "screen"
+
+    def test_main_color_def_option(self, tmp_path, monkeypatch):
+        src = tmp_path / "x.bob"
+        src.write_bytes((BOB_FIXTURES / "color_def.bob").read_bytes())
+        color_def = BOB_FIXTURES / "color.def"
+        argv = ["pydmconverter", str(src), str(tmp_path / "x"), "--target", "react", "--color-def", str(color_def)]
+        monkeypatch.setattr(sys, "argv", argv)
+        from pydmconverter import react
+
+        with patch("pydmconverter.react.convert_file", wraps=react.convert_file) as spy:
+            main()
+        assert spy.call_args.kwargs["color_def_path"] == str(color_def)
+        assert (tmp_path / "x.screen.json").is_file()
+
+
+_NAMED_BG_BOB = (
+    b'<display version="2.0.0"><name>t</name><background_color>'
+    b'<color name="Display_Background" red="255" green="255" blue="255"/></background_color></display>'
+)
+
+
+class TestSchemeOption:
+    """--scheme loads a facility colour scheme, reports its errors and sets the exit code."""
+
+    def _argv(self, tmp_path, *extra):
+        src = tmp_path / "x.bob"
+        src.write_bytes(_NAMED_BG_BOB)
+        return ["pydmconverter", str(src), str(tmp_path / "x"), "--target", "react", "-o", *extra]
+
+    def test_good_scheme_round_trip(self, tmp_path, monkeypatch, capsys):
+        scheme = tmp_path / "facility.json"
+        scheme.write_text(json.dumps({"id": "facility", "extends": "canopy-default", "roles": {"OK": "#00FF00"}}))
+        monkeypatch.setattr(sys, "argv", self._argv(tmp_path, "--scheme", str(scheme)))
+        from pydmconverter import react
+
+        with patch("pydmconverter.react.convert_file", wraps=react.convert_file) as spy:
+            main()  # no SystemExit: exit status 0
+        passed = spy.call_args.kwargs["scheme"]
+        assert passed.meta["served"] == "facility"
+        assert passed.meta["errors"] == []
+        doc = json.loads((tmp_path / "x.screen.json").read_text(encoding="utf-8"))
+        assert doc["schemaVersion"] == "1.1"
+        assert doc["root"]["props"]["backgroundColor"]["$role"] == "Display_Background"
+        assert capsys.readouterr().err == ""
+
+    def test_bad_scheme_prints_errors_and_exits_non_zero(self, tmp_path, monkeypatch, capsys):
+        scheme = tmp_path / "bad.json"
+        scheme.write_text(json.dumps({"id": "bad", "extends": "canopy-default", "roles": {"OK": "not-a-color"}}))
+        monkeypatch.setattr(sys, "argv", self._argv(tmp_path, "--scheme", str(scheme)))
+        with pytest.raises(SystemExit) as info:
+            main()
+        assert info.value.code not in (0, None)
+        err = capsys.readouterr().err
+        assert "roles/OK" in err
+
+    def test_unreadable_scheme_exits_non_zero(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(sys, "argv", self._argv(tmp_path, "--scheme", str(tmp_path / "missing.json")))
+        with pytest.raises(SystemExit) as info:
+            main()
+        assert info.value.code not in (0, None)
+        assert "cannot read" in capsys.readouterr().err
+
+    def test_served_differs_from_id_exits_non_zero(self, tmp_path, monkeypatch, capsys):
+        from pydmconverter.scheme import SchemeResult, load_scheme
+
+        base = load_scheme(None)
+        odd = SchemeResult(flat=base.flat, imports=base.imports, meta={**base.meta, "id": "facility", "errors": []})
+        monkeypatch.setattr(sys, "argv", self._argv(tmp_path, "--scheme", str(tmp_path / "any.json")))
+        with patch("pydmconverter.__main__.load_scheme", return_value=odd), pytest.raises(SystemExit) as info:
+            main()
+        assert info.value.code not in (0, None)
+        assert "facility" in capsys.readouterr().err
+
+    def test_no_scheme_output_unchanged(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(sys, "argv", self._argv(tmp_path))
+        from pydmconverter import react
+
+        with patch("pydmconverter.react.convert_file", wraps=react.convert_file) as spy:
+            main()
+        assert spy.call_args.kwargs.get("scheme") is None
+        doc = json.loads((tmp_path / "x.screen.json").read_text(encoding="utf-8"))
+        assert doc["schemaVersion"] == "1.0"
+        from pydmconverter.ir.emit import to_wire_dict
+
+        assert doc["root"] == to_wire_dict(react.convert_bytes(_NAMED_BG_BOB, kind="bob"))["root"]
 
 
 class TestDisplayRootOption:

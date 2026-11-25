@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Array</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>loc://arr&lt;VDoubleArray&gt;(1, 2, 3)</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Array untyped</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://arr2(1, 2)</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Table</name>
+    <x>0</x>
+    <y>60</y>
+    <pv_name>loc://tbl&lt;VTable&gt;</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Typed init</name>
+    <x>0</x>
+    <y>90</y>
+    <pv_name>loc://n&lt;VDouble&gt;(1.5)</pv_name>
+  </widget>
+</display>

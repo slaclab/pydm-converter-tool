@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Mixed</name>
+    <x>0</x>
+    <y>0</y>
+    <text>mixed</text>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+pvs[2].setValue(PVUtil.getDouble(pvs[0]) + PVUtil.getDouble(pvs[1]))
+]]></text>
+        <pv_name>SR:A</pv_name>
+        <pv_name>loc://b</pv_name>
+        <pv_name>loc://mixed</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Second writer</name>
+    <x>0</x>
+    <y>30</y>
+    <text>second</text>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+pvs[1].setValue(PVUtil.getDouble(pvs[0]))
+]]></text>
+        <pv_name>SR:A</pv_name>
+        <pv_name>loc://shared</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="action_button" version="2.0.0">
+    <name>Other writer</name>
+    <x>0</x>
+    <y>60</y>
+    <actions>
+      <action type="write_pv">
+        <pv_name>loc://shared</pv_name>
+        <value>1</value>
+        <description>Set</description>
+      </action>
+    </actions>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Reader</name>
+    <x>0</x>
+    <y>90</y>
+    <pv_name>loc://shared</pv_name>
+  </widget>
+</display>
