@@ -129,6 +129,27 @@ def test_over_deep_expressions_are_refused():
     assert gates.expression_allowed("(" * 300 + "{0}" + ")" * 300, 1) is False
 
 
+def test_parse_python_survives_a_deep_chain():
+    """A 60k-term chain parses on every platform.
+
+    Python 3.10's parser has no depth guard; on a 1 MB main-thread stack (Windows) this
+    text overflowed the C stack and killed the test process. ``parse_python`` runs the
+    parser on a thread with :data:`gates.PARSE_STACK_BYTES` of stack instead.
+    """
+    import ast
+
+    tree = gates.parse_python("x = " + " + ".join(["1"] * 60_000))
+    assert isinstance(tree, ast.Module) and len(tree.body) == 1
+
+
+def test_parse_python_raises_what_the_parser_raises_and_caps_length():
+    with pytest.raises(SyntaxError):
+        gates.parse_python("x = (")
+    with pytest.raises(ValueError):
+        gates.parse_python("x" * (gates.MAX_SCRIPT_CHARS + 1))
+    assert all(issubclass(exc, gates.PARSE_ERRORS) for exc in (SyntaxError, ValueError))
+
+
 def test_expressions_over_the_formula_engine_limit_are_refused():
     assert gates.MAX_EXPRESSION_CHARS == 2048
     assert gates.expression_allowed("{0} + " * 300 + "1", 1) is True  # 1801 characters

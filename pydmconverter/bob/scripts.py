@@ -36,7 +36,7 @@ from pydmconverter.bob.bob_qt import WRITER_TYPES
 from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS
 from pydmconverter.bob.local_pv import is_gateway_channel, local_pv_key
 from pydmconverter.bob.parser import BobScript, BobWidget, walk_widgets
-from pydmconverter.bob.gates import MAX_EXPRESSION_CHARS, PARSE_ERRORS, expression_allowed, has_macro
+from pydmconverter.bob.gates import MAX_EXPRESSION_CHARS, PARSE_ERRORS, expression_allowed, has_macro, parse_python
 from pydmconverter.bob.rules import RuleContext, resolve_target
 from pydmconverter.colors import named_color
 from pydmconverter.edm.ir_adapter import _severity_channel
@@ -359,7 +359,7 @@ def match_loc_formula(script: BobScript, widget: BobWidget, file_ctx: ScriptFile
         reject()
         return None
     try:
-        module = ast.parse(script.text)
+        module = parse_python(script.text)
     except PARSE_ERRORS:
         reject()
         return None
@@ -446,7 +446,7 @@ def script_written_pvs(script: BobScript) -> list[int]:
     if script.text is None:
         return []
     try:
-        module = ast.parse(script.text)
+        module = parse_python(script.text)
     except PARSE_ERRORS:
         return []
     aliases: dict[str, int] = {}

@@ -12,25 +12,29 @@ runtime. Each kind has one gate here, and every sink calls it:
   ``open_display``, navigation tabs, embedded and picture files, button images,
   ``file`` rule values): a relative or absolute path, nothing else.
 
-All scans are linear in the input, and no expression over :data:`MAX_EXPRESSION_CHARS`
-is parsed.
+All scans are linear in the input, no expression over :data:`MAX_EXPRESSION_CHARS` or
+script over :data:`MAX_SCRIPT_CHARS` is parsed, and every parse goes through
+:func:`parse_python`, which gives the parser a stack it cannot overflow.
 """
 
 from __future__ import annotations
 
 import ast
 import re
+import threading
 
 from pydmconverter.ir.macros import normalize_macro_syntax
 
 __all__ = [
     "FILE_REFERENCE_WARNING",
     "MAX_EXPRESSION_CHARS",
+    "MAX_SCRIPT_CHARS",
     "PARSE_ERRORS",
     "WEB_URL_WARNING",
     "expression_allowed",
     "file_reference",
     "has_macro",
+    "parse_python",
     "web_url",
 ]
 
@@ -47,10 +51,55 @@ _MACRO_CLOSERS = {"{": "}", "(": ")"}
 #: a rule the engine compiles every condition into one ladder, so a per-condition
 #: cap is an approximation of that limit, not the limit itself.
 MAX_EXPRESSION_CHARS = 2048
+#: The longest script text :func:`parse_python` parses. Longer text is unparseable
+#: (``ValueError``), so the script stays tier 2 and the writer census finds nothing in
+#: it. Together with :data:`PARSE_STACK_BYTES` this bounds the parser's stack use.
+MAX_SCRIPT_CHARS = 256 * 1024
+#: The C stack :func:`parse_python` gives the parser. Python 3.10's parser has no depth
+#: guard: a chain of a few thousand terms overflows a 1 MB main-thread stack (Windows)
+#: and kills the process instead of raising. 256 MB is address space, not memory; it
+#: parses a 130k-term chain (twice what :data:`MAX_SCRIPT_CHARS` allows) with room to spare.
+PARSE_STACK_BYTES = 256 * 1024 * 1024
 #: What ``ast.parse`` raises on text it cannot turn into a tree: a syntax error, a null
-#: byte (``ValueError``), or an expression nested past the interpreter's recursion limit
-#: (``RecursionError``, historically ``MemoryError``). Every parse of display text catches these.
+#: byte or over-long text (``ValueError``), or an expression nested past the interpreter's
+#: recursion limit (``RecursionError``, historically ``MemoryError``). Every parse of
+#: display text catches these.
 PARSE_ERRORS: tuple[type[BaseException], ...] = (SyntaxError, ValueError, RecursionError, MemoryError)
+
+_PARSE_STACK_LOCK = threading.Lock()
+
+
+def parse_python(text: str, *, mode: str = "exec") -> ast.AST:
+    """``ast.parse(text, mode=mode)`` on a thread whose stack is :data:`PARSE_STACK_BYTES`.
+
+    Raises what ``ast.parse`` raises (see :data:`PARSE_ERRORS`), plus ``ValueError`` for
+    text over :data:`MAX_SCRIPT_CHARS`, before any parse. The thread stack size is
+    process-wide state, so it is set and restored under a lock around the thread's start.
+    """
+    if len(text) > MAX_SCRIPT_CHARS:
+        raise ValueError(f"text is {len(text)} characters, over the {MAX_SCRIPT_CHARS} the parser accepts")
+    outcome: list[object] = []
+
+    def run() -> None:
+        try:
+            outcome.append(ast.parse(text, mode=mode))
+        except BaseException as exc:  # re-raised on the caller's thread below
+            outcome.append(exc)
+
+    with _PARSE_STACK_LOCK:
+        previous = threading.stack_size(PARSE_STACK_BYTES)
+        try:
+            worker = threading.Thread(target=run, name="bob-parse", daemon=True)
+            worker.start()
+        finally:
+            threading.stack_size(previous)
+    worker.join()
+    if not outcome:
+        raise RecursionError("the parser thread ended without a result")
+    if isinstance(outcome[0], BaseException):
+        raise outcome[0]
+    return outcome[0]  # type: ignore[return-value]
+
 
 _ALLOWED_NODES: tuple[type, ...] = (
     ast.Expression,
@@ -151,7 +200,7 @@ def expression_allowed(expression: str, binding_count: int | None = None) -> boo
         return False
     text = _BINDING_RE.sub(lambda m: f"_pv{m.group(1)}", expression)
     try:
-        tree = ast.parse(text.strip(), mode="eval")
+        tree = parse_python(text.strip(), mode="eval")
     except PARSE_ERRORS:
         return False
     return _allowed_tree(tree, {f"_pv{n}" for n in indices})
