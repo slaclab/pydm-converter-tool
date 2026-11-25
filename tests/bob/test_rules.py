@@ -6,14 +6,17 @@ representation of values (text or serialised ``<value>`` element) is the one low
 
 from __future__ import annotations
 
+import random
+import re
 import subprocess
 import sys
+import time
 from xml.sax.saxutils import escape
 
 import pytest
 
 from pydmconverter.bob.parser import BobWidget, parse_bob
-from pydmconverter.bob.rules import RuleContext, _pvstr_gateway_pvs, lower_rule, syntax_check
+from pydmconverter.bob.rules import RuleContext, _pvstr_gateway_pvs, lower_rule, split_literals, syntax_check
 from pydmconverter.ir.registry import VendoredRegistry
 
 _REGISTRY = VendoredRegistry()
@@ -440,3 +443,59 @@ def test_coerce_value_passes_color_context_to_text_values():
     ctx = RuleContext(color=_color_ctx())
     assert coerce_value("color", "MAJOR", ctx, "W") == {"$role": "MAJOR", "fallback": "#ff0000"}
     assert coerce_value("color", "MAJOR", RuleContext(), "W") == "#ff0000"
+
+
+# --- string literals: the linear scan ------------------------------------------------
+
+# The regex split_literals replaced; equal on every input but quadratic on escaped quotes.
+_OLD_LITERAL_RE = re.compile(r"(\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')")
+
+
+@pytest.mark.parametrize(
+    "text, parts",
+    [
+        ("", [""]),
+        ("pv0 == 1", ["pv0 == 1"]),
+        ('pvStr0 == "a"', ["pvStr0 == ", '"a"', ""]),
+        ("'a' + \"b\"", ["", "'a'", " + ", '"b"', ""]),
+        ('"it\\"s"', ["", '"it\\"s"', ""]),  # an escaped quote does not close
+        ('"open', ['"open']),  # unmatched: stays code
+        ("\"a 'b'", ['"a ', "'b'", ""]),  # a later literal of the other kind still counts
+        ("'\\", ["'\\"]),  # a trailing backslash cannot escape anything
+    ],
+)
+def test_split_literals(text, parts):
+    assert split_literals(text) == parts
+    assert "".join(parts) == text
+
+
+def test_split_literals_matches_the_regex_it_replaced():
+    rng = random.Random(2048)
+    alphabet = "\"'\\ab"
+    for _ in range(20_000):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 14)))
+        assert split_literals(text) == _OLD_LITERAL_RE.split(text), text
+
+
+def test_split_literals_is_linear_on_escaped_quotes():
+    """The replaced regex restarted at every escaped quote: 2 s at 32 KB, 4x per doubling."""
+    text = '"' + '\\"' * 131_072  # 256 KB
+    start = time.perf_counter()
+    parts = split_literals(text)
+    assert time.perf_counter() - start < 1.0
+    assert parts == [text]
+
+
+def test_over_long_condition_is_refused_before_any_rewrite():
+    condition = "pvStr0 == " + '"' + '\\"' * 2_000  # escaped quotes, unmatched, over the cap
+    spec, warnings = _lower(_widget(_rule_xml("visible", ["A"], [(condition, "false")])))
+    assert spec is None
+    assert warnings == [
+        f"W: rule 'r' condition not lowered: {len(condition)} characters, over the 2048-character expression limit"
+    ]
+
+
+def test_condition_at_the_cap_is_still_lowered():
+    condition = "pv0 == " + "1" * (2048 - len("pv0 == "))
+    spec, warnings = _lower(_widget(_rule_xml("visible", ["A"], [(condition, "false")])))
+    assert spec is not None and warnings == []

@@ -6,12 +6,14 @@ runtime. Each kind has one gate here, and every sink calls it:
 
 * :func:`expression_allowed` -- rule conditions, formula PVs and lowered formula
   scripts: the Formula Engine's expression subset over ``{N}`` bindings, no macros.
-* :func:`web_url` -- ``open_webpage``: ``http``, ``https`` or relative.
+* :func:`web_url` -- ``open_webpage``: ``http``, ``https`` or relative, never
+  protocol-relative (``//host/...``).
 * :func:`file_reference` -- every file a display names (``open_file``,
   ``open_display``, navigation tabs, embedded and picture files, button images,
   ``file`` rule values): a relative or absolute path, nothing else.
 
-All scans are linear in the input.
+All scans are linear in the input, and no expression over :data:`MAX_EXPRESSION_CHARS`
+is parsed.
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 
 __all__ = [
     "FILE_REFERENCE_WARNING",
+    "MAX_EXPRESSION_CHARS",
+    "PARSE_ERRORS",
     "WEB_URL_WARNING",
     "expression_allowed",
     "file_reference",
@@ -37,6 +41,16 @@ WEB_URL_WARNING = "{widget}: open_webpage URL {reference!r} is not http, https o
 
 _BINDING_RE = re.compile(r"\{(\d+)\}")
 _MACRO_CLOSERS = {"{": "}", "(": ")"}
+#: The longest expression the gate passes: the Formula Engine's default maximum
+#: expression length (``max_expression_len``, configurable there, 2048 by default).
+#: An expression over it would be interned and then refused at evaluation time. For
+#: a rule the engine compiles every condition into one ladder, so a per-condition
+#: cap is an approximation of that limit, not the limit itself.
+MAX_EXPRESSION_CHARS = 2048
+#: What ``ast.parse`` raises on text it cannot turn into a tree: a syntax error, a null
+#: byte (``ValueError``), or an expression nested past the interpreter's recursion limit
+#: (``RecursionError``, historically ``MemoryError``). Every parse of display text catches these.
+PARSE_ERRORS: tuple[type[BaseException], ...] = (SyntaxError, ValueError, RecursionError, MemoryError)
 
 _ALLOWED_NODES: tuple[type, ...] = (
     ast.Expression,
@@ -128,9 +142,9 @@ def expression_allowed(expression: str, binding_count: int | None = None) -> boo
     fails: the check would see its name, while a consumer that substitutes it could
     run its value as code (in code position, or after closing a string literal).
     ``binding_count`` limits the bindings to ``{0}``..``{binding_count - 1}``; ``None``
-    accepts any index.
+    accepts any index. Text over :data:`MAX_EXPRESSION_CHARS` fails before any parse.
     """
-    if has_macro(expression):
+    if len(expression) > MAX_EXPRESSION_CHARS or has_macro(expression):
         return False
     indices = [int(m.group(1)) for m in _BINDING_RE.finditer(expression)]
     if binding_count is not None and any(n >= binding_count for n in indices):
@@ -138,7 +152,7 @@ def expression_allowed(expression: str, binding_count: int | None = None) -> boo
     text = _BINDING_RE.sub(lambda m: f"_pv{m.group(1)}", expression)
     try:
         tree = ast.parse(text.strip(), mode="eval")
-    except (SyntaxError, ValueError):
+    except PARSE_ERRORS:
         return False
     return _allowed_tree(tree, {f"_pv{n}" for n in indices})
 
@@ -161,7 +175,8 @@ def _relative_or_scheme(reference: str, schemes: frozenset[str]) -> bool:
 
     The scheme is read from the part before the first ``/``, ``?`` or ``#``: a colon
     there must follow an allowed scheme. A macro there with no colon could expand to
-    a scheme, so it is refused too.
+    a scheme, so it is refused too. That head is empty for a protocol-relative
+    reference, so :func:`_names_host` is checked first by every caller.
     """
     head = re.split(r"[/?#]", reference, maxsplit=1)[0]
     if ":" in head:
@@ -169,14 +184,26 @@ def _relative_or_scheme(reference: str, schemes: frozenset[str]) -> bool:
     return "${" not in head
 
 
+def _names_host(reference: str) -> bool:
+    """Whether ``reference`` opens with two slash-like characters (``//``, ``/\\``, ``\\\\``, ``\\/``).
+
+    A browser reads each of those as an authority, so ``//evil.example/x`` is a
+    different host under the page's scheme, not a relative URL.
+    """
+    return len(reference) >= 2 and reference[0] in "/\\" and reference[1] in "/\\"
+
+
 def web_url(text: str) -> str | None:
     """``text`` cleaned when it is an ``http``/``https`` or relative URL, else ``None``.
 
-    ``https://${HOST}/x`` and ``docs/${X}.html`` pass; ``javascript:``, ``data:``,
-    ``file:`` and ``${BASE}/x`` do not.
+    ``https://${HOST}/x``, ``docs/${X}.html`` and ``/abs/path.html`` pass;
+    ``javascript:``, ``data:``, ``file:``, ``${BASE}/x`` and a protocol-relative
+    ``//host/x`` (in any mix of ``/`` and ``\\``, after the browser's cleaning) do not.
     """
     url = _clean(text)
-    return url if _relative_or_scheme(url, _WEB_SCHEMES) else None
+    if _names_host(url) or not _relative_or_scheme(url, _WEB_SCHEMES):
+        return None
+    return url
 
 
 def file_reference(text: str) -> str | None:
@@ -188,6 +215,6 @@ def file_reference(text: str) -> str | None:
     ``https://...`` do not.
     """
     reference = _clean(text).replace("\\", "/")
-    if reference.startswith("//") or not _relative_or_scheme(reference, frozenset()):
+    if _names_host(reference) or not _relative_or_scheme(reference, frozenset()):
         return None
     return reference

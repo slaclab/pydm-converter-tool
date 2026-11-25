@@ -285,3 +285,122 @@ def test_malformed_error_is_value_error():
 def test_wrong_root_raises():
     with pytest.raises(BobParseError):
         parse_bob(b"<notadisplay/>")
+
+
+# --- group macros ------------------------------------------------------------------
+
+
+def _group(body: str, macros: str = "<P>DEV2</P>", name: str = "G") -> str:
+    return f'<widget type="group"><name>{name}</name><macros>{macros}</macros>{body}</widget>'
+
+
+def test_group_macros_substituted_throughout_descendants():
+    display = parse_bob(
+        _doc(
+            _group(
+                '<widget type="textupdate"><name>$(P) readback</name><pv_name>$(P):VAL</pv_name>'
+                '<rules><rule name="r" prop_id="visible" out_exp="false">'
+                '<exp bool_exp="pv0 == $(P)"><value>$(P) off</value></exp>'
+                "<pv_name>${P}:STAT</pv_name></rule></rules>"
+                '<scripts><script file="EmbeddedPy"><text>print("$(P)")</text><pv_name>$(P):S</pv_name></script></scripts>'
+                '<actions><action type="open_display"><file>$(P).bob</file><description>Open $(P)</description>'
+                "<macros><DEV>$(P)</DEV></macros></action></actions>"
+                "<traces><trace><y_pv>$(P):WF</y_pv></trace></traces>"
+                "</widget>"
+                '<widget type="embedded"><name>E</name><file>sub.bob</file><macros><X>$(P)</X></macros></widget>',
+                macros="<P>DEV2</P>",
+                name="Group $(P)",
+            )
+        )
+    )
+    group = display.widgets[0]
+    assert group.name == "Group DEV2"
+    assert group.macros == {"P": "DEV2"}
+    child, embedded = group.children
+    assert child.name == "DEV2 readback"
+    assert child.props["pv_name"] == "DEV2:VAL"
+    assert child.rules[0].pvs == [("DEV2:STAT", True)]
+    assert child.rules[0].expressions == [("pv0 == DEV2", "DEV2 off")]
+    assert child.scripts[0].pvs == [("DEV2:S", True)]
+    assert child.scripts[0].text == 'print("$(P)")'  # script bodies are not expanded (Phoebus does not either)
+    assert child.actions[0].fields["file"] == "DEV2.bob"
+    assert child.actions[0].description == "Open DEV2"
+    assert child.actions[0].fields["macros"] == {"DEV": "DEV2"}
+    assert child.props["traces"].find("trace/y_pv").text == "DEV2:WF"
+    assert embedded.macros == {"X": "DEV2"}
+
+
+def test_group_macro_values_expand_against_the_enclosing_scope():
+    display = parse_bob(
+        _doc(
+            _group(
+                _group(
+                    '<widget type="textupdate"><name>T</name><pv_name>$(P):VAL $(Q) $(D)</pv_name></widget>',
+                    macros="<P>$(P):SUB</P><Q>$(P)-q</Q><D>$(D)</D>",
+                    name="Inner",
+                ),
+                macros="<P>DEV2</P>",
+                name="Outer",
+            )
+        )
+    )
+    inner = display.widgets[0].children[0]
+    # P reads the outer P; Q reads the already-expanded sibling P; D is not in scope and stays.
+    assert inner.macros == {"P": "DEV2:SUB", "Q": "DEV2:SUB-q", "D": "$(D)"}
+    assert inner.children[0].props["pv_name"] == "DEV2:SUB:VAL DEV2:SUB-q $(D)"
+
+
+def test_macro_scope_is_kept_on_every_widget():
+    display = parse_bob(
+        _doc(
+            _group(
+                '<widget type="embedded"><name>E</name><file>s.bob</file><macros><X>$(P)</X></macros></widget>'
+                + _group('<widget type="label"><name>L</name></widget>', macros="<Q>q</Q>", name="Inner"),
+                macros="<P>DEV2</P>",
+                name="Outer",
+            )
+            + '<widget type="label"><name>Top</name></widget>'
+        )
+    )
+    outer, top = display.widgets
+    embedded, inner = outer.children
+    assert outer.macro_scope == {"P": "DEV2"}  # a group's scope includes its own macros
+    assert embedded.macro_scope == {"P": "DEV2"} and embedded.macros == {"X": "DEV2"}
+    assert inner.macro_scope == {"P": "DEV2", "Q": "q"} and inner.children[0].macro_scope == {"P": "DEV2", "Q": "q"}
+    assert top.macro_scope == {}
+
+
+def test_display_macros_are_left_for_the_runtime():
+    display = parse_bob(
+        _doc(
+            '<widget type="textupdate"><name>T</name><pv_name>$(P):VAL</pv_name></widget>'
+            + _group('<widget type="textupdate"><name>U</name><pv_name>$(P):VAL</pv_name></widget>', macros="<R>x</R>"),
+            display_extra="<macros><P>DEV1</P></macros>",
+        )
+    )
+    assert display.widgets[0].props["pv_name"] == "$(P):VAL"
+    assert display.widgets[1].children[0].props["pv_name"] == "$(P):VAL"
+
+
+def test_group_macros_do_not_leak_to_siblings_or_parents():
+    display = parse_bob(
+        _doc(
+            _group('<widget type="textupdate"><name>In</name><pv_name>$(P):VAL</pv_name></widget>')
+            + '<widget type="textupdate"><name>Out</name><pv_name>$(P):VAL</pv_name></widget>'
+        )
+    )
+    assert display.widgets[0].children[0].props["pv_name"] == "DEV2:VAL"
+    assert display.widgets[1].props["pv_name"] == "$(P):VAL"
+
+
+def test_group_scope_is_applied_before_the_widget_scope_pv_name():
+    display = parse_bob(
+        _doc(
+            _group(
+                '<widget type="action_button"><name>B</name><pv_name>$(P):SP</pv_name>'
+                '<actions><action type="write_pv"><pv_name>$(pv_name)</pv_name><value>1</value></action></actions>'
+                "</widget>"
+            )
+        )
+    )
+    assert display.widgets[0].children[0].actions[0].fields["pv_name"] == "DEV2:SP"

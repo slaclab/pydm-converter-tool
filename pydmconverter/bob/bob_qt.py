@@ -17,6 +17,7 @@ Tables:
 * :data:`GROUP_INSET` -- child-origin inset per group style.
 * :data:`BOOL_BUTTON_MODE` -- ``bool_button`` ``<mode>`` -> ``pv-button`` props.
 * :data:`RULE_DIRECT_TARGETS` / :data:`RULE_TARGET_COERCION` -- rule targets.
+* :data:`WRITER_TYPES` -- the types that write their own ``pv_name``.
 """
 
 from __future__ import annotations
@@ -146,6 +147,28 @@ BOB_TO_QT_PROP_BY_TYPE: dict[str, dict[str, str | None]] = {
 READBACK_COPY: dict[str, tuple[str, str]] = {
     "bool_button": ("channel", "readbackChannel"),
 }
+
+# Phoebus types whose widget writes the operator's input to its own ``pv_name``
+# (Phoebus ``WritePVActionInfo`` aside, which the adapter reads from ``<actions>``).
+# Such a widget is a writer in the local-PV census, and its ``pv_name`` can never be
+# retargeted to a read-only formula.
+WRITER_TYPES: frozenset[str] = frozenset(
+    {
+        "textentry",
+        "bool_button",
+        "combo",
+        "choice",
+        "radio",
+        "checkbox",
+        "spinner",
+        "scaledslider",
+        "slider",
+        "knob",
+        "scrollbar",
+        "thumbwheel",
+        "fileselector",
+    }
+)
 
 # --------------------------------------------------------------------------
 # Per-type defaults for props Phoebus does not serialise (widget constructor

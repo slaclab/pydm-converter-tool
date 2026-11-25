@@ -132,12 +132,13 @@ def test_freed_temporaries_do_not_hide_the_expansion():
 
 
 def test_formula_text_is_capped():
-    reads = " + ".join(f"PVUtil.getDouble(pvs[{n}{'9' * 3000}])" for n in range(1, 5))
+    """The cap is the Formula Engine's default expression limit, shared with the gate."""
+    reads = " + ".join(f"PVUtil.getDouble(pvs[{n}{'9' * 600}])" for n in range(1, 5))
     text = HEADER + f"pvs[1].setValue({reads})\n"
     script = _script(text, ["A", "loc://B"])
     cand, warnings = _match(_widget("w", script), script)
     assert cand is None
-    assert warnings[0].endswith("(formula text exceeds 10000 characters)")
+    assert warnings[0].endswith("(formula text exceeds 2048 characters)")
 
 
 def test_if_else_form_nested_conditional():
@@ -244,6 +245,25 @@ def test_second_writer_write_pv_action_rejected():
     assert len(warnings) == 1 and "write_pv action on Btn" in warnings[0]
 
 
+@pytest.mark.parametrize("wtype", ["textentry", "bool_button", "combo", "spinner", "scaledslider"])
+def test_input_widget_on_the_target_is_another_writer(wtype):
+    """An input widget writes its pv_name: the script is not the sole writer and stays tier 2."""
+    text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
+    mine = _script(text, ["A", "loc://N<VDouble>(0)"])
+    entry = BobWidget(type=wtype, name="Entry", props={"pv_name": "loc://N"})
+    cand, warnings = _match(_widget("w", mine), mine, [entry])
+    assert cand is None
+    assert len(warnings) == 1 and f"loc://N has another writer: {wtype} Entry" in warnings[0]
+
+
+def test_readers_are_not_writers():
+    text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
+    mine = _script(text, ["A", "loc://N<VDouble>(0)"])
+    readers = [BobWidget(type=t, name=t, props={"pv_name": "loc://N"}) for t in ("textupdate", "led", "label")]
+    cand, _warnings = _match(_widget("w", mine), mine, readers)
+    assert cand is not None and cand.target_key == "loc://N"
+
+
 def test_nested_second_writer_found():
     text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
     mine = _script(text, ["A", "loc://N"])
@@ -309,6 +329,15 @@ def test_missing_text_warns_with_path():
 
 
 # --- writer census ----------------------------------------------------------------
+
+
+def test_script_past_the_parser_recursion_limit_is_unparseable():
+    """``ast.parse`` raises RecursionError on a very deep tree: no writers, no match, no crash."""
+    text = HEADER + "pvs[1].setValue(" + " + ".join(["1"] * 60_000) + ")\n"
+    script = _script(text, ["A", "loc://N"])
+    assert script_written_pvs(script) == []
+    cand, warnings = _match(_widget("w", script), script)
+    assert cand is None and len(warnings) == 1 and TIER2 in warnings[0]
 
 
 def test_script_written_pvs_alias_and_direct():

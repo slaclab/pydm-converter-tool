@@ -32,10 +32,11 @@ import tokenize
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+from pydmconverter.bob.bob_qt import WRITER_TYPES
 from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS
 from pydmconverter.bob.local_pv import is_gateway_channel, local_pv_key
 from pydmconverter.bob.parser import BobScript, BobWidget, walk_widgets
-from pydmconverter.bob.gates import expression_allowed, has_macro
+from pydmconverter.bob.gates import MAX_EXPRESSION_CHARS, PARSE_ERRORS, expression_allowed, has_macro
 from pydmconverter.bob.rules import RuleContext, resolve_target
 from pydmconverter.colors import named_color
 from pydmconverter.edm.ir_adapter import _severity_channel
@@ -68,10 +69,9 @@ _WRITE_METHODS = frozenset({"setValue", "write"})
 _ARITH_OPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
 _PLACEHOLDER_RE = re.compile(r"__pv(\d+)__")
 # Inlining shares subtrees (``b = a + a`` reuses ``a``), so a few lines can expand to an
-# exponentially large formula. Past this many nodes, or this much formula text, the
-# script stays tier 2.
+# exponentially large formula. Past this many nodes, or past the gate's text cap
+# (``gates.MAX_EXPRESSION_CHARS``, the Formula Engine's limit), the script stays tier 2.
 MAX_EXPRESSION_NODES = 500
-MAX_EXPRESSION_CHARS = 10_000
 
 
 @dataclass
@@ -360,7 +360,7 @@ def match_loc_formula(script: BobScript, widget: BobWidget, file_ctx: ScriptFile
         return None
     try:
         module = ast.parse(script.text)
-    except SyntaxError:
+    except PARSE_ERRORS:
         reject()
         return None
 
@@ -441,13 +441,13 @@ def script_written_pvs(script: BobScript) -> list[int]:
     """Indices ``k`` of every ``(pvs[k] | alias).setValue|write(...)`` in the script.
 
     Aliases are ``name = pvs[k]`` assignments anywhere in the script. Unparseable or
-    missing text yields ``[]``.
+    missing text yields ``[]`` (a script too deep for the parser counts as unparseable).
     """
     if script.text is None:
         return []
     try:
         module = ast.parse(script.text)
-    except SyntaxError:
+    except PARSE_ERRORS:
         return []
     aliases: dict[str, int] = {}
     for node in ast.walk(module):
@@ -467,8 +467,10 @@ def script_written_pvs(script: BobScript) -> list[int]:
 def build_writer_census(widgets: Iterable[BobWidget]) -> dict[str, list[LocalWriter]]:
     """Every writer of every ``loc://`` PV in the widget tree, keyed by ``local_pv_key``.
 
-    Writers are scripts (``setValue``/``write`` on ``pvs[k]``) and ``write_pv`` actions;
-    order is document order.
+    Writers are input widgets (:data:`~pydmconverter.bob.bob_qt.WRITER_TYPES`, which
+    write their own ``pv_name``), scripts (``setValue``/``write`` on ``pvs[k]``) and
+    ``write_pv`` actions; order is document order. An input widget counting as a writer
+    is what keeps a script from turning the PV it types into into a read-only formula.
     """
     census: dict[str, list[LocalWriter]] = {}
 
@@ -477,6 +479,8 @@ def build_writer_census(widgets: Iterable[BobWidget]) -> dict[str, list[LocalWri
             census.setdefault(local_pv_key(pv), []).append(writer)
 
     for widget in walk_widgets(widgets):
+        if widget.type in WRITER_TYPES:
+            add(widget.props.get("pv_name"), LocalWriter(f"{widget.type} {widget.name}", widget))
         for script in widget.scripts:
             pvs = _script_pvs(script)
             for index in script_written_pvs(script):

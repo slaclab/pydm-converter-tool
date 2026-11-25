@@ -98,6 +98,19 @@ def test_unknown_widget_node():
     assert unknown.warnings == ["No registry entry for activeMysteryClass; rendering placeholder"]
 
 
+def test_hidden_source_node_carries_props_visible_false():
+    """``SourceNode.visible=False`` becomes the ``props.visible`` carrier, on mapped and unknown nodes alike."""
+    mapped = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "X"}, visible=False)
+    unknown = SourceNode(qt_class="PyDMMysteryGauge", raw_props={"foo": 1}, visible=False)
+    shown = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "Y"}, visible=True)
+    screen = _screen([mapped, unknown, shown])
+    a, b, c = screen.root.children
+    assert a.props == {"pv": "X", "visible": False}
+    assert b.props == {"originalClass": "PyDMMysteryGauge", "originalProps": {"foo": 1}, "visible": False}
+    assert c.props == {"pv": "Y"}  # visible (or None) adds nothing: absent means visible
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
 def test_children_order_is_z_order_and_ids_deterministic():
     nodes = [
         SourceNode(qt_class="PyDMLabel", qt_props={"channel": "A"}),

@@ -25,8 +25,9 @@ The `--target react` path (the Canopy Screen IR pipeline) accepts Phoebus Displa
   re-theme it. Text and the color under it are then paired: both roles or both literal wherever mixing them would
   hide the text in a dark theme (a `pair:` note names each change). A screen carrying a role is stamped `schemaVersion: "1.1"`; role-free output is unchanged. Scheme
   errors are printed and the exit status is non-zero.
-- `canopy-scheme check | survey | from-colordef`: validate a scheme, count the named colors a `.bob` tree uses and
-  what each becomes under a scheme, and seed a scheme from a `color.def`.
+- `pydmconverter-scheme check | survey | from-colordef`: validate a scheme (`check` is moving to Canopy, which owns
+  the scheme contract; it still works here for now), count the named colors a `.bob` tree uses and what each
+  becomes under a scheme, and seed a scheme from a `color.def`.
 
 ## Contributing to PyDM Converter
 

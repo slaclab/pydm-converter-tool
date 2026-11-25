@@ -20,8 +20,8 @@ import pytest
 from pydmconverter.ir.model import SchemaVersion, ScreenIR
 
 PINNED = {
-    "screen-ir.schema.json": "c8e4c82a3d77ce4db29309daaf9869d7888a9ed59609de6c359cb5a0ac4e5474",
-    "canopy-color-scheme-1.schema.json": "180c9b21c4d42e3d315b58a23a95e107b9fb8f8871066e726c522c23708c74fa",
+    "screen-ir.schema.json": "ec4352576211c113750f98eaa372e583856980e03d5e76340b539022c3099950",
+    "canopy-color-scheme-1.schema.json": "df8f1e22d28263ce19b7c7726a61d78e12c866c0ad92565fe279a75cc39f83ce",
     "schemes/canopy-default.json": "0a8f403e70f0b9a5dc2eb9679da24f72f54209e19a8a9043d3de636e49ce810d",
 }
 

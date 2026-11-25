@@ -35,6 +35,17 @@ def _wire(ir) -> str:
     return json.dumps(to_wire_dict(ir))
 
 
+def _warnings(ir) -> list[str]:
+    """Every node warning in the screen, depth first."""
+    found: list[str] = []
+    stack = [to_wire_dict(ir)["root"]]
+    while stack:
+        node = stack.pop()
+        found.extend(node.get("warnings", []))
+        stack.extend(node.get("children", []))
+    return found
+
+
 @pytest.fixture
 def secret(tmp_path: Path) -> Path:
     path = tmp_path / "outside" / "secret.py"
@@ -45,9 +56,12 @@ def secret(tmp_path: Path) -> Path:
 
 @pytest.mark.parametrize("execute", [False, True], ids=["script", "execute-action"])
 def test_upload_does_not_read_an_absolute_script_file(secret: Path, execute: bool):
-    wire = _wire(react.convert_bytes(_bob(str(secret), execute=execute), kind="bob", filename="panel.bob"))
+    ir = react.convert_bytes(_bob(str(secret), execute=execute), kind="bob", filename="panel.bob")
+    wire = _wire(ir)
     assert MARKER not in wire
-    assert str(secret) in wire  # carried as its path
+    # Carried as its path: the warning quotes the reference with repr(), so compare against the
+    # repr too. On Windows the path's backslashes are doubled there and again in the JSON text.
+    assert any(repr(str(secret)) in warning for warning in _warnings(ir))
     assert "outside the screen's directory" in wire
 
 

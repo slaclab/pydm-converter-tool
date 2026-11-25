@@ -106,7 +106,8 @@ def _field(action: BobAction, *names: str) -> str:
     return ""
 
 
-def _open_display(action: BobAction, widget: str, ctx: Any) -> dict | None:
+def _open_display(action: BobAction, widget: str, ctx: Any, scope: dict[str, str] | None = None) -> dict | None:
+    """The ``open_display`` entry; ``scope`` is the source widget's group macros, sent under the action's own."""
     raw = _field(action, "file", "path")
     if not raw:
         _warn(ctx, f"{widget}: open_display with no file")
@@ -127,8 +128,11 @@ def _open_display(action: BobAction, widget: str, ctx: Any) -> dict | None:
         target = "replace"
 
     entry: dict[str, Any] = {"type": "open_display", "file": file, "target": target}
-    macros = action.fields.get("macros")
-    if isinstance(macros, dict) and macros:
+    # Phoebus opens the display with the source widget's effective macros plus the
+    # action's own (OpenDisplayActionHandler: the action macros expand over them).
+    own = action.fields.get("macros")
+    macros = {**(scope or {}), **(own if isinstance(own, dict) else {})}
+    if macros:
         entry["macros"] = {name: normalize_macro_syntax(value) for name, value in macros.items()}
     return entry
 
@@ -174,7 +178,7 @@ def lower_actions(widget: BobWidget, ctx: Any) -> list[dict]:
     for action in widget.actions:
         kind = action.type
         if kind in _OPEN_DISPLAY:
-            entry = _open_display(action, name, ctx)
+            entry = _open_display(action, name, ctx, widget.macro_scope)
             if entry is not None:
                 out.append(entry)
         elif kind in _WRITE_PV:
