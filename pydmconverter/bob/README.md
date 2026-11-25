@@ -43,7 +43,7 @@ warnings:
   runtime), substituting widget-scope `$(pv_name)`/`${pv_name}` macros in a widget's own
   action/rule/script PV references, and reading `<script file=...>` script bodies from
   beside the input file.
-- **`bob_qt.py`** — data only: the six tables described below, translating Phoebus
+- **`bob_qt.py`** — data only: the seven tables described below, translating Phoebus
   vocabulary into the Qt/registry vocabulary.
 - **`coercion.py`** — turns raw parsed values into the plain Python values the IR
   stores: colours as `#rrggbb`, font sizes, alignment flags, polygon points, and
@@ -89,7 +89,7 @@ warnings:
   formula-reader retargeting, and `build_screen`. Nothing here raises on unmapped
   input — see the module docstring for the exact five-step pipeline.
 
-## The six tables (`bob_qt.py`)
+## The seven tables (`bob_qt.py`)
 
 1. **`BOB_TO_QT_CLASS`** — Phoebus widget `type` -> `(Qt class, registry id)`, e.g.
    `action_button` -> `("QPushButton", "regular-button")`, `led` -> `("PyDMSymbol",
@@ -117,6 +117,11 @@ warnings:
    (`visible`, `x`, `y`, `width`, `height`) land on the IR rule target as-is versus
    going through the prop table, and which coercion kind (`bool`/`number`/`color`/
    `str`) each target's arm values need.
+7. **`WRITER_TYPES`** — the Phoebus types that write the operator's input to their own
+   `pv_name` (`textentry`, `bool_button`, `combo`, `spinner`, ...). Such a widget counts
+   as a writer in the local-PV census, so a script computing the PV it types into stays
+   tier 2, and its `pv_name` is never a formula: an input bound to a `=...` formula PV is
+   dropped with a warning.
 
 ## Tests
 

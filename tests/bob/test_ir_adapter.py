@@ -557,6 +557,30 @@ def test_formula_pvs():
             assert not value.startswith("=") and "<V" not in value
 
 
+def test_input_widgets_keep_their_pv():
+    """Fixture ``writer_pvs``: a writer is never retargeted to a read-only formula.
+
+    An input widget typing into a local PV counts as a writer, so the script computing
+    that PV stays tier 2 and reader and writer both keep ``loc://typed``; an input whose
+    ``pv_name`` is itself a formula PV is dropped with a warning, its text carried.
+    """
+    wire = _wire("writer_pvs")
+    declarer, calc, typed, readback, entry, button, formula_readback = wire["root"]["children"]
+    assert declarer["props"]["pv"] == "loc://typed?type=int&init=0"  # the script's initializer, declared once
+    assert typed["type"] == "pv-text-input" and typed["props"]["pv"] == "loc://typed"
+    assert readback["props"]["pv"] == "loc://typed"
+    assert any("has another writer: textentry Typed" in w for w in calc["warnings"])
+    assert entry["type"] == "unknown-widget"
+    assert entry["warnings"][0] == (
+        'Formula entry: textentry writes its pv_name, which is a read-only formula PV: =pv("SR:B") * 2; widget dropped'
+    )
+    assert entry["meta"]["comment"] == 'Phoebus formula PV: =pv("SR:B") * 2'
+    assert button["type"] == "unknown-widget" and "bool_button writes its pv_name" in button["warnings"][0]
+    # Only the readback's formula was interned: the dropped inputs left none behind.
+    assert formula_readback["props"]["pv"] == "formula://f-001"
+    assert [f["name"] for f in wire["formulas"]] == ["f-001"]
+
+
 def test_local_pv_initializers():
     array, untyped, table, typed = _children("local_pv_initializers")
     assert array["props"]["pv"] == "loc://arr"

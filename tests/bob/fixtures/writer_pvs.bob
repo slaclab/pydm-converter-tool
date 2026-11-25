@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="textupdate" version="2.0.0">
+    <name>Calc</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:A</pv_name>
+    <scripts>
+      <script file="EmbeddedPy">
+        <text><![CDATA[from org.csstudio.display.builder.runtime.script import PVUtil
+pvs[1].setValue(PVUtil.getDouble(pvs[0]) * 2)
+]]></text>
+        <pv_name>SR:A</pv_name>
+        <pv_name>loc://typed(0)</pv_name>
+      </script>
+    </scripts>
+  </widget>
+  <widget type="textentry" version="2.0.0">
+    <name>Typed</name>
+    <x>0</x>
+    <y>30</y>
+    <pv_name>loc://typed</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Typed readback</name>
+    <x>0</x>
+    <y>60</y>
+    <pv_name>loc://typed</pv_name>
+  </widget>
+  <widget type="textentry" version="2.0.0">
+    <name>Formula entry</name>
+    <x>0</x>
+    <y>90</y>
+    <pv_name>=pv("SR:B") * 2</pv_name>
+  </widget>
+  <widget type="bool_button" version="2.0.0">
+    <name>Formula button</name>
+    <x>0</x>
+    <y>120</y>
+    <pv_name>=`SR:C` &gt; 1</pv_name>
+  </widget>
+  <widget type="textupdate" version="2.0.0">
+    <name>Formula readback</name>
+    <x>0</x>
+    <y>150</y>
+    <pv_name>=pv("SR:B") * 2</pv_name>
+  </widget>
+</display>

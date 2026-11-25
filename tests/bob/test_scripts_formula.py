@@ -244,6 +244,25 @@ def test_second_writer_write_pv_action_rejected():
     assert len(warnings) == 1 and "write_pv action on Btn" in warnings[0]
 
 
+@pytest.mark.parametrize("wtype", ["textentry", "bool_button", "combo", "spinner", "scaledslider"])
+def test_input_widget_on_the_target_is_another_writer(wtype):
+    """An input widget writes its pv_name: the script is not the sole writer and stays tier 2."""
+    text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
+    mine = _script(text, ["A", "loc://N<VDouble>(0)"])
+    entry = BobWidget(type=wtype, name="Entry", props={"pv_name": "loc://N"})
+    cand, warnings = _match(_widget("w", mine), mine, [entry])
+    assert cand is None
+    assert len(warnings) == 1 and f"loc://N has another writer: {wtype} Entry" in warnings[0]
+
+
+def test_readers_are_not_writers():
+    text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
+    mine = _script(text, ["A", "loc://N<VDouble>(0)"])
+    readers = [BobWidget(type=t, name=t, props={"pv_name": "loc://N"}) for t in ("textupdate", "led", "label")]
+    cand, _warnings = _match(_widget("w", mine), mine, readers)
+    assert cand is not None and cand.target_key == "loc://N"
+
+
 def test_nested_second_writer_found():
     text = HEADER + "pvs[1].setValue(PVUtil.getDouble(pvs[0]))\n"
     mine = _script(text, ["A", "loc://N"])

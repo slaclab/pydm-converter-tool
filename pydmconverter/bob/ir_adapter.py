@@ -38,6 +38,7 @@ from pydmconverter.bob.bob_qt import (
     READBACK_COPY,
     TABS_WARNING,
     TRANSPARENT_BG_RULE_TYPES,
+    WRITER_TYPES,
     default_size,
     qt_class_for,
     qt_prop_for,
@@ -78,6 +79,7 @@ NO_READER_WARNING = "{widget}: formula {name} has no reader ({pv})"
 RULE_FORMULA_WARNING = "{widget}: rule {rule!r} needs the script runtime (tier 2): formula binding {pv}"
 NO_DEFAULT_WARNING = "{widget}: rule {rule!r} not lowered: its target has no static value"
 TRACE_FORMULA_WARNING = "{widget}: trace {trace!r} needs the script runtime (tier 2): formula binding {pv}"
+WRITER_FORMULA_WARNING = "{widget}: {type} writes its pv_name, which is a read-only formula PV: {pv}; widget dropped"
 
 # Phoebus props consumed structurally below, never through the generic prop table.
 _STRUCTURAL_PROPS = frozenset(
@@ -424,6 +426,13 @@ class _WidgetLowering:
         qt_prop = qt_prop_for(self.widget.type, "pv_name")
         text = prop_text(props.get("pv_name"))
         if qt_prop is None or not text.strip():
+            return
+        if text.strip().startswith("=") and self.widget.type in WRITER_TYPES:
+            # An input widget bound to a formula would send the operator's value
+            # nowhere (Phoebus formula PVs are read-only). Dropped, text carried.
+            self.warn(WRITER_FORMULA_WARNING.format(widget=self.name, type=self.widget.type, pv=text.strip()))
+            self.declined.append(text)
+            self.unknown = True
             return
         channel = self.channel(text)
         if channel is None:
