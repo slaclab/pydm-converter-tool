@@ -6,6 +6,7 @@ import ast
 
 import pytest
 
+from pydmconverter.bob.gates import MAX_SCRIPT_CHARS
 from pydmconverter.bob.parser import BobAction, BobScript, BobWidget
 from pydmconverter.bob.scripts import (
     FormulaCandidate,
@@ -348,6 +349,15 @@ def test_script_past_the_parser_recursion_limit_is_unparseable(monkeypatch):
 
     monkeypatch.setattr(ast, "parse", parse_or_overflow)
     text = HEADER + "pvs[1].setValue(" + " + ".join(["1"] * 60_000) + ")\n"
+    script = _script(text, ["A", "loc://N"])
+    assert script_written_pvs(script) == []
+    cand, warnings = _match(_widget("w", script), script)
+    assert cand is None and len(warnings) == 1 and TIER2 in warnings[0]
+
+
+def test_script_over_the_length_cap_is_unparseable():
+    """Text over ``MAX_SCRIPT_CHARS`` is never parsed: no writers, no match, one tier-2 warning."""
+    text = HEADER + "pvs[1].setValue(1)\n" + "# " + "x" * MAX_SCRIPT_CHARS + "\n"
     script = _script(text, ["A", "loc://N"])
     assert script_written_pvs(script) == []
     cand, warnings = _match(_widget("w", script), script)
