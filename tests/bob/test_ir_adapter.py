@@ -581,6 +581,52 @@ def test_input_widgets_keep_their_pv():
     assert [f["name"] for f in wire["formulas"]] == ["f-001"]
 
 
+def test_hidden_widgets_stay_hidden():
+    """Fixture ``hidden``: ``<visible>false</visible>`` becomes the ``props.visible`` carrier.
+
+    The runtime reads ``props.visible`` as the base visibility and ANDs ``visible`` rules
+    onto it, so a widget with a lowered ``visible`` rule carries the static value as the
+    rule default instead (the rule alone decides, as in Phoebus).
+    """
+    hidden, shown, ruled, group, tabs = _children("hidden")
+    assert hidden["props"]["visible"] is False
+    assert "visible" not in shown["props"]
+    assert "visible" not in ruled["props"]
+    assert ruled["rules"][0]["targetProperty"] == "visible" and ruled["rules"][0]["default"] is False
+    assert group["type"] == "group-box" and group["props"]["visible"] is False
+    assert "visible" not in group["children"][0]["props"]  # the parent's visibility hides the child at runtime
+    assert tabs["type"] == "unknown-widget" and tabs["props"]["visible"] is False
+    nodes = list(_walk(_convert("hidden").root))
+    assert not any("visible" in node.dropped_props for node in nodes)
+
+
+def _walk(node):
+    yield node
+    for child in node.children:
+        yield from _walk(child)
+
+
+def test_hidden_holder_of_a_local_pv_initializer_gets_a_declarer():
+    """A hidden widget is never mounted, so its own channel cannot declare the local PV it initialises."""
+    body = (
+        '<widget type="textupdate" version="2.0.0"><name>Holder</name><x>0</x><y>0</y>'
+        "<pv_name>loc://x&lt;VDouble&gt;(5)</pv_name><visible>false</visible></widget>"
+        '<widget type="textupdate" version="2.0.0"><name>Reader</name><x>0</x><y>30</y><pv_name>loc://x</pv_name></widget>'
+        '<widget type="group" version="2.0.0"><name>G</name><x>0</x><y>60</y><width>100</width><height>50</height>'
+        '<visible>false</visible><widget type="textupdate" version="2.0.0"><name>Holder2</name><x>0</x><y>0</y>'
+        "<pv_name>loc://y&lt;VDouble&gt;(7)</pv_name></widget></widget>"
+        '<widget type="textupdate" version="2.0.0"><name>Shown</name><x>0</x><y>120</y>'
+        "<pv_name>loc://z&lt;VDouble&gt;(9)</pv_name></widget>"
+    )
+    data = f'<?xml version="1.0" encoding="UTF-8"?>\n<display version="2.0.0"><name>D</name>{body}</display>'.encode()
+    wire = to_wire_dict(convert_bytes(data, kind="bob"))
+    declarers = [node for node in wire["root"]["children"] if node["geometry"]["width"] == 0]
+    assert [node["props"]["pv"] for node in declarers] == ["loc://x?type=float&init=5", "loc://y?type=float&init=7"]
+    assert all("visible" not in node["props"] for node in declarers)
+    shown = wire["root"]["children"][-1]
+    assert shown["props"]["pv"] == "loc://z?type=float&init=9"  # a visible holder keeps its own initializer
+
+
 def test_local_pv_initializers():
     array, untyped, table, typed = _children("local_pv_initializers")
     assert array["props"]["pv"] == "loc://arr"

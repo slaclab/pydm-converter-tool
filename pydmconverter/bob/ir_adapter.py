@@ -105,6 +105,7 @@ _STRUCTURAL_PROPS = frozenset(
         "horizontal",
         "text",
         "arrows",
+        "visible",
     }
 )
 # (widget type, prop) pairs the prop table leaves unmapped because another module reads
@@ -378,7 +379,22 @@ class _WidgetLowering:
             warnings=self.warnings,
             meta=meta,
             dropped_props=self.dropped_props,
+            visible=self._visible(),
         )
+
+    def _visible(self) -> bool | None:
+        """``False`` when ``<visible>false</visible>`` is the widget's static visibility.
+
+        A lowered ``visible`` rule already carries that value as its default, and the
+        runtime ANDs the base with every rule, so the carrier is left out then: the
+        rule alone decides, as in Phoebus.
+        """
+        value = self.widget.props.get("visible")
+        if value is None or is_true(value, self.rule_ctx, self.name):
+            return None
+        if any(rule.target_property == "visible" for rule in self.rules):
+            return None
+        return False
 
     # -- props ----------------------------------------------------------------
     def _props(self) -> None:

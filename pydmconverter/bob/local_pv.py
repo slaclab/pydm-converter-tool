@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 from urllib.parse import quote
 
 from pydmconverter.bob.bob_qt import qt_class_for
-from pydmconverter.bob.parser import walk_widgets
+from pydmconverter.bob.coercion import coerce
 from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.source import SourceNode
 
@@ -179,6 +179,20 @@ def _is_initializer(url: object) -> bool:
     return bool(match and match.group("init") is not None)
 
 
+def _statically_hidden(widget: BobWidget) -> bool:
+    """``<visible>false</visible>``: the runtime never mounts the widget, so nothing it carries subscribes."""
+    value = widget.props.get("visible")
+    return isinstance(value, str) and coerce("bool", value) is False
+
+
+def _walk_with_visibility(widgets: Iterable[BobWidget], hidden: bool = False) -> Iterator[tuple[BobWidget, bool]]:
+    """Every widget depth-first with whether it, or a widget above it, is statically hidden."""
+    for widget in widgets:
+        own_hidden = hidden or _statically_hidden(widget)
+        yield widget, own_hidden
+        yield from _walk_with_visibility(widget.children, own_hidden)
+
+
 def _has_channel(widget: BobWidget, registry: RegistryClient) -> bool:
     mapped = qt_class_for(widget.type)
     if mapped is None:
@@ -212,10 +226,12 @@ def plan_declarers(
     subscribe* (a channel carrying ``?type=&init=``), never on a ``write_pv`` put.
     An initializer that is a widget's own ``pv_name`` on a type whose registry entry
     has a ``channel`` stays there (the adapter rewrites it in place). Any other
-    initializer — the ``pv_name`` of an ``action_button``, or a ``loc://n<T>(v)``
-    named in an action, rule or script — becomes a 0x0 ``pv-label`` declarer named
-    ``<widget>.init`` with ``channel = loc://name?type=<t>&init=<v>``. There is no
-    ``visible`` prop (hiding would unmount it) and no warning.
+    initializer — the ``pv_name`` of an ``action_button``, one on a widget that is
+    statically hidden (``<visible>false</visible>`` on it or a group above it, so the
+    runtime never mounts it), or a ``loc://n<T>(v)`` named in an action, rule or script
+    — becomes a 0x0 ``pv-label`` declarer named ``<widget>.init`` with
+    ``channel = loc://name?type=<t>&init=<v>``. There is no ``visible`` prop (hiding
+    would unmount it) and no warning.
 
     ``widgets`` is walked recursively in document order (``$(pv_name)`` already
     substituted by the parser); one declarer per distinct :func:`local_pv_key`, the
@@ -227,9 +243,11 @@ def plan_declarers(
     report = warn if warn is not None else (lambda _message: None)
     declared: set[str] = set()
     declarers: list[SourceNode] = []
-    for widget in walk_widgets(widgets):
+    for widget, hidden in _walk_with_visibility(widgets):
         own = widget.props.get("pv_name")
-        keeps_own = _has_channel(widget, registry)
+        # A hidden widget (or one under a hidden group) is never mounted, so its own
+        # channel cannot be the declaring subscribe either.
+        keeps_own = _has_channel(widget, registry) and not hidden
         for url in _references(widget):
             if not _is_initializer(url) or (keeps_own and url == own):
                 continue

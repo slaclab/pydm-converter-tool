@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<display version="2.0.0">
+  <name>Display</name>
+  <widget type="label" version="2.0.0">
+    <name>Hidden label</name>
+    <x>0</x>
+    <y>0</y>
+    <text>hidden</text>
+    <visible>false</visible>
+  </widget>
+  <widget type="label" version="2.0.0">
+    <name>Shown label</name>
+    <x>0</x>
+    <y>30</y>
+    <text>shown</text>
+    <visible>true</visible>
+  </widget>
+  <widget type="rectangle" version="2.0.0">
+    <name>Ruled</name>
+    <x>0</x>
+    <y>60</y>
+    <visible>false</visible>
+    <rules>
+      <rule name="show" prop_id="visible" out_exp="false">
+        <exp bool_exp="pv0 == 1">
+          <value>true</value>
+        </exp>
+        <pv_name>SR:ON</pv_name>
+      </rule>
+    </rules>
+  </widget>
+  <widget type="group" version="2.0.0">
+    <name>Hidden group</name>
+    <x>0</x>
+    <y>90</y>
+    <width>100</width>
+    <height>50</height>
+    <visible>false</visible>
+  <widget type="textupdate" version="2.0.0">
+    <name>In hidden group</name>
+    <x>0</x>
+    <y>0</y>
+    <pv_name>SR:A</pv_name>
+  </widget>
+  </widget>
+  <widget type="tabs" version="2.0.0">
+    <name>Hidden tabs</name>
+    <x>0</x>
+    <y>150</y>
+    <visible>false</visible>
+  </widget>
+</display>
