@@ -36,7 +36,7 @@ from pydmconverter.bob.bob_qt import WRITER_TYPES
 from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS
 from pydmconverter.bob.local_pv import is_gateway_channel, local_pv_key
 from pydmconverter.bob.parser import BobScript, BobWidget, walk_widgets
-from pydmconverter.bob.gates import PARSE_ERRORS, expression_allowed, has_macro
+from pydmconverter.bob.gates import MAX_EXPRESSION_CHARS, PARSE_ERRORS, expression_allowed, has_macro
 from pydmconverter.bob.rules import RuleContext, resolve_target
 from pydmconverter.colors import named_color
 from pydmconverter.edm.ir_adapter import _severity_channel
@@ -69,10 +69,9 @@ _WRITE_METHODS = frozenset({"setValue", "write"})
 _ARITH_OPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
 _PLACEHOLDER_RE = re.compile(r"__pv(\d+)__")
 # Inlining shares subtrees (``b = a + a`` reuses ``a``), so a few lines can expand to an
-# exponentially large formula. Past this many nodes, or this much formula text, the
-# script stays tier 2.
+# exponentially large formula. Past this many nodes, or past the gate's text cap
+# (``gates.MAX_EXPRESSION_CHARS``, the Formula Engine's limit), the script stays tier 2.
 MAX_EXPRESSION_NODES = 500
-MAX_EXPRESSION_CHARS = 10_000
 
 
 @dataclass

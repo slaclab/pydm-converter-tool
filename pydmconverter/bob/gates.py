@@ -12,7 +12,8 @@ runtime. Each kind has one gate here, and every sink calls it:
   ``open_display``, navigation tabs, embedded and picture files, button images,
   ``file`` rule values): a relative or absolute path, nothing else.
 
-All scans are linear in the input.
+All scans are linear in the input, and no expression over :data:`MAX_EXPRESSION_CHARS`
+is parsed.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 
 __all__ = [
     "FILE_REFERENCE_WARNING",
+    "MAX_EXPRESSION_CHARS",
     "PARSE_ERRORS",
     "WEB_URL_WARNING",
     "expression_allowed",
@@ -39,6 +41,12 @@ WEB_URL_WARNING = "{widget}: open_webpage URL {reference!r} is not http, https o
 
 _BINDING_RE = re.compile(r"\{(\d+)\}")
 _MACRO_CLOSERS = {"{": "}", "(": ")"}
+#: The longest expression the gate passes: the Formula Engine's default maximum
+#: expression length (``max_expression_len``, configurable there, 2048 by default).
+#: An expression over it would be interned and then refused at evaluation time. For
+#: a rule the engine compiles every condition into one ladder, so a per-condition
+#: cap is an approximation of that limit, not the limit itself.
+MAX_EXPRESSION_CHARS = 2048
 #: What ``ast.parse`` raises on text it cannot turn into a tree: a syntax error, a null
 #: byte (``ValueError``), or an expression nested past the interpreter's recursion limit
 #: (``RecursionError``, historically ``MemoryError``). Every parse of display text catches these.
@@ -134,9 +142,9 @@ def expression_allowed(expression: str, binding_count: int | None = None) -> boo
     fails: the check would see its name, while a consumer that substitutes it could
     run its value as code (in code position, or after closing a string literal).
     ``binding_count`` limits the bindings to ``{0}``..``{binding_count - 1}``; ``None``
-    accepts any index.
+    accepts any index. Text over :data:`MAX_EXPRESSION_CHARS` fails before any parse.
     """
-    if has_macro(expression):
+    if len(expression) > MAX_EXPRESSION_CHARS or has_macro(expression):
         return False
     indices = [int(m.group(1)) for m in _BINDING_RE.finditer(expression)]
     if binding_count is not None and any(n >= binding_count for n in indices):

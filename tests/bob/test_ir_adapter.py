@@ -733,8 +733,11 @@ def test_one_failing_widget_becomes_a_placeholder(monkeypatch):
     assert validate_screen_json(wire) == []
 
 
-def test_rule_past_the_parser_recursion_limit_is_declined_not_fatal():
-    """A 60k-term condition used to raise RecursionError out of ast.parse and abort the file."""
+def test_over_long_rule_condition_is_declined_not_fatal():
+    """A 60k-term condition used to raise RecursionError out of ast.parse and abort the file.
+
+    The length cap now turns it away first; either way the widget and its siblings convert.
+    """
     condition = " + ".join(["pv0"] * 60_000) + " > 1"
     rule = (
         '<rules><rule name="r" prop_id="visible" out_exp="false">'
@@ -747,7 +750,9 @@ def test_rule_past_the_parser_recursion_limit_is_declined_not_fatal():
     before, long = wire["root"]["children"]
     assert before["type"] == "text-label"
     assert long["type"] == "rectangle" and long.get("rules", []) == []
-    assert long["warnings"][0].startswith("Long: rule 'r' condition not lowered: pv0 + pv0")
+    assert long["warnings"] == [
+        f"Long: rule 'r' condition not lowered: {len(condition)} characters, over the 2048-character expression limit"
+    ]
 
 
 def test_script_past_the_parser_recursion_limit_stays_tier_2():

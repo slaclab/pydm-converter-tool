@@ -132,12 +132,13 @@ def test_freed_temporaries_do_not_hide_the_expansion():
 
 
 def test_formula_text_is_capped():
-    reads = " + ".join(f"PVUtil.getDouble(pvs[{n}{'9' * 3000}])" for n in range(1, 5))
+    """The cap is the Formula Engine's default expression limit, shared with the gate."""
+    reads = " + ".join(f"PVUtil.getDouble(pvs[{n}{'9' * 600}])" for n in range(1, 5))
     text = HEADER + f"pvs[1].setValue({reads})\n"
     script = _script(text, ["A", "loc://B"])
     cand, warnings = _match(_widget("w", script), script)
     assert cand is None
-    assert warnings[0].endswith("(formula text exceeds 10000 characters)")
+    assert warnings[0].endswith("(formula text exceeds 2048 characters)")
 
 
 def test_if_else_form_nested_conditional():

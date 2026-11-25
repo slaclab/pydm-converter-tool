@@ -31,7 +31,7 @@ from pydmconverter.bob.bob_qt import (
     rule_coercion,
 )
 from pydmconverter.bob.coercion import RGBA, coerce, color_from_element
-from pydmconverter.bob.gates import FILE_REFERENCE_WARNING, expression_allowed, file_reference
+from pydmconverter.bob.gates import MAX_EXPRESSION_CHARS, FILE_REFERENCE_WARNING, expression_allowed, file_reference
 from pydmconverter.colors import ColorContext
 from pydmconverter.bob.parser import BobRule, BobWidget
 from pydmconverter.edm.ir_adapter import _severity_channel
@@ -39,7 +39,16 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec
 
-__all__ = ["RuleContext", "coerce_value", "is_true", "js_to_python", "lower_rule", "resolve_target", "syntax_check"]
+__all__ = [
+    "RuleContext",
+    "coerce_value",
+    "is_true",
+    "js_to_python",
+    "lower_rule",
+    "resolve_target",
+    "split_literals",
+    "syntax_check",
+]
 
 
 def js_to_python(expr: str) -> str:
@@ -111,20 +120,23 @@ def js_to_python(expr: str) -> str:
 # pvSev/pvLegacySev read the alarm severity, bound here to ``<pv>.SEVR``.
 # --------------------------------------------------------------------------
 _TOKEN_RE = re.compile(r"\bpv(Str|Int|Sev|LegacySev)?(\d+)\b")
-_STRING_LITERAL_RE = re.compile(r"(\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')")
 _LEGACY_SEV_LADDER = "(2 if {k}==1 else (1 if {k}==2 else (-1 if {k}>=3 else 0)))"
+_QUOTES = frozenset("\"'")
 
 # Rule targets whose values name a file (each goes through gates.file_reference).
 _FILE_RULE_TARGETS = frozenset({"file", "on_image", "off_image"})
 
 # pvStrN == "text" / "text" == pvStrN (either quote style): the code before or after a
-# literal that _STRING_LITERAL_RE has already cut out, so no pattern scans quoted text.
+# literal that split_literals has already cut out, so no pattern scans quoted text.
 _PVSTR_BEFORE_LITERAL_RE = re.compile(r"\bpvStr(\d+)\s*(?:==|!=)\s*$")
 _PVSTR_AFTER_LITERAL_RE = re.compile(r"^\s*(?:==|!=)\s*pvStr(\d+)\b")
 PVSTR_GATEWAY_WARNING = (
     "{widget}: rule compares PV text; the Formula Engine delivers enum PVs as indices, verify {pv} is a string record"
 )
 UNSUPPORTED_EXPRESSION_WARNING = "{widget}: unsupported rule expression: {expression}"
+CONDITION_TOO_LONG_WARNING = (
+    "{widget}: rule {rule!r} condition not lowered: {length} characters, over the {limit}-character expression limit"
+)
 
 _LITERAL_RE = re.compile(r"^(?:true|false|[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|\"[^\"]*\"|'[^']*')$")
 
@@ -166,9 +178,42 @@ class RuleContext:
         return self.registry
 
 
+def split_literals(text: str) -> list[str]:
+    """Split ``text`` into ``[code, literal, code, literal, ..., code]`` in one linear pass.
+
+    A literal is a ``"..."`` or ``'...'`` with backslash escapes (``\\x`` always pairs the
+    backslash with the next character), as Phoebus's ``RuleToScript`` reads them. Odd
+    indices are the literals, quotes included; even indices the code between them, so
+    ``"".join(parts) == text``. An opening quote with no closer stays in the code, and
+    since nothing after it can close a later quote of that kind either, that kind is not
+    searched again: the scan never restarts, which is what keeps a condition made of
+    escaped quotes from taking quadratic time.
+    """
+    parts: list[str] = []
+    code_start = 0
+    dead: set[str] = set()
+    i = 0
+    length = len(text)
+    while i < length:
+        quote = text[i]
+        if quote in _QUOTES and quote not in dead:
+            k = i + 1
+            while k < length and text[k] != quote:
+                k += 2 if text[k] == "\\" else 1
+            if k < length:
+                parts.append(text[code_start:i])
+                parts.append(text[i : k + 1])
+                code_start = i = k + 1
+                continue
+            dead.add(quote)
+        i += 1
+    parts.append(text[code_start:])
+    return parts
+
+
 def _outside_literals(text: str, fn) -> str:
     """Apply ``fn`` to the parts of ``text`` that are not string literals."""
-    parts = _STRING_LITERAL_RE.split(text)
+    parts = split_literals(text)
     return "".join(part if i % 2 else fn(part) for i, part in enumerate(parts))
 
 
@@ -208,10 +253,10 @@ def _is_number(text: str) -> bool:
 def _pvstr_comparisons(condition: str) -> list[tuple[int, str]]:
     """``(N, literal body)`` for each ``pvStrN ==/!= "text"`` or ``"text" ==/!= pvStrN``.
 
-    Literals are cut out by the linear ``_STRING_LITERAL_RE``; a condition with an
+    Literals are cut out by the linear :func:`split_literals`; a condition with an
     unmatched quote has no well-defined literals and yields nothing.
     """
-    parts = _STRING_LITERAL_RE.split(condition)
+    parts = split_literals(condition)
     code = parts[0::2]
     if any('"' in part or "'" in part for part in code):
         return []
@@ -316,7 +361,9 @@ def lower_rule(
     Returns ``None`` (with a warning on ``ctx``) when the target is unsupported, the
     rule is a ``background_color`` rule on a transparent label/textupdate with no
     ``transparent`` rule beside it, an ``out_exp`` arm is computed, a token names a
-    PV the rule does not list, or a rewritten condition fails :func:`syntax_check`.
+    PV the rule does not list, a condition is longer than the Formula Engine accepts
+    (:data:`~pydmconverter.bob.gates.MAX_EXPRESSION_CHARS`), or a rewritten condition
+    fails :func:`syntax_check`.
     ``registry_id`` overrides the class-table id (e.g. a style-dependent group).
     """
     name = widget.name
@@ -344,6 +391,14 @@ def lower_rule(
     gateway_text_pvs: list[str] = []
 
     for bool_exp, raw_value in rule.expressions:
+        if len(bool_exp) > MAX_EXPRESSION_CHARS:
+            # Bound the input before any rewrite: the Formula Engine would refuse it anyway.
+            ctx.warn(
+                CONDITION_TOO_LONG_WARNING.format(
+                    widget=name, rule=rule.name, length=len(bool_exp), limit=MAX_EXPRESSION_CHARS
+                )
+            )
+            return None
         if rule.out_exp:
             literal = raw_value.strip()
             if not _LITERAL_RE.match(literal):
