@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+
 import pytest
 
 from pydmconverter.bob.parser import BobAction, BobScript, BobWidget
@@ -331,8 +333,20 @@ def test_missing_text_warns_with_path():
 # --- writer census ----------------------------------------------------------------
 
 
-def test_script_past_the_parser_recursion_limit_is_unparseable():
-    """``ast.parse`` raises RecursionError on a very deep tree: no writers, no match, no crash."""
+def test_script_past_the_parser_recursion_limit_is_unparseable(monkeypatch):
+    """A tree too deep for ``ast.parse`` (RecursionError): no writers, no match, no crash.
+
+    Python 3.12's parser raises on the 60k-term expression below; 3.10's parses it. Force
+    the error for that text so the handling is exercised on every interpreter.
+    """
+    real_parse = ast.parse
+
+    def parse_or_overflow(source, *args, **kwargs):
+        if isinstance(source, str) and source.count(" + ") > 10_000:
+            raise RecursionError("maximum recursion depth exceeded during compilation")
+        return real_parse(source, *args, **kwargs)
+
+    monkeypatch.setattr(ast, "parse", parse_or_overflow)
     text = HEADER + "pvs[1].setValue(" + " + ".join(["1"] * 60_000) + ")\n"
     script = _script(text, ["A", "loc://N"])
     assert script_written_pvs(script) == []
