@@ -11,9 +11,8 @@ screen schema (`validate_screen_json`); it does not mint any of these contracts.
 
 - Repo: `slaclab/canopy-spec`, the single canonical home of the Screen IR
   contract (the SDK's `@slaclab/canopy-screen-ir` copies its schema from there).
-- Screen IR schema version: `1.1` (accepts documents declaring `1.0` or `1.1`),
-  taken from canopy-spec commit `b654e49` (unreleased; re-pin to the canopy-spec
-  release that carries 1.1).
+- Screen IR schema version: `1.1` (accepts documents declaring `1.0` or `1.1`).
+  Both canopy-spec files are taken from canopy-spec v0.2.0 (`466fd0a`).
 - Canonical macro-name pattern: `^[A-Za-z][A-Za-z0-9_]*$` (accepts lowercase —
   PyDM/EDM sources author `${dev}`/`${signal}`).
 - Widget registry: **not vendored**. `widget-registry/*.json` holds only each
@@ -27,8 +26,8 @@ source repo. Sources are repo-relative (`<repo>: <path>`).
 
 | Vendored file | Source | sha256 |
 |---|---|---|
-| `screen-ir.schema.json` | `canopy-spec: screen-ir/screen-ir.schema.json` | `c8e4c82a3d77ce4db29309daaf9869d7888a9ed59609de6c359cb5a0ac4e5474` |
-| `canopy-color-scheme-1.schema.json` | `canopy-spec: screen-ir/color-scheme.schema.json` | `180c9b21c4d42e3d315b58a23a95e107b9fb8f8871066e726c522c23708c74fa` |
+| `screen-ir.schema.json` | `canopy-spec: screen-ir/screen-ir.schema.json` | `ec4352576211c113750f98eaa372e583856980e03d5e76340b539022c3099950` |
+| `canopy-color-scheme-1.schema.json` | `canopy-spec: screen-ir/color-scheme.schema.json` | `df8f1e22d28263ce19b7c7726a61d78e12c866c0ad92565fe279a75cc39f83ce` |
 | `schemes/canopy-default.json` | `canopy: src/canopy/core/data/canopy-default.json` | `0a8f403e70f0b9a5dc2eb9679da24f72f54209e19a8a9043d3de636e49ce810d` |
 
 `tests/ir/test_vendored_data.py` pins these values and checks that the files ship

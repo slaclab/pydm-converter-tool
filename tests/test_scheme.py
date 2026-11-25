@@ -112,6 +112,26 @@ def test_valid_facility_is_served_and_inherits_base(tmp_path):
     assert result.flat["roles"] == DEFAULT_ROLES
 
 
+def test_schema_and_format_keys_are_served(tmp_path):
+    """A file written to canopy-spec v0.2.0 may carry ``$schema`` and ``format``; it is served, not silently defaulted."""
+    doc = {
+        "$schema": "urn:canopy:color-scheme:1",
+        "format": "canopy-color-scheme/1",
+        "id": "facility",
+        "roles": {"OK": "#00ff00"},
+    }
+    result = load_scheme(write(tmp_path, doc))
+    assert result.meta["errors"] == []
+    assert result.meta["served"] == result.meta["id"] == "facility"
+    assert role(result, "OK") == ("#00ff00", "#00ff00")
+
+
+def test_other_format_is_an_error(tmp_path):
+    result = load_scheme(write(tmp_path, {"format": "canopy-color-scheme/2", "id": "facility"}))
+    assert error_paths(result) == ["format"]
+    assert_serves_default(result)
+
+
 def test_per_mode_merge_keeps_inherited_mode(tmp_path):
     result = load_scheme(
         write(tmp_path, {"id": "fac", "roles": {"OK": {"dark": "#123456"}, "MAJOR": {"light": "#abc"}}})
