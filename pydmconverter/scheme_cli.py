@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 
-from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS, parse_rgba_list
+from pydmconverter.bob.coercion import BUILTIN_NAMED_COLORS, parse_color_def
 from pydmconverter.colors import ColorContext, rgba_to_hex
 from pydmconverter.scheme import SchemeResult, canonical_hex, load_scheme
 
@@ -196,44 +196,15 @@ def check(path: Path, out) -> int:
 def parse_color_table(path: Path | None, warnings: list[str]) -> dict[str, str]:
     """A colour table as ``{name: "#hex" | "@Other"}`` in table order: the built-ins, or the entries of ``path``.
 
-    ``color.def`` grammar: ``Name = r, g, b [, a]`` | ``Name = Other`` | ``Name = alias(Other)``, ``#`` comments.
-    Both reference forms keep the reference as a light alias. ``Other`` must be a built-in or defined earlier in the
-    file. Lines that do not parse, or reference an undefined name, are skipped with a warning.
+    The ``color.def`` grammar is :func:`~pydmconverter.bob.coercion.parse_color_def`'s; both reference forms
+    (``Name = Other``, ``Name = alias(Other)``) keep the reference as a light alias. Lines that do not parse, or
+    reference an undefined name, are skipped with a warning prefixed by the file path.
     """
     if path is None:
         return {name: canonical_hex(rgba_to_hex(rgba)) for name, rgba in BUILTIN_NAMED_COLORS.items()}
-    known = set(BUILTIN_NAMED_COLORS)
     table: dict[str, str] = {}
-    text = Path(path).read_text(encoding="utf-8", errors="replace")
-    for lineno, raw in enumerate(text.splitlines(), start=1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        name, sep, value = (s.strip() for s in line.partition("="))
-        if not sep or not name:
-            warnings.append(f"{path}:{lineno}: cannot parse '{line}'")
-            continue
-        ref = None
-        if value.startswith("alias"):
-            rest = value[5:].strip()
-            if not (rest.startswith("(") and rest.endswith(")")):
-                warnings.append(f"{path}:{lineno}: cannot parse color '{name}' from '{value}'")
-                continue
-            ref = rest[1:-1].strip()
-        elif value in known:
-            ref = value
-        if ref is not None:
-            if ref not in known:
-                warnings.append(f"{path}:{lineno}: color '{name}' references undefined '{ref}'")
-                continue
-            table[name] = f"@{ref}"
-        else:
-            rgba = parse_rgba_list(value)
-            if rgba is None:
-                warnings.append(f"{path}:{lineno}: cannot parse color '{name}' from '{value}'")
-                continue
-            table[name] = canonical_hex(rgba_to_hex(rgba))
-        known.add(name)
+    for entry in parse_color_def(path, warnings, label=str(path)):
+        table[entry.name] = f"@{entry.ref}" if entry.ref is not None else canonical_hex(rgba_to_hex(entry.rgba))
     return table
 
 

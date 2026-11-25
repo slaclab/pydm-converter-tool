@@ -15,6 +15,7 @@ from pydmconverter.bob.coercion import (
     color_from_element,
     font_size,
     load_color_def,
+    parse_color_def,
     normalize_macro_syntax,
     points,
 )
@@ -65,6 +66,37 @@ def test_color_def_bad_lines_warn_and_are_skipped():
     assert "Dangling" not in named
     assert any("Broken" in w for w in warnings)
     assert any("NoSuchColour" in w for w in warnings)
+
+
+def test_parse_color_def_keeps_references_and_order():
+    """The one parser of the grammar: entries in file order, references kept for the scheme tool."""
+    warnings: list[str] = []
+    entries = parse_color_def(COLOR_DEF, warnings)
+    assert [(e.name, e.rgba, e.ref) for e in entries] == [
+        ("Background", (250, 250, 250, 255), None),
+        ("Header_Background", (77, 77, 77, 255), None),
+        ("Semi", (10, 20, 30, 128), None),
+        ("STOP", None, "MAJOR"),
+        ("Halt", None, "MAJOR"),
+        ("On", None, "OK"),
+        ("Off", (60, 100, 60, 255), None),
+    ]
+    assert warnings == [
+        "color.def:20: cannot parse color 'Broken' from 'not a colour'",
+        "color.def:21: color 'Dangling' references undefined 'NoSuchColour'",
+    ]
+
+
+def test_parse_color_def_label_prefixes_warnings(tmp_path):
+    path = tmp_path / "site.def"
+    path.write_text("Nope\nX = alias(Missing)\n= 1, 2, 3\n", encoding="utf-8")
+    warnings: list[str] = []
+    assert parse_color_def(path, warnings, label=str(path)) == []
+    assert warnings == [
+        f"{path}:1: cannot parse 'Nope'",
+        f"{path}:2: color 'X' references undefined 'Missing'",
+        f"{path}:3: cannot parse '= 1, 2, 3'",
+    ]
 
 
 def test_load_color_def_does_not_mutate_builtins(tmp_path):
