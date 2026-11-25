@@ -215,6 +215,34 @@ def test_valid_macro_names_leave_no_rename_warning():
     assert screen.root.warnings == []
 
 
+def test_macro_default_follows_the_rename():
+    """macro_defaults is keyed by the source's names; a default for ${6X} must
+    land on M_6X, not leave it at "" once the rename has run."""
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${6X}:A", "text": "${P}"}, geometry=(0, 0, 10, 10))
+    screen = _screen([node], macro_defaults={"6X": "${6X}", "P": "SYS:"})
+    assert [(m.name, m.default) for m in screen.macros] == [("M_6X", "${6X}"), ("P", "SYS:")]
+    assert screen.root.children[0].props["pv"] == "${M_6X}:A"
+    assert validate_screen_json(to_wire_dict(screen)) == []
+
+
+def test_macro_default_under_the_new_name_wins():
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${6X}:A"})
+    screen = _screen([node], macro_defaults={"6X": "old", "M_6X": "new"})
+    assert [(m.name, m.default) for m in screen.macros] == [("M_6X", "new")]
+
+
+def test_macro_defaults_apply_to_explicit_macros():
+    from pydmconverter.ir.model import MacroDeclaration
+
+    node = SourceNode(qt_class="PyDMLabel", qt_props={"channel": "${6X}:A", "text": "${P}"})
+    macros = [MacroDeclaration(name="M_6X"), MacroDeclaration(name="P", description="Prefix")]
+    screen = _screen([node], macros=macros, macro_defaults={"6X": "A:", "P": "SYS:"})
+    assert [(m.name, m.default, m.description) for m in screen.macros] == [
+        ("M_6X", "A:", None),
+        ("P", "SYS:", "Prefix"),
+    ]
+
+
 def test_rules_get_ids_and_contribute_macros():
     """RuleSpecs become Rules with allocated r-NNN ids; rule PV macros are declared."""
     from pydmconverter.ir.source import RuleSpec

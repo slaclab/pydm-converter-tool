@@ -107,7 +107,9 @@ class IRBuilder:
         marker passes ``literal_braces=False`` to skip that pass.
 
         ``macro_defaults`` gives some declared macros a default other than ``""``,
-        by name.
+        by the source's macro name. It follows the renaming of macro names the IR
+        rejects, so a default given for ``6X`` lands on ``M_6X``; one given under
+        the new name wins. Values are stored verbatim.
         """
         width, height = size
         # Allocate the root id before children so the canvas stays w-001.
@@ -149,10 +151,12 @@ class IRBuilder:
             root.warnings.append(f"Renamed macros collide with other macro names and now share one value: {merged}")
         declared = macros if macros is not None else self._collect_macros(root)
         if macro_defaults:
+            defaults = dict(macro_defaults)
+            for old, new in sorted(renamed.items()):
+                if old in macro_defaults:
+                    defaults.setdefault(new, macro_defaults[old])
             declared = [
-                macro.model_copy(update={"default": macro_defaults[macro.name]})
-                if macro.name in macro_defaults
-                else macro
+                macro.model_copy(update={"default": defaults[macro.name]}) if macro.name in defaults else macro
                 for macro in declared
             ]
         literal = self._restore_literal_braces(root) if literal_braces else set()

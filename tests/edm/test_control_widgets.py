@@ -71,8 +71,8 @@ def test_shell_cmd_class_builds_actions_from_command_blocks():
     assert button.type == "regular-button"
     assert button.props["label"] == "Utilities"
     assert button.props["actions"] == [
-        {"type": "shell_command", "command": "xterm -e top", "label": "Top"},
-        {"type": "shell_command", "command": "alhDisable ${DEV}", "label": "Disable"},
+        {"type": "execute", "command": "xterm -e top", "description": "Top"},
+        {"type": "execute", "command": "alhDisable ${DEV}", "description": "Disable"},
     ]
     assert any("shell commands" in w for w in button.warnings)
 
