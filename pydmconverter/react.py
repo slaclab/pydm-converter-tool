@@ -17,12 +17,13 @@ from pathlib import Path
 from typing import Literal
 
 from pydmconverter.bob.ir_adapter import bob_file_to_ir
+from pydmconverter.colors import SchemeLike
 from pydmconverter.edm.ir_adapter import edm_file_to_ir
 from pydmconverter.edm.parser_helpers import SearchPaths
 from pydmconverter.ir.emit import to_wire_dict, write_screen_json
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient
-from pydmconverter.scheme import SchemeResult, stamp_schema_version
+from pydmconverter.scheme import stamp_schema_version
 from pydmconverter.ui.ir_adapter import ui_file_to_ir
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ def convert_to_ir(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = False,
     display_roots: SearchPaths = None,
@@ -52,7 +53,11 @@ def convert_to_ir(
     ``color_def_path`` (``.bob`` inputs only) names a Phoebus ``color.def`` whose entries
     overlay the built-in named colours; when omitted only the built-in names resolve.
     ``scheme`` (``.edl`` and ``.bob`` inputs) is a flattened colour scheme whose imported names
-    (``import.edm`` / ``import.phoebus``) become colour roles. The result is stamped ``schema_version`` ``"1.1"`` iff it carries a
+    (``import.edm`` / ``import.phoebus``) become colour roles: any object exposing ``.flat``,
+    ``.imports``, ``.sources`` and ``.meta`` with the shapes :mod:`pydmconverter.scheme`
+    documents (:class:`~pydmconverter.colors.SchemeLike`), such as the converter's own
+    :func:`~pydmconverter.scheme.load_scheme` result or the flattening result Canopy passes.
+    The result is stamped ``schema_version`` ``"1.1"`` iff it carries a
     role (:func:`pydmconverter.scheme.stamp_schema_version`); it is never validated here.
 
     ``search_paths`` (``.edl`` inputs only) are extra directories (a single directory
@@ -110,7 +115,7 @@ def convert_bytes(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     filename: str | None = None,
     search_paths: SearchPaths = None,
     confine_file_refs: bool = True,
@@ -161,7 +166,8 @@ def convert_bytes(
     ``EDMCOLORFILE`` env var, then ``$EDMFILES/colors.list``, then ``/etc/edm/colors.list``.
     ``color_def_path`` (``kind="bob"`` only) names a Phoebus ``color.def`` whose entries
     overlay the built-in named colours; when omitted only the built-in names resolve.
-    ``scheme`` is a flattened colour scheme; see :func:`convert_to_ir`.
+    ``scheme`` is a flattened colour scheme, any :class:`~pydmconverter.colors.SchemeLike`
+    (Canopy passes its own flattening result here); see :func:`convert_to_ir`.
 
     ``display_roots`` (``kind="edl"`` only) are absolute directories whose display
     names become root-relative (see :mod:`pydmconverter.edm.display_roots`); when
@@ -229,7 +235,7 @@ def convert_file(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     display_roots: SearchPaths = None,
 ) -> Path:
     """Convert one ``.edl``/``.ui``/``.bob`` file to ``*.screen.json``; return the output path.
@@ -274,7 +280,7 @@ def convert_folder(
     calc_list_path: str | Path | None = None,
     site: str | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     display_roots: SearchPaths = None,
 ) -> tuple[int, list[str]]:
     """Recursively convert every ``.edl``/``.ui``/``.bob`` under ``input_dir``.

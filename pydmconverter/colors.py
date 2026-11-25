@@ -10,7 +10,7 @@ the role's light value must equal the hex the converter would write anyway (the
 aggregated per document.
 
 A role that restyles a Phoebus colour declares the value it replaces (its ``phoebus``
-source, :attr:`SchemeResult.sources`). For such a role the fallback is compared with
+source, the scheme's ``sources``). For such a role the fallback is compared with
 that source instead of the light value, so the restyle is applied while a screen whose
 ``color.def`` drifted from the declared value is still caught.
 
@@ -20,22 +20,25 @@ e.g. ``Grid`` as a ``background_color`` is ``Grid_Fill`` and as a ``line_color``
 
 With no :class:`ColorContext` (no scheme) every call returns the fallback, so output
 is identical to the converter's output before schemes existed.
+
+The scheme itself is a duck type, :class:`SchemeLike`: the converter's own
+:class:`~pydmconverter.scheme.SchemeResult` satisfies it, and so does Canopy's own
+flattening result, which Canopy passes to ``convert_bytes(scheme=...)``.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING
+from typing import Any, Protocol
 
 from pydmconverter.scheme import canonical_hex
-
-if TYPE_CHECKING:
-    from pydmconverter.scheme import SchemeResult
 
 __all__ = [
     "RGBA",
     "ColorContext",
     "ParityNotes",
+    "SchemeLike",
     "named_color",
     "rgba_to_hex",
 ]
@@ -44,6 +47,37 @@ RGBA = tuple[int, int, int, int]
 
 #: A colour value the IR stores: a literal hex, or a ``{"$role", "fallback"}`` role.
 ColorValue = str | dict
+
+
+class SchemeLike(Protocol):
+    """A flattened colour scheme, as every ``scheme=`` parameter of the converter accepts it.
+
+    Any object exposing these four read-only attributes will do, with the shapes
+    :mod:`pydmconverter.scheme` documents for :class:`~pydmconverter.scheme.SchemeResult`:
+
+    * ``flat``: ``{"roles": [name, ...], "light": [hex, ...], "dark": [hex, ...]}``,
+      parallel lists;
+    * ``imports``: ``{"phoebus": {name: target}, "edm": {name: target}}``, where a target
+      is a role name or a slot object ``{"role": <default>, <slot>: <role>, ...}``;
+    * ``sources``: ``{role: hex}``, each role's declared ``phoebus`` source colour;
+    * ``meta``: ``{"id", "sha256", "flatHash", "served", "errors": [...]}``; the
+      conversion itself reads none of it, the CLI reports ``errors``.
+
+    The converter's :class:`~pydmconverter.scheme.SchemeResult` is one such object;
+    Canopy, which owns the scheme contract, passes its own flattening result.
+    """
+
+    @property
+    def flat(self) -> Mapping[str, Sequence[str]]: ...
+
+    @property
+    def imports(self) -> Mapping[str, Mapping[str, str | Mapping[str, str]]]: ...
+
+    @property
+    def sources(self) -> Mapping[str, str]: ...
+
+    @property
+    def meta(self) -> Mapping[str, Any]: ...
 
 
 def rgba_to_hex(rgba: tuple[int, ...]) -> str:
@@ -132,9 +166,9 @@ class ColorContext:
 
     @classmethod
     def from_scheme(
-        cls, scheme: SchemeResult, named: dict[str, RGBA] | None = None, *, import_kind: str = "phoebus"
+        cls, scheme: SchemeLike, named: dict[str, RGBA] | None = None, *, import_kind: str = "phoebus"
     ) -> ColorContext:
-        """Build the context of one document from a flattened scheme."""
+        """Build the context of one document from a flattened scheme (any :class:`SchemeLike`)."""
         flat = scheme.flat
         light = dict(zip(flat.get("roles", []), flat.get("light", [])))
         dark = dict(zip(flat.get("roles", []), flat.get("dark", [])))

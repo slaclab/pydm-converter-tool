@@ -56,7 +56,7 @@ from pydmconverter.bob.coercion import (
     load_color_def,
     points,
 )
-from pydmconverter.colors import ColorContext, named_color
+from pydmconverter.colors import ColorContext, SchemeLike, named_color
 from pydmconverter.pairing import NamedColor, pair_text_colors
 from pydmconverter.bob.formula_pv import lower_formula_pv
 from pydmconverter.bob.gates import FILE_REFERENCE_WARNING, file_reference
@@ -73,7 +73,6 @@ from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
 from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
-from pydmconverter.scheme import SchemeResult
 
 __all__ = ["SOURCE_TYPE", "bob_file_to_ir"]
 
@@ -815,7 +814,7 @@ def _display_to_ir(
     screen_id: str,
     registry: RegistryClient | None,
     color_def_path: str | Path | None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     confine_file_refs: bool = False,
 ) -> ScreenIR:
     registry = registry or VendoredRegistry()
@@ -892,14 +891,16 @@ def bob_file_to_ir(
     *,
     registry: RegistryClient | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     confine_file_refs: bool = False,
 ) -> ScreenIR:
     """Parse a Phoebus ``.bob`` file and build its Screen IR.
 
     ``color_def_path`` names a Phoebus ``color.def`` whose entries overlay the built-in
-    named colours (``<color name="...">``). With a flattened colour ``scheme``, named
-    colours the scheme imports become roles under the parity rule
+    named colours (``<color name="...">``). With a flattened colour ``scheme`` (any
+    :class:`~pydmconverter.colors.SchemeLike`: ``.flat``, ``.imports``, ``.sources`` and
+    ``.meta``; Canopy passes its own flattening result), named colours the scheme
+    imports become roles under the parity rule
     (:func:`~pydmconverter.colors.named_color`); ``None`` keeps today's literal hex. ``registry`` defaults to the vendored
     widget registry. The screen id and title are the file stem. Raises
     :class:`~pydmconverter.bob.parser.BobParseError` on malformed XML; every other
