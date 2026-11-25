@@ -74,6 +74,11 @@ class SourceNode:
     placeholder_reason:
         When set, the builder emits an ``unknown-widget`` placeholder with this
         warning instead of resolving the node (a front-end failed to convert it).
+    visible:
+        ``False`` for a widget the source hides statically. The builder writes it as
+        the ``props.visible`` carrier the runtime reads as the base visibility (absent
+        means visible), on the mapped and the ``unknown-widget`` path alike. ``None``
+        leaves the prop out.
     """
 
     qt_class: str | None
@@ -88,6 +93,7 @@ class SourceNode:
     meta: NodeMeta | None = None
     dropped_props: list[str] = field(default_factory=list)
     placeholder_reason: str | None = None
+    visible: bool | None = None
 
     @property
     def original_class(self) -> str | None:

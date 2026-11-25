@@ -15,6 +15,7 @@ from pydmconverter.bob.coercion import (
     color_from_element,
     font_size,
     load_color_def,
+    parse_color_def,
     normalize_macro_syntax,
     points,
 )
@@ -65,6 +66,37 @@ def test_color_def_bad_lines_warn_and_are_skipped():
     assert "Dangling" not in named
     assert any("Broken" in w for w in warnings)
     assert any("NoSuchColour" in w for w in warnings)
+
+
+def test_parse_color_def_keeps_references_and_order():
+    """The one parser of the grammar: entries in file order, references kept for the scheme tool."""
+    warnings: list[str] = []
+    entries = parse_color_def(COLOR_DEF, warnings)
+    assert [(e.name, e.rgba, e.ref) for e in entries] == [
+        ("Background", (250, 250, 250, 255), None),
+        ("Header_Background", (77, 77, 77, 255), None),
+        ("Semi", (10, 20, 30, 128), None),
+        ("STOP", None, "MAJOR"),
+        ("Halt", None, "MAJOR"),
+        ("On", None, "OK"),
+        ("Off", (60, 100, 60, 255), None),
+    ]
+    assert warnings == [
+        "color.def:20: cannot parse color 'Broken' from 'not a colour'",
+        "color.def:21: color 'Dangling' references undefined 'NoSuchColour'",
+    ]
+
+
+def test_parse_color_def_label_prefixes_warnings(tmp_path):
+    path = tmp_path / "site.def"
+    path.write_text("Nope\nX = alias(Missing)\n= 1, 2, 3\n", encoding="utf-8")
+    warnings: list[str] = []
+    assert parse_color_def(path, warnings, label=str(path)) == []
+    assert warnings == [
+        f"{path}:1: cannot parse 'Nope'",
+        f"{path}:2: color 'X' references undefined 'Missing'",
+        f"{path}:3: cannot parse '= 1, 2, 3'",
+    ]
 
 
 def test_load_color_def_does_not_mutate_builtins(tmp_path):
@@ -119,6 +151,14 @@ def test_unknown_named_color_without_rgb_falls_back_to_black():
     assert warnings
 
 
+@pytest.mark.parametrize("red", ["inf", "nan", "1e999", "x"])
+def test_color_with_a_non_finite_channel_is_not_a_color(red):
+    warnings: list[str] = []
+    elem = ET.fromstring(f'<foreground_color><color red="{red}" green="0" blue="0"/></foreground_color>')
+    assert color_from_element(elem, None, warnings) == "#000000"
+    assert warnings == ["color without name or red/green/blue, using #000000"]
+
+
 def test_color_from_element_without_color_returns_none():
     assert color_from_element(None) is None
     assert color_from_element(_xml("<background_color/>")) is None
@@ -135,6 +175,12 @@ def test_font_size_from_property_element():
 
 def test_font_size_inner_element_and_fractional():
     assert font_size(_xml('<font family="Sans" size="10.5"/>')) == 10.5
+
+
+@pytest.mark.parametrize("size", ["inf", "-inf", "nan", "1e999"])
+def test_font_size_non_finite_returns_none(size):
+    elem = ET.fromstring(f'<font><font family="Liberation Sans" style="REGULAR" size="{size}"></font></font>')
+    assert coercion.font_size(elem) is None
 
 
 def test_font_size_missing_returns_none():
@@ -173,6 +219,19 @@ def test_points():
 
 
 # --- coerce -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["nan", "inf", "-inf", "1e999"])
+def test_coerce_number_refuses_non_finite(text):
+    """nan/inf parse as floats but have no JSON form: warned and kept as text like unparsable input."""
+    warnings: list[str] = []
+    assert coerce("number", text, warnings=warnings) == text
+    assert warnings == [f"cannot coerce '{text}' to number"]
+
+
+def test_points_skip_non_finite_coordinates():
+    elem = ET.fromstring('<points><point x="inf" y="1"/><point x="2" y="nan"/><point x="3" y="4"/></points>')
+    assert coercion.points(elem) == [(3, 4)]
 
 
 @pytest.mark.parametrize(

@@ -36,7 +36,7 @@ def _number(value: ET.Element | str | None, default: int) -> int:
         return default
     try:
         return int(float(value))
-    except ValueError:
+    except (ValueError, OverflowError):  # "x", "nan" / "inf"
         return default
 
 

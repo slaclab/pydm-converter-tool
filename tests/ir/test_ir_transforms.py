@@ -189,7 +189,8 @@ def test_screen_ref_leaves_macros_and_converted_names(ref):
 
 def test_screen_ref_does_not_check_existence(tmp_path):
     missing = tmp_path / "nope" / "Missing.bob"
-    assert screen_ref(str(missing)) == str(missing)[: -len(".bob")] + ".screen.json"
+    # screen_ref normalises separators to "/", so the expected path is the POSIX form on every platform.
+    assert screen_ref(str(missing)) == missing.as_posix()[: -len(".bob")] + ".screen.json"
 
 
 def test_screen_ref_takes_first_of_list_and_drops_empty():

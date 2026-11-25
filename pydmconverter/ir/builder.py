@@ -206,7 +206,7 @@ class IRBuilder:
         return WidgetNode(
             id=self.ids.widget(),
             type=definition.id,
-            props=self._map_props(node.qt_props, definition),
+            props=self._with_visibility(self._map_props(node.qt_props, definition), node),
             geometry=self._geometry(node.geometry),
             rules=self._build_rules(node.rules),
             children=[self._build_node(child) for child in node.children],
@@ -243,6 +243,18 @@ class IRBuilder:
             out[spec["to"]] = value
         return self._hoist_formulas(out)
 
+    @staticmethod
+    def _with_visibility(props: dict[str, Any], node: SourceNode) -> dict[str, Any]:
+        """``props`` plus the ``visible`` carrier when the source hides the widget.
+
+        ``props.visible`` is not a registry prop: the runtime reads it on every widget
+        as the base visibility (absent is visible) and ANDs its ``visible`` rules onto
+        it, which is also how the Screen Builder stashes a hidden widget on export.
+        """
+        if node.visible is False:
+            props["visible"] = False
+        return props
+
     def _hoist_formulas(self, props: dict[str, Any]) -> dict[str, Any]:
         """Lower any ``calc://`` channel value to a screen-level formula + ``formula://`` ref."""
         for key, value in props.items():
@@ -261,7 +273,9 @@ class IRBuilder:
         return WidgetNode(
             id=self.ids.widget(),
             type=UNKNOWN_WIDGET_TYPE,
-            props={"originalClass": original, "originalProps": node.raw_props or node.qt_props},
+            props=self._with_visibility(
+                {"originalClass": original, "originalProps": node.raw_props or node.qt_props}, node
+            ),
             geometry=self._geometry(node.geometry),
             rules=self._build_rules(node.rules),
             children=[self._build_node(child) for child in node.children],

@@ -149,13 +149,14 @@ def _is_color_role(node: Any) -> bool:
     return is_hex(node.get("fallback")) and ("fallbackDark" not in node or is_hex(node["fallbackDark"]))
 
 
-def _contains_color_role(node: Any) -> bool:
+def contains_color_role(node: Any) -> bool:
+    """Whether ``node`` is, or holds at any depth of dict values and list items, a well-formed ``ColorRole``."""
     if _is_color_role(node):
         return True
     if isinstance(node, dict):
-        return any(_contains_color_role(value) for value in node.values())
+        return any(contains_color_role(value) for value in node.values())
     if isinstance(node, (list, tuple)):
-        return any(_contains_color_role(value) for value in node)
+        return any(contains_color_role(value) for value in node)
     return False
 
 
@@ -165,7 +166,7 @@ def stamp_schema_version(doc: Any) -> str:
     Mirrors the SDK's ``stampSchemaVersion``: a deep walk over dict values and list items for a well-formed
     ``ColorRole``. The doc's own ``schemaVersion`` is a string, so it never counts. Never raises.
     """
-    return "1.1" if _contains_color_role(doc) else "1.0"
+    return "1.1" if contains_color_role(doc) else "1.0"
 
 
 # -- internals -----------------------------------------------------------------------------------------------------

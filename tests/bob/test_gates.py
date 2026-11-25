@@ -88,14 +88,82 @@ def test_file_references_that_are_refused(text):
     "text, url",
     [
         ("https://${HOST}/x", "https://${HOST}/x"),
-        ("//cdn.example/a", "//cdn.example/a"),
         ("docs/a.html", "docs/a.html"),
+        ("docs/${X}.html", "docs/${X}.html"),
+        ("/abs/path.html", "/abs/path.html"),
+        (" \thttp://a.example/x\n", "http://a.example/x"),
     ],
 )
 def test_web_urls_that_pass(text, url):
     assert gates.web_url(text) == url
 
 
-@pytest.mark.parametrize("text", ["javascript:alert(1)", "java\tscript:alert(1)", "data:text/html,x", "${BASE}/x"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "javascript:alert(1)",
+        "java\tscript:alert(1)",
+        "data:text/html,x",
+        "${BASE}/x",
+        # Protocol-relative: a browser reads the authority under the page's scheme.
+        "//evil.example/x",
+        "\\\\evil.example\\x",
+        "/\\evil.example/x",
+        "\\/evil.example/x",
+        " //evil.example/x",
+        "/\t/evil.example/x",
+    ],
+)
 def test_web_urls_that_are_refused(text):
     assert gates.web_url(text) is None
+
+
+def test_over_deep_expressions_are_refused():
+    """A tree too deep for the parser is refused, never raised.
+
+    The length cap turns a 60k-term chain away before any parse; ``PARSE_ERRORS`` also
+    covers ``RecursionError`` for whatever ``ast.parse`` cannot build, and the parser's
+    own "too many nested parentheses" ``SyntaxError``.
+    """
+    assert gates.expression_allowed(" + ".join(["{0}"] * 60_000), 1) is False
+    assert gates.expression_allowed("(" * 300 + "{0}" + ")" * 300, 1) is False
+
+
+def test_parse_python_survives_a_deep_chain():
+    """A 60k-term chain parses on every platform.
+
+    Python 3.10's parser has no depth guard; on a 1 MB main-thread stack (Windows) this
+    text overflowed the C stack and killed the test process. ``parse_python`` runs the
+    parser on a thread with :data:`gates.PARSE_STACK_BYTES` of stack instead.
+    """
+    import ast
+
+    tree = gates.parse_python("x = " + " + ".join(["1"] * 60_000))
+    assert isinstance(tree, ast.Module) and len(tree.body) == 1
+
+
+def test_parse_stack_size_is_accepted_on_this_platform():
+    """``PARSE_STACK_BYTES`` must be a size ``threading.stack_size`` takes here.
+
+    Windows caps thread stacks below 256 MB and refuses larger with ``ValueError``; that
+    is in ``PARSE_ERRORS``, so a refused size would silently fail every parse.
+    """
+    import threading
+
+    previous = threading.stack_size(gates.PARSE_STACK_BYTES)
+    threading.stack_size(previous)
+    assert gates.parse_python("{0} * 2", mode="eval") is not None
+
+
+def test_parse_python_raises_what_the_parser_raises_and_caps_length():
+    with pytest.raises(SyntaxError):
+        gates.parse_python("x = (")
+    with pytest.raises(ValueError):
+        gates.parse_python("x" * (gates.MAX_SCRIPT_CHARS + 1))
+    assert all(issubclass(exc, gates.PARSE_ERRORS) for exc in (SyntaxError, ValueError))
+
+
+def test_expressions_over_the_formula_engine_limit_are_refused():
+    assert gates.MAX_EXPRESSION_CHARS == 2048
+    assert gates.expression_allowed("{0} + " * 300 + "1", 1) is True  # 1801 characters
+    assert gates.expression_allowed("{0} + " * 400 + "1", 1) is False  # 2401 characters

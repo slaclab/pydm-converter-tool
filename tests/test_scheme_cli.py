@@ -1,4 +1,4 @@
-"""``canopy-scheme``: the check and survey subcommands, on synthetic fixtures only."""
+"""``pydmconverter-scheme``: the check and survey subcommands, on synthetic fixtures only."""
 
 from __future__ import annotations
 

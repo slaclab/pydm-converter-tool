@@ -23,8 +23,11 @@ it concerns.
 from __future__ import annotations
 
 import dataclasses
+import logging
+import math
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -38,6 +41,7 @@ from pydmconverter.bob.bob_qt import (
     READBACK_COPY,
     TABS_WARNING,
     TRANSPARENT_BG_RULE_TYPES,
+    WRITER_TYPES,
     default_size,
     qt_class_for,
     qt_prop_for,
@@ -52,7 +56,7 @@ from pydmconverter.bob.coercion import (
     load_color_def,
     points,
 )
-from pydmconverter.colors import ColorContext, named_color
+from pydmconverter.colors import ColorContext, SchemeLike, named_color
 from pydmconverter.pairing import NamedColor, pair_text_colors
 from pydmconverter.bob.formula_pv import lower_formula_pv
 from pydmconverter.bob.gates import FILE_REFERENCE_WARNING, file_reference
@@ -67,17 +71,20 @@ from pydmconverter.ir.builder import IRBuilder
 from pydmconverter.ir.macros import normalize_macro_syntax
 from pydmconverter.ir.model import ScreenIR
 from pydmconverter.ir.registry import RegistryClient, VendoredRegistry
-from pydmconverter.ir.source import RuleSpec, SourceNode
+from pydmconverter.ir.source import RuleSpec, SourceNode, conversion_failure
 from pydmconverter.ir.transforms import screen_ref
-from pydmconverter.scheme import SchemeResult
 
 __all__ = ["SOURCE_TYPE", "bob_file_to_ir"]
 
+logger = logging.getLogger(__name__)
+
 SOURCE_TYPE = "bob-converter"
+NON_FINITE_WARNING = "{what} {value!r} is not a finite number; using {default!r}"
 NO_READER_WARNING = "{widget}: formula {name} has no reader ({pv})"
 RULE_FORMULA_WARNING = "{widget}: rule {rule!r} needs the script runtime (tier 2): formula binding {pv}"
 NO_DEFAULT_WARNING = "{widget}: rule {rule!r} not lowered: its target has no static value"
 TRACE_FORMULA_WARNING = "{widget}: trace {trace!r} needs the script runtime (tier 2): formula binding {pv}"
+WRITER_FORMULA_WARNING = "{widget}: {type} writes its pv_name, which is a read-only formula PV: {pv}; widget dropped"
 
 # Phoebus props consumed structurally below, never through the generic prop table.
 _STRUCTURAL_PROPS = frozenset(
@@ -103,6 +110,7 @@ _STRUCTURAL_PROPS = frozenset(
         "horizontal",
         "text",
         "arrows",
+        "visible",
     }
 )
 # (widget type, prop) pairs the prop table leaves unmapped because another module reads
@@ -197,12 +205,21 @@ class _File:
 # --------------------------------------------------------------------------
 # Small helpers
 # --------------------------------------------------------------------------
-def _number(value: object, default: Any) -> Any:
+def _number(value: object, default: Any, warn: Callable[[str], None] | None = None, what: str = "value") -> Any:
+    """Leaf prop text -> number; ``default`` when absent, unparsable or not finite.
+
+    ``nan``/``inf`` parse as floats but have no JSON form, so they fall back like text
+    does; ``warn`` (when given) records that under the prop name ``what``.
+    """
     if not isinstance(value, str) or not value.strip():
         return default
     try:
         number = float(value)
     except ValueError:
+        return default
+    if not math.isfinite(number):
+        if warn is not None:
+            warn(NON_FINITE_WARNING.format(what=what, value=value.strip(), default=default))
         return default
     return int(number) if number.is_integer() else number
 
@@ -224,7 +241,7 @@ def _raw_props(widget: BobWidget) -> dict[str, Any]:
     return out
 
 
-def _size(widget: BobWidget) -> tuple[Any, Any]:
+def _size(widget: BobWidget, warn: Callable[[str], None] | None = None) -> tuple[Any, Any]:
     """(width, height): authored, else the points' bounding box (shapes), else the table."""
     default_w, default_h = default_size(widget.type)
     if widget.type in _POINT_TYPES:
@@ -232,18 +249,23 @@ def _size(widget: BobWidget) -> tuple[Any, Any]:
         if pts:
             default_w = max(x for x, _y in pts)
             default_h = max(y for _x, y in pts)
-    return _number(widget.props.get("width"), default_w), _number(widget.props.get("height"), default_h)
+    props = widget.props
+    return _number(props.get("width"), default_w, warn, "width"), _number(
+        props.get("height"), default_h, warn, "height"
+    )
 
 
-def _geometry(widget: BobWidget, parent: BobWidget | None, origin: tuple[Any, Any]) -> Geometry:
+def _geometry(
+    widget: BobWidget, parent: BobWidget | None, origin: tuple[Any, Any], warn: Callable[[str], None] | None = None
+) -> Geometry:
     """Absolute geometry of ``widget``; ``origin`` is the parent's absolute origin."""
-    width, height = _size(widget)
+    width, height = _size(widget, warn)
     if parent is not None and parent.type == "group":
         x, y, _w, _h = child_geometry(parent, widget, origin=(origin[0], origin[1]))
         return (x, y, width, height)
     return (
-        origin[0] + _number(widget.props.get("x"), 0),
-        origin[1] + _number(widget.props.get("y"), 0),
+        origin[0] + _number(widget.props.get("x"), 0, warn, "x"),
+        origin[1] + _number(widget.props.get("y"), 0, warn, "y"),
         width,
         height,
     )
@@ -302,6 +324,10 @@ class _WidgetLowering:
     def warn(self, message: str) -> None:
         """Record a conversion warning."""
         self.warnings.append(message)
+
+    def warn_number(self, message: str) -> None:
+        """Record a :func:`_number` fallback under this widget's name."""
+        self.warn(f"{self.name}: {message}")
 
     def coerce(self, kind: str, value: Any) -> Any:
         """Coerce a raw ``.bob`` value to the IR type named by ``kind``."""
@@ -377,7 +403,22 @@ class _WidgetLowering:
             warnings=self.warnings,
             meta=meta,
             dropped_props=self.dropped_props,
+            visible=self._visible(),
         )
+
+    def _visible(self) -> bool | None:
+        """``False`` when ``<visible>false</visible>`` is the widget's static visibility.
+
+        A lowered ``visible`` rule already carries that value as its default, and the
+        runtime ANDs the base with every rule, so the carrier is left out then: the
+        rule alone decides, as in Phoebus.
+        """
+        value = self.widget.props.get("visible")
+        if value is None or is_true(value, self.rule_ctx, self.name):
+            return None
+        if any(rule.target_property == "visible" for rule in self.rules):
+            return None
+        return False
 
     # -- props ----------------------------------------------------------------
     def _props(self) -> None:
@@ -426,6 +467,13 @@ class _WidgetLowering:
         qt_prop = qt_prop_for(self.widget.type, "pv_name")
         text = prop_text(props.get("pv_name"))
         if qt_prop is None or not text.strip():
+            return
+        if text.strip().startswith("=") and self.widget.type in WRITER_TYPES:
+            # An input widget bound to a formula would send the operator's value
+            # nowhere (Phoebus formula PVs are read-only). Dropped, text carried.
+            self.warn(WRITER_FORMULA_WARNING.format(widget=self.name, type=self.widget.type, pv=text.strip()))
+            self.declined.append(text)
+            self.unknown = True
             return
         channel = self.channel(text)
         if channel is None:
@@ -517,8 +565,11 @@ class _WidgetLowering:
 
     def _embedded(self, props: dict[str, Any]) -> None:
         self._file_prop(props, "file", "filename")
-        if self.widget.macros:
-            self.qt_props["macros"] = {k: normalize_macro_syntax(v) for k, v in self.widget.macros.items()}
+        # Phoebus expands the embedded display with the widget's effective macros: the
+        # group scope, then the widget's own (EmbeddedDisplayRepresentationUtil).
+        macros = {**self.widget.macro_scope, **self.widget.macros}
+        if macros:
+            self.qt_props["macros"] = {k: normalize_macro_syntax(v) for k, v in macros.items()}
 
     def _xyplot(self, props: dict[str, Any]) -> None:
         traces = props.get("traces")
@@ -552,8 +603,10 @@ class _WidgetLowering:
         return {
             "name": name,
             "label": label,
-            "minRange": _number(axis.findtext("minimum") if axis is not None else None, 0),
-            "maxRange": _number(axis.findtext("maximum") if axis is not None else None, 100),
+            "minRange": _number(axis.findtext("minimum") if axis is not None else None, 0, self.warn_number, "minimum"),
+            "maxRange": _number(
+                axis.findtext("maximum") if axis is not None else None, 100, self.warn_number, "maximum"
+            ),
             "autoRange": flag("autoscale", False),
             "logMode": flag("log_scale", False),
             "grid": flag("show_grid", False),
@@ -580,10 +633,10 @@ class _WidgetLowering:
             hexed = self.coerce("color", color)
             if hexed is not None:
                 curve["color"] = hexed
-        curve["lineWidth"] = _number(trace.findtext("line_width"), 1)
+        curve["lineWidth"] = _number(trace.findtext("line_width"), 1, self.warn_number, "line_width")
         curve["lineStyle"] = _XY_PEN_STYLE.get(_int(trace.findtext("line_style"), 0), 1)
         curve["symbol"] = _XY_SYMBOL.get(_int(trace.findtext("point_type"), 0), "none")
-        curve["symbolSize"] = _number(trace.findtext("point_size"), 10)
+        curve["symbolSize"] = _number(trace.findtext("point_size"), 10, self.warn_number, "point_size")
         curve["traceType"] = "none" if _int(trace.findtext("trace_type"), 1) == 0 else "line"
         curve["yAxisName"] = f"y{_int(trace.findtext('axis'), 0)}"
         return curve
@@ -690,16 +743,38 @@ class _WidgetLowering:
 def _lower_tree(
     widgets: list[BobWidget], state: _File, parent: BobWidget | None, origin: tuple[Any, Any]
 ) -> list[SourceNode]:
+    """Lower ``widgets`` in document order; one widget's failure costs that widget, not the screen.
+
+    A widget whose lowering raises (malformed input the lowering code did not expect)
+    becomes an ``unknown-widget`` placeholder carrying its raw props and the failure as a
+    warning, like the EDM adapter's; its children are still lowered under it.
+    """
     nodes: list[SourceNode] = []
     for widget in widgets:
-        geometry = _geometry(widget, parent, origin)
-        lowering = _WidgetLowering(widget, state, geometry)
-        node = lowering.lower()
-        if lowering.named_props:
-            state.named_props[id(node)] = lowering.named_props
-        for key, name, pv in lowering.targets:
-            state.targets.setdefault(key, _Target(name=name, pv=pv, widget=widget.name, node=node))
-        if widget.type == "navtabs":
+        pending: list[str] = []
+        try:
+            geometry = _geometry(widget, parent, origin, pending.append)
+            lowering = _WidgetLowering(widget, state, geometry)
+            lowering.warnings.extend(f"{widget.name}: {message}" for message in pending)
+            node = lowering.lower()
+        except Exception as exc:  # noqa: BLE001 - one bad widget must not abort the screen
+            logger.warning(
+                "Phoebus %s %r failed to convert; emitting a placeholder", widget.type, widget.name, exc_info=True
+            )
+            geometry = (origin[0], origin[1], *default_size(widget.type))
+            node = SourceNode(
+                qt_class=None,
+                geometry=geometry,
+                raw_class=widget.type,
+                raw_props=_raw_props(widget),
+                placeholder_reason=conversion_failure(f"{widget.type} {widget.name!r}", exc),
+            )
+        else:
+            if lowering.named_props:
+                state.named_props[id(node)] = lowering.named_props
+            for key, name, pv in lowering.targets:
+                state.targets.setdefault(key, _Target(name=name, pv=pv, widget=widget.name, node=node))
+        if widget.type == "navtabs" and node.placeholder_reason is None:
             node.children = navtab_buttons(widget, (geometry[0], geometry[1]), node.warnings.append)
         else:
             node.children = _lower_tree(widget.children, state, widget, (geometry[0], geometry[1]))
@@ -732,9 +807,12 @@ def _retarget(nodes: list[SourceNode], targets: dict[str, _Target]) -> None:
         _retarget(node.children, targets)
 
 
-def _screen_size(display: BobDisplay) -> tuple[Any, Any]:
+def _screen_size(display: BobDisplay, warn: Callable[[str], None]) -> tuple[Any, Any]:
     default_w, default_h = DISPLAY_DEFAULT_SIZE
-    return _number(display.props.get("width"), default_w), _number(display.props.get("height"), default_h)
+    props = display.props
+    return _number(props.get("width"), default_w, warn, "width"), _number(
+        props.get("height"), default_h, warn, "height"
+    )
 
 
 def _macro_defaults(display: BobDisplay) -> dict[str, str] | None:
@@ -753,7 +831,7 @@ def _display_to_ir(
     screen_id: str,
     registry: RegistryClient | None,
     color_def_path: str | Path | None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     confine_file_refs: bool = False,
 ) -> ScreenIR:
     registry = registry or VendoredRegistry()
@@ -778,6 +856,7 @@ def _display_to_ir(
         state.declarer_warnings.setdefault(widget, []).append(message)
 
     nodes = _lower_tree(display.widgets, state, None, (0, 0))
+    size = _screen_size(display, lambda message: file_warnings.append(f"display: {message}"))
     _retarget(nodes, state.targets)
     for target in state.targets.values():
         if target.readers == 0:
@@ -811,7 +890,7 @@ def _display_to_ir(
         screen_id=screen_id,
         title=screen_id,
         source_type=SOURCE_TYPE,
-        size=_screen_size(display),
+        size=size,
         top_level=declarers + nodes,
         background=background or DISPLAY_BACKGROUND_DEFAULT,
         macro_defaults=_macro_defaults(display),
@@ -829,14 +908,16 @@ def bob_file_to_ir(
     *,
     registry: RegistryClient | None = None,
     color_def_path: str | Path | None = None,
-    scheme: SchemeResult | None = None,
+    scheme: SchemeLike | None = None,
     confine_file_refs: bool = False,
 ) -> ScreenIR:
     """Parse a Phoebus ``.bob`` file and build its Screen IR.
 
     ``color_def_path`` names a Phoebus ``color.def`` whose entries overlay the built-in
-    named colours (``<color name="...">``). With a flattened colour ``scheme``, named
-    colours the scheme imports become roles under the parity rule
+    named colours (``<color name="...">``). With a flattened colour ``scheme`` (any
+    :class:`~pydmconverter.colors.SchemeLike`: ``.flat``, ``.imports``, ``.sources`` and
+    ``.meta``; Canopy passes its own flattening result), named colours the scheme
+    imports become roles under the parity rule
     (:func:`~pydmconverter.colors.named_color`); ``None`` keeps today's literal hex. ``registry`` defaults to the vendored
     widget registry. The screen id and title are the file stem. Raises
     :class:`~pydmconverter.bob.parser.BobParseError` on malformed XML; every other

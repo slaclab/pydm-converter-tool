@@ -14,7 +14,9 @@ appended to a caller-supplied ``warnings`` list and a fallback value is used.
 
 from __future__ import annotations
 
+import math
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
 
@@ -24,6 +26,7 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 __all__ = [
     "BUILTIN_NAMED_COLORS",
     "RGBA",
+    "ColorDefEntry",
     "alignment",
     "coerce",
     "color_from_element",
@@ -31,6 +34,7 @@ __all__ = [
     "font_size",
     "load_color_def",
     "normalize_macro_syntax",
+    "parse_color_def",
     "parse_rgba_list",
     "points",
     "rgba_to_hex",
@@ -94,49 +98,79 @@ def parse_rgba_list(text: str) -> RGBA | None:
     return (values[0], values[1], values[2], values[3])
 
 
-def load_color_def(path: str | Path, warnings: list[str] | None = None) -> dict[str, RGBA]:
-    """Parse a Phoebus ``color.def`` and return the built-ins overlaid by its entries.
+@dataclass(frozen=True)
+class ColorDefEntry:
+    """One ``Name = ...`` line of a Phoebus ``color.def``: an RGBA, or a reference to an earlier name.
+
+    Exactly one of ``rgba`` and ``ref`` is set. ``ref`` is the referenced name for both
+    ``Name = Other`` and ``Name = alias(Other)``; it is a built-in or an earlier entry.
+    """
+
+    name: str
+    rgba: RGBA | None = None
+    ref: str | None = None
+
+
+def parse_color_def(
+    path: str | Path, warnings: list[str] | None = None, *, label: str | None = None
+) -> list[ColorDefEntry]:
+    """The entries of a Phoebus ``color.def``, in file order, references kept as references.
 
     Grammar (Phoebus ``examples/color.def``): ``Name = r, g, b [, a]`` |
     ``Name = PreviouslyDefinedName`` | ``Name = alias(PreviouslyDefinedName)``;
-    ``#`` starts a comment line. Both reference forms resolve to the referenced
-    colour's RGBA here, since the IR only stores concrete colours. Lines that do
-    not parse, or reference an undefined name, are skipped with a warning.
+    ``#`` starts a comment line. ``PreviouslyDefinedName`` must be a built-in or an
+    earlier entry. Lines that do not parse, or reference an undefined name, are skipped
+    with a warning prefixed ``<label>:<lineno>`` (``label`` defaults to ``color.def``).
+
+    This is the one parser of the grammar: :func:`load_color_def` resolves the entries
+    to RGBA for the IR, and the ``pydmconverter-scheme`` tool writes them into a scheme
+    with the references kept as light aliases.
     """
-    named = dict(BUILTIN_NAMED_COLORS)
+    where = "color.def" if label is None else label
+    known = set(BUILTIN_NAMED_COLORS)
+    entries: list[ColorDefEntry] = []
     text = Path(path).read_text(encoding="utf-8", errors="replace")
     for lineno, raw in enumerate(text.splitlines(), start=1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        if "=" not in line:
-            _warn(warnings, f"color.def:{lineno}: cannot parse '{line}'")
-            continue
-        name, value = (s.strip() for s in line.split("=", 1))
-        if not name:
-            _warn(warnings, f"color.def:{lineno}: cannot parse '{line}'")
+        name, sep, value = (s.strip() for s in line.partition("="))
+        if not sep or not name:
+            _warn(warnings, f"{where}:{lineno}: cannot parse '{line}'")
             continue
         ref = None
         if value.startswith("alias"):
             rest = value[5:].strip()
-            if rest.startswith("(") and rest.endswith(")"):
-                ref = rest[1:-1].strip()
-            else:
-                _warn(warnings, f"color.def:{lineno}: cannot parse color '{name}' from '{value}'")
+            if not (rest.startswith("(") and rest.endswith(")")):
+                _warn(warnings, f"{where}:{lineno}: cannot parse color '{name}' from '{value}'")
                 continue
-        elif value in named:
+            ref = rest[1:-1].strip()
+        elif value in known:
             ref = value
         if ref is not None:
-            if ref not in named:
-                _warn(warnings, f"color.def:{lineno}: color '{name}' references undefined '{ref}'")
+            if ref not in known:
+                _warn(warnings, f"{where}:{lineno}: color '{name}' references undefined '{ref}'")
                 continue
-            named[name] = named[ref]
-            continue
-        rgba = parse_rgba_list(value)
-        if rgba is None:
-            _warn(warnings, f"color.def:{lineno}: cannot parse color '{name}' from '{value}'")
-            continue
-        named[name] = rgba
+            entries.append(ColorDefEntry(name, ref=ref))
+        else:
+            rgba = parse_rgba_list(value)
+            if rgba is None:
+                _warn(warnings, f"{where}:{lineno}: cannot parse color '{name}' from '{value}'")
+                continue
+            entries.append(ColorDefEntry(name, rgba=rgba))
+        known.add(name)
+    return entries
+
+
+def load_color_def(path: str | Path, warnings: list[str] | None = None) -> dict[str, RGBA]:
+    """Parse a Phoebus ``color.def`` and return the built-ins overlaid by its entries.
+
+    Both reference forms resolve to the referenced colour's RGBA here, since the IR only
+    stores concrete colours; see :func:`parse_color_def` for the grammar and warnings.
+    """
+    named = dict(BUILTIN_NAMED_COLORS)
+    for entry in parse_color_def(path, warnings):
+        named[entry.name] = named[entry.ref] if entry.ref is not None else entry.rgba
     return named
 
 
@@ -219,13 +253,14 @@ def color_name_of(
 
 
 def _rgb_attrs(color: ET.Element) -> RGBA | None:
+    """``red``/``green``/``blue``[/``alpha``] attributes -> RGBA; ``None`` when a channel is not a finite number."""
     try:
         r, g, b = (int(float(color.get(k, ""))) for k in ("red", "green", "blue"))
-    except ValueError:
+    except (ValueError, OverflowError):  # missing, text, nan / inf
         return None
     try:
         a = int(float(color.get("alpha", "255")))
-    except ValueError:
+    except (ValueError, OverflowError):
         a = 255
     return (r, g, b, a)
 
@@ -283,6 +318,8 @@ def font_size(elem: object) -> Number | None:
         size = float(raw)
     except ValueError:
         return None
+    if not math.isfinite(size):
+        return None
     return int(size) if size.is_integer() else size
 
 
@@ -312,6 +349,8 @@ def points(elem: object) -> list[tuple[Number, Number]]:
             x, y = float(point.get("x", "")), float(point.get("y", ""))
         except ValueError:
             continue
+        if not (math.isfinite(x) and math.isfinite(y)):
+            continue
         result.append((_num(x), _num(y)))
     return result
 
@@ -331,8 +370,9 @@ def coerce(
     """Coerce a property/rule value's text to ``kind`` (``bool``/``number``/``color``/``str``).
 
     ``str`` values get ``$(P)`` -> ``${P}`` macro normalisation. A value that does
-    not parse as its kind warns and is returned as the (normalised) text; an
-    unknown kind is treated as ``str`` with a warning. ``ctx`` (a scheme's
+    not parse as its kind (``nan``/``inf`` included: JSON has no such numbers) warns
+    and is returned as the (normalised) text; an unknown kind is treated as ``str``
+    with a warning. ``ctx`` (a scheme's
     :class:`~pydmconverter.colors.ColorContext`) lets a named ``color`` become a role.
     """
     raw = text if isinstance(text, str) else str(text)
@@ -349,9 +389,12 @@ def coerce(
         except ValueError:
             pass
         try:
-            return _num(float(value))
+            number = float(value)
         except ValueError:
             pass
+        else:
+            if math.isfinite(number):  # nan/inf are not JSON numbers
+                return _num(number)
     elif kind == "color":
         hexed = color_from_text(value, named, None, ctx)
         if hexed is not None:
