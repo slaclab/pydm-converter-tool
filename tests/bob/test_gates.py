@@ -88,14 +88,31 @@ def test_file_references_that_are_refused(text):
     "text, url",
     [
         ("https://${HOST}/x", "https://${HOST}/x"),
-        ("//cdn.example/a", "//cdn.example/a"),
         ("docs/a.html", "docs/a.html"),
+        ("docs/${X}.html", "docs/${X}.html"),
+        ("/abs/path.html", "/abs/path.html"),
+        (" \thttp://a.example/x\n", "http://a.example/x"),
     ],
 )
 def test_web_urls_that_pass(text, url):
     assert gates.web_url(text) == url
 
 
-@pytest.mark.parametrize("text", ["javascript:alert(1)", "java\tscript:alert(1)", "data:text/html,x", "${BASE}/x"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "javascript:alert(1)",
+        "java\tscript:alert(1)",
+        "data:text/html,x",
+        "${BASE}/x",
+        # Protocol-relative: a browser reads the authority under the page's scheme.
+        "//evil.example/x",
+        "\\\\evil.example\\x",
+        "/\\evil.example/x",
+        "\\/evil.example/x",
+        " //evil.example/x",
+        "/\t/evil.example/x",
+    ],
+)
 def test_web_urls_that_are_refused(text):
     assert gates.web_url(text) is None

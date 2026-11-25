@@ -25,7 +25,8 @@ warnings:
   `open_webpage`, `open_file`, `close_display`) become the Screen Builder's
   `props.actions`. `command` is carried as `execute` with a warning: the web runtime
   does not run shell commands. An `open_webpage` URL that is not `http`, `https` or
-  relative is dropped with a warning; so is any file a display names (`open_file`,
+  relative (a protocol-relative `//host/...` is neither) is dropped with a warning; so
+  is any file a display names (`open_file`,
   `open_display`, embedded/picture files, button images, `file` rule values) that is
   not a path, or that starts with a macro.
 - **Tier 2**: needs a script runtime. Any other script or `execute` action warns and is

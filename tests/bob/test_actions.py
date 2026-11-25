@@ -135,7 +135,6 @@ def test_open_webpage():
         "http://example.com/a",
         "HTTPS://example.com/a?b=c#d",
         "https://${HOST}/x",
-        "//example.com/a",
         "/docs/manual.html",
         "docs/${X}.html",
         "manual.html#part:2",
@@ -163,6 +162,9 @@ def test_open_webpage_keeps_web_and_relative_urls(url):
         "$(URL)",
         "${BASE}/page.html",
         "java$(X)script:alert(1)",
+        "//example.com/a",
+        "\\\\example.com\\a",
+        "/\\example.com/a",
     ],
 )
 def test_open_webpage_drops_other_schemes_with_a_warning(url):

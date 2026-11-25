@@ -6,7 +6,8 @@ runtime. Each kind has one gate here, and every sink calls it:
 
 * :func:`expression_allowed` -- rule conditions, formula PVs and lowered formula
   scripts: the Formula Engine's expression subset over ``{N}`` bindings, no macros.
-* :func:`web_url` -- ``open_webpage``: ``http``, ``https`` or relative.
+* :func:`web_url` -- ``open_webpage``: ``http``, ``https`` or relative, never
+  protocol-relative (``//host/...``).
 * :func:`file_reference` -- every file a display names (``open_file``,
   ``open_display``, navigation tabs, embedded and picture files, button images,
   ``file`` rule values): a relative or absolute path, nothing else.
@@ -161,7 +162,8 @@ def _relative_or_scheme(reference: str, schemes: frozenset[str]) -> bool:
 
     The scheme is read from the part before the first ``/``, ``?`` or ``#``: a colon
     there must follow an allowed scheme. A macro there with no colon could expand to
-    a scheme, so it is refused too.
+    a scheme, so it is refused too. That head is empty for a protocol-relative
+    reference, so :func:`_names_host` is checked first by every caller.
     """
     head = re.split(r"[/?#]", reference, maxsplit=1)[0]
     if ":" in head:
@@ -169,14 +171,26 @@ def _relative_or_scheme(reference: str, schemes: frozenset[str]) -> bool:
     return "${" not in head
 
 
+def _names_host(reference: str) -> bool:
+    """Whether ``reference`` opens with two slash-like characters (``//``, ``/\\``, ``\\\\``, ``\\/``).
+
+    A browser reads each of those as an authority, so ``//evil.example/x`` is a
+    different host under the page's scheme, not a relative URL.
+    """
+    return len(reference) >= 2 and reference[0] in "/\\" and reference[1] in "/\\"
+
+
 def web_url(text: str) -> str | None:
     """``text`` cleaned when it is an ``http``/``https`` or relative URL, else ``None``.
 
-    ``https://${HOST}/x`` and ``docs/${X}.html`` pass; ``javascript:``, ``data:``,
-    ``file:`` and ``${BASE}/x`` do not.
+    ``https://${HOST}/x``, ``docs/${X}.html`` and ``/abs/path.html`` pass;
+    ``javascript:``, ``data:``, ``file:``, ``${BASE}/x`` and a protocol-relative
+    ``//host/x`` (in any mix of ``/`` and ``\\``, after the browser's cleaning) do not.
     """
     url = _clean(text)
-    return url if _relative_or_scheme(url, _WEB_SCHEMES) else None
+    if _names_host(url) or not _relative_or_scheme(url, _WEB_SCHEMES):
+        return None
+    return url
 
 
 def file_reference(text: str) -> str | None:
@@ -188,6 +202,6 @@ def file_reference(text: str) -> str | None:
     ``https://...`` do not.
     """
     reference = _clean(text).replace("\\", "/")
-    if reference.startswith("//") or not _relative_or_scheme(reference, frozenset()):
+    if _names_host(reference) or not _relative_or_scheme(reference, frozenset()):
         return None
     return reference
