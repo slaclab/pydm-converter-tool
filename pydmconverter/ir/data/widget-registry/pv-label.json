@@ -4,8 +4,8 @@
   "qtPropMap": {
     "channel": { "to": "pv", "transform": "stripProtocol" },
     "text": { "to": "text" },
-    "precisionFromPV": { "to": "precision", "transform": "boolToFromPV" },
     "precision": { "to": "precision" },
+    "precisionFromPV": { "to": "precisionFromPV", "transform": "falseOnly" },
     "showUnits": { "to": "showUnits" },
     "alarmSensitiveContent": { "to": "alarmSensitive" },
     "alarmSensitiveBorder": { "to": "alarmBorder" },

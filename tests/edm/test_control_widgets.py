@@ -53,6 +53,7 @@ def test_textdsp_class_without_editable_is_read_only_label():
     assert label.props == {
         "pv": "${P}:READBACK",
         "precision": 2,
+        "precisionFromPV": False,
         "showUnits": True,
         "alarmSensitive": True,
         "format": "hex",
