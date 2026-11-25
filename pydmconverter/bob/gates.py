@@ -24,6 +24,7 @@ from pydmconverter.ir.macros import normalize_macro_syntax
 
 __all__ = [
     "FILE_REFERENCE_WARNING",
+    "PARSE_ERRORS",
     "WEB_URL_WARNING",
     "expression_allowed",
     "file_reference",
@@ -38,6 +39,10 @@ WEB_URL_WARNING = "{widget}: open_webpage URL {reference!r} is not http, https o
 
 _BINDING_RE = re.compile(r"\{(\d+)\}")
 _MACRO_CLOSERS = {"{": "}", "(": ")"}
+#: What ``ast.parse`` raises on text it cannot turn into a tree: a syntax error, a null
+#: byte (``ValueError``), or an expression nested past the interpreter's recursion limit
+#: (``RecursionError``, historically ``MemoryError``). Every parse of display text catches these.
+PARSE_ERRORS: tuple[type[BaseException], ...] = (SyntaxError, ValueError, RecursionError, MemoryError)
 
 _ALLOWED_NODES: tuple[type, ...] = (
     ast.Expression,
@@ -139,7 +144,7 @@ def expression_allowed(expression: str, binding_count: int | None = None) -> boo
     text = _BINDING_RE.sub(lambda m: f"_pv{m.group(1)}", expression)
     try:
         tree = ast.parse(text.strip(), mode="eval")
-    except (SyntaxError, ValueError):
+    except PARSE_ERRORS:
         return False
     return _allowed_tree(tree, {f"_pv{n}" for n in indices})
 

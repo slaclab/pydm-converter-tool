@@ -330,6 +330,15 @@ def test_missing_text_warns_with_path():
 # --- writer census ----------------------------------------------------------------
 
 
+def test_script_past_the_parser_recursion_limit_is_unparseable():
+    """``ast.parse`` raises RecursionError on a very deep tree: no writers, no match, no crash."""
+    text = HEADER + "pvs[1].setValue(" + " + ".join(["1"] * 60_000) + ")\n"
+    script = _script(text, ["A", "loc://N"])
+    assert script_written_pvs(script) == []
+    cand, warnings = _match(_widget("w", script), script)
+    assert cand is None and len(warnings) == 1 and TIER2 in warnings[0]
+
+
 def test_script_written_pvs_alias_and_direct():
     assert script_written_pvs(_script(HOST_MEM_LOAD, ["a", "b", "loc://c"])) == [2]
     assert script_written_pvs(_script("pvs[0].write(1)\npvs[3].setValue(2)\n", [])) == [0, 3]

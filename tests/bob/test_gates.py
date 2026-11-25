@@ -116,3 +116,9 @@ def test_web_urls_that_pass(text, url):
 )
 def test_web_urls_that_are_refused(text):
     assert gates.web_url(text) is None
+
+
+def test_expression_past_the_parser_recursion_limit_is_refused():
+    """``ast.parse`` raises RecursionError on a very deep tree; the gate answers False instead."""
+    assert gates.expression_allowed(" + ".join(["{0}"] * 60_000), 1) is False
+    assert gates.expression_allowed("(" * 300 + "{0}" + ")" * 300, 1) is False  # "too many nested parentheses"

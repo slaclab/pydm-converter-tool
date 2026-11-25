@@ -38,7 +38,7 @@ Geometry = tuple[Any, Any, Any, Any]
 def _int(value: object, default: int) -> int:
     try:
         return int(float(prop_text(value).strip()))
-    except ValueError:
+    except (ValueError, OverflowError):  # text, nan / inf
         return default
 
 

@@ -13,6 +13,7 @@ Regenerate the goldens after an intended output change with::
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -684,6 +685,138 @@ def test_embedded_file_led_by_a_macro_is_dropped():
     embedded = _wire("macros")["root"]["children"][1]
     assert "file" not in embedded["props"]
     assert embedded["warnings"] == ["Child: file '$(EPSFile)' is not a file path; dropped"]
+
+
+# --------------------------------------------------------------------------
+# Robustness: one bad widget, one bad number
+# --------------------------------------------------------------------------
+def _display(body: str) -> bytes:
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<display version="2.0.0"><name>D</name>{body}</display>'.encode()
+
+
+def _label(name: str, y: int = 0, extra: str = "") -> str:
+    return (
+        f'<widget type="label" version="2.0.0"><name>{name}</name><x>0</x><y>{y}</y><text>{name}</text>{extra}</widget>'
+    )
+
+
+def test_one_failing_widget_becomes_a_placeholder(monkeypatch):
+    """A lowering that raises costs that widget (placeholder with the failure), not the screen."""
+    from pydmconverter.bob import ir_adapter
+
+    real = ir_adapter.lower_actions
+
+    def boom(widget, ctx):
+        if widget.name == "Bad":
+            raise RuntimeError("boom")
+        return real(widget, ctx)
+
+    monkeypatch.setattr(ir_adapter, "lower_actions", boom)
+    body = (
+        _label("Before")
+        + (
+            '<widget type="group" version="2.0.0"><name>Bad</name><x>10</x><y>30</y><width>100</width><height>50</height>'
+            + _label("Child")
+            + "</widget>"
+        )
+        + _label("After", 100)
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    before, bad, after = wire["root"]["children"]
+    assert before["type"] == after["type"] == "text-label"
+    assert bad["type"] == "unknown-widget"
+    assert bad["props"]["originalClass"] == "group"
+    assert bad["props"]["originalProps"]["name"] == "Bad"
+    assert bad["geometry"] == {"x": 0, "y": 0, "width": 300, "height": 200}  # the fallback: origin + default size
+    assert bad["warnings"] == ["Conversion of group 'Bad' failed (RuntimeError: boom); rendering placeholder"]
+    assert [child["props"]["text"] for child in bad["children"]] == ["Child"]  # children still lowered
+    assert validate_screen_json(wire) == []
+
+
+def test_rule_past_the_parser_recursion_limit_is_declined_not_fatal():
+    """A 60k-term condition used to raise RecursionError out of ast.parse and abort the file."""
+    condition = " + ".join(["pv0"] * 60_000) + " > 1"
+    rule = (
+        '<rules><rule name="r" prop_id="visible" out_exp="false">'
+        f'<exp bool_exp="{condition}"><value>false</value></exp><pv_name>SR:A</pv_name></rule></rules>'
+    )
+    body = (
+        _label("Before") + f'<widget type="rectangle" version="2.0.0"><name>Long</name><x>0</x><y>30</y>{rule}</widget>'
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    before, long = wire["root"]["children"]
+    assert before["type"] == "text-label"
+    assert long["type"] == "rectangle" and long.get("rules", []) == []
+    assert long["warnings"][0].startswith("Long: rule 'r' condition not lowered: pv0 + pv0")
+
+
+def test_script_past_the_parser_recursion_limit_stays_tier_2():
+    text = "x = " + " + ".join(["1"] * 60_000)
+    body = (
+        '<widget type="textupdate" version="2.0.0"><name>S</name><x>0</x><y>0</y><pv_name>SR:A</pv_name>'
+        f'<scripts><script file="EmbeddedPy"><text>{text}</text><pv_name>SR:A</pv_name></script></scripts></widget>'
+    )
+    (node,) = to_wire_dict(convert_bytes(_display(body), kind="bob"))["root"]["children"]
+    assert node["type"] == "pv-label"
+    assert node["warnings"] == [f"S: script needs the script runtime (tier 2): {text[:0]}" + text]
+
+
+def test_non_finite_numbers_fall_back_with_a_warning():
+    """nan/inf parse as floats but are not JSON: geometry, axes and rule arms fall back and warn."""
+    body = (
+        '<widget type="label" version="2.0.0"><name>L</name><x>nan</x><y>0</y><width>inf</width><height>1e999</height>'
+        '<text>a</text><rules><rule name="r" prop_id="width" out_exp="false"><exp bool_exp="pv0 &gt; 1">'
+        "<value>inf</value></exp><pv_name>SR:A</pv_name></rule></rules></widget>"
+        '<widget type="polyline" version="2.0.0"><name>P</name><x>0</x><y>0</y>'
+        '<points><point x="inf" y="1"/><point x="2" y="3"/></points></widget>'
+        '<widget type="group" version="2.0.0"><name>G</name><x>inf</x><y>0</y><width>100</width><height>100</height>'
+        + _label("In")
+        + "</widget>"
+        '<widget type="xyplot" version="2.0.0"><name>X</name><x>0</x><y>0</y>'
+        "<y_axes><y_axis><minimum>-inf</minimum><maximum>nan</maximum></y_axis></y_axes>"
+        "<traces><trace><y_pv>SR:WF</y_pv><line_width>inf</line_width></trace></traces></widget>"
+    )
+    screen = convert_bytes(_display(body), kind="bob")
+    wire = to_wire_dict(screen)
+    json.dumps(wire, allow_nan=False)  # the whole document is strict JSON
+    assert "NaN" not in to_json(screen) and "Infinity" not in to_json(screen)
+    label, line, group, plot = wire["root"]["children"]
+    assert label["geometry"] == {"x": 0, "y": 0, "width": 100, "height": 20}
+    assert label["warnings"] == [
+        "L: width 'inf' is not a finite number; using 100",
+        "L: height '1e999' is not a finite number; using 20",
+        "L: x 'nan' is not a finite number; using 0",
+        "L: cannot coerce 'inf' to number",
+    ]
+    assert line["props"]["points"] == [{"x": 2, "y": 3}]
+    assert group["geometry"]["x"] == 0 and group["warnings"] == ["G: x 'inf' is not a finite number; using 0"]
+    axis = plot["props"]["yAxes"][0]
+    assert (axis["minRange"], axis["maxRange"]) == (0, 100)
+    assert plot["props"]["curves"][0]["lineWidth"] == 1
+    assert set(plot["warnings"]) >= {
+        "X: minimum '-inf' is not a finite number; using 0",
+        "X: maximum 'nan' is not a finite number; using 100",
+        "X: line_width 'inf' is not a finite number; using 1",
+    }
+
+
+def test_non_finite_colour_components_fall_back_without_aborting():
+    body = (
+        '<background_color><color red="inf" green="0" blue="0"/></background_color>'
+        '<widget type="label" version="2.0.0"><name>L</name><x>0</x><y>0</y><text>a</text>'
+        '<foreground_color><color red="nan" green="1e999" blue="0"/></foreground_color></widget>'
+    )
+    wire = to_wire_dict(convert_bytes(_display(body), kind="bob"))
+    (label,) = wire["root"]["children"]
+    assert label["props"]["foregroundColor"] == "#000000"
+    assert "L: color without name or red/green/blue, using #000000" in label["warnings"]
+    assert "display: color without name or red/green/blue, using #000000" in label["warnings"]
+
+
+def test_non_finite_display_size_falls_back_with_a_warning():
+    wire = to_wire_dict(convert_bytes(_display("<width>inf</width>" + _label("L")), kind="bob"))
+    assert wire["metadata"]["size"] == {"width": 800, "height": 600}
+    assert wire["root"]["children"][0]["warnings"] == ["display: width 'inf' is not a finite number; using 800"]
 
 
 def _one_widget(body: str) -> dict:

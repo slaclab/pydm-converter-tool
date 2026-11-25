@@ -116,7 +116,7 @@ def _file_colors(source: Path) -> dict[Key, int]:
             try:
                 rgb = tuple(int(float(child.get(c, "0"))) for c in ("red", "green", "blue"))
                 alpha = int(float(child.get("alpha", "255")))
-            except ValueError:
+            except (ValueError, OverflowError):  # text, nan / inf
                 continue
             key = (child.get("name") or UNNAMED, parent.tag, (*rgb, alpha))
             counts[key] = counts.get(key, 0) + 1

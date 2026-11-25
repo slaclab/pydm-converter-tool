@@ -49,6 +49,14 @@ def test_child_geometry_per_style(style, expected):
     assert child_geometry(group, group.children[0]) == expected
 
 
+@pytest.mark.parametrize("text", ["inf", "nan", "1e999", "x"])
+def test_child_geometry_non_finite_coordinates_fall_back(text):
+    group = _group(3, children=_CHILD)
+    group.props["x"] = text
+    group.children[0].props["width"] = text
+    assert child_geometry(group, group.children[0]) == (10, 110, 100, 20)
+
+
 def test_child_geometry_returns_ints():
     group = _group(0, children=_CHILD)
     assert all(isinstance(v, int) for v in child_geometry(group, group.children[0]))

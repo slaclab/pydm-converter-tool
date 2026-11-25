@@ -119,6 +119,14 @@ def test_unknown_named_color_without_rgb_falls_back_to_black():
     assert warnings
 
 
+@pytest.mark.parametrize("red", ["inf", "nan", "1e999", "x"])
+def test_color_with_a_non_finite_channel_is_not_a_color(red):
+    warnings: list[str] = []
+    elem = ET.fromstring(f'<foreground_color><color red="{red}" green="0" blue="0"/></foreground_color>')
+    assert color_from_element(elem, None, warnings) == "#000000"
+    assert warnings == ["color without name or red/green/blue, using #000000"]
+
+
 def test_color_from_element_without_color_returns_none():
     assert color_from_element(None) is None
     assert color_from_element(_xml("<background_color/>")) is None
@@ -135,6 +143,12 @@ def test_font_size_from_property_element():
 
 def test_font_size_inner_element_and_fractional():
     assert font_size(_xml('<font family="Sans" size="10.5"/>')) == 10.5
+
+
+@pytest.mark.parametrize("size", ["inf", "-inf", "nan", "1e999"])
+def test_font_size_non_finite_returns_none(size):
+    elem = ET.fromstring(f'<font><font family="Liberation Sans" style="REGULAR" size="{size}"></font></font>')
+    assert coercion.font_size(elem) is None
 
 
 def test_font_size_missing_returns_none():
@@ -173,6 +187,19 @@ def test_points():
 
 
 # --- coerce -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["nan", "inf", "-inf", "1e999"])
+def test_coerce_number_refuses_non_finite(text):
+    """nan/inf parse as floats but have no JSON form: warned and kept as text like unparsable input."""
+    warnings: list[str] = []
+    assert coerce("number", text, warnings=warnings) == text
+    assert warnings == [f"cannot coerce '{text}' to number"]
+
+
+def test_points_skip_non_finite_coordinates():
+    elem = ET.fromstring('<points><point x="inf" y="1"/><point x="2" y="nan"/><point x="3" y="4"/></points>')
+    assert coercion.points(elem) == [(3, 4)]
 
 
 @pytest.mark.parametrize(

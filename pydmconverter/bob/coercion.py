@@ -14,6 +14,7 @@ appended to a caller-supplied ``warnings`` list and a fallback value is used.
 
 from __future__ import annotations
 
+import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Union
@@ -219,13 +220,14 @@ def color_name_of(
 
 
 def _rgb_attrs(color: ET.Element) -> RGBA | None:
+    """``red``/``green``/``blue``[/``alpha``] attributes -> RGBA; ``None`` when a channel is not a finite number."""
     try:
         r, g, b = (int(float(color.get(k, ""))) for k in ("red", "green", "blue"))
-    except ValueError:
+    except (ValueError, OverflowError):  # missing, text, nan / inf
         return None
     try:
         a = int(float(color.get("alpha", "255")))
-    except ValueError:
+    except (ValueError, OverflowError):
         a = 255
     return (r, g, b, a)
 
@@ -283,6 +285,8 @@ def font_size(elem: object) -> Number | None:
         size = float(raw)
     except ValueError:
         return None
+    if not math.isfinite(size):
+        return None
     return int(size) if size.is_integer() else size
 
 
@@ -312,6 +316,8 @@ def points(elem: object) -> list[tuple[Number, Number]]:
             x, y = float(point.get("x", "")), float(point.get("y", ""))
         except ValueError:
             continue
+        if not (math.isfinite(x) and math.isfinite(y)):
+            continue
         result.append((_num(x), _num(y)))
     return result
 
@@ -331,8 +337,9 @@ def coerce(
     """Coerce a property/rule value's text to ``kind`` (``bool``/``number``/``color``/``str``).
 
     ``str`` values get ``$(P)`` -> ``${P}`` macro normalisation. A value that does
-    not parse as its kind warns and is returned as the (normalised) text; an
-    unknown kind is treated as ``str`` with a warning. ``ctx`` (a scheme's
+    not parse as its kind (``nan``/``inf`` included: JSON has no such numbers) warns
+    and is returned as the (normalised) text; an unknown kind is treated as ``str``
+    with a warning. ``ctx`` (a scheme's
     :class:`~pydmconverter.colors.ColorContext`) lets a named ``color`` become a role.
     """
     raw = text if isinstance(text, str) else str(text)
@@ -349,9 +356,12 @@ def coerce(
         except ValueError:
             pass
         try:
-            return _num(float(value))
+            number = float(value)
         except ValueError:
             pass
+        else:
+            if math.isfinite(number):  # nan/inf are not JSON numbers
+                return _num(number)
     elif kind == "color":
         hexed = color_from_text(value, named, None, ctx)
         if hexed is not None:
